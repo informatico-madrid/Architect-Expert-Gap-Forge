@@ -35,6 +35,8 @@ This pipeline is battle-tested on cutting-edge hardware:
 - **Host:** AMD Threadripper 7960X (24C/48T).
 - **Throughput:** ~60 tokens/s on 30B-A3B MoE models.
 
+![AEGF Throughput Proof - 110.1 tok/s](docs/assets/blackwell_performance.png)
+
 ---
 
 ## 🛠️ Roadmap
