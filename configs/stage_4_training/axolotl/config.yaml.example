@@ -1,0 +1,78 @@
+# Example Axolotl training config (agnostic template)
+# Copy this file to configs/stage_4_training/axolotl/config.yaml and
+# adjust values for your environment.
+
+base_model: ./models/your-base-model
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+load_in_4bit: false
+load_in_8bit: false
+
+model_config:
+  router_z_loss_coef: 0.0
+  output_router_logits: false
+
+sequence_len: 4096
+sample_packing: true
+pad_to_sequence_len: true
+train_on_inputs: false
+
+adapter: lora
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.0
+lora_mlp_kernel: false
+lora_qkv_kernel: false
+lora_o_kernel: false
+peft_use_rslora: false
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+
+datasets:
+  - path: data/your_dataset.jsonl
+    type: chat_template
+    field_messages: conversation
+    train_on_responses_only: true
+    message_field_role: role
+    message_field_content: content
+
+dataset_prepared_path: data/prepared_dataset
+
+bf16: "auto"
+fp16: false
+tf32: true
+gradient_checkpointing: true
+early_stopping_patience: 3
+learning_rate: 1e-5
+num_epochs: 3
+micro_batch_size: "auto"
+gradient_accumulation_steps: "auto"
+optimizer: adamw_torch
+lr_scheduler: cosine
+warmup_ratio: 0.03
+weight_decay: 0.0
+max_grad_norm: 1.0
+flash_attention: false
+dataloader_num_workers: 4
+
+val_set_size: 0.01
+eval_steps: 100
+save_steps: 100
+save_total_limit: 3
+overwrite_output_dir: false
+
+deepspeed: configs/stage_4_training/deepspeed/deepspeed_z3_config.json.example
+output_dir: outputs
+
+wandb_project: your_project_name
+wandb_log_model: "false"
+
+plugins: []
+gc_steps: 1
+eval_sample_packing: false
+save_safetensors: true
+
+# End of example
