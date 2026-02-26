@@ -1,0 +1,1 @@
+This directory contains legacy diagnostic tools used during the V1-V9 development phases, including Argilla-based introspection. These are maintained for historical reference but have been superseded by the LDI 3.0 autonomous logic-density engine.
