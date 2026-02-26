@@ -1,0 +1,33 @@
+# --- INFRAESTRUCTURA Y CACHES (Lo más pesado) ---
+.triton_cache/
+unsloth_compiled_cache/
+.pip_cache/
+pip_cache/
+.pytest_cache/
+wandb/
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# --- ARTIFACTS DE ENTRENAMIENTO ---
+nvme_offload/
+outputs/
+last_run_prepared/
+runs/
+checkpoint-*/
+
+# --- DATOS (Aquí está el 99% del peso) ---
+# Ignoramos TODO lo que hay en data, excepto los documentos de guía (Gap)
+data/raw/
+data/raw_txt/
+data/synthetic/
+data/reports/
+data/*.jsonl
+data/*.jsonl.tmp
+*.log
+
+# --- SISTEMA ---
+/swapfile
+*.img
+.DS_Store
