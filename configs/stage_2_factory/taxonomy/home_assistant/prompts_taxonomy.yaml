@@ -1,0 +1,998 @@
+---
+# =============================================================================
+# AEGF (Architect-Expert-Gap-Forge) V10 — Prompt Taxonomy
+# =============================================================================
+# All prompt templates, error patterns, legacy contrasts, theory questions,
+# and tool definitions used by production_v10.py.
+#
+# Content is in Spanish (target training language for the model).
+# Python loads this file at startup and injects runtime variables via
+# string.Template ($var) for prompts, or str.format({var}) for error/theory
+# templates.
+# =============================================================================
+
+version: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HA ERROR TEMPLATES  (Python integration error recovery)
+# ─────────────────────────────────────────────────────────────────────────────
+ha_error_templates:
+  - error: >-
+      InvalidStateError: Entity {entity} uses deprecated TEMP_CELSIUS.
+      UnitOfTemperature.CELSIUS must be used instead.
+      This will stop working in Home Assistant 2026.1.
+    category: enum_migration
+    legacy_pattern: "TEMP_CELSIUS"
+    modern_fix: "UnitOfTemperature.CELSIUS"
+
+  - error: >-
+      DeprecationWarning: async_forward_entry_setup is deprecated.
+      Use async_forward_entry_setups (plural) instead.
+      Called from custom_components/{component}/__init__.py
+    category: setup_migration
+    legacy_pattern: "async_forward_entry_setup"
+    modern_fix: "async_forward_entry_setups"
+
+  - error: >-
+      HomeAssistantError: Detected blocking call to sleep inside the event loop
+      by custom integration '{component}' at custom_components/{component}/sensor.py,
+      line 142. This is causing a freeze of {seconds}s.
+    category: blocking_call
+    legacy_pattern: "time.sleep()"
+    modern_fix: "await asyncio.sleep()"
+
+  - error: >-
+      KeyError: '{entry_id}' - hass.data[DOMAIN] does not contain config entry.
+      The integration is using the legacy hass.data dictionary pattern
+      instead of entry.runtime_data.
+    category: runtime_data
+    legacy_pattern: "hass.data[DOMAIN][entry.entry_id]"
+    modern_fix: "entry.runtime_data"
+
+  - error: >-
+      TypeError: 'str' object is not callable - entity uses string literal
+      '{literal}' for device_class instead of SensorDeviceClass enum.
+      String device classes are removed in 2026.1.
+    category: device_class_enum
+    legacy_pattern: 'device_class = "temperature"'
+    modern_fix: "device_class = SensorDeviceClass.TEMPERATURE"
+
+  - error: >-
+      PlatformNotReady: {component} did not complete setup within 30s.
+      The integration performs synchronous HTTP requests in async_setup_entry.
+      Use async_add_executor_job for blocking I/O.
+    category: platform_not_ready
+    legacy_pattern: "requests.get() in async context"
+    modern_fix: "await hass.async_add_executor_job(requests.get, url)"
+
+  - error: >-
+      ConfigEntryError: Integration '{component}' uses PLATFORM_SCHEMA
+      without config_flow. YAML-only configuration is not accepted
+      for new integrations since 2025.6.
+    category: config_flow
+    legacy_pattern: "PLATFORM_SCHEMA = vol.Schema(...)"
+    modern_fix: "ConfigFlow + config_entries"
+
+  - error: >-
+      EntityPlatformWarning: {component} entity {entity_id} implements
+      update() instead of async_update(). Synchronous update methods block
+      the event loop. Migrate to CoordinatorEntity pattern.
+    category: coordinator
+    legacy_pattern: "def update(self):"
+    modern_fix: "CoordinatorEntity + DataUpdateCoordinator"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LEGACY 2023 PATTERNS  (Python contrast prompts)
+# ─────────────────────────────────────────────────────────────────────────────
+legacy_2023_patterns:
+  - title: "Uso de strings literales en lugar de Enums"
+    legacy_code: |
+      DEVICE_CLASS = "temperature"
+      UNIT = "°C"
+    modern_code: |
+      device_class = SensorDeviceClass.TEMPERATURE
+      native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    explanation: >-
+      En 2023 se usaban strings literales para device_class y unidades.
+      En 2026, TODAS deben ser Enums tipados.
+
+  - title: "hass.data vs entry.runtime_data"
+    legacy_code: |
+      hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    modern_code: |
+      entry.runtime_data = MyRuntimeData(coordinator=coordinator)
+    explanation: >-
+      En 2023 se usaba el diccionario global hass.data.
+      En 2026, entry.runtime_data con dataclass tipada es obligatorio.
+
+  - title: "async_forward_entry_setup singular"
+    legacy_code: |
+      await hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    modern_code: |
+      await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    explanation: >-
+      El método singular fue eliminado.
+      Se usa async_forward_entry_setups (plural) con lista de platforms.
+
+  - title: "Patrón Entity sin Coordinator"
+    legacy_code: |
+      class MySensor(Entity):
+          def update(self):
+              self._state = api.get_data()
+    modern_code: |
+      class MySensor(CoordinatorEntity[MyCoordinator]):
+          @property
+          def native_value(self):
+              return self.coordinator.data.get('value')
+    explanation: >-
+      En 2023, entidades con update() bloqueante.
+      En 2026, CoordinatorEntity con DataUpdateCoordinator.
+
+  - title: "YAML-only sin ConfigFlow"
+    legacy_code: |
+      PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+          vol.Required(CONF_HOST): cv.string,
+      })
+    modern_code: |
+      class MyConfigFlow(ConfigFlow, domain=DOMAIN):
+          async def async_step_user(self, user_input=None):
+    explanation: >-
+      Desde 2025.6, toda integración nueva requiere config_flow.
+      YAML-only está prohibido para nuevas integraciones.
+
+  - title: "Llamadas bloqueantes en async"
+    legacy_code: |
+      async def async_setup_entry(hass, entry):
+          data = requests.get(url).json()
+    modern_code: |
+      async def async_setup_entry(hass, entry):
+          data = await hass.async_add_executor_job(requests.get, url)
+    explanation: >-
+      Requests bloqueantes en contexto async causan freezes.
+      Se deben ejecutar en executor.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JINJA / YAML ERROR TEMPLATES  (template error recovery)
+# ─────────────────────────────────────────────────────────────────────────────
+jinja_ha_error_templates:
+  - error: >-
+      TemplateError: Template output exceeds maximum size of 256.0 KiB.
+      Triggered by template in {template_source}.
+      Consider filtering entities or reducing output size.
+    category: template_size_limit
+    context_type: jinja
+    legacy_pattern: "Iterar sobre todas las entidades sin filtro"
+    modern_fix: "Filtrar entidades con selectattr/rejectattr y limitar output"
+
+  - error: >-
+      DeprecationWarning: 'platform: template' under '{domain}:' is deprecated
+      and will stop working in Home Assistant 2026.6.
+      Migrate to the modern 'template:' integration syntax in configuration.yaml.
+    category: legacy_template_platform
+    context_type: yaml
+    legacy_pattern: "sensor:\n  - platform: template\n    sensors:"
+    modern_fix: "template:\n  - sensor:\n      - name: ...\n        state: ..."
+
+  - error: >-
+      StateError: Entity binary_sensor.{entity} shows 'unknown' instead of expected 'off'.
+      The template returned None which is now interpreted as 'unknown' since HA 2025.8.
+      Return an explicit 'false' value.
+    category: binary_sensor_none
+    context_type: jinja
+    legacy_pattern: "Template returns None implicitly"
+    modern_fix: "Return explicit false: {{ expr if condition else false }}"
+
+  - error: >-
+      TemplateError: UndefinedError: 'standby' is not a valid state for
+      media_player.{entity}. Valid states: ['off', 'on', 'playing', 'paused', 'idle',
+      'buffering']. The 'standby' state was removed in HA 2025.8.
+    category: standby_removed
+    context_type: jinja
+    legacy_pattern: "is_state('media_player.x', 'standby')"
+    modern_fix: "is_state('media_player.x', 'off')"
+
+  - error: >-
+      TemplateWarning: state_attr('vacuum.{entity}', 'battery_level') returns None.
+      The 'battery_level' attribute was removed from vacuum entities in HA 2025.8.
+      Use the dedicated battery sensor entity instead.
+    category: battery_attr_removed
+    context_type: jinja
+    legacy_pattern: "state_attr('vacuum.x', 'battery_level')"
+    modern_fix: "states('sensor.x_battery_level')"
+
+  - error: >-
+      AutomationWarning: Automation '{automation}' uses deprecated singular syntax.
+      'trigger:' should be 'triggers:', 'condition:' should be 'conditions:',
+      'action:' should be 'actions:'. Auto-migration will apply on next save.
+    category: singular_syntax
+    context_type: yaml
+    legacy_pattern: "trigger: / condition: / action: (singular)"
+    modern_fix: "triggers: / conditions: / actions: (plural)"
+
+  - error: >-
+      TemplateError: Variable scope conflict in script '{script}'.
+      Variable '{variable}' defined with response_variable in inner block
+      now propagates to outer scope since HA 2025.3, overwriting existing value.
+    category: variable_scope
+    context_type: yaml
+    legacy_pattern: "Variables confined to inner blocks"
+    modern_fix: "Use unique variable names or explicit scope management"
+
+  - error: >-
+      RenderError: as_timestamp() returned a naive float without timezone info.
+      Template in {template_source} should use as_datetime() for timezone-aware
+      datetime objects instead of as_timestamp() epoch floats.
+    category: as_timestamp_legacy
+    context_type: jinja
+    legacy_pattern: "as_timestamp(states.sensor.x.last_changed)"
+    modern_fix: "as_datetime(states.sensor.x.last_changed)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JINJA / YAML LEGACY 2023 PATTERNS  (template contrast prompts)
+# ─────────────────────────────────────────────────────────────────────────────
+jinja_legacy_2023_patterns:
+  - title: "Sintaxis singular de automatización → plural"
+    context_type: yaml
+    legacy_code: |
+      automation:
+        trigger:
+          - platform: state
+            entity_id: sensor.temp
+        condition:
+          - condition: numeric_state
+            entity_id: sensor.temp
+            above: 30
+        action:
+          - service: notify.mobile
+            data:
+              message: "Alerta"
+    modern_code: |
+      automation:
+        triggers:
+          - trigger: state
+            entity_id: sensor.temp
+        conditions:
+          - condition: numeric_state
+            entity_id: sensor.temp
+            above: 30
+        actions:
+          - action: notify.mobile
+            data:
+              message: "Alerta"
+    explanation: >-
+      En 2024.10 se migró a sintaxis plural (triggers/conditions/actions)
+      y 'platform:' dentro de triggers se renombró a 'trigger:'.
+
+  - title: "platform: template → template: raíz"
+    context_type: yaml
+    legacy_code: |
+      sensor:
+        - platform: template
+          sensors:
+            consumo_diario:
+              friendly_name: "Consumo"
+              unit_of_measurement: "kWh"
+              value_template: "{{ states('sensor.energy') | float }}"
+    modern_code: |
+      template:
+        - sensor:
+            - name: "Consumo"
+              unit_of_measurement: "kWh"
+              state: "{{ states('sensor.energy') | float(0) }}"
+              default_entity_id: sensor.consumo_diario
+    explanation: >-
+      Desde 2025.12, 'platform: template' está deprecado (muere en 2026.6).
+      La sintaxis moderna usa 'template:' como clave raíz y 'state:' en vez de
+      'value_template:'. Usar default_entity_id para preservar IDs históricos.
+
+  - title: "binary_sensor retorna None (off implícito) → False explícito"
+    context_type: yaml
+    legacy_code: |
+      template:
+        - binary_sensor:
+            - name: "Hay movimiento"
+              state: "{{ states('sensor.pir') == 'on' or None }}"
+    modern_code: |
+      template:
+        - binary_sensor:
+            - name: "Hay movimiento"
+              state: >
+                {{ states('sensor.pir') == 'on'
+                   if states('sensor.pir') not in ['unknown', 'unavailable']
+                   else false }}
+    explanation: >-
+      Desde 2025.8, None en binary_sensor se interpreta como 'unknown', no
+      como 'off'. Devolver False explícitamente si se desea off en caso de error.
+
+  - title: "Estado standby eliminado → off"
+    context_type: jinja
+    legacy_code: |
+      {# Verificar si el TV está en standby #}
+      {% if is_state('media_player.tv', 'standby') %}
+        TV en espera
+      {% endif %}
+    modern_code: |
+      {# Verificar si el TV está apagado (standby eliminado en 2025.8) #}
+      {% if is_state('media_player.tv', 'off') %}
+        TV apagado
+      {% endif %}
+    explanation: >-
+      Desde 2025.8, reproductores multimedia (Apple TV, ADB, etc.) ya no
+      reportan 'standby'. Usar 'off' en su lugar.
+
+  - title: "Atributo battery → sensor independiente"
+    context_type: jinja
+    legacy_code: |
+      {# Obtener batería de la aspiradora #}
+      {{ state_attr('vacuum.robot', 'battery_level') }}%
+    modern_code: |
+      {# Obtener batería de la aspiradora (sensor independiente desde 2025.8) #}
+      {{ states('sensor.robot_battery_level') }}%
+    explanation: >-
+      Desde 2025.8, atributos 'battery' y 'battery_level' de aspiradoras
+      fueron eliminados. Usar los sensores dedicados (sensor.X_battery_level).
+
+  - title: "as_timestamp → as_datetime"
+    context_type: jinja
+    legacy_code: |
+      {# Calcular tiempo desde último cambio #}
+      {{ (as_timestamp(now()) - as_timestamp(states.sensor.door.last_changed)) | int }}s
+    modern_code: |
+      {# Calcular tiempo desde último cambio (timezone-aware) #}
+      {{ ((as_datetime(now()) - as_datetime(states.sensor.door.last_changed)).total_seconds()) | int }}s
+    explanation: >-
+      as_timestamp devuelve float epoch sin timezone. as_datetime retorna
+      objetos timezone-aware y es la forma preferida desde 2025+.
+
+  - title: "Filtros sin default → con default explícito"
+    context_type: jinja
+    legacy_code: |
+      {# Conversión peligrosa: falla si el estado es 'unknown' #}
+      {{ states('sensor.temperatura') | float }}
+    modern_code: |
+      {# Conversión segura con valor por defecto #}
+      {{ states('sensor.temperatura') | float(0) }}
+    explanation: >-
+      Los filtros float/int sin valor default generan errores de renderizado
+      si el estado es 'unknown' o 'unavailable'. Siempre usar default.
+
+  - title: "Fórmula manual de clamp → función nativa clamp()"
+    context_type: jinja
+    legacy_code: |
+      {# Limitar brillo entre 0 y 255 manualmente #}
+      {{ [[brightness | float, 0] | max, 255] | min }}
+    modern_code: |
+      {# Limitar brillo con función nativa (desde 2025.12) #}
+      {{ clamp(brightness | float(0), 0, 255) }}
+    explanation: >-
+      Desde 2025.12, las funciones clamp(), wrap() y remap() están
+      disponibles nativamente, eliminando fórmulas manuales complejas.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THEORY QUESTION TEMPLATES
+# ─────────────────────────────────────────────────────────────────────────────
+theory_question_templates:
+  # Doctrine Q&A
+  - type: doctrine_qa
+    template: >-
+      Explica la regla de '{section_title}' del estándar Home Assistant 2026.
+      ¿Por qué es obligatoria y qué problemas resuelve respecto a versiones anteriores?
+
+  - type: doctrine_qa
+    template: >-
+      ¿Cuáles son los principios fundamentales que describe '{section_title}'
+      en la guía oficial Home Assistant 2026?
+      Detalla cada punto con ejemplos de código concretos.
+
+  - type: doctrine_qa
+    template: >-
+      Un junior pregunta: '¿Qué significa {section_title} en el contexto de HA 2026?'
+      Explícalo de forma técnica pero didáctica, con ejemplos before/after.
+
+  # Rule Application
+  - type: rule_application
+    template: >-
+      Un desarrollador está creando una integración HACS nueva.
+      Basándote en '{section_title}', ¿qué reglas DEBE seguir obligatoriamente?
+      Lista cada requisito y explica las consecuencias de no cumplirlos.
+
+  - type: rule_application
+    template: >-
+      Estoy haciendo code review de una integración existente.
+      Según '{section_title}', ¿qué checkpoints debo verificar para asegurar
+      compliance con HA 2026? Dame una checklist concreta.
+
+  - type: rule_application
+    template: >-
+      Tengo una integración que funciona en HA 2024.x.
+      Según '{section_title}', ¿qué cambios son OBLIGATORIOS para que sea
+      compatible con HA 2026.1+? Prioriza los breaking changes.
+
+  # Pattern Comparison
+  - type: pattern_comparison
+    template: >-
+      Compara el enfoque de 2023/2024 vs 2026 para '{section_title}'.
+      Muestra código antes y después, explica qué cambió y POR QUÉ cambió.
+
+  - type: pattern_comparison
+    template: >-
+      En el contexto de '{section_title}': ¿cuáles son los antipatrones más comunes
+      que los desarrolladores arrastran de HA 2023/2024?
+      Para cada antipatrón, muestra el código legacy y su corrección 2026.
+
+  - type: pattern_comparison
+    template: >-
+      Muestra 3 ejemplos concretos de cómo '{section_title}' cambia la forma
+      de escribir integraciones. Para cada ejemplo: código 2023, código 2026,
+      y la razón técnica del cambio.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOLS DEFINITION  (injected into system prompts as JSON)
+# ─────────────────────────────────────────────────────────────────────────────
+tools_definition:
+  - name: list_files
+    description: "Lista archivos en un directorio para explorar la estructura del proyecto."
+    parameters:
+      type: object
+      properties:
+        path:
+          type: string
+      required: ["path"]
+
+  - name: read_file
+    description: "Lee el contenido de un archivo existente."
+    parameters:
+      type: object
+      properties:
+        path:
+          type: string
+      required: ["path"]
+
+  - name: write_to_file
+    description: "Crea o sobrescribe un archivo con código de producción o tests."
+    parameters:
+      type: object
+      properties:
+        path:
+          type: string
+          description: "Ruta relativa"
+        content:
+          type: string
+          description: "Contenido del archivo"
+      required: ["path", "content"]
+
+  - name: execute_command
+    description: "Ejecuta comandos de shell (pytest, ruff, hass)."
+    parameters:
+      type: object
+      properties:
+        command:
+          type: string
+      required: ["command"]
+
+  - name: attempt_completion
+    description: "Marca la tarea como completada."
+    parameters:
+      type: object
+      properties:
+        result:
+          type: string
+      required: ["result"]
+
+# =============================================================================
+# PROMPTS — System & User templates
+# =============================================================================
+# Variables use string.Template syntax: $var_name
+# Literal { } in JSON examples are preserved (Template only replaces $...).
+
+prompts:
+  # ─── System Prompts ─────────────────────────────────────────────────
+  system:
+    python:
+      base: |
+        Eres un Agente Experto y Arquitecto de Software en Home Assistant (2026).
+        Tu objetivo es implementar soluciones técnicas robustas.
+
+        HERRAMIENTAS DISPONIBLES:
+        $tools_json
+
+        ANCLAS DE VERDAD:
+        - DEBES usar las LEYES y reglas del MANUAL ADJUNTO como "Anclas de Verdad" para todo razonamiento dentro del tag <think>.
+        - Si tu razonamiento contradice las Leyes del MANUAL, considera el output inválido y propone una migración o corrección.
+
+        ==== BEGIN MASTER GUIDE ====
+        $master
+        ==== END MASTER GUIDE ====
+
+        ==== BEGIN TECHNICAL CHANGELOG ====
+        $changelog
+        ==== END TECHNICAL CHANGELOG ====
+
+      nominal_suffix: |
+
+        PROTOCOLO DE SALIDA ROBUSTO:
+        Para evitar errores de sintaxis en archivos grandes, usa este formato híbrido:
+
+        1. <think>
+            Análisis técnico ESPECÍFICO del código a escribir.
+            - ¿Qué dependencias locales necesitas importar?
+            - ¿Qué tipos y contrato de datos defines?
+            - ¿Cuál es la lógica clave que debes implementar?
+            PROHIBIDO: NO redactes el contenido del archivo aquí (solo análisis estructural).
+            PROHIBIDO ABSOLUTO: No listes, resumas ni recites leyes del manual textualmente.
+            Úsalas solo para validar internamente tu código. El <think> debe ser
+            un análisis técnico directo de la lógica y las dependencias del archivo.
+            Sé conciso. Cierra </think> rápido y pasa a escribir código.
+            </think>
+
+        2. <write_action>
+            <path>ruta/del/archivo.ext</path>
+            <content>
+            AQUÍ EL CONTENIDO FINAL (CÓDIGO O DOCUMENTACIÓN).
+            NO ESCAPES COMILLAS NI SALTOS DE LÍNEA. ESCRIBE EL TEXTO TAL CUAL.
+            </content>
+            </write_action>
+
+        El sistema convertirá automáticamente tu <write_action> en una llamada a la herramienta `write_to_file`.
+
+      contrast_suffix: |
+
+        MODO CONTRASTE 2023 → 2026:
+        Tu tarea es CORREGIR código que usa patrones obsoletos de 2023/2024.
+        El usuario te presentará código o una petición que usa el estándar ANTIGUO.
+
+        PROTOCOLO DE SALIDA:
+        1. <think>
+            Análisis técnico del CAMBIO ESPECÍFICO:
+            - ¿Qué patrón obsoleto ves en el código o petición actual?
+            - ¿Cuál es el impacto concreto en 2026? (perfs, type checking, breaking change, API removal).
+            - ¿Cómo cambia el código para reflejar este impacto?
+            - ¿Hay cambios en tipos, imports, o lógica?
+            PROHIBIDO ABSOLUTO: No listes, resumas ni recites leyes del manual textualmente.
+            Úsalas solo para validar internamente tu código. El <think> debe ser
+            un análisis técnico directo de la lógica y las dependencias del archivo.
+            Sé conciso. Cierra </think> rápido.
+            </think>
+
+        ATENCIÓN: Si en tu razonamiento detectas que un patrón viola una LEY o practicas recomendas o codigo obsoleto del manual, tienes PROHIBIDO escribir ese patrón en el código final. El código generado debe ser 100% coherente con tu análisis técnico.
+
+        2. <write_action>
+            <path>ruta/del/archivo.ext</path>
+            <content>
+            CÓDIGO CORREGIDO USANDO EXCLUSIVAMENTE EL ESTÁNDAR 2026.
+            Incluye comentarios inline explicando los cambios clave: # 2026: Migrado desde X a Y
+            </content>
+            </write_action>
+
+        IMPORTANTE: Tu respuesta FINAL debe ser educada pero FIRME. Explica al usuario que el patrón
+        que usa está obsoleto y muestra la versión correcta 2026. NO generes el código antiguo como solución.
+
+      error_recovery_suffix: |
+
+        MODO DIAGNÓSTICO Y RECUPERACIÓN DE ERRORES:
+        El usuario te presenta un ERROR REAL de Home Assistant derivado de usar código
+        con patrones obsoletos o incorrectos.
+
+        PROTOCOLO DE SALIDA:
+        1. <think>
+            Diagnóstico técnico del error:
+            - ¿Qué mensaje o síntoma específico da el error?
+            - ¿Qué patrón obsoleto (2023/2024) lo causa? (introspección del stack trace o lógica).
+            - ¿Cuál es la solución técnica concreta en 2026?
+            - ¿Qué cambio en el código evita el error?
+            PROHIBIDO ABSOLUTO: No listes, resumas ni recites leyes del manual textualmente.
+            Úsalas solo para validar internamente tu código. El <think> debe ser
+            un análisis técnico directo de la lógica y las dependencias del archivo.
+            Sé conciso. Cierra </think> rápido.
+            </think>
+
+        2. <write_action>
+            <path>ruta/del/archivo.ext</path>
+            <content>
+            CÓDIGO CORREGIDO que elimina la causa del error.
+            Incluye comentarios: # FIX: Migrado de X (causa del error) a Y (estándar 2026)
+            </content>
+            </write_action>
+
+        IMPORTANTE: Tu diagnóstico debe ser PRECISO. Relaciona el mensaje de error con la doctrina
+        específica del MANUAL 2026 que lo resuelve. El usuario debe entender QUÉ causó el error y CÓMO evitarlo.
+
+      blueprint_context: |
+
+        ==== BEGIN MODULE BLUEPRINT ====
+        $blueprint
+        ==== END MODULE BLUEPRINT ====
+
+        IMPORTACIONES LOCALES EN ESTE ARCHIVO:
+        $local_imports
+
+        RESTRICCIÓN: Al implementar, respeta la arquitectura descrita en el BLUEPRINT.
+        Los tipos, constantes y helpers definidos allí son los contratos de esta integración.
+
+      governance_context: |
+
+        ==== BEGIN REPOSITORY GOVERNANCE RULES ====
+        $governance_rules
+        ==== END REPOSITORY GOVERNANCE RULES ====
+
+        DIRECTIVAS DE CUMPLIMIENTO OBLIGATORIO:
+        - Estas reglas de gobernanza son AUTORITATIVAS para todo el código de este repositorio.
+        - DEBES aplicar los estándares de estilo, testing y arquitectura aquí descritos.
+        - Si el código fuente contiene patrones legacy que contradigan estas reglas,
+          IGNORA el patrón legacy y aplica el estándar de gobernanza sin excepción.
+        - Las reglas de gobernanza tienen MAYOR PRIORIDAD que cualquier patrón histórico
+          o convención que hayas aprendido de otras fuentes.
+
+    jinja:
+      base: |
+        Eres un Agente Experto en Plantillas Jinja2 y configuración YAML de Home Assistant (2026).
+        Tu objetivo es implementar y corregir plantillas, automatizaciones y configuraciones YAML modernas.
+
+        HERRAMIENTAS DISPONIBLES:
+        $tools_json
+
+        IMPORTANTE: Estás trabajando con PLANTILLAS JINJA2 y/o CONFIGURACIÓN YAML, NO con integraciones Python.
+        - NO menciones ni apliques leyes de integraciones Python (runtime_data, ConfigFlow, CoordinatorEntity, etc.)
+        - APLICA EXCLUSIVAMENTE las leyes y breaking changes de la GUÍA DE PLANTILLAS adjunta.
+        - Los archivos de salida son .jinja, .jinja2, .yaml o .yml — NUNCA .py
+
+        ANCLAS DE VERDAD:
+        - DEBES usar las LEYES y reglas de la GUÍA DE PLANTILLAS ADJUNTA como "Anclas de Verdad" para todo razonamiento dentro del tag <think>.
+        - Si tu razonamiento contradice las Leyes de la GUÍA, considera el output inválido y propone una migración.
+
+        ==== BEGIN JINJA & YAML TEMPLATE GUIDE ====
+        $jinja_guide
+        ==== END JINJA & YAML TEMPLATE GUIDE ====
+
+      nominal_suffix: |
+
+        PROTOCOLO DE SALIDA ROBUSTO:
+        1. <think>
+            Análisis técnico de la plantilla/configuración YAML:
+            - Sintaxis plural activa (triggers/conditions/actions).
+            - binary_sensor retorna False explícito (nunca None).
+            - template: raíz (NO platform: template).
+            - Filtros con default (float(0), int(0)).
+            - Funciones nativas 2025+ (clamp, flatten, etc.).
+            PROHIBIDO ABSOLUTO: No listes, resumas ni recites leyes de la guía textualmente.
+            Úsalas solo para validar internamente. El <think> debe ser un análisis
+            técnico directo de la lógica de la plantilla.
+            CIERRA </think> rápido.
+            </think>
+
+          ATENCIÓN: Si en tu razonamiento detectas que un patrón viola una LEY o practicas recomendas o codgo obsoleto del manual, tienes PROHIBIDO escribir ese patrón en el código final. El código generado debe ser 100% coherente con tu análisis técnico.
+
+          2. <write_action>
+            <path>ruta/del/archivo.ext</path>
+            <content>
+            PLANTILLA O CONFIGURACIÓN YAML FINAL.
+            </content>
+            </write_action>
+
+      contrast_suffix: |
+
+        MODO CONTRASTE LEGACY → MODERNO (Plantillas y YAML):
+        Tu tarea es CORREGIR una plantilla o configuración YAML que usa patrones obsoletos.
+        El usuario te presentará código Jinja/YAML que usa el estándar ANTIGUO.
+
+        PROTOCOLO DE SALIDA:
+        1. <think>
+            Análisis del cambio específico:
+            - ¿Qué patrón legacy tiene el código? (sintaxis singular, platform: template, None implícito, etc.)
+            - ¿Cuál es el impacto concreto? (breaking change, deprecación, comportamiento erróneo).
+            - ¿Qué cambia exactamente en el YAML/Jinja moderno?
+            PROHIBIDO ABSOLUTO: No listes, resumas ni recites leyes de la guía textualmente.
+            Úsalas solo para validar tu corrección. El <think> debe ser un análisis
+            técnico directo del cambio específico a realizar.
+            CIERRA </think> rápido.
+            </think>
+
+        2. <write_action>
+            <path>ruta/del/archivo.ext</path>
+            <content>
+            PLANTILLA/YAML CORREGIDA con estándar 2026.
+            Incluye comentarios: {# 2026: Migrado desde X a Y #}
+            </content>
+            </write_action>
+
+        IMPORTANTE: Explica al usuario que el patrón legacy está obsoleto y muestra la versión moderna.
+
+      error_recovery_suffix: |
+
+        MODO DIAGNÓSTICO Y RECUPERACIÓN DE ERRORES (Plantillas y YAML):
+        El usuario te presenta un ERROR REAL de Home Assistant derivado de usar
+        plantillas o configuración YAML con patrones obsoletos.
+
+        PROTOCOLO DE SALIDA:
+        1. <think>
+            Diagnóstico técnico del error:
+            - ¿Qué mensaje o síntoma específico produce el error?
+            - ¿Qué patrón obsoleto lo causa? (TemplateError, binary_sensor unknown, platform: template, etc.)
+            - ¿Cuál es el cambio técnico concreto que lo soluciona en 2026?
+            PROHIBIDO ABSOLUTO: No listes, resumas ni recites leyes de la guía textualmente.
+            Úsalas solo para validar tu solución. El <think> debe ser un diagnóstico
+            técnico directo del error específico.
+            CIERRA </think> rápido.
+            </think>
+
+        2. <write_action>
+            <path>ruta/del/archivo.ext</path>
+            <content>
+            PLANTILLA/YAML CORREGIDA que elimina la causa del error.
+            Incluye: {# FIX: Migrado de X (causa del error) a Y (estándar 2026) #}
+            </content>
+            </write_action>
+
+        IMPORTANTE: Relaciona el error con la ley específica de la GUÍA DE PLANTILLAS que lo resuelve.
+
+    theory: |
+      Eres un Instructor Experto y Arquitecto Senior de Home Assistant 2026.
+      Tu tarea es ENSEÑAR a desarrolladores las reglas, leyes y estándares obligatorios
+      del ecosistema Home Assistant 2026.
+
+      REGLAS DE RESPUESTA:
+      1. Responde con MÁXIMA precisión doctrinal — todo lo que digas debe estar respaldado
+         por el MANUAL y CHANGELOG adjuntos. NO inventes reglas.
+      2. Usa ejemplos de código CONCRETOS para ilustrar cada concepto.
+      3. Cuando sea relevante, CONTRASTA el estándar 2026 con el patrón 2023/2024 que reemplaza.
+      4. Sé didáctico pero técnicamente riguroso.
+      5. Estructura tu respuesta con headers markdown para claridad.
+      6. Incluye siempre snippets de código que el desarrollador pueda copiar directamente.
+
+      ==== BEGIN MASTER GUIDE ====
+      $master
+      ==== END MASTER GUIDE ====
+
+      ==== BEGIN TECHNICAL CHANGELOG ====
+      $changelog
+      ==== END TECHNICAL CHANGELOG ====
+
+  # ─── User Prompts ───────────────────────────────────────────────────
+  user:
+    python:
+      nominal_easy: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea: Implementa `$name` siguiendo el estándar Home Assistant 2026.
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación usando el bloque <write_action>.
+
+      nominal_medium: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea: Implementa `$name` con las siguientes restricciones:
+        - Usar EXCLUSIVAMENTE Enums tipados (prohibido strings literales para device_class, units, etc.)
+        - Optimizar gestión de memoria (usar __slots__ donde aplique)
+        - Documentar con docstrings las decisiones de arquitectura 2026
+        - Implementar manejo de errores robusto (ConfigEntryNotReady, UpdateFailed)
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación completa usando el bloque <write_action>.
+
+      nominal_hard_anchor_free:
+        - |
+          Contexto: $context
+          Archivo: $virtual_filename
+          Tarea AVANZADA: Implementa `$name` para producción en Home Assistant:
+          - Usar CoordinatorEntity + DataUpdateCoordinator si aplica
+          - entry.runtime_data con dataclass tipada (NO hass.data)
+          - Enums tipados obligatorios (SensorDeviceClass, UnitOfTemperature, etc.)
+          - async_forward_entry_setups (plural) para setup de plataformas
+          - Manejo completo de excepciones: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+          - Todo I/O bloqueante en async_add_executor_job
+          - Tests unitarios con pytest-homeassistant-custom-component si el fragmento es un test
+
+          Esqueleto:
+          $skeleton
+
+          Genera la implementación completa, producción-ready, usando <write_action>.
+        - |
+          Contexto: $context
+          Archivo: $virtual_filename
+          Necesito una implementación production-ready de `$name` para Home Assistant. Quiero que siga las mejores prácticas actuales:
+          - CoordinatorEntity pattern con DataUpdateCoordinator
+          - Runtime data tipada en lugar de hass.data
+          - Enums para device_class y unidades (nunca strings)
+          - Setup plural de plataformas
+          - Gestión robusta de errores y excepciones
+          - Async-safe (sin llamadas bloqueantes en el event loop)
+
+          Esqueleto:
+          $skeleton
+
+          Genera el código completo usando <write_action>.
+        - |
+          Contexto: $context
+          Archivo: $virtual_filename
+          Implementa `$name` como lo haría un senior de Home Assistant.
+          Requisitos: arquitectura limpia, patterns modernos, zero deprecated APIs, production-grade error handling.
+
+          Esqueleto:
+          $skeleton
+
+          Genera la implementación usando <write_action>.
+
+      nominal_hard_anchor: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea AVANZADA: Implementa `$name` como arquitectura de producción 2026:
+        - Implementar con CoordinatorEntity + DataUpdateCoordinator si aplica
+        - entry.runtime_data con dataclass tipada (NO hass.data)
+        - Todos los Enums 2026 (SensorDeviceClass, UnitOfTemperature, etc.)
+        - async_forward_entry_setups (plural) para setup de plataformas
+        - Manejo completo de excepciones: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+        - Todo I/O bloqueante en async_add_executor_job
+        - Tests unitarios con pytest-homeassistant-custom-component si el fragmento es un test
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación completa, producción-ready, usando <write_action>.
+
+      contrast: |
+        Contexto: $context
+        Archivo: $virtual_filename
+
+        Estoy implementando `$name` y tengo este código funcionando:
+        ```python
+        $legacy_code
+        ```
+
+        ¿Puedes completar la implementación usando este mismo estilo?
+
+        Esqueleto actual:
+        $skeleton
+
+        Genera el archivo completo usando <write_action>.
+
+      error_recovery: |
+        Contexto: $context
+        Archivo: $virtual_filename
+
+        Tengo este error en Home Assistant al cargar mi integración:
+        ```
+        $error_msg
+        ```
+
+        Mi código actual se basa en este esqueleto:
+        $skeleton
+
+        El error parece venir de `$name`. ¿Puedes diagnosticar qué está mal y generar la versión corregida?
+        Usa el bloque <write_action> para la implementación corregida.
+
+      functional_unit: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea DUAL: Implementa `$name` con arquitectura Home Assistant 2026 production-ready.
+
+        REQUISITOS:
+        - CoordinatorEntity + DataUpdateCoordinator si aplica
+        - entry.runtime_data con dataclass tipada (NO hass.data)
+        - Enums tipados obligatorios (SensorDeviceClass, UnitOfTemperature, etc.)
+        - async_forward_entry_setups (plural) para setup de plataformas
+        - Manejo completo de excepciones: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+        - Todo I/O bloqueante en async_add_executor_job
+        - El sistema inyectará automáticamente los tests de referencia junto con tu implementación
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación completa y production-ready usando el bloque <write_action>.
+
+    jinja:
+      nominal_easy: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea: Implementa la plantilla `$name` siguiendo el estándar Home Assistant 2026.
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación usando el bloque <write_action>.
+
+      nominal_medium: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea: Implementa la plantilla `$name` con las siguientes restricciones:
+        - Usar sintaxis moderna: triggers/conditions/actions (plural)
+        - Usar template: como clave raíz (NO platform: template)
+        - Todos los filtros con valor default explícito (float(0), int(0))
+        - Verificar disponibilidad de estados antes de usarlos (not in ['unknown', 'unavailable'])
+        - binary_sensor DEBE retornar False explícito, NUNCA None
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación completa usando el bloque <write_action>.
+
+      nominal_hard_anchor_free:
+        - |
+          Contexto: $context
+          Archivo: $virtual_filename
+          Tarea AVANZADA: Implementa `$name` para producción en Home Assistant:
+          - Sintaxis plural obligatoria (triggers/conditions/actions)
+          - template: raíz con default_entity_id para preservar IDs históricos
+          - Funciones nativas 2025+: clamp(), flatten(), combine() donde aplique
+          - as_datetime en vez de as_timestamp para timezone-aware
+          - Filtros con default, validación de estados unknown/unavailable
+          - binary_sensor con False explícito (nunca None → unknown)
+
+          Esqueleto:
+          $skeleton
+
+          Genera la implementación completa usando <write_action>.
+        - |
+          Contexto: $context
+          Archivo: $virtual_filename
+          Necesito una plantilla production-ready de `$name` para Home Assistant. Mejores prácticas actuales:
+          - Sintaxis moderna 2024.10+ (plural)
+          - template: raíz (no platform: template)
+          - Funciones nativas: clamp, remap, flatten en vez de macros manuales
+          - as_datetime (timezone-aware), no as_timestamp (float epoch)
+          - Manejo robusto de None/unknown/unavailable
+
+          Esqueleto:
+          $skeleton
+
+          Genera la plantilla completa usando <write_action>.
+        - |
+          Contexto: $context
+          Archivo: $virtual_filename
+          Implementa `$name` como lo haría un experto en plantillas HA.
+          Requisitos: sintaxis moderna, zero deprecated patterns, manejo robusto de estados faltantes, funciones nativas.
+
+          Esqueleto:
+          $skeleton
+
+          Genera la implementación usando <write_action>.
+
+      nominal_hard_anchor: |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea AVANZADA: Implementa `$name` como plantilla de producción 2026:
+        - Sintaxis plural (triggers/conditions/actions) obligatoria
+        - template: raíz (NO platform: template, deprecado en 2025.12)
+        - Funciones nativas 2025+: clamp(), wrap(), remap(), flatten()
+        - as_datetime en vez de as_timestamp
+        - Filtros con default explícito (float(0), int(0))
+        - binary_sensor con False explícito (2025.8: None = unknown)
+        - Verificación de unknown/unavailable antes de usar estados
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación completa usando <write_action>.
+
+      contrast: |
+        Contexto: $context
+        Archivo: $virtual_filename
+
+        Tengo esta plantilla/configuración funcionando para `$name`:
+        ```$lang
+        $legacy_code
+        ```
+
+        ¿Puedes completar la implementación usando este mismo estilo?
+
+        Esqueleto actual:
+        $skeleton
+
+        Genera el archivo completo usando <write_action>.
+
+      error_recovery: |
+        Contexto: $context
+        Archivo: $virtual_filename
+
+        Tengo este error en Home Assistant con mi plantilla:
+        ```
+        $error_msg
+        ```
+
+        Mi plantilla actual se basa en este esqueleto:
+        $skeleton
+
+        El error parece venir de `$name`. ¿Puedes diagnosticar qué está mal y generar la versión corregida?
+        Usa el bloque <write_action> para la plantilla corregida.

@@ -1,0 +1,65 @@
+services:
+  # --- BASE TEMPLATE (Para no repetir configuración) ---
+  x-axolotl-base: &axolotl-base
+    image: ${AXOLOTL_IMAGE}
+    user: "${USER_ID}:${GROUP_ID}"
+    privileged: true
+    ipc: host
+    shm_size: ${AEGF_SHM_SIZE}
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    volumes:
+      - ${AEGF_PROJECT_ROOT}:/workspace/data_factory
+      - ${AEGF_MODELS_DIR}:/models_dir
+      - ${AEGF_HF_CACHE}:/root/.cache/huggingface
+    environment:
+      - PYTHONPATH=/workspace/axolotl
+      - AXOLOTL_DO_NOT_TRACK=1
+      - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+      - WANDB_API_KEY=${AEGF_WANDB_API_KEY}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${AEGF_GPUS}
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+
+  # --- SERVICIO DE ENTRENAMIENTO ---
+  trainer:
+    <<: *axolotl-base
+    container_name: aegf_trainer
+    command: sleep infinity # Cambiar por el comando de 'accelerate launch' en producción
+
+  # --- SERVICIO DE PREPROCESADO ---
+  preprocessor:
+    <<: *axolotl-base
+    container_name: aegf_preprocessor
+    command: >
+      bash -c "python -m axolotl.cli.preprocess data_factory/configs/stage_4_training/axolotl/config.yaml --debug"
+
+  # --- SERVICIO DE INFERENCIA ---
+  inference_station:
+    <<: *axolotl-base
+    container_name: aegf_inference
+    command: >
+      bash -c "python3 -m axolotl.cli.inference data_factory/configs/inference/config_infer.yaml"
+
+  # --- SERVICIO NEMO CURATOR (STAGE 3) ---
+  curator:
+    image: ${NEMO_IMAGE}
+    container_name: aegf_curator
+    volumes:
+      - ${AEGF_PROJECT_ROOT}:/workspace
+    command: ["sleep", "infinity"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
