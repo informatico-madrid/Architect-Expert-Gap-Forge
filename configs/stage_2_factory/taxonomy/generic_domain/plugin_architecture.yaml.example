@@ -1,0 +1,95 @@
+version: 1
+created_by: ""   # Your identifier, e.g. "data_factory_yourdomain_2026"
+domain: ""       # Skill domain this taxonomy covers, e.g. "reasoning", "coding", "qa"
+
+# =============================================================================
+# PLUGIN ARCHITECTURE — Seed Examples  [EXAMPLE / TEMPLATE]
+# =============================================================================
+# Copy this file to plugin_architecture.yaml and fill in the seed_examples.
+#
+# Each entry provides:
+#   context  — background knowledge / existing code snippets the model may use
+#   question — the user request or problem statement
+#   answer   — the ideal expert answer (code + reasoning)
+#
+# All text must be written in your target training language.
+# Aim for variety: different complexity levels, different sub-topics, different
+# code patterns.  The more diverse the examples, the better the coverage.
+# =============================================================================
+
+seed_examples:
+  # ---------------------------------------------------------------------------
+  # Example 1 — Basic / easy
+  # ---------------------------------------------------------------------------
+  - context: |
+      # Paste here any relevant background: existing file contents, architecture
+      # description, constraints, API docs summary, etc.
+      # This is what the model "sees" as existing project context.
+
+    question: |
+      # Write the user question or task here.
+      # Keep it realistic — as a real user would phrase it.
+
+    answer: |
+      # Write the ideal expert answer here.
+      # For code-generation tasks this is usually:
+      #   <think>
+      #   Internal reasoning …
+      #   </think>
+      #
+      #   # filename.py
+      #   <full production-ready code>
+      #
+      # Include comments that explain design decisions.
+
+  # ---------------------------------------------------------------------------
+  # Example 2 — Medium complexity
+  # ---------------------------------------------------------------------------
+  - context: |
+      # Background context for this example …
+
+    question: |
+      # User question …
+
+    answer: |
+      # Expert answer …
+
+  # ---------------------------------------------------------------------------
+  # Example 3 — Advanced / multi-component
+  # ---------------------------------------------------------------------------
+  - context: |
+      # Background context for this example …
+
+    question: |
+      # User question …
+
+    answer: |
+      # Expert answer …
+
+  # ---------------------------------------------------------------------------
+  # Example 4 — Error recovery / debugging
+  # ---------------------------------------------------------------------------
+  - context: |
+      # Background context — include the error message and relevant code here.
+
+    question: |
+      # User question describing the error and asking for a fix.
+
+    answer: |
+      # Expert diagnosis + corrected code.
+
+  # ---------------------------------------------------------------------------
+  # Example 5 — Legacy → modern migration (contrast)
+  # ---------------------------------------------------------------------------
+  - context: |
+      # Background context — include the old code the user has.
+
+    question: |
+      # User question: "I have this old code, can you help me complete it …?"
+
+    answer: |
+      # Expert answer: identify the obsolete patterns and rewrite them
+      # following modern standards.  Explain WHY the old approach is wrong.
+
+  # Add as many seed_examples as needed.
+  # Aim for at least 20–50 examples per domain for good coverage.

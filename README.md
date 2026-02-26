@@ -136,7 +136,7 @@ python src/discovery/processor.py --config configs/stage_1_discovery/homeassista
 Notes:
 - The processor writes bundles into a module-named directory and includes an `[ARCH_HEADER]` block in every bundle with `MODULE`, `FILE_ROLE`, `FRAGMENT_TYPE`, `LOCAL_IMPORTS`, and `NEIGHBORS`.
 - If you relied on an `INFRASTRUCTURE` output previously, that behavior was intentionally removed — adjust downstream tooling to consume only module subfolders.
-- No action is required for `production_v10.py` invocations; the `--raw-dir` default still targets the `*_main_txt` output category but downstream consumers should expect per-module subdirectories.
+- No action is required for `production_v11.py` invocations; the `--raw-dir` default still targets the `*_main_txt` output category but downstream consumers should expect per-module subdirectories.
 ---
 
 ### Stage 1.75 — Master Documents (`data/Gap/`)
@@ -182,10 +182,10 @@ These documents are the most important inputs that govern sample quality. The re
 
 ```bash
 # Default: auto-resolves to <project_root>/data/Gap
-python src/factory/production_v10.py --workers 16
+python src/factory/production_v11.py --workers 16
 
 # Custom location
-python src/factory/production_v10.py --gap-dir /path/to/master/docs --workers 16
+python src/factory/production_v11.py --gap-dir /path/to/master/docs --workers 16
 
 # Verify all three files exist before a long run
 python -c "
@@ -201,11 +201,11 @@ print(f'Jinja/YAML Guide:  {len(j):,} chars')
 ---
 
 ### Stage 2 — Factory (`src/factory/`)
-**Engines:** `production_v10.py` (Stable) & `agentic_gen.py` (Experimental)
+**Engines:** `production_v11.py` (Stable) & `agentic_gen.py` (Experimental)
 
 Synthetic trajectory generation codebase with decoupled semantics (Prompts in external YAML Taxonomies) and Fail-Fast architectures.
 
-#### 🔹 Gold Injection — `production_v10.py` (Stable)
+#### 🔹 Gold Injection — `production_v11.py` (Stable)
 
 The core production engine. Forces the model to reason (`<think>`) toward a pre-validated, existing code solution, eliminating syntactical hallucinations.
 
@@ -223,26 +223,26 @@ The core production engine. Forces the model to reason (`<think>`) toward a pre-
 
 ```bash
 # Test mode: quick validation with 10 fragments
-python src/factory/production_v10.py --test 10 --workers 4
+python src/factory/production_v11.py --test 10 --workers 4
 
 # Full production run: 24 workers, 50 raw files
-python src/factory/production_v10.py --limit 50 --workers 24
+python src/factory/production_v11.py --limit 50 --workers 24
 
 # Process Jinja2/YAML templates with custom extension filter
-python src/factory/production_v10.py --raw-dir data/raw/ha-jinja \
+python src/factory/production_v11.py --raw-dir data/raw/ha-jinja \
   --extensions .jinja .jinja2 .yaml .yml \
   --workers 16
 
 # Theory mode: Generate 100 doctrine samples (teacher-student format)
-python src/factory/production_v10.py --theory --theory-reps 100 --workers 8 \
+python src/factory/production_v11.py --theory --theory-reps 100 --workers 8 \
   --output data/synthetic/theory_dataset.jsonl
 
 # Resume interrupted run (auto-skips processed fragments)
-python src/factory/production_v10.py --resume data/synthetic/v10_run_20260224.jsonl \
+python src/factory/production_v11.py --resume data/synthetic/v10_run_20260224.jsonl \
   --workers 16 --limit 50
 
 # Custom gap directory + custom taxonomy path
-python src/factory/production_v10.py --gap-dir /path/to/master/docs \
+python src/factory/production_v11.py --gap-dir /path/to/master/docs \
   --taxonomy /path/to/custom_taxonomy.yaml --workers 16
 ```
 
@@ -386,7 +386,7 @@ Both scripts require the following inputs:
 | 3 | `data/Gap/HA_JINJA_YAML_GUIDE_2026.md` | `$jinja_guide` | Jinja2/YAML breaking changes |
 
 **Taxonomy YAMLs** (prompt templates, decoupled from code):
-- `configs/taxonomy/home_assistant/hacs_expert/prompts_taxonomy.yaml` → `production_v10.py`
+- `configs/taxonomy/home_assistant/hacs_expert/prompts_taxonomy.yaml` → `production_v11.py`
 - `configs/taxonomy/home_assistant/hacs_expert/agentic_taxonomy.yaml` → `agentic_gen.py`
 
 If any master document is missing, both scripts **fail-fast** with a clear `FileNotFoundError` that includes the missing path and directs you to use `--gap-dir`.
@@ -397,7 +397,7 @@ If any master document is missing, both scripts **fail-fast** with a clear `File
 
 Override with CLI params:
 ```bash
-python src/factory/production_v10.py --gap-dir /custom/master/docs --taxonomy /custom/taxonomy.yaml
+python src/factory/production_v11.py --gap-dir /custom/master/docs --taxonomy /custom/taxonomy.yaml
 ```
 
 ### Stage 3 — Curation (`src/curation/`)
@@ -623,24 +623,9 @@ Fragments containing 2023/2024 deprecated patterns are detected via regex before
 
 ---
 
-## 🔬 Quality Control & Observability
-
-### Argilla Human-in-the-Loop
-The pipeline integrates **Argilla** (`deploy/docker/docker-compose.yml`, port **6900`) for real-time dataset auditing:
-
-> NOTE: Argilla configuration is presently tailored to the Home Assistant prompt examples; adjust labels/tags when porting to other domains. TODO: Remove home assistant reference
-
-- **LDI Analyzer**: Visualizes the "Reasoning Density" of each sample via `src/utils/upload_master_platinum.py`.
-- **ChatField Interface**: Allows manual verification of agentic trajectories before committing to the training phase.
-- **Dataset Management**: Force-clear and re-upload utilities in `src/utils/` for iterative curation cycles.
-
-Access at: `http://localhost:6900` — credentials defined in `deploy/docker/docker-compose.yml`.
-
----
-
 ## Technical Implementation of the Synthesis Loop
 
-The Synthesis Loop implemented in `production_v10.py` serves as the core of the synthesis and curation pipeline. The process iterates over source files, applies chunking preprocessing, and generates training trajectories via calls to the remote model client; the `system_prompt` injects both the `MASTER_GUIDE` and the `TECHNICAL_CHANGELOG` to force the agent to explicitly reason about temporal deltas (contrast between the old and the new version) before producing a write action.
+The Synthesis Loop implemented in `production_v11.py` serves as the core of the synthesis and curation pipeline. The process iterates over source files, applies chunking preprocessing, and generates training trajectories via calls to the remote model client; the `system_prompt` injects both the `MASTER_GUIDE` and the `TECHNICAL_CHANGELOG` to force the agent to explicitly reason about temporal deltas (contrast between the old and the new version) before producing a write action.
 
 For code chunking the Python `ast` module is used: the `get_fragments` function parses content with `ast.parse`, extracts imports and top-level definitions (including `AsyncFunctionDef`) and constructs skeletons where bodies are replaced by placeholders. Each fragment is accompanied by metadata (`context`, `skeleton`, `original`, `virtual_filename`) that enable generating coherent implementations with the minimal necessary context.
 

@@ -1,0 +1,149 @@
+---
+# =============================================================================
+# AEGF — Agentic Prompt Taxonomy  [EXAMPLE / TEMPLATE]
+# =============================================================================
+# Copy this file to agentic_taxonomy.yaml and fill in the values for your
+# target domain and language.
+#
+# Used by agentic_gen.py.  Python injects runtime variables via
+#   string.Template ($var)  →  prompts
+#   str.format({var})       →  error / legacy templates
+# =============================================================================
+
+version: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ERROR TEMPLATES  (error recovery — .format() placeholders)
+# Add one entry per error pattern you want the model to learn to diagnose.
+# ─────────────────────────────────────────────────────────────────────────────
+ha_error_templates:
+  - error: >-
+      # Full error message as it would appear in logs.
+      # May include {entity}, {component}, {seconds} etc. as .format() vars.
+    category: ""         # e.g. enum_migration, blocking_call, coordinator …
+    legacy_pattern: ""   # Short string that identifies the old anti-pattern
+    modern_fix: ""       # Short string describing the correct modern API
+
+  # Add more error entries here following the same structure …
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LEGACY PATTERNS  (contrast prompts — show old vs new code)
+# ─────────────────────────────────────────────────────────────────────────────
+legacy_2023_patterns:
+  - title: ""            # Short label for this anti-pattern
+    legacy_code: |
+      # Paste the old / deprecated code snippet here.
+    modern_code: |
+      # Paste the correct / modern code snippet here.
+    explanation: >-
+      # Explain in your training language why the old pattern is wrong
+      # and what the modern replacement provides.
+
+  # Add more contrast entries here …
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOL DEFINITIONS  (injected into system prompts as $tools_json)
+# Define the tools your agent can call.  Keep name/parameters structure intact.
+# ─────────────────────────────────────────────────────────────────────────────
+tools_definition:
+  - name: list_files
+    description: ""   # Describe what list_files does in your training language
+    parameters:
+      type: object
+      properties:
+        path: { type: string }
+      required: [path]
+
+  - name: read_file
+    description: ""   # Describe what read_file does in your training language
+    parameters:
+      type: object
+      properties:
+        path: { type: string }
+      required: [path]
+
+  - name: write_to_file
+    description: ""   # Describe what write_to_file does in your training language
+    parameters:
+      type: object
+      properties:
+        path:    { type: string, description: "" }
+        content: { type: string, description: "" }
+      required: [path, content]
+
+  - name: execute_command
+    description: ""   # Describe what execute_command does in your training language
+    parameters:
+      type: object
+      properties:
+        command: { type: string }
+      required: [command]
+
+  - name: attempt_completion
+    description: ""   # Describe what attempt_completion does in your training language
+    parameters:
+      type: object
+      properties:
+        result: { type: string }
+      required: [result]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROMPTS — Multi-Turn (string.Template $var syntax)
+# All text must be in your target training language.
+# Runtime variables available:  $tools_json  $master  $changelog
+#   $context  $virtual_filename  $name  $skeleton
+#   $legacy_code  $error_msg
+# ─────────────────────────────────────────────────────────────────────────────
+prompts:
+  # ─── System Prompts ────────────────────────────────────────────────────
+  system:
+    base: |
+      # System prompt injected at the start of every conversation.
+      # Describe the agent persona, available tools ($tools_json),
+      # output grammar / protocol, and any master guide anchors.
+      # Write this in your training language.
+      # $tools_json  $master  $changelog  are replaced at runtime.
+
+    nominal_suffix: |
+      # Additional instruction appended for NOMINAL (standard implementation) tasks.
+      # Describe the step-by-step protocol the agent must follow.
+
+    contrast_suffix: |
+      # Additional instruction appended for CONTRAST (legacy → modern correction) tasks.
+      # Tell the agent to identify the obsolete pattern and rewrite it.
+
+    error_recovery_suffix: |
+      # Additional instruction appended for ERROR RECOVERY tasks.
+      # Tell the agent to diagnose the root cause and output the corrected code.
+
+  # ─── User Prompts ──────────────────────────────────────────────────────
+  user:
+    nominal_easy: |
+      # Short user request for an easy nominal task.
+      # Available vars: $context  $virtual_filename  $name  $skeleton
+
+    nominal_medium: |
+      # User request for a medium complexity nominal task.
+      # List additional constraints the user "imposes" (in your training language).
+      # Available vars: $context  $virtual_filename  $name  $skeleton
+
+    nominal_hard_anchor_free:
+      - |
+        # First variant of a hard nominal user request (no explicit anchor).
+        # Available vars: $context  $virtual_filename  $name  $skeleton
+      - |
+        # Second variant — different wording, same intent.
+      - |
+        # Third variant — even more concise phrasing.
+
+    nominal_hard_anchor: |
+      # Hard nominal user request that explicitly references your domain rules.
+      # Available vars: $context  $virtual_filename  $name  $skeleton
+
+    contrast: |
+      # User request for a contrast task — user presents legacy code and asks for help.
+      # Available vars: $context  $virtual_filename  $name  $skeleton  $legacy_code
+
+    error_recovery: |
+      # User request for error recovery — user pastes a real error message.
+      # Available vars: $context  $virtual_filename  $name  $skeleton  $error_msg

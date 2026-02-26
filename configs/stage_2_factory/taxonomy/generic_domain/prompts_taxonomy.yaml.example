@@ -1,0 +1,296 @@
+---
+# =============================================================================
+# AEGF — Prompt Taxonomy  [EXAMPLE / TEMPLATE]
+# =============================================================================
+# Copy this file to prompts_taxonomy.yaml and fill in the values for your
+# target domain and language.
+#
+# Used by production_v10.py (deprecated) and compatible pipeline scripts.
+# Python injects runtime variables via:
+#   string.Template ($var)  →  prompts
+#   str.format({var})       →  error / legacy / theory templates
+#
+# Two skill tracks are defined here:
+#   python  — code generation / integration development
+#   jinja   — template & YAML configuration
+# Remove a track entirely if your domain does not need it.
+# =============================================================================
+
+version: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PYTHON ERROR TEMPLATES  (error recovery — .format() placeholders)
+# Add one entry per Python integration error pattern.
+# ─────────────────────────────────────────────────────────────────────────────
+ha_error_templates:
+  - error: >-
+      # Full error message as it appears in HA logs.
+      # May contain {entity}, {component}, {seconds} etc. (.format() vars).
+    category: ""           # e.g. enum_migration, blocking_call, coordinator …
+    legacy_pattern: ""     # Short code snippet that causes the error
+    modern_fix: ""         # Short code snippet that fixes the error
+
+  # Add more Python error entries here …
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PYTHON LEGACY PATTERNS  (contrast prompts — show old vs new)
+# ─────────────────────────────────────────────────────────────────────────────
+legacy_2023_patterns:
+  - title: ""              # Short label, e.g. "Literal strings instead of Enums"
+    legacy_code: |
+      # Old (deprecated) Python code snippet …
+    modern_code: |
+      # Correct modern Python code snippet …
+    explanation: >-
+      # Explain in your training language why the old pattern is wrong
+      # and what the modern replacement provides.
+
+  # Add more contrast entries …
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JINJA / YAML ERROR TEMPLATES  (template error recovery)
+# Add one entry per Jinja2 / YAML configuration error pattern.
+# ─────────────────────────────────────────────────────────────────────────────
+jinja_ha_error_templates:
+  - error: >-
+      # Full error message for a Jinja/YAML error.
+    category: ""           # e.g. template_size_limit, legacy_template_platform …
+    context_type: ""       # "jinja" or "yaml"
+    legacy_pattern: ""     # Short description of the old pattern
+    modern_fix: ""         # Short description of the fix
+
+  # Add more Jinja/YAML error entries …
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JINJA / YAML LEGACY PATTERNS  (template contrast prompts)
+# ─────────────────────────────────────────────────────────────────────────────
+jinja_legacy_2023_patterns:
+  - title: ""              # Short label for the anti-pattern
+    context_type: ""       # "jinja" or "yaml"
+    legacy_code: |
+      # Old Jinja/YAML snippet …
+    modern_code: |
+      # Correct modern Jinja/YAML snippet …
+    explanation: >-
+      # Explain why the old pattern is wrong in your training language.
+
+  # Add more Jinja/YAML contrast entries …
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THEORY QUESTION TEMPLATES  (doctrine Q&A prompts)
+# These templates generate conceptual questions about your domain guide.
+# The variable {section_title} is injected via .format() at runtime.
+# ─────────────────────────────────────────────────────────────────────────────
+theory_question_templates:
+  # Doctrine Q&A — explain a rule from the guide
+  - type: doctrine_qa
+    template: >-
+      # Question template asking the model to explain a section.
+      # Use {section_title} as a .format() placeholder.
+      # Write in your training language.
+
+  - type: doctrine_qa
+    template: >-
+      # Alternative phrasing for a doctrine question.
+
+  - type: doctrine_qa
+    template: >-
+      # Another doctrinal question variant (e.g. junior-friendly explanation).
+
+  # Rule Application — how to apply a rule in practice
+  - type: rule_application
+    template: >-
+      # Question asking the model to apply {section_title} to a specific scenario.
+
+  - type: rule_application
+    template: >-
+      # Code-review / checklist perspective on {section_title}.
+
+  - type: rule_application
+    template: >-
+      # Migration perspective: what changes are mandatory for {section_title}.
+
+  # Pattern Comparison — before/after contrast
+  - type: pattern_comparison
+    template: >-
+      # Question asking for a comparison of old vs new for {section_title}.
+
+  - type: pattern_comparison
+    template: >-
+      # Anti-patterns question for {section_title}.
+
+  - type: pattern_comparison
+    template: >-
+      # Concrete code examples question for {section_title}.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOLS DEFINITION  (injected into system prompts as $tools_json)
+# ─────────────────────────────────────────────────────────────────────────────
+tools_definition:
+  - name: list_files
+    description: ""   # Describe in your training language
+    parameters:
+      type: object
+      properties:
+        path: { type: string }
+      required: ["path"]
+
+  - name: read_file
+    description: ""
+    parameters:
+      type: object
+      properties:
+        path: { type: string }
+      required: ["path"]
+
+  - name: write_to_file
+    description: ""
+    parameters:
+      type: object
+      properties:
+        path:    { type: string, description: "" }
+        content: { type: string, description: "" }
+      required: ["path", "content"]
+
+  - name: execute_command
+    description: ""
+    parameters:
+      type: object
+      properties:
+        command: { type: string }
+      required: ["command"]
+
+  - name: attempt_completion
+    description: ""
+    parameters:
+      type: object
+      properties:
+        result: { type: string }
+      required: ["result"]
+
+# =============================================================================
+# PROMPTS — System & User templates
+# =============================================================================
+# Variables use string.Template syntax: $var_name
+# Available runtime vars:
+#   System:  $tools_json  $master  $changelog  $jinja_guide
+#            $blueprint   $local_imports  $governance_rules
+#   User:    $context  $virtual_filename  $name  $skeleton
+#            $legacy_code  $error_msg  $lang
+
+prompts:
+  # ─── System Prompts ──────────────────────────────────────────────────
+  system:
+    # ── Python / Code track ──────────────────────────────────────────
+    python:
+      base: |
+        # System prompt for Python code-generation tasks.
+        # Describe the agent persona, available tools ($tools_json),
+        # output grammar (e.g. <think>…</think> + <write_action>…</write_action>),
+        # and master guide anchors ($master, $changelog).
+        # Write in your training language.
+
+      nominal_suffix: |
+        # Additional instruction for NOMINAL (standard implementation) tasks.
+        # Describe the step-by-step protocol, what is prohibited in <think>, etc.
+
+      contrast_suffix: |
+        # Additional instruction for CONTRAST (legacy → modern correction) tasks.
+        # Tell the agent to identify the obsolete pattern and rewrite it.
+
+      error_recovery_suffix: |
+        # Additional instruction for ERROR RECOVERY tasks.
+        # Tell the agent to diagnose the root cause then output corrected code.
+
+      blueprint_context: |
+        # Injected when a module blueprint is available.
+        # $blueprint  $local_imports  are replaced at runtime.
+
+      governance_context: |
+        # Injected when repository governance rules are available.
+        # $governance_rules is replaced at runtime.
+
+    # ── Jinja / YAML track ──────────────────────────────────────────
+    jinja:
+      base: |
+        # System prompt for Jinja2 / YAML template tasks.
+        # Same structure as python.base but scoped to templates/YAML.
+        # $tools_json  $jinja_guide  are replaced at runtime.
+
+      nominal_suffix: |
+        # Additional instruction for nominal Jinja/YAML tasks.
+
+      contrast_suffix: |
+        # Additional instruction for contrast Jinja/YAML tasks.
+
+      error_recovery_suffix: |
+        # Additional instruction for error recovery Jinja/YAML tasks.
+
+    # ── Theory / Teaching track ─────────────────────────────────────
+    theory: |
+      # System prompt for conceptual / teaching tasks.
+      # Describe the instructor persona, response rules (didactic, with examples,
+      # before/after contrasts), and guide anchors ($master, $changelog).
+
+  # ─── User Prompts ────────────────────────────────────────────────────
+  user:
+    # ── Python user prompts ──────────────────────────────────────────
+    python:
+      nominal_easy: |
+        # Short user request for an easy Python task.
+        # Available vars: $context  $virtual_filename  $name  $skeleton
+
+      nominal_medium: |
+        # User request for a medium Python task.
+        # List constraints the "user" imposes (in your training language).
+
+      nominal_hard_anchor_free:
+        - |
+          # First hard request variant — no explicit guide anchor in user message.
+          # Available vars: $context  $virtual_filename  $name  $skeleton
+        - |
+          # Second variant — different phrasing.
+        - |
+          # Third variant — even more concise.
+
+      nominal_hard_anchor: |
+        # Hard request that explicitly references your domain rules/checklist.
+
+      contrast: |
+        # User presents legacy code and "asks for help completing it".
+        # Available vars: $context  $virtual_filename  $name  $skeleton  $legacy_code
+
+      error_recovery: |
+        # User presents a real error message and asks for a diagnosis + fix.
+        # Available vars: $context  $virtual_filename  $name  $skeleton  $error_msg
+
+      functional_unit: |
+        # Combined implementation + test request.
+        # Available vars: $context  $virtual_filename  $name  $skeleton
+
+    # ── Jinja user prompts ───────────────────────────────────────────
+    jinja:
+      nominal_easy: |
+        # Short user request for an easy Jinja/YAML task.
+
+      nominal_medium: |
+        # User request for a medium Jinja/YAML task with explicit constraints.
+
+      nominal_hard_anchor_free:
+        - |
+          # First hard Jinja request variant.
+        - |
+          # Second variant.
+        - |
+          # Third variant.
+
+      nominal_hard_anchor: |
+        # Hard Jinja request with explicit guide references.
+
+      contrast: |
+        # User presents legacy Jinja/YAML and asks for completion.
+        # Available vars: $context  $virtual_filename  $name  $skeleton  $legacy_code  $lang
+
+      error_recovery: |
+        # User presents a Jinja/YAML error and asks for a fix.
+        # Available vars: $context  $virtual_filename  $name  $skeleton  $error_msg
