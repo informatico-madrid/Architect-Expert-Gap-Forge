@@ -27,3 +27,4 @@ data/
 /swapfile
 *.img
 .DS_Store
+legacy/
