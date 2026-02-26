@@ -692,7 +692,3 @@ Apache License 2.0.
 ---
 **Lead Architect:** [Joao Maria Arranz Aparicio / informatico-madrid](https://github.com/informatico-madrid)  
 **Location:** Spain - Sovereign AI Infrastructure.
-
-## Current Status
-
-Generating 1,000+ diversified samples (50% nominal / 30% contrast / 20% error-recovery). Avg speed 107 tok/s.

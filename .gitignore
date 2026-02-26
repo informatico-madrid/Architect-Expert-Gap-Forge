@@ -19,12 +19,8 @@ checkpoint-*/
 
 # --- DATOS (Aquí está el 99% del peso) ---
 # Ignoramos TODO lo que hay en data, excepto los documentos de guía (Gap)
-data/raw/
-data/raw_txt/
-data/synthetic/
-data/reports/
-data/*.jsonl
-data/*.jsonl.tmp
+data/
+
 *.log
 
 # --- SISTEMA ---
