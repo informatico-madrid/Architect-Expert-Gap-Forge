@@ -1,0 +1,3 @@
+# Axolotl training config placeholder (copied)
+# Keep original in place; this is a duplicate in the new structure.
+base_model: /models_dir/qwen3-30b-a3b-thinkig

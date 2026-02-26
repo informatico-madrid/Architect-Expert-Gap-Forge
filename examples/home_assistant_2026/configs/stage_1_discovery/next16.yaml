@@ -1,0 +1,8 @@
+# Next.js v16 discovery config for RepoIngestor
+# Uses a file-scoped code search to find package.json entries that reference Next 16.
+search_query: '"next" "^16" in:file path:package.json'
+min_stars: 100
+limit: 20
+category: nextjs_v16
+mode: dynamic
+per_page: 100

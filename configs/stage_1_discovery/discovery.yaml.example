@@ -1,0 +1,14 @@
+# Example (agnostic) discovery config for RepoIngestor
+# Replace fields below with your own domain-specific values.
+search_query: 'filename:manifest.json'
+min_stars: 0
+limit: 10
+category: example
+mode: static
+extensions:
+  - ".py"
+  - ".md"
+static_repos:
+  - "AUTHOR/REPO_NAME"
+per_page: 100
+base_dir: .

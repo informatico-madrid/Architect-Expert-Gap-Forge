@@ -1,0 +1,26 @@
+# Generic taxonomy template for Stage 2 Factory
+version: 1
+
+# Placeholder sections – replace with domain-specific prompt definitions
+ha_error_templates: []
+legacy_2023_patterns: []
+jinja_ha_error_templates: []
+jinja_legacy_2023_patterns: []
+theory_question_templates: []
+
+prompts:
+  system:
+    base: |
+      Eres un Agente Experto en [DOMAIN].
+      $master
+      $changelog
+    nominal_suffix: |
+      Modo nominal...
+    contrast_suffix: |
+      Modo contraste...
+    error_recovery_suffix: |
+      Modo recuperación...
+  user:
+    nominal_easy: |
+      Context: $context
+      ...

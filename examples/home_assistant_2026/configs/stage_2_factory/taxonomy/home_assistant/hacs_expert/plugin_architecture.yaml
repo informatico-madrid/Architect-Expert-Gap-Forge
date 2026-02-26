@@ -1,0 +1,1398 @@
+version: 3
+created_by: data_factory_bunker_2026
+domain: reasoning
+seed_examples:
+  - context: |
+      # manifest.json
+      {
+        "domain": "sonoff_lan",
+        "name": "SonoffLAN",
+        "codeowners": ["@AlexxIT"],
+        "config_flow": true,
+        "documentation": "https://github.com/AlexxIT/SonoffLAN",
+        "iot_class": "local_push",
+        "requirements": [],
+        "version": "3.5.2"
+      }
+
+      # Arquitectura existente (extraída de código real)
+      La integración SonoffLAN usa un patrón de XRegistry global que gestiona:
+      - Conexión cloud (XRegistry.cloud) con auth y websocket
+      - Conexión local (XRegistry.local) con mDNS/Zeroconf  
+      - Dual-mode automático (cloud fallback si LAN falla)
+      - Store persistente para cachear dispositivos offline
+      - async_forward_entry_setups para 13 plataformas
+
+      El setup_entry implementa:
+      1. Auth cloud opcional con retry_after en UpdateFailed
+      2. Load devices desde cloud O cache (Store)
+      3. Start cloud.dispatcher + local.start(zeroconf)
+      4. Wait SIGNAL_CONNECTED antes de add_entities
+      5. Registry.stop() registrado en EVENT_HOMEASSISTANT_STOP
+    question: |
+      Diseña async_setup_entry para una integración dual-mode (LAN + Cloud) que gestione refrigeradores Xiaomi con sensores de temperatura y notificaciones de puerta abierta. La API cloud usa OAuth2 y la LAN requiere mDNS discovery.
+    answer: |
+      <think>
+      Analizo el patrón SonoffLAN: XRegistry dual-mode, Store para cache, cloud auth con fallback, Zeroconf para mDNS, dispatcher signals para sincronización async.
+      Adapto: OAuth2 via config_entry_oauth2_flow, mDNS para fridges en LAN, DataUpdateCoordinator para sensores, binary_sensor para door_open event.
+      Gestión de errores: ConfigEntryAuthFailed si OAuth2 expira, ConfigEntryNotReady si ambos modos fallan, retry_after en UpdateFailed para rate-limits cloud.
+      Type hints: Protocol para Registry interface, TypeVar _DataT para coordinator genérico.
+      </think>
+
+      # custom_components/xiaomi_fridge/__init__.py
+      """Xiaomi Smart Fridge integration (LAN + Cloud)."""
+      from __future__ import annotations
+
+      import asyncio
+      import logging
+      from typing import Protocol
+
+      from homeassistant.components import zeroconf
+      from homeassistant.config_entries import ConfigEntry
+      from homeassistant.const import EVENT_HOMEASSISTANT_STOP, Platform
+      from homeassistant.core import HomeAssistant
+      from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+      from homeassistant.helpers.aiohttp_client import async_get_clientsession
+      from homeassistant.helpers.storage import Store
+
+      from .const import DOMAIN, SIGNAL_ADD_ENTITIES
+      from .coordinator import FridgeDataUpdateCoordinator
+      from .registry import FridgeRegistry
+
+      _LOGGER = logging.getLogger(__name__)
+
+      PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]
+
+
+      async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+          """Set up Xiaomi Fridge from config entry."""
+          mode = entry.options.get("mode", "auto")  # auto, cloud, local
+          
+          session = async_get_clientsession(hass)
+          hass.data.setdefault(DOMAIN, {})
+          registry = hass.data[DOMAIN][entry.entry_id] = FridgeRegistry(hass, session)
+
+          # OAuth2 cloud authentication (if configured)
+          if not registry.cloud.authenticated and entry.data.get("token"):
+              try:
+                  await registry.cloud.async_authenticate(entry.data["token"])
+                  # Update refresh token if rotated
+                  if registry.cloud.token_updated:
+                      hass.config_entries.async_update_entry(
+                          entry,
+                          data={**entry.data, "token": registry.cloud.token},
+                      )
+              except AuthError as err:
+                  _LOGGER.warning("OAuth2 authentication failed: %s", err)
+                  if mode == "cloud":
+                      raise ConfigEntryAuthFailed(err) from err
+              except Exception as err:
+                  _LOGGER.error("Unexpected cloud error: %s", err)
+                  if mode == "cloud":
+                      raise ConfigEntryNotReady(err) from err
+
+          entry.async_on_unload(
+              hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, registry.async_stop)
+          )
+
+          # Forward setup BEFORE loading devices (for entity platform registration)
+          await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+          devices: list[dict] | None = None
+          store = Store(hass, 1, f"{DOMAIN}/{entry.entry_id}.json")
+
+          # Load devices from cloud API
+          if registry.cloud.authenticated:
+              try:
+                  devices = await registry.cloud.async_get_fridges()
+                  _LOGGER.debug("Loaded %d devices from cloud", len(devices))
+                  await store.async_save(devices)
+              except Exception as err:
+                  _LOGGER.warning("Failed to load devices from cloud: %s", err)
+
+          # Fallback to cache if cloud unavailable
+          if not devices:
+              if devices := await store.async_load():
+                  _LOGGER.debug("Loaded %d devices from cache", len(devices))
+
+          if not devices and mode != "local":
+              raise ConfigEntryNotReady("No devices available and cache is empty")
+
+          # Setup coordinators for each device
+          if devices:
+              coordinators = registry.setup_coordinators(devices)
+          else:
+              coordinators = []
+
+          # Start cloud websocket (if authenticated)
+          if mode in ("auto", "cloud") and registry.cloud.authenticated:
+              await registry.cloud.async_start_websocket()
+
+          # Start local mDNS discovery (if enabled)
+          if mode in ("auto", "local"):
+              zc_instance = await zeroconf.async_get_instance(hass)
+              await registry.local.async_start(zc_instance)
+
+          # Wait for initial connection before adding entities
+          if registry.cloud.websocket_task:
+              try:
+                  await asyncio.wait_for(
+                      registry.cloud.wait_connected(),
+                      timeout=10.0,
+                  )
+              except asyncio.TimeoutError:
+                  _LOGGER.warning("Cloud connection timeout, continuing with local")
+          elif registry.local.discovered:
+              await asyncio.sleep(3)  # Allow mDNS to discover devices
+
+          # Trigger entity creation via dispatcher
+          if coordinators:
+              _LOGGER.debug("Adding %d coordinators", len(coordinators))
+              for coordinator in coordinators:
+                  await coordinator.async_config_entry_first_refresh()
+              registry.dispatcher_send(SIGNAL_ADD_ENTITIES, coordinators)
+
+          return True
+
+
+      async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+          """Unload Xiaomi Fridge config entry."""
+          unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+          
+          if unload_ok:
+              registry: FridgeRegistry = hass.data[DOMAIN].pop(entry.entry_id)
+              await registry.async_stop()
+
+          return unload_ok
+
+
+      # custom_components/xiaomi_fridge/coordinator.py
+      """DataUpdateCoordinator for Xiaomi Fridge."""
+      from __future__ import annotations
+
+      from datetime import timedelta
+      import logging
+      from typing import TYPE_CHECKING, TypeVar
+
+      from homeassistant.core import HomeAssistant
+      from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+      if TYPE_CHECKING:
+          from .registry import FridgeRegistry
+
+      _LOGGER = logging.getLogger(__name__)
+
+      _DataT = TypeVar("_DataT", bound=dict)
+
+
+      class FridgeDataUpdateCoordinator(DataUpdateCoordinator[_DataT]):
+          """Coordinator for fridge sensor data."""
+
+          def __init__(
+              self,
+              hass: HomeAssistant,
+              registry: FridgeRegistry,
+              device_id: str,
+          ) -> None:
+              """Initialize coordinator."""
+              super().__init__(
+                  hass,
+                  _LOGGER,
+                  name=f"Fridge {device_id}",
+                  update_interval=timedelta(seconds=30),
+              )
+              self.registry = registry
+              self.device_id = device_id
+
+          async def _async_update_data(self) -> _DataT:
+              """Fetch data from local or cloud."""
+              # Try local first if available
+              if self.registry.local.is_connected(self.device_id):
+                  try:
+                      return await self.registry.local.async_get_state(self.device_id)
+                  except Exception as err:
+                      _LOGGER.debug("Local fetch failed, trying cloud: %s", err)
+
+              # Fallback to cloud
+              if self.registry.cloud.authenticated:
+                  try:
+                      return await self.registry.cloud.async_get_device_state(self.device_id)
+                  except CloudRateLimitError as err:
+                      # Propagate retry_after to coordinator
+                      raise UpdateFailed(
+                          f"Cloud rate limit: {err}",
+                          retry_after=err.retry_after,
+                      ) from err
+                  except Exception as err:
+                      raise UpdateFailed(f"Cloud error: {err}") from err
+
+              raise UpdateFailed("Device unreachable (local and cloud unavailable)")
+
+
+      # tests/test_init.py
+      """Test dual-mode setup."""
+      from unittest.mock import AsyncMock, MagicMock, patch
+
+      import pytest
+      from homeassistant.config_entries import ConfigEntryState
+      from homeassistant.core import HomeAssistant
+      from homeassistant.exceptions import ConfigEntryAuthFailed
+
+      from custom_components.xiaomi_fridge.const import DOMAIN
+
+
+      @pytest.fixture
+      def mock_cloud_devices():
+          """Mock cloud devices response."""
+          return [
+              {"device_id": "fridge_001", "model": "BCD-650", "name": "Kitchen Fridge"},
+              {"device_id": "fridge_002", "model": "BCD-450", "name": "Garage Fridge"},
+          ]
+
+
+      async def test_setup_dual_mode_success(hass: HomeAssistant, mock_cloud_devices):
+          """Test successful dual-mode setup."""
+          entry = MockConfigEntry(
+              domain=DOMAIN,
+              data={"token": {"access_token": "valid_token"}},
+              options={"mode": "auto"},
+              entry_id="test_entry",
+          )
+          entry.add_to_hass(hass)
+
+          with patch(
+              "custom_components.xiaomi_fridge.registry.FridgeRegistry.cloud.async_authenticate",
+              return_value=AsyncMock(),
+          ), patch(
+              "custom_components.xiaomi_fridge.registry.FridgeRegistry.cloud.async_get_fridges",
+              return_value=mock_cloud_devices,
+          ), patch(
+              "homeassistant.components.zeroconf.async_get_instance",
+              return_value=AsyncMock(),
+          ):
+              assert await hass.config_entries.async_setup(entry.entry_id)
+              await hass.async_block_till_done()
+
+          assert entry.state is ConfigEntryState.LOADED
+          assert DOMAIN in hass.data
+          registry = hass.data[DOMAIN][entry.entry_id]
+          assert len(registry.coordinators) == 2
+
+
+      async def test_setup_cloud_auth_failure(hass: HomeAssistant):
+          """Test setup fails when cloud auth expires."""
+          entry = MockConfigEntry(
+              domain=DOMAIN,
+              data={"token": {"access_token": "expired_token"}},
+              options={"mode": "cloud"},
+              entry_id="test_entry",
+          )
+          entry.add_to_hass(hass)
+
+          with patch(
+              "custom_components.xiaomi_fridge.registry.FridgeRegistry.cloud.async_authenticate",
+              side_effect=AuthError("Token expired"),
+          ):
+              with pytest.raises(ConfigEntryAuthFailed):
+                  await hass.config_entries.async_setup(entry.entry_id)
+
+          assert entry.state is ConfigEntryState.SETUP_ERROR
+
+
+      async def test_setup_local_fallback(hass: HomeAssistant, mock_cloud_devices):
+          """Test fallback to local when cloud fails."""
+          entry = MockConfigEntry(
+              domain=DOMAIN,
+              data={},
+              options={"mode": "local"},
+              entry_id="test_entry",
+          )
+          entry.add_to_hass(hass)
+
+          mock_store_data = mock_cloud_devices
+
+          with patch(
+              "homeassistant.helpers.storage.Store.async_load",
+              return_value=mock_store_data,
+          ), patch(
+              "homeassistant.components.zeroconf.async_get_instance",
+              return_value=AsyncMock(),
+          ):
+              assert await hass.config_entries.async_setup(entry.entry_id)
+              await hass.async_block_till_done()
+
+          assert entry.state is ConfigEntryState.LOADED
+
+  - context: |
+      # Patrón real de ActiveBluetoothDataUpdateCoordinator
+      Extraído de home-assistant-core (2026.2):
+      
+      class ActiveBluetoothDataUpdateCoordinator[_T](PassiveBluetoothDataUpdateCoordinator):
+          - Usa Generic[_T] para data type-safe
+          - Implementa needs_poll_method: Callable[[BluetoothServiceInfoBleak, float | None], bool]
+          - poll_method retorna Coroutine[Any, Any, _T]
+          - Debouncer con cooldown=10s, immediate=True para throttling
+          - _last_poll: float | None trackea monotonic_time_coarse()
+          - last_poll_successful para logging condicional (evita spam)
+          - BleakError handled con retry automático via debouncer
+          - _async_handle_bluetooth_poll() notifica listeners via async_update_listeners()
+      
+      Tests reales usan:
+      - MagicMock para BleakClient con spec=aiohttp.ClientWebSocketResponse
+      - AsyncMock para coroutines con side_effect para simular fallos
+      - pytest.mark.usefixtures("mock_bleak_scanner_start")
+      - Verifican connect_count para validar reconnect logic
+    question: |
+      Implementa un coordinator Bluetooth activo para termómetros Govee que reciben temperatura via advertisements pasivos pero requieren polling cada 60s para batería. Usa Generic[_T] y maneja BleakError con backoff exponencial.
+    answer: |
+      <think>
+      Patrón identificado: ActiveBluetoothDataUpdateCoordinator[_T] con needs_poll_method basado en time delta.
+      Govee: Advertisements pasivos (temperatura) + Polling GATT (batería). needs_poll retorna True si >60s desde last_poll.
+      Type hints: TypeVar _T bound a GoveeData dataclass, poll_method tipado Coroutine[Any, Any, GoveeData].
+      Error handling: BleakError capturado, last_poll_successful evita log spam, Debouncer con exponential backoff via cooldown multiplicador.
+      Test: Mock BleakClient.read_gatt_char, side_effect BleakError en primer intento, éxito en segundo (simula reconnect).
+      </think>
+
+      # custom_components/govee_thermo/coordinator.py
+      """Active Bluetooth coordinator for Govee thermometers."""
+      from __future__ import annotations
+
+      from dataclasses import dataclass
+      from datetime import timedelta
+      import logging
+      from typing import Any
+
+      from bleak import BleakClient, BleakError
+      from bluetooth_data_tools import monotonic_time_coarse
+
+      from homeassistant.components.bluetooth import (
+          BluetoothScanningMode,
+          BluetoothServiceInfoBleak,
+      )
+      from homeassistant.components.bluetooth.active_update_coordinator import (
+          ActiveBluetoothDataUpdateCoordinator,
+      )
+      from homeassistant.core import HomeAssistant
+
+      _LOGGER = logging.getLogger(__name__)
+
+      BATTERY_CHAR_UUID = "00002a19-0000-1000-8000-00805f9b34fb"
+      POLL_INTERVAL = 60  # seconds
+
+
+      @dataclass
+      class GoveeData:
+          """Data from Govee thermometer."""
+
+          temperature: float
+          humidity: float
+          battery: int | None = None
+          rssi: int = -127
+
+
+      class GoveeActiveCoordinator(ActiveBluetoothDataUpdateCoordinator[GoveeData]):
+          """Coordinator for Govee H5075 thermometer."""
+
+          def __init__(
+              self,
+              hass: HomeAssistant,
+              logger: logging.Logger,
+              address: str,
+          ) -> None:
+              """Initialize coordinator."""
+              super().__init__(
+                  hass=hass,
+                  logger=logger,
+                  address=address,
+                  mode=BluetoothScanningMode.ACTIVE,
+                  needs_poll_method=self._needs_poll,
+                  poll_method=self._async_poll_battery,
+                  connectable=True,
+              )
+              self._last_advertisement_data = GoveeData(0.0, 0.0)
+
+          def _needs_poll(
+              self,
+              service_info: BluetoothServiceInfoBleak,
+              seconds_since_last_poll: float | None,
+          ) -> bool:
+              """Determine if battery poll is needed."""
+              if self.hass.is_stopping:
+                  return False
+              # Poll every 60s or if never polled
+              return seconds_since_last_poll is None or seconds_since_last_poll >= POLL_INTERVAL
+
+          async def _async_poll_battery(
+              self, service_info: BluetoothServiceInfoBleak
+          ) -> GoveeData:
+              """Poll battery level via GATT."""
+              async with BleakClient(service_info.device) as client:
+                  battery_bytes = await client.read_gatt_char(BATTERY_CHAR_UUID)
+                  battery = int.from_bytes(battery_bytes, byteorder="little")
+
+              # Merge with last advertisement data
+              return GoveeData(
+                  temperature=self._last_advertisement_data.temperature,
+                  humidity=self._last_advertisement_data.humidity,
+                  battery=battery,
+                  rssi=service_info.rssi,
+              )
+
+          def _async_handle_bluetooth_event(
+              self,
+              service_info: BluetoothServiceInfoBleak,
+              change: BluetoothChange,
+          ) -> None:
+              """Handle Bluetooth advertisement."""
+              # Parse Govee H5075 advertisement (manufacturer_data key 0x0001)
+              mfr_data = service_info.manufacturer_data.get(0x0001, b"")
+              if len(mfr_data) >= 6:
+                  temp_raw = int.from_bytes(mfr_data[3:5], byteorder="big", signed=True)
+                  hum_raw = int.from_bytes(mfr_data[5:7], byteorder="big", signed=False)
+                  
+                  self._last_advertisement_data = GoveeData(
+                      temperature=temp_raw / 100.0,
+                      humidity=hum_raw / 100.0,
+                      rssi=service_info.rssi,
+                  )
+
+                  # Merge with existing battery if available
+                  if self.data and self.data.battery is not None:
+                      self._last_advertisement_data.battery = self.data.battery
+
+                  self.data = self._last_advertisement_data
+
+              super()._async_handle_bluetooth_event(service_info, change)
+
+
+      # tests/test_coordinator.py
+      """Test Govee coordinator polling logic."""
+      from unittest.mock import AsyncMock, MagicMock, patch
+
+      import pytest
+      from bleak.exc import BleakError
+
+      from homeassistant.components.bluetooth import BluetoothServiceInfo
+      from homeassistant.core import HomeAssistant
+
+      from custom_components.govee_thermo.coordinator import GoveeActiveCoordinator
+
+      GOVEE_SERVICE_INFO = BluetoothServiceInfo(
+          name="Govee_H5075",
+          address="AA:BB:CC:DD:EE:FF",
+          rssi=-60,
+          manufacturer_data={
+              0x0001: b"\\x00\\x00\\x00\\x09\\xC4\\x15\\x8E",  # 25.00°C, 55.02%
+          },
+          service_data={},
+          service_uuids=[],
+          source="local",
+      )
+
+
+      @pytest.mark.usefixtures("mock_bleak_scanner_start", "mock_bluetooth_adapters")
+      async def test_poll_battery_success(hass: HomeAssistant) -> None:
+          """Test successful battery poll."""
+          coordinator = GoveeActiveCoordinator(
+              hass=hass,
+              logger=_LOGGER,
+              address="AA:BB:CC:DD:EE:FF",
+          )
+
+          mock_client = MagicMock(spec=BleakClient)
+          mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+          mock_client.__aexit__ = AsyncMock()
+          mock_client.read_gatt_char = AsyncMock(return_value=b"\\x64")  # 100%
+
+          with patch("bleak.BleakClient", return_value=mock_client):
+              result = await coordinator._async_poll_battery(GOVEE_SERVICE_INFO)
+
+          assert result.battery == 100
+          assert coordinator.last_poll_successful is True
+
+
+      @pytest.mark.usefixtures("mock_bleak_scanner_start", "mock_bluetooth_adapters")
+      async def test_poll_battery_retry_on_bleak_error(hass: HomeAssistant) -> None:
+          """Test retry logic when BleakError occurs."""
+          coordinator = GoveeActiveCoordinator(
+              hass=hass,
+              logger=_LOGGER,
+              address="AA:BB:CC:DD:EE:FF",
+          )
+
+          poll_count = 0
+
+          async def mock_poll_with_retry(*args):
+              nonlocal poll_count
+              poll_count += 1
+              if poll_count == 1:
+                  raise BleakError("Connection failed")
+              return b"\\x55"  # 85%
+
+          mock_client = MagicMock(spec=BleakClient)
+          mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+          mock_client.__aexit__ = AsyncMock()
+          mock_client.read_gatt_char = mock_poll_with_retry
+
+          with patch("bleak.BleakClient", return_value=mock_client):
+              # First poll fails
+              with pytest.raises(BleakError):
+                  await coordinator._async_poll_battery(GOVEE_SERVICE_INFO)
+
+              assert coordinator.last_poll_successful is False
+              assert poll_count == 1
+
+              # Second poll succeeds
+              result = await coordinator._async_poll_battery(GOVEE_SERVICE_INFO)
+
+          assert result.battery == 85
+          assert coordinator.last_poll_successful is True
+          assert poll_count == 2
+
+
+      @pytest.mark.usefixtures("mock_bleak_scanner_start", "mock_bluetooth_adapters")
+      async def test_needs_poll_interval(hass: HomeAssistant) -> None:
+          """Test needs_poll respects 60s interval."""
+          coordinator = GoveeActiveCoordinator(
+              hass=hass,
+              logger=_LOGGER,
+              address="AA:BB:CC:DD:EE:FF",
+          )
+
+          # First call: no last_poll, should poll
+          assert coordinator._needs_poll(GOVEE_SERVICE_INFO, None) is True
+
+          # Simulate recent poll (30s ago)
+          assert coordinator._needs_poll(GOVEE_SERVICE_INFO, 30.0) is False
+
+          # Simulate old poll (61s ago)
+          assert coordinator._needs_poll(GOVEE_SERVICE_INFO, 61.0) is True
+
+  - context: |
+      # Patrón DataUpdateCoordinator con Type Hints avanzados (HA Core 2026)
+      Extraído de update_coordinator.py líneas 1-200:
+
+      from typing import Generic, TypeVar
+      _DataT = TypeVar("_DataT", default=dict[str, Any])
+
+      class DataUpdateCoordinator(Generic[_DataT]):
+          def __init__(
+              self,
+              update_method: Callable[[], Awaitable[_DataT]] | None = None,
+              always_update: bool = True,
+          ):
+              self.data: _DataT = None  # type: ignore[assignment]
+              # Assign None but type as _DataT to avoid None checks post-setup
+          
+          @cached_property  # from propcache.api (HA 2026)
+          def _microsecond(self) -> float:
+              return randint(RANDOM_MICROSECOND_MIN, RANDOM_MICROSECOND_MAX) / 10**6
+          
+          async def async_config_entry_first_refresh(self) -> None:
+              # Forces exception if first fetch fails (setup validation)
+      
+      Patrón de error handling:
+      - UpdateFailed con retry_after para rate-limits
+      - ConfigEntryAuthFailed para OAuth expirado
+      - ConfigEntryNotReady para fallos transitorios
+      
+      Tests mock aiohttp.ClientSession.get con AsyncMock:
+      mock_response = AsyncMock(json=AsyncMock(return_value=data), raise_for_status=AsyncMock())
+    question: |
+      Diseña un DataUpdateCoordinator genérico para APIs RESTful con paginación automática, rate-limit handling (retry_after), y circuit breaker pattern. Usa TypeVar para data type, cached_property para computed values, y Protocol para API client interface.
+    answer: |
+      <think>
+      Patrón core: DataUpdateCoordinator[_DataT] con TypeVar default=dict. cached_property para rate-limit state (evita recompute).
+      Paginación: Recursively fetch hasta "next" es None, accumulate pages en list[_DataT].
+      Rate-limit: Capturar HTTPError 429, extraer Retry-After header, raise UpdateFailed(retry_after=X).
+      Circuit breaker: Track consecutive failures, open circuit después de 3 fallos, half-open tras cooldown exponencial.
+      Protocol: Define APIClientProtocol con async_get[_T], permite mockear sin class concreta.
+      Test: AsyncMock con side_effect=[429, 200] para simular rate-limit recovery.
+      </think>
+
+      # custom_components/api_integration/coordinator.py
+      """Generic paginated REST API coordinator with circuit breaker."""
+      from __future__ import annotations
+
+      from collections.abc import Awaitable, Callable
+      from dataclasses import dataclass
+      from datetime import datetime, timedelta
+      from http import HTTPStatus
+      import logging
+      from typing import Any, Generic, Protocol, TypeVar
+
+      import aiohttp
+      from propcache.api import cached_property
+
+      from homeassistant.core import HomeAssistant
+      from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+      _LOGGER = logging.getLogger(__name__)
+
+      _DataT = TypeVar("_DataT", default=dict[str, Any])
+
+
+      class APIClientProtocol(Protocol):
+          """Protocol for REST API clients."""
+
+          async def async_get(
+              self, endpoint: str, params: dict[str, Any] | None = None
+          ) -> dict[str, Any]:
+              """Fetch data from API endpoint."""
+
+
+      @dataclass
+      class CircuitBreakerState:
+          """Circuit breaker state tracking."""
+
+          consecutive_failures: int = 0
+          opened_at: datetime | None = None
+          half_open_at: datetime | None = None
+          
+          @cached_property
+          def is_open(self) -> bool:
+              """Check if circuit is open (blocking requests)."""
+              if self.opened_at is None:
+                  return False
+              
+              # Auto-transition to half-open after cooldown
+              cooldown = timedelta(seconds=2 ** self.consecutive_failures)
+              if datetime.utcnow() - self.opened_at > cooldown:
+                  self.half_open_at = datetime.utcnow()
+                  return False
+              
+              return True
+
+
+      class PaginatedAPICoordinator(DataUpdateCoordinator[list[_DataT]], Generic[_DataT]):
+          """Coordinator with pagination, rate-limit, and circuit breaker."""
+
+          def __init__(
+              self,
+              hass: HomeAssistant,
+              client: APIClientProtocol,
+              endpoint: str,
+              *,
+              name: str,
+              update_interval: timedelta,
+              page_size: int = 100,
+          ) -> None:
+              """Initialize coordinator."""
+              super().__init__(
+                  hass,
+                  _LOGGER,
+                  name=name,
+                  update_interval=update_interval,
+                  update_method=self._async_fetch_all_pages,
+              )
+              self._client = client
+              self._endpoint = endpoint
+              self._page_size = page_size
+              self._circuit_breaker = CircuitBreakerState()
+
+          async def _async_fetch_all_pages(self) -> list[_DataT]:
+              """Fetch all pages from paginated API."""
+              if self._circuit_breaker.is_open:
+                  raise UpdateFailed("Circuit breaker open, skipping request")
+
+              all_data: list[_DataT] = []
+              page = 1
+
+              try:
+                  while True:
+                      params = {"page": page, "per_page": self._page_size}
+                      
+                      try:
+                          response = await self._client.async_get(self._endpoint, params)
+                      except aiohttp.ClientResponseError as err:
+                          if err.status == HTTPStatus.TOO_MANY_REQUESTS:
+                              # Extract Retry-After header (seconds or datetime)
+                              retry_after = err.headers.get("Retry-After", "60")
+                              try:
+                                  retry_seconds = int(retry_after)
+                              except ValueError:
+                                  # HTTP-date format, default to 60s
+                                  retry_seconds = 60
+                              
+                              raise UpdateFailed(
+                                  f"Rate limit exceeded: retry after {retry_seconds}s",
+                                  retry_after=retry_seconds,
+                              ) from err
+                          raise UpdateFailed(f"HTTP {err.status}: {err.message}") from err
+
+                      # Accumulate page data
+                      page_data: list[_DataT] = response.get("data", [])
+                      all_data.extend(page_data)
+
+                      # Check for next page
+                      next_url = response.get("pagination", {}).get("next")
+                      if not next_url:
+                          break
+
+                      page += 1
+
+                  # Success: reset circuit breaker
+                  self._circuit_breaker.consecutive_failures = 0
+                  self._circuit_breaker.opened_at = None
+                  
+                  return all_data
+
+              except UpdateFailed:
+                  # Increment failure counter and potentially open circuit
+                  self._circuit_breaker.consecutive_failures += 1
+                  if self._circuit_breaker.consecutive_failures >= 3:
+                      self._circuit_breaker.opened_at = datetime.utcnow()
+                      _LOGGER.warning(
+                          "%s: Circuit breaker opened after %d failures",
+                          self.name,
+                          self._circuit_breaker.consecutive_failures,
+                      )
+                  raise
+
+
+      # tests/test_paginated_coordinator.py
+      """Test paginated coordinator with rate-limit handling."""
+      from unittest.mock import AsyncMock, MagicMock
+
+      import aiohttp
+      import pytest
+
+      from homeassistant.core import HomeAssistant
+      from homeassistant.helpers.update_coordinator import UpdateFailed
+
+      from custom_components.api_integration.coordinator import (
+          APIClientProtocol,
+          PaginatedAPICoordinator,
+      )
+
+
+      class MockAPIClient:
+          """Mock API client for testing."""
+
+          def __init__(self, responses: list[dict | Exception]):
+              self.responses = responses
+              self.call_count = 0
+
+          async def async_get(
+              self, endpoint: str, params: dict | None = None
+          ) -> dict[str, Any]:
+              """Return mocked responses in sequence."""
+              response = self.responses[self.call_count]
+              self.call_count += 1
+              
+              if isinstance(response, Exception):
+                  raise response
+              return response
+
+
+      async def test_pagination_multiple_pages(hass: HomeAssistant) -> None:
+          """Test fetching multiple pages."""
+          mock_client = MockAPIClient([
+              {"data": [{"id": 1}, {"id": 2}], "pagination": {"next": "page2"}},
+              {"data": [{"id": 3}, {"id": 4}], "pagination": {"next": None}},
+          ])
+
+          coordinator = PaginatedAPICoordinator(
+              hass=hass,
+              client=mock_client,
+              endpoint="/devices",
+              name="Test",
+              update_interval=timedelta(minutes=5),
+          )
+
+          await coordinator.async_config_entry_first_refresh()
+
+          assert len(coordinator.data) == 4
+          assert coordinator.data[0]["id"] == 1
+          assert coordinator.data[-1]["id"] == 4
+
+
+      async def test_rate_limit_retry_after(hass: HomeAssistant) -> None:
+          """Test rate-limit handling with Retry-After."""
+          error_response = aiohttp.ClientResponseError(
+              request_info=MagicMock(),
+              history=(),
+              status=429,
+              message="Too Many Requests",
+              headers={"Retry-After": "120"},
+          )
+
+          mock_client = MockAPIClient([error_response])
+
+          coordinator = PaginatedAPICoordinator(
+              hass=hass,
+              client=mock_client,
+              endpoint="/devices",
+              name="Test",
+              update_interval=timedelta(minutes=5),
+          )
+
+          with pytest.raises(UpdateFailed) as exc_info:
+              await coordinator.async_refresh()
+
+          assert "retry after 120s" in str(exc_info.value)
+          assert exc_info.value.retry_after == 120
+
+
+      async def test_circuit_breaker_opens_after_failures(hass: HomeAssistant) -> None:
+          """Test circuit breaker opens after 3 consecutive failures."""
+          error = aiohttp.ClientError("Connection timeout")
+          mock_client = MockAPIClient([error, error, error, error])
+
+          coordinator = PaginatedAPICoordinator(
+              hass=hass,
+              client=mock_client,
+              endpoint="/devices",
+              name="Test",
+              update_interval=timedelta(minutes=5),
+          )
+
+          # First 3 failures
+          for _ in range(3):
+              with pytest.raises(UpdateFailed):
+                  await coordinator.async_refresh()
+
+          # Circuit breaker should be open
+          assert coordinator._circuit_breaker.is_open is True
+          assert coordinator._circuit_breaker.consecutive_failures == 3
+
+          # 4th request blocked by circuit breaker
+          with pytest.raises(UpdateFailed, match="Circuit breaker open"):
+              await coordinator.async_refresh()
+
+          # Call count should still be 3 (4th request blocked before API call)
+          assert mock_client.call_count == 3
+
+  - context: |
+      # Patrón Protocol y Type Hints avanzados (HA Core 2026.2)
+      Extraído de update_coordinator.py, entity_platform.py, device_registry.py:
+
+      from typing import Protocol, runtime_checkable
+      
+      @runtime_checkable
+      class BaseDataUpdateCoordinatorProtocol(Protocol):
+          @callback
+          def async_add_listener(
+              self, update_callback: CALLBACK_TYPE, context: Any = None
+          ) -> Callable[[], None]:
+              ...
+      
+      # En entity.py se usa para duck-typing sin herencia
+      if isinstance(coordinator, BaseDataUpdateCoordinatorProtocol):
+          self._unsub = coordinator.async_add_listener(...)
+      
+      Patrón __init__ moderno (2026):
+      - config_entry tipado como ConfigEntry | None | UndefinedType = UNDEFINED
+      - Frame introspection para warnings: frame.report_usage(..., breaks_in_ha_version="2026.8")
+      - contextvars.ContextVar para implicit config_entry passing
+      
+      Tests con Protocol:
+      - MagicMock con spec=Protocol permite verificar interface compliance
+      - No necesita implementar clase concreta, solo protocol methods
+    question: |
+      Diseña un sistema de entities registrable con Protocol (sin herencia) que soporte múltiples coordinators por entity, lazy initialization via ContextVar, y frame introspection para deprecation warnings. Incluye tests que verifiquen Protocol compliance sin clases concretas.
+    answer: |
+      <think>
+      Patrón Protocol: Define CoordinatorProtocol sin herencia, @runtime_checkable permite isinstance checks.
+      Multi-coordinator: Entity mantiene dict[str, CoordinatorProtocol], cada uno con context tag (temperature, battery, etc).
+      ContextVar: Usa config_entries.current_entry.get() para implicit passing, deprecation warning si None (breaks_in_ha_version).
+      Frame introspection: frame.report_usage con extract_stack() para identificar caller integration.
+      Test: MagicMock(spec=CoordinatorProtocol) implementa solo async_add_listener, verifica call sin clase real.
+      Type narrowing: Use TypeGuard para refinar Protocol checks en runtime.
+      </think>
+
+      # custom_components/multi_coordinator/coordinator_protocol.py
+      """Protocol definition for coordinator abstraction."""
+      from __future__ import annotations
+
+      from collections.abc import Callable
+      from typing import Any, Protocol, TypeGuard, runtime_checkable
+
+      from homeassistant.core import CALLBACK_TYPE, callback
+
+
+      @runtime_checkable
+      class CoordinatorProtocol(Protocol):
+          """Protocol for data update coordinators (no inheritance required)."""
+
+          @property
+          def data(self) -> Any:
+              """Return coordinator data."""
+
+          @callback
+          def async_add_listener(
+              self, update_callback: CALLBACK_TYPE, context: Any = None
+          ) -> Callable[[], None]:
+              """Register callback for updates."""
+
+          @property
+          def last_update_success(self) -> bool:
+              """Return if last update succeeded."""
+
+
+      def is_coordinator(obj: Any) -> TypeGuard[CoordinatorProtocol]:
+          """Type guard for coordinator protocol compliance."""
+          return isinstance(obj, CoordinatorProtocol)
+
+
+      # custom_components/multi_coordinator/entity.py
+      """Entity with multiple coordinators support."""
+      from __future__ import annotations
+
+      from collections.abc import Callable
+      import logging
+      from typing import Any
+
+      from homeassistant.config_entries import ConfigEntry, current_entry
+      from homeassistant.helpers import frame
+      from homeassistant.helpers.entity import Entity
+      from homeassistant.helpers.typing import UNDEFINED, UndefinedType
+
+      from .coordinator_protocol import CoordinatorProtocol, is_coordinator
+
+      _LOGGER = logging.getLogger(__name__)
+
+
+      class MultiCoordinatorEntity(Entity):
+          """Entity that subscribes to multiple coordinators."""
+
+          def __init__(
+              self,
+              coordinators: dict[str, CoordinatorProtocol],
+              *,
+              config_entry: ConfigEntry | None | UndefinedType = UNDEFINED,
+          ) -> None:
+              """Initialize entity with multiple coordinators."""
+              super().__init__()
+              
+              # Lazy config_entry resolution with deprecation warning
+              if config_entry is UNDEFINED:
+                  frame.report_usage(
+                      "relies on ContextVar for config_entry, "
+                      "but should pass it explicitly",
+                      core_behavior=frame.ReportBehavior.ERROR,
+                      custom_integration_behavior=frame.ReportBehavior.LOG,
+                      breaks_in_ha_version="2026.8",
+                  )
+                  self._config_entry = current_entry.get()
+              else:
+                  self._config_entry = config_entry
+
+              # Validate all coordinators implement Protocol
+              for name, coordinator in coordinators.items():
+                  if not is_coordinator(coordinator):
+                      raise TypeError(
+                          f"Coordinator '{name}' does not implement CoordinatorProtocol"
+                      )
+
+              self._coordinators = coordinators
+              self._unsub_callbacks: dict[str, Callable[[], None]] = {}
+
+          async def async_added_to_hass(self) -> None:
+              """Subscribe to coordinator updates."""
+              await super().async_added_to_hass()
+
+              for name, coordinator in self._coordinators.items():
+                  unsub = coordinator.async_add_listener(
+                      self._handle_coordinator_update,
+                      context=name,
+                  )
+                  self._unsub_callbacks[name] = unsub
+
+          async def async_will_remove_from_hass(self) -> None:
+              """Unsubscribe from coordinators."""
+              for unsub in self._unsub_callbacks.values():
+                  unsub()
+              self._unsub_callbacks.clear()
+
+              await super().async_will_remove_from_hass()
+
+          @callback
+          def _handle_coordinator_update(self, context: Any = None) -> None:
+              """Handle coordinator update with context."""
+              coordinator_name = context
+              _LOGGER.debug(
+                  "%s: Received update from coordinator '%s'",
+                  self.entity_id,
+                  coordinator_name,
+              )
+              self.async_write_ha_state()
+
+          @property
+          def available(self) -> bool:
+              """Return if entity is available (all coordinators healthy)."""
+              return all(
+                  coord.last_update_success for coord in self._coordinators.values()
+              )
+
+          def get_coordinator_data(self, name: str) -> Any:
+              """Get data from specific coordinator."""
+              return self._coordinators[name].data
+
+
+      # tests/test_protocol_compliance.py
+      """Test Protocol compliance without concrete implementations."""
+      from unittest.mock import MagicMock
+
+      import pytest
+
+      from homeassistant.core import HomeAssistant
+
+      from custom_components.multi_coordinator.coordinator_protocol import (
+          CoordinatorProtocol,
+          is_coordinator,
+      )
+      from custom_components.multi_coordinator.entity import MultiCoordinatorEntity
+
+
+      def test_protocol_type_guard():
+          """Test is_coordinator type guard."""
+          # Valid coordinator mock
+          valid_mock = MagicMock(spec=CoordinatorProtocol)
+          valid_mock.data = {"temp": 20.5}
+          valid_mock.last_update_success = True
+          
+          assert is_coordinator(valid_mock) is True
+
+          # Invalid object (missing protocol methods)
+          invalid_obj = {"not": "a coordinator"}
+          assert is_coordinator(invalid_obj) is False
+
+
+      def test_entity_validates_protocol_compliance():
+          """Test entity rejects non-protocol coordinators."""
+          invalid_coordinator = MagicMock()  # No spec, won't match Protocol
+          invalid_coordinator.data = {}
+          # Missing async_add_listener method
+
+          with pytest.raises(TypeError, match="does not implement CoordinatorProtocol"):
+              MultiCoordinatorEntity(
+                  coordinators={"temperature": invalid_coordinator},
+                  config_entry=None,
+              )
+
+
+      async def test_multi_coordinator_subscription(hass: HomeAssistant):
+          """Test entity subscribes to multiple coordinators."""
+          # Create protocol-compliant mocks
+          temp_coord = MagicMock(spec=CoordinatorProtocol)
+          temp_coord.data = {"value": 22.3}
+          temp_coord.last_update_success = True
+          temp_coord.async_add_listener = MagicMock(return_value=lambda: None)
+
+          battery_coord = MagicMock(spec=CoordinatorProtocol)
+          battery_coord.data = {"value": 85}
+          battery_coord.last_update_success = True
+          battery_coord.async_add_listener = MagicMock(return_value=lambda: None)
+
+          entity = MultiCoordinatorEntity(
+              coordinators={
+                  "temperature": temp_coord,
+                  "battery": battery_coord,
+              },
+              config_entry=None,
+          )
+          entity.hass = hass
+
+          await entity.async_added_to_hass()
+
+          # Verify both coordinators received listener subscription
+          temp_coord.async_add_listener.assert_called_once()
+          battery_coord.async_add_listener.assert_called_once()
+
+          # Verify context passed correctly
+          temp_call_args = temp_coord.async_add_listener.call_args
+          assert temp_call_args.kwargs["context"] == "temperature"
+
+
+      async def test_entity_availability_multi_coordinator(hass: HomeAssistant):
+          """Test entity unavailable if any coordinator fails."""
+          coord1 = MagicMock(spec=CoordinatorProtocol)
+          coord1.last_update_success = True
+
+          coord2 = MagicMock(spec=CoordinatorProtocol)
+          coord2.last_update_success = False  # Failed
+
+          entity = MultiCoordinatorEntity(
+              coordinators={"coord1": coord1, "coord2": coord2},
+              config_entry=None,
+          )
+
+          assert entity.available is False
+
+          # Fix coord2
+          coord2.last_update_success = True
+          assert entity.available is True
+
+
+      def test_frame_introspection_deprecation_warning(caplog):
+          """Test deprecation warning for missing config_entry."""
+          coord = MagicMock(spec=CoordinatorProtocol)
+          coord.async_add_listener = MagicMock(return_value=lambda: None)
+
+          # Without passing config_entry, should trigger frame.report_usage
+          with caplog.at_level(logging.WARNING):
+              entity = MultiCoordinatorEntity(coordinators={"test": coord})
+
+          # Verify warning logged (in custom integrations, core raises error)
+          assert "relies on ContextVar" in caplog.text
+
+  - context: |
+      # Mock patterns avanzados para tests de coordinators (HA Core 2026)
+      Extraído de test_active_update_coordinator.py:
+
+      @pytest.fixture
+      def mock_bleak_scanner_start():
+          # Fixture para mockear Bluetooth scanner globalmente
+      
+      mock_client = MagicMock(spec=BleakClient)
+      mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+      mock_client.__aexit__ = AsyncMock()
+      mock_client.read_gatt_char = AsyncMock(return_value=b"\\x64")
+      
+      with patch("bleak.BleakClient", return_value=mock_client):
+          # Test code
+      
+      # Mock con side_effect secuencial (simula retry)
+      poll_count = 0
+      async def mock_poll_with_retry(*args):
+          nonlocal poll_count
+          poll_count += 1
+          if poll_count == 1:
+              raise BleakError("Connection failed")
+          return b"\\x55"
+      
+      # Verificar call_count para validar retry logic
+      assert mock_client.read_gatt_char.call_count == 2
+      
+      Patrón inject_bluetooth_service_info para simular advertisements:
+      inject_bluetooth_service_info(hass, GENERIC_BLUETOOTH_SERVICE_INFO)
+    question: |
+      Escribe tests para un coordinator WebSocket que reconecta tras desconexión, usa exponential backoff, y valida message parsing con JSONDecodeError handling. Mock aiohttp.ClientSession.ws_connect con side_effect para simular fallos intermitentes.
+    answer: |
+      <think>
+      Mock pattern: aiohttp.ClientWebSocketResponse con __aiter__ para simular messages, side_effect lista para retry sequence.
+      Exponential backoff: Verificar asyncio.sleep calls con mock_sleep, assert delays [1, 2, 4, 8] segundos.
+      JSONDecodeError: side_effect json.JSONDecodeError en msg.data, coordinator debe skip y continuar listening.
+      Reconnect validation: Track ws_connect call_count, assert == 3 tras 2 fallos + 1 éxito.
+      Test structure: Fixture mock_websocket retorna MagicMock con métodos async configurables via AsyncMock.
+      </think>
+
+      # tests/test_websocket_coordinator.py
+      """Test WebSocket coordinator reconnection and message parsing."""
+      from collections.abc import AsyncIterator
+      import json
+      from unittest.mock import AsyncMock, MagicMock, patch
+
+      import aiohttp
+      import pytest
+
+      from homeassistant.core import HomeAssistant
+
+      from custom_components.websocket_integration.coordinator import WebSocketCoordinator
+
+
+      @pytest.fixture
+      def mock_websocket_messages():
+          """Fixture providing mock WebSocket messages."""
+          return [
+              MagicMock(
+                  type=aiohttp.WSMsgType.TEXT,
+                  data='{"event": "update", "value": 42}',
+              ),
+              MagicMock(
+                  type=aiohttp.WSMsgType.TEXT,
+                  data='{"event": "update", "value": 43}',
+              ),
+          ]
+
+
+      @pytest.fixture
+      def mock_websocket(mock_websocket_messages):
+          """Fixture for aiohttp WebSocket mock."""
+          ws = MagicMock(spec=aiohttp.ClientWebSocketResponse)
+          ws.__aiter__ = MagicMock(return_value=iter(mock_websocket_messages))
+          ws.close = AsyncMock()
+          return ws
+
+
+      async def test_websocket_reconnect_after_failure(hass: HomeAssistant, mock_websocket):
+          """Test coordinator reconnects after connection failure."""
+          connect_count = 0
+
+          async def mock_ws_connect(*args, **kwargs):
+              nonlocal connect_count
+              connect_count += 1
+              if connect_count < 3:
+                  raise aiohttp.ClientError(f"Connection attempt {connect_count} failed")
+              return mock_websocket
+
+          coordinator = WebSocketCoordinator(
+              hass=hass,
+              url="ws://localhost:8080/stream",
+          )
+
+          with patch(
+              "aiohttp.ClientSession.ws_connect",
+              side_effect=mock_ws_connect,
+          ), patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+              await coordinator.async_connect()
+
+              # Wait for reconnection attempts
+              await asyncio.sleep(0.1)
+
+          # Should have made 3 connection attempts (2 failures + 1 success)
+          assert connect_count == 3
+
+          # Verify exponential backoff delays
+          assert mock_sleep.call_count == 2
+          sleep_delays = [call.args[0] for call in mock_sleep.call_args_list]
+          assert sleep_delays == [1, 2]  # First retry 1s, second 2s
+
+
+      async def test_websocket_handles_json_decode_error(
+          hass: HomeAssistant, mock_websocket
+      ):
+          """Test coordinator skips invalid JSON messages."""
+          invalid_messages = [
+              MagicMock(
+                  type=aiohttp.WSMsgType.TEXT,
+                  data='{"valid": "json"}',
+              ),
+              MagicMock(
+                  type=aiohttp.WSMsgType.TEXT,
+                  data='invalid json{{{',  # Malformed JSON
+              ),
+              MagicMock(
+                  type=aiohttp.WSMsgType.TEXT,
+                  data='{"another": "valid"}',
+              ),
+          ]
+          mock_websocket.__aiter__ = MagicMock(return_value=iter(invalid_messages))
+
+          coordinator = WebSocketCoordinator(
+              hass=hass,
+              url="ws://localhost:8080/stream",
+          )
+
+          received_data = []
+
+          def capture_update(data):
+              received_data.append(data)
+
+          coordinator.async_add_listener(capture_update)
+
+          with patch("aiohttp.ClientSession.ws_connect", return_value=mock_websocket):
+              await coordinator.async_connect()
+              await asyncio.sleep(0.2)  # Allow message processing
+
+          # Should have received 2 valid messages (invalid one skipped)
+          assert len(received_data) == 2
+          assert received_data[0]["valid"] == "json"
+          assert received_data[1]["another"] == "valid"
+
+
+      async def test_websocket_exponential_backoff_cap(hass: HomeAssistant):
+          """Test exponential backoff caps at maximum delay."""
+          connect_count = 0
+
+          async def always_fail(*args, **kwargs):
+              nonlocal connect_count
+              connect_count += 1
+              raise aiohttp.ClientError("Always fails")
+
+          coordinator = WebSocketCoordinator(
+              hass=hass,
+              url="ws://localhost:8080/stream",
+              max_backoff=8,  # Cap at 8 seconds
+          )
+
+          with patch(
+              "aiohttp.ClientSession.ws_connect",
+              side_effect=always_fail,
+          ), patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
+              # Start reconnection loop
+              task = asyncio.create_task(coordinator.async_connect())
+              
+              await asyncio.sleep(0.5)  # Allow several attempts
+              task.cancel()
+
+          # Verify backoff progression: 1, 2, 4, 8, 8, 8... (capped)
+          sleep_delays = [call.args[0] for call in mock_sleep.call_args_list]
+          assert sleep_delays[:4] == [1, 2, 4, 8]
+          # Further attempts should stay at 8s (capped)
+          assert all(delay == 8 for delay in sleep_delays[4:])
+
+
+      async def test_websocket_cleanup_on_stop(hass: HomeAssistant, mock_websocket):
+          """Test coordinator cleans up resources on stop."""
+          coordinator = WebSocketCoordinator(
+              hass=hass,
+              url="ws://localhost:8080/stream",
+          )
+
+          with patch("aiohttp.ClientSession.ws_connect", return_value=mock_websocket):
+              await coordinator.async_connect()
+              
+              # Verify connection established
+              assert coordinator.connected is True
+
+              # Stop coordinator
+              await coordinator.async_stop()
+
+          # Verify cleanup
+          assert coordinator.connected is False
+          mock_websocket.close.assert_called_once()
+
+
+      async def test_websocket_message_type_filtering(hass: HomeAssistant):
+          """Test coordinator filters non-TEXT WebSocket messages."""
+          mixed_messages = [
+              MagicMock(type=aiohttp.WSMsgType.TEXT, data='{"event": "text"}'),
+              MagicMock(type=aiohttp.WSMsgType.BINARY, data=b"binary_data"),
+              MagicMock(type=aiohttp.WSMsgType.ERROR, data=None),
+              MagicMock(type=aiohttp.WSMsgType.TEXT, data='{"event": "text2"}'),
+          ]
+
+          ws = MagicMock(spec=aiohttp.ClientWebSocketResponse)
+          ws.__aiter__ = MagicMock(return_value=iter(mixed_messages))
+          ws.close = AsyncMock()
+
+          coordinator = WebSocketCoordinator(
+              hass=hass,
+              url="ws://localhost:8080/stream",
+          )
+
+          received_data = []
+          coordinator.async_add_listener(lambda data: received_data.append(data))
+
+          with patch("aiohttp.ClientSession.ws_connect", return_value=ws):
+              await coordinator.async_connect()
+              await asyncio.sleep(0.2)
+
+          # Should only process TEXT messages
+          assert len(received_data) == 2
+          assert received_data[0]["event"] == "text"
+          assert received_data[1]["event"] == "text2"
+
+task_description: |
+  Entrenar al modelo para diseñar arquitecturas de producción de integraciones Home Assistant 2026+ con:
+  
+  - Análisis técnico de patrones REALES extraídos de home-assistant-core y HACS integrations
+  - DataUpdateCoordinator genéricos con TypeVar, Protocol, Generic para type-safety
+  - Dual-mode architectures (LAN + Cloud) con Store cache y dispatcher signals
+  - Active/Passive Bluetooth coordinators con polling condicional y debouncing
+  - WebSocket managers con reconnect exponential backoff y circuit breaker
+  - REST API coordinators con paginación automática y rate-limit handling (retry_after)
+  - Tests unitarios con AsyncMock, side_effect para retry simulation, y Protocol compliance verification
+  - Type hints modernos: TypeVar default, Protocol @runtime_checkable, TypeGuard, cached_property
+  - Error handling: ConfigEntryAuthFailed, ConfigEntryNotReady, UpdateFailed(retry_after=X)
+  - Frame introspection para deprecation warnings (breaks_in_ha_version)
+  
+  El modelo debe usar el bloque <think> para:
+  1. Identificar el patrón arquitectónico del código real extraído (XRegistry, ActiveCoordinator, etc)
+  2. Justificar decisiones de diseño (por qué Protocol vs herencia, por qué TypeVar[_DataT])
+  3. Mapear error types a escenarios (ConfigEntryAuthFailed para OAuth expirado vs ConfigEntryNotReady para timeout)
+  4. Diseñar estrategia de testing (qué mockear, cómo simular failures con side_effect)
+  
+  Razonamiento debe ser PURAMENTE TÉCNICO: cero meta-speech, máxima densidad lógica, fundamentado en código real observado.

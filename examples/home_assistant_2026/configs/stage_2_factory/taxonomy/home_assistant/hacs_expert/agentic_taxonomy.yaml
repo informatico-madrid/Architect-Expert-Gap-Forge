@@ -1,0 +1,413 @@
+---
+# =============================================================================
+# AEGF (Architect-Expert-Gap-Forge) V10-MT — Agentic Prompt Taxonomy
+# =============================================================================
+# All prompt templates, error patterns, legacy contrasts, and tool definitions
+# used by agentic_gen.py (Multi-Turn Diversified Architect Edition).
+#
+# Content is in Spanish (target training language for the model).
+# Python loads this file at startup and injects runtime variables via
+# string.Template ($var) for prompts, or str.format({var}) for error
+# templates.
+# =============================================================================
+
+version: 1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HA ERROR TEMPLATES  (error recovery — .format() placeholders)
+# ─────────────────────────────────────────────────────────────────────────────
+ha_error_templates:
+  - error: >-
+      InvalidStateError: Entity {entity} uses deprecated TEMP_CELSIUS.
+      UnitOfTemperature.CELSIUS must be used instead.
+      This will stop working in Home Assistant 2026.1.
+    category: enum_migration
+    legacy_pattern: "TEMP_CELSIUS"
+    modern_fix: "UnitOfTemperature.CELSIUS"
+
+  - error: >-
+      DeprecationWarning: async_forward_entry_setup is deprecated.
+      Use async_forward_entry_setups (plural) instead.
+      Called from custom_components/{component}/__init__.py
+    category: setup_migration
+    legacy_pattern: "async_forward_entry_setup"
+    modern_fix: "async_forward_entry_setups"
+
+  - error: >-
+      HomeAssistantError: Detected blocking call to sleep inside the event loop
+      by custom integration '{component}' at custom_components/{component}/sensor.py,
+      line 142. This is causing a freeze of {seconds}s.
+    category: blocking_call
+    legacy_pattern: "time.sleep()"
+    modern_fix: "await asyncio.sleep()"
+
+  - error: >-
+      KeyError: '{entry_id}' - hass.data[DOMAIN] does not contain config entry.
+      The integration is using the legacy hass.data dictionary pattern
+      instead of entry.runtime_data.
+    category: runtime_data
+    legacy_pattern: "hass.data[DOMAIN][entry.entry_id]"
+    modern_fix: "entry.runtime_data"
+
+  - error: >-
+      TypeError: 'str' object is not callable - entity uses string literal
+      '{literal}' for device_class instead of SensorDeviceClass enum.
+      String device classes are removed in 2026.1.
+    category: device_class_enum
+    legacy_pattern: 'device_class = "temperature"'
+    modern_fix: "device_class = SensorDeviceClass.TEMPERATURE"
+
+  - error: >-
+      PlatformNotReady: {component} did not complete setup within 30s.
+      The integration performs synchronous HTTP requests in async_setup_entry.
+      Use async_add_executor_job for blocking I/O.
+    category: platform_not_ready
+    legacy_pattern: "requests.get() in async context"
+    modern_fix: "await hass.async_add_executor_job(requests.get, url)"
+
+  - error: >-
+      ConfigEntryError: Integration '{component}' uses PLATFORM_SCHEMA
+      without config_flow. YAML-only configuration is not accepted
+      for new integrations since 2025.6.
+    category: config_flow
+    legacy_pattern: "PLATFORM_SCHEMA = vol.Schema(...)"
+    modern_fix: "ConfigFlow + config_entries"
+
+  - error: >-
+      EntityPlatformWarning: {component} entity {entity_id} implements
+      update() instead of async_update(). Synchronous update methods block
+      the event loop. Migrate to CoordinatorEntity pattern.
+    category: coordinator
+    legacy_pattern: "def update(self):"
+    modern_fix: "CoordinatorEntity + DataUpdateCoordinator"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LEGACY 2023 PATTERNS  (contrast prompts — .format() / direct text)
+# ─────────────────────────────────────────────────────────────────────────────
+legacy_2023_patterns:
+  - title: "Uso de strings literales en lugar de Enums"
+    legacy_code: |
+      DEVICE_CLASS = "temperature"
+      UNIT = "°C"
+    modern_code: |
+      device_class = SensorDeviceClass.TEMPERATURE
+      native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    explanation: >-
+      En 2023 se usaban strings literales para device_class y unidades.
+      En 2026, TODAS deben ser Enums tipados.
+
+  - title: "hass.data vs entry.runtime_data"
+    legacy_code: |
+      hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    modern_code: |
+      entry.runtime_data = MyRuntimeData(coordinator=coordinator)
+    explanation: >-
+      En 2023 se usaba el diccionario global hass.data.
+      En 2026, entry.runtime_data con dataclass tipada es obligatorio.
+
+  - title: "async_forward_entry_setup singular"
+    legacy_code: |
+      await hass.config_entries.async_forward_entry_setup(entry, "sensor")
+    modern_code: |
+      await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    explanation: >-
+      El método singular fue eliminado.
+      Se usa async_forward_entry_setups (plural) con lista de platforms.
+
+  - title: "Patrón Entity sin Coordinator"
+    legacy_code: |
+      class MySensor(Entity):
+          def update(self):
+              self._state = api.get_data()
+    modern_code: |
+      class MySensor(CoordinatorEntity[MyCoordinator]):
+          @property
+          def native_value(self):
+              return self.coordinator.data.get('value')
+    explanation: >-
+      En 2023, entidades con update() bloqueante.
+      En 2026, CoordinatorEntity con DataUpdateCoordinator.
+
+  - title: "YAML-only sin ConfigFlow"
+    legacy_code: |
+      PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+          vol.Required(CONF_HOST): cv.string,
+      })
+    modern_code: |
+      class MyConfigFlow(ConfigFlow, domain=DOMAIN):
+          async def async_step_user(self, user_input=None):
+    explanation: >-
+      Desde 2025.6, toda integración nueva requiere config_flow.
+      YAML-only está prohibido para nuevas integraciones.
+
+  - title: "Llamadas bloqueantes en async"
+    legacy_code: |
+      async def async_setup_entry(hass, entry):
+          data = requests.get(url).json()
+    modern_code: |
+      async def async_setup_entry(hass, entry):
+          data = await hass.async_add_executor_job(requests.get, url)
+    explanation: >-
+      Requests bloqueantes en contexto async causan freezes.
+      Se deben ejecutar en executor.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TOOL DEFINITIONS  (injected into system prompts)
+# ─────────────────────────────────────────────────────────────────────────────
+tools_definition:
+  - name: list_files
+    description: "Lista archivos en un directorio para explorar la estructura del proyecto."
+    parameters:
+      type: object
+      properties:
+        path: { type: string }
+      required: [path]
+
+  - name: read_file
+    description: "Lee el contenido de un archivo existente."
+    parameters:
+      type: object
+      properties:
+        path: { type: string }
+      required: [path]
+
+  - name: write_to_file
+    description: "Crea o sobrescribe un archivo con código de producción o tests."
+    parameters:
+      type: object
+      properties:
+        path: { type: string, description: "Ruta relativa" }
+        content: { type: string, description: "Contenido del archivo" }
+      required: [path, content]
+
+  - name: execute_command
+    description: "Ejecuta comandos de shell (pytest, ruff, hass)."
+    parameters:
+      type: object
+      properties:
+        command: { type: string }
+      required: [command]
+
+  - name: attempt_completion
+    description: "Marca la tarea como completada."
+    parameters:
+      type: object
+      properties:
+        result: { type: string }
+      required: [result]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PROMPTS — Multi-Turn Diversified (string.Template $var syntax)
+# ─────────────────────────────────────────────────────────────────────────────
+prompts:
+  # ─── System Prompts (Multi-Turn) ──────────────────────────────────────
+  system:
+    base: |
+      Eres un Agente Experto y Arquitecto de Software en Home Assistant (2026).
+      Tu objetivo es implementar soluciones técnicas robustas ejecutando herramientas.
+
+      HERRAMIENTAS DISPONIBLES:
+      $tools_json
+
+      GRAMÁTICA DE SALIDA - PROTOCOLO MULTI-TURNO:
+      Toda respuesta DEBE seguir esta gramática formal:
+
+      RESPONSE  ::= THINK_BLOCK TOOL_BLOCK
+      THINK_BLOCK ::= REASONING "</think>"
+      TOOL_BLOCK  ::= "<tool_call>" JSON_OBJECT "</tool_call>"
+      JSON_OBJECT ::= {"name": TOOL_NAME, "arguments": TOOL_ARGS}
+
+      REGLAS DE SERIALIZACIÓN:
+      1. THINK_BLOCK obligatorio: contiene tu razonamiento interno.
+      2. TOOL_BLOCK obligatorio: contiene la llamada a herramienta en JSON válido.
+      3. Sin espacios entre </think> y <tool_call>.
+      4. Cuando recibas resultado de herramienta (rol: tool), aplica la misma gramática.
+      5. La trayectoria completa es: User → Tool Call → Tool Result → Closure (attempt_completion).
+
+      ANCLAS DE VERDAD:
+      - DEBES usar las LEYES y reglas del MANUAL ADJUNTO como anclas de verdad.
+      - Si tu razonamiento contradice las Leyes del MANUAL, el output es inválido.
+
+      ==== BEGIN MASTER GUIDE ====
+      $master
+      ==== END MASTER GUIDE ====
+
+      ==== BEGIN TECHNICAL CHANGELOG ====
+      $changelog
+      ==== END TECHNICAL CHANGELOG ====
+
+    nominal_suffix: |
+
+      MODO NOMINAL — IMPLEMENTACIÓN ESTÁNDAR 2026:
+      Ejecuta la tarea del usuario implementando código limpio siguiendo el
+      estándar Home Assistant 2026.
+
+      PROTOCOLO:
+      1. <think>: Análisis de Arquitectura y Dependencias.
+         RECUERDA: Usa las LEYES del MANUAL ADJUNTO como anclas de verdad.
+         PROHIBIDO: NO redactes el contenido del archivo aquí.
+         PROHIBIDO: NO escribas borradores. Solo define la estructura.
+         Sé conciso y técnico. CIERRA </think> rápido.
+         </think>
+      2. <tool_call>: Llama a write_to_file con la ruta y el código completo.
+      3. Tras recibir resultado de tool: cierra con attempt_completion.
+
+    contrast_suffix: |
+
+      MODO CONTRASTE — CORRECCIÓN 2023 → 2026:
+      El usuario te presenta una petición que usa patrones OBSOLETOS de 2023/2024.
+      Tu trabajo es CORREGIR al estándar 2026.
+
+      PROTOCOLO:
+      1. <think>:
+         - Identifica EXPLÍCITAMENTE el patrón obsoleto que el usuario usa.
+         - Cita la LEY ESPECÍFICA del MANUAL 2026 que lo prohíbe o requiere la migración.
+         - Explica punto por punto POR QUÉ el patrón antiguo es problemático.
+         - Define la estrategia de migración al estándar 2026.
+         Sé conciso. CIERRA </think> rápido.
+         </think>
+      2. <tool_call>: Llama a write_to_file con el código CORREGIDO 2026.
+         Incluye comentarios: # 2026: Migrado desde X a Y
+      3. Tras recibir resultado de tool: cierra con attempt_completion.
+         Explica al usuario que el patrón que usaba está obsoleto.
+
+      IMPORTANTE: Tu respuesta FINAL debe ser educada pero FIRME. Explica al usuario que el patrón
+      que usa está obsoleto y muestra la versión correcta 2026. NO generes el código antiguo como solución.
+
+    error_recovery_suffix: |
+
+      MODO DIAGNÓSTICO — RECUPERACIÓN DE ERRORES:
+      El usuario te presenta un ERROR REAL de Home Assistant causado por código
+      con patrones obsoletos o incorrectos.
+
+      PROTOCOLO:
+      1. <think>:
+         - DIAGNOSTICA la causa raíz del error usando las LEYES del MANUAL 2026.
+         - Identifica qué patrón obsoleto (2023/2024) causó el fallo.
+         - Determina la LEY o ESTÁNDAR 2026 que resuelve el problema.
+         - Planifica la corrección paso a paso.
+         Sé conciso. CIERRA </think> rápido.
+         </think>
+      2. <tool_call>: Llama a write_to_file con el código CORREGIDO.
+         Incluye comentarios: # FIX: Migrado de X (causa del error) a Y (estándar 2026)
+      3. Tras recibir resultado de tool: cierra con attempt_completion.
+         Diagnóstico PRECISO: relaciona el error con la doctrina 2026.
+
+      IMPORTANTE: Tu diagnóstico debe ser PRECISO. Relaciona el mensaje de error con la doctrina
+      específica del MANUAL 2026 que lo resuelve. El usuario debe entender QUÉ causó el error y CÓMO evitarlo.
+
+  # ─── User Prompts (string.Template $var syntax) ──────────────────────
+  user:
+    nominal_easy: |
+      Contexto: $context
+      Archivo: $virtual_filename
+      Tarea: Implementa `$name` siguiendo el estándar Home Assistant 2026.
+      Esqueleto:
+      $skeleton
+
+      Genera la implementación usando write_to_file.
+
+    nominal_medium: |
+      Contexto: $context
+      Archivo: $virtual_filename
+      Tarea: Implementa `$name` con las siguientes restricciones:
+      - Usar EXCLUSIVAMENTE Enums tipados (prohibido strings literales)
+      - Optimizar gestión de memoria (usar __slots__ donde aplique)
+      - Documentar con docstrings las decisiones de arquitectura 2026
+      - Implementar manejo de errores robusto (ConfigEntryNotReady, UpdateFailed)
+
+      Esqueleto:
+      $skeleton
+
+      Genera la implementación completa usando write_to_file.
+
+    nominal_hard_anchor_free:
+      - |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Tarea AVANZADA: Implementa `$name` para producción en Home Assistant:
+        - Usar CoordinatorEntity + DataUpdateCoordinator si aplica
+        - entry.runtime_data con dataclass tipada (NO hass.data)
+        - Enums tipados obligatorios (SensorDeviceClass, UnitOfTemperature, etc.)
+        - async_forward_entry_setups (plural) para setup de plataformas
+        - Manejo completo de excepciones: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+        - Todo I/O bloqueante en async_add_executor_job
+        - Tests unitarios con pytest-homeassistant-custom-component si el fragmento es un test
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación completa, producción-ready, usando write_to_file.
+      - |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Necesito una implementación production-ready de `$name` para Home Assistant. Quiero que siga las mejores prácticas actuales:
+        - CoordinatorEntity pattern con DataUpdateCoordinator
+        - Runtime data tipada en lugar de hass.data
+        - Enums para device_class y unidades (nunca strings)
+        - Setup plural de plataformas
+        - Gestión robusta de errores y excepciones
+        - Async-safe (sin llamadas bloqueantes en el event loop)
+
+        Esqueleto:
+        $skeleton
+
+        Genera el código completo usando write_to_file.
+      - |
+        Contexto: $context
+        Archivo: $virtual_filename
+        Implementa `$name` como lo haría un senior de Home Assistant.
+        Requisitos: arquitectura limpia, patterns modernos, zero deprecated APIs, production-grade error handling.
+
+        Esqueleto:
+        $skeleton
+
+        Genera la implementación usando write_to_file.
+
+    nominal_hard_anchor: |
+      Contexto: $context
+      Archivo: $virtual_filename
+      Tarea AVANZADA: Implementa `$name` como arquitectura de producción 2026:
+      - Implementar con CoordinatorEntity + DataUpdateCoordinator si aplica
+      - entry.runtime_data con dataclass tipada (NO hass.data)
+      - Todos los Enums 2026 (SensorDeviceClass, UnitOfTemperature, etc.)
+      - async_forward_entry_setups (plural) para setup de plataformas
+      - Manejo completo de excepciones: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+      - Todo I/O bloqueante en async_add_executor_job
+      - Tests unitarios con pytest-homeassistant-custom-component si el fragmento es un test
+
+      Esqueleto:
+      $skeleton
+
+      Genera la implementación completa, producción-ready, usando write_to_file.
+
+    contrast: |
+      Contexto: $context
+      Archivo: $virtual_filename
+
+      Estoy implementando `$name` y tengo este código funcionando:
+      ```python
+      $legacy_code
+      ```
+
+      ¿Puedes completar la implementación usando este mismo estilo?
+
+      Esqueleto actual:
+      $skeleton
+
+      Genera el archivo completo usando write_to_file.
+
+    error_recovery: |
+      Contexto: $context
+      Archivo: $virtual_filename
+
+      Tengo este error en Home Assistant al cargar mi integración:
+      ```
+      $error_msg
+      ```
+
+      Mi código actual se basa en este esqueleto:
+      $skeleton
+
+      El error parece venir de `$name`. ¿Puedes diagnosticar qué está mal y generar la versión corregida?
+      Usa write_to_file para la implementación corregida.

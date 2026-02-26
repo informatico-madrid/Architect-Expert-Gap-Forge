@@ -1,0 +1,27 @@
+# configs/homeassistant_expert.yaml
+base_dir: "."
+raw_subdir: "data/raw"
+output_subdir: "data/raw"
+output_category: "homeassistant-jinja_txt"
+category: "homeassistant-jinja"
+mode: "static"
+limit: 100
+
+# FILTRO DE ELITE: Solo extraemos lo que nos preocupa ahora
+extensions:
+  - ".jinja"
+  - ".jinja2"
+  - ".yaml"
+  - ".yml"
+
+# Aquí volcamos tu lista "Elite" del borrador
+static_repos:
+  - "Petro31/easy-time-jinja"
+  - "TheFes/cheapest-energy-hours"
+  - "TheFes/relative-time-plus"
+  - "SirGoodenough/Color-Multi-Tool"
+  - "joBr99/nspanel-lovelace-ui"
+  - "xaviml/controllerx"
+  - "bieniu/ha-shellies-discovery"
+  - "piitaya/lovelace-mushroom"
+  - "thomasloven/lovelace-card-mod"
