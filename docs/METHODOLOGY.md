@@ -57,6 +57,13 @@ Reasoning models (e.g., Qwen3-Thinking) are prone to "thought loops" and cogniti
 - **Thought-Loop Detection (Semantic RLE):** We employ a Run-Length Encoding approach on normalized reasoning sentences. If a model repeats the exact semantic phrase consecutively (or if it dominates >50% of the thought block), the sample is flagged for cognitive looping.
 - **Lazy-Code Penalization:** The auditor actively scans generated code for evasive developer patterns, such as literal `...` in function bodies, empty functions containing only `pass`, or comments like `# implement here`. 
 - **Zero-Entropy Detection:** Samples where the reasoning block is merely a semantic echo of the user prompt (zero added entropy) are identified and purged.
+
+### 3.4. Semantic Thought Distillation (Post-Processing)
+To maximize the "Signal-to-Noise" ratio in reasoning trajectories, AEGF employs a custom **Distillation Pipeline** (`distill_v11.py`). Unlike naive length-trimming, this process uses semantic similarity analysis (SequenceMatching) to:
+- **Iterative Cycle Pruning:** Identifies redundant revision loops where the model restarts its internal analysis, retaining only the final, most refined reasoning path.
+- **Code-Block Deduplication:** Eliminates repetitive intermediate code fences within the `<think>` block that match the final `<tool_call>` output.
+- **Refinement Preservation:** By implementing a "Keep Last" strategy, we ensure the training data represents a model that successfully self-corrects and converges on a solution.
+
 ---
 
 ## 4. Operational Orchestration
