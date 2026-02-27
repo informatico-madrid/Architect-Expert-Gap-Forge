@@ -52,6 +52,11 @@ We bridge the knowledge gap by using a **Core Architecture Manifest** as the pri
 - **Typed Context Architecture:** Mandatory strict typing for all runtime states, eliminating the use of untyped global dictionaries.
 - **Semantic Type Enforcement:** Replacement of string-based categorization with canonical Enumerations (Enums) to ensure compile-time safety and data integrity across modular boundaries.
 
+### 3.3. Cognitive Entropy & Thought-Loop Filtering
+Reasoning models (e.g., Qwen3-Thinking) are prone to "thought loops" and cognitive degradation when generating long-context trajectories. AEGF implements a rigorous Heuristic Health Audit to detect and purge these failure modes prior to NeMo Curation:
+- **Thought-Loop Detection (Semantic RLE):** We employ a Run-Length Encoding approach on normalized reasoning sentences. If a model repeats the exact semantic phrase consecutively (or if it dominates >50% of the thought block), the sample is flagged for cognitive looping.
+- **Lazy-Code Penalization:** The auditor actively scans generated code for evasive developer patterns, such as literal `...` in function bodies, empty functions containing only `pass`, or comments like `# implement here`. 
+- **Zero-Entropy Detection:** Samples where the reasoning block is merely a semantic echo of the user prompt (zero added entropy) are identified and purged.
 ---
 
 ## 4. Operational Orchestration

@@ -618,6 +618,9 @@ LDI = tokens(reasoning) / tokens(code)
 
 This ratio ensures the model "thinks" before it "acts."  (See `src/factory/*` for the dynamic threshold logic.)
 
+### 🔹 Heuristic Health Auditing (Thought-Loop Prevention)
+Before standard curation, we run a deep structural audit (`diagnose/dataset_health_check.py`). This detects "cognitive loops" in reasoning models (using semantic Run-Length Encoding), penalizes "lazy coding" (e.g., `pass` or `...` in implementations), and validates strict `<think>` to `<tool_call>` boundaries for ready training.
+
 ### 🔹 Anti-Schizophrenia Legacy Filter
 Fragments containing 2023/2024 deprecated patterns are detected via regex before Gold Injection. If legacy patterns are found, the sample is forced into `contrast` or `error_recovery` mode — never `nominal` — preventing the model from learning contradictory reasoning-to-code mappings.
 
