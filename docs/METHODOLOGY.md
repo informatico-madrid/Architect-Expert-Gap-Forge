@@ -58,12 +58,12 @@ Reasoning models (e.g., Qwen3-Thinking) are prone to "thought loops" and cogniti
 - **Lazy-Code Penalization:** The auditor actively scans generated code for evasive developer patterns, such as literal `...` in function bodies, empty functions containing only `pass`, or comments like `# implement here`. 
 - **Zero-Entropy Detection:** Samples where the reasoning block is merely a semantic echo of the user prompt (zero added entropy) are identified and purged.
 
-### 3.4. Semantic Thought Distillation (Post-Processing)
+### 3.4. Semantic Thought Distillation (Inline Stream Distillation)
 To maximize the "Signal-to-Noise" ratio in reasoning trajectories, AEGF employs a custom **Distillation Pipeline** (`distill_v11.py`). Unlike naive length-trimming, this process uses semantic similarity analysis (SequenceMatching) to:
 - **Iterative Cycle Pruning:** Identifies redundant revision loops where the model restarts its internal analysis, retaining only the final, most refined reasoning path.
 - **Code-Block Deduplication:** Eliminates repetitive intermediate code fences within the `<think>` block that match the final `<tool_call>` output.
 - **Refinement Preservation:** By implementing a "Keep Last" strategy, we ensure the training data represents a model that successfully self-corrects and converges on a solution.
-
+- **real-time entropy filter** that prunes redundant reasoning trajectories on-the-fly. This ensures that the expert model learns from the most refined iteration of a thought process, eliminating cognitive loops before they reach the persistent storage layer.
 ---
 
 ## 4. Operational Orchestration
