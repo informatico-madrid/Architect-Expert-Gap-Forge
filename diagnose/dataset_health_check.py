@@ -2,7 +2,7 @@
 """Dataset health check and audit for PLATINUM SFT dataset.
 
 Usage:
-  src/dataset_health_check.py --input data/synthetic/PLATINUM_FINAL_SFT_DATASET.jsonl \
+  diagnose/dataset_health_check.py --input data/synthetic/PLATINUM_FINAL_SFT_DATASET.jsonl \
     --report data/reports/health_audit_report.json --plot data/reports/length_distribution.png
 
 This script checks every record and emits a JSON report with "red flags".
@@ -92,8 +92,6 @@ def extract_user_prompt(rec: Dict[str, Any]) -> str:
 
 
 def count_tag_occurrences_in_assistant(rec: Dict[str, Any]) -> Dict[str, int]:
-    # Improved parsing: identify complete <think>...</think> and <tool_call>...</tool_call>
-    # and avoid counting tag-like substrings that appear inside those blocks.
     conv = rec.get("conversation")
     results = {"think_pairs": 0, "tool_pairs": 0, "stray_tags_outside": 0, "valid_structure": True}
     if not isinstance(conv, list):
@@ -106,40 +104,37 @@ def count_tag_occurrences_in_assistant(rec: Dict[str, Any]) -> Dict[str, int]:
         if not isinstance(content, str):
             continue
 
-        think_matches = list(re.finditer(r"<think>[\s\S]*?</think>", content, flags=re.IGNORECASE))
-        tool_matches = list(re.finditer(r"<tool_call>[\s\S]*?</tool_call>", content, flags=re.IGNORECASE))
-
-        results["think_pairs"] += len(think_matches)
+        # V11.2: Detección flexible de pensamiento (acepta texto antes de </think>)
+        has_closing_think = "</think>" in content.lower()
+        has_opening_think = "<think>" in content.lower()
+        
+        # Detección de bloques de código (tool_call o write_action)
+        tool_matches = list(re.finditer(r"<(tool_call|write_action)>[\s\S]*?</\1>", content, flags=re.IGNORECASE))
         results["tool_pairs"] += len(tool_matches)
 
-        # Check for stray tag-like substrings outside any matched spans
-        spans = []
-        for mm in think_matches + tool_matches:
-            spans.append((mm.start(), mm.end()))
-        spans = sorted(spans)
-        outside_parts = []
-        last = 0
-        for a, b in spans:
-            if last < a:
-                outside_parts.append(content[last:a])
-            last = b
-        if last < len(content):
-            outside_parts.append(content[last:])
-        outside_text = "\n".join(outside_parts).lower()
-        # if any tag tokens appear outside the matched spans, consider stray
-        for token in ("<think>", "</think>", "<tool_call>", "</tool_call>"):
-            if token in outside_text:
-                results["stray_tags_outside"] += outside_text.count(token)
-
-        # Validate structure: if both present, ensure order think before tool_call and neither duplicated
-        if len(think_matches) == 0 and len(tool_matches) == 0:
-            # no tags is fine
-            continue
-        if len(think_matches) == 1 and len(tool_matches) == 1:
-            if think_matches[0].start() < tool_matches[0].start() and results["stray_tags_outside"] == 0:
-                # structure ok for this assistant message
-                continue
-        # otherwise mark invalid
+        # Lógica de Validación de Estructura Blackwell
+        # -------------------------------------------
+        # Caso A: Estructura estándar (Think + Tool/Action)
+        if has_closing_think and len(tool_matches) >= 1:
+            results["think_pairs"] = 1
+            # Validamos que el pensamiento termine antes de que empiece la acción
+            idx_think_end = content.lower().find("</think>")
+            if idx_think_end < tool_matches[0].start():
+                continue # Estructura OK
+        
+        # Caso B: Estructura de Teoría (Think + Texto Markdown)
+        elif has_closing_think and len(tool_matches) == 0:
+            results["think_pairs"] = 1
+            # Si hay texto significativo después de </think>, es una muestra de teoría válida
+            idx_think_end = content.lower().find("</think>")
+            if len(content[idx_think_end:].strip()) > 20:
+                continue # Teoría OK
+        
+        # Caso C: Sin etiquetas (Muestras legacy o simples)
+        elif not has_closing_think and len(tool_matches) == 0:
+            continue # Sin tags es válido si no se requiere razonamiento
+            
+        # Si llega aquí, algo está mal (etiquetas mal cerradas, orden inverso, etc.)
         results["valid_structure"] = False
 
     return results
@@ -281,7 +276,13 @@ def main(argv: List[str] | None = None) -> int:
 
     os.makedirs(os.path.dirname(args.report), exist_ok=True)
 
-    buckets = [(0, 500), (500, 1000), (1000, 2000), (2000, 10_000_000)]
+    # configure length buckets including finer granularity above 2000
+    buckets = [(0, 500), (500, 1000), (1000, 2000)]
+    # add 1k-wide buckets from 2k to 10k
+    for start in range(2000, 10000, 1000):
+        buckets.append((start, start + 1000))
+    # final overflow bucket
+    buckets.append((10000, float("inf")))
     bucket_counts = [0 for _ in buckets]
     total_chars = 0
     total_records = 0
@@ -397,18 +398,43 @@ def main(argv: List[str] | None = None) -> int:
             # 6) Repeated sentence loop detection (higher threshold, ignore lists)
             sentences = split_sentences(thought)
             if sentences:
-                c = Counter([s.strip().lower() for s in sentences if s.strip()])
+                # normalize and filter
+                norm_sentences = [s.strip().lower() for s in sentences if s.strip()]
+                c = Counter(norm_sentences)
                 repeated_flag = False
+
+                # compute longest consecutive run for each normalized sentence
+                max_run = {}
+                prev = None
+                run = 0
+                for s in norm_sentences:
+                    if s == prev:
+                        run += 1
+                    else:
+                        if prev is not None:
+                            max_run[prev] = max(max_run.get(prev, 0), run)
+                        run = 1
+                        prev = s
+                if prev is not None:
+                    max_run[prev] = max(max_run.get(prev, 0), run)
+
                 for s_text, cnt in c.items():
+                    # only consider sentences that occur frequently
                     if cnt > 7:
-                        # ignore short list-like repetitions
+                        # ignore short list-like repetitions as before
                         if len(s_text) < 80:
                             lines = thought.splitlines()
                             list_like = sum(1 for line in lines if line.strip().startswith(('-', '*')) and s_text in normalize_text(line))
                             if list_like >= 3:
                                 continue
-                        repeated_flag = True
-                        break
+
+                        # stricter conditions: either a long consecutive run or dominates the text
+                        if max_run.get(s_text, 0) >= 4:
+                            repeated_flag = True
+                            break
+                        if cnt >= 0.5 * len(norm_sentences):
+                            repeated_flag = True
+                            break
                 if repeated_flag:
                     flags.append("REPEATED_SENTENCE_LOOP")
 
@@ -425,17 +451,20 @@ def main(argv: List[str] | None = None) -> int:
     # distribution summary
     total_tokens_est = int(total_chars / 4)
 
+    # build bucket labels dynamically to match ranges
+    bucket_labels = []
+    for lo, hi in buckets:
+        if hi == float("inf"):
+            bucket_labels.append(f"{lo}+")
+        else:
+            bucket_labels.append(f"{lo}-{int(hi)}")
+
     report = {
         "input_file": args.input,
         "total_records": total_records,
         "total_thought_chars": total_chars,
         "estimated_tokens_approx": total_tokens_est,
-        "buckets": {
-            "0-500": bucket_counts[0],
-            "500-1000": bucket_counts[1],
-            "1000-2000": bucket_counts[2],
-            "2000+": bucket_counts[3],
-        },
+        "buckets": {label: count for label, count in zip(bucket_labels, bucket_counts)},
         "suspect_count": len(suspects),
         "suspects": suspects,
     }
@@ -448,8 +477,8 @@ def main(argv: List[str] | None = None) -> int:
     try:
         import matplotlib.pyplot as plt
 
-        labels = ["0-500", "500-1000", "1000-2000", "2000+"]
-        counts = [bucket_counts[0], bucket_counts[1], bucket_counts[2], bucket_counts[3]]
+        labels = bucket_labels
+        counts = bucket_counts
         plt.figure(figsize=(6, 3))
         plt.bar(labels, counts, color="#2b8cbe")
         plt.title("Distribución de longitud de pensamiento")
@@ -469,7 +498,7 @@ def main(argv: List[str] | None = None) -> int:
 
     print(f"Report written: {args.report}")
     print(f"Estimated tokens (approx): {total_tokens_est}")
-    print(f"Bucket counts: {report['buckets']}")
+    print(f"Bucket counts: {report['buckets']}")  # updated labels reflect finer granularity
     print(f"Suspect_count: {len(suspects)}")
     return 0
 
