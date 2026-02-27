@@ -75,3 +75,8 @@ To maximize the "Signal-to-Noise" ratio in reasoning trajectories, AEGF employs 
 
 ### 4.2. Integrity & Data Sanitization
 Post-generation, all samples undergo a **Sanitization Pass** to ensure that no real-world laboratory secrets, specific network identifiers, or private credentials migrate into the public dataset, replacing them with standardized agnostic placeholders.
+
+### 4.3. Deterministic ID Mapping & Resume Resilience
+To prevent data contamination and ensure 100% unique training samples, AEGF V11 implements a deterministic ID generation protocol:
+- **Collision-Proof IDs:** IDs are derived from a composite hash of the functional unit name and its virtual file path, ensuring uniqueness across large-scale repositories.
+- **Atomic Resume Protocol:** The factory strictly decouples the checkpoint source from the output stream, allowing for stateful interruptions and safe dataset merging without record duplication.

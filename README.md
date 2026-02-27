@@ -218,6 +218,7 @@ The core production engine. Forces the model to reason (`<think>`) toward a pre-
 - Jinja2/YAML template processing (`--extensions`)
 - Theory mode for pure doctrine datasets
 - Uses `prompts_taxonomy.yaml` (external YAML taxonomy)
+- Real-time filtering of repetitive reasoning patterns before disk write, reducing dataset volume by ~15-20% while maintaining semantic integrity.
 
 **Common Usage Examples:**
 

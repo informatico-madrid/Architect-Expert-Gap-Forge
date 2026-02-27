@@ -37,6 +37,20 @@ import yaml
 from openai import AsyncOpenAI
 from tqdm import tqdm
 
+# Think-block distillation (inline, runs before each write)
+try:
+    from think_filter import apply_to_record as _think_filter_apply
+except ImportError:
+    try:
+        import importlib.util as _ilu, os as _os
+        _tf_path = _os.path.join(_os.path.dirname(__file__), "think_filter.py")
+        _tf_spec = _ilu.spec_from_file_location("think_filter", _tf_path)
+        _tf_mod = _ilu.module_from_spec(_tf_spec)
+        _tf_spec.loader.exec_module(_tf_mod)
+        _think_filter_apply = _tf_mod.apply_to_record
+    except Exception:
+        _think_filter_apply = None  # disabled gracefully if module not found
+
 # ======================================================================
 # CONFIGURATION
 # ======================================================================
@@ -610,14 +624,13 @@ async def generate_theory_sample_async(
                 ck_key = make_checkpoint_key(
                     theory_frag['name'], theory_frag['virtual_filename'], rep=rep
                 )
-                frag_hash = hashlib.md5(
-                    f"theory_{theory_frag['name']}_{theory_subtype}_{rep}".encode()
-                ).hexdigest()[:12]
 
+                # Use checkpoint_key as canonical id base for theory samples
+                # (avoids collisions when different documents share the same section title)
                 return {
                     "status": "accepted",
                     "sample": {
-                        "id": f"v11_theory_{frag_hash}",
+                        "id": f"v11_theory_{ck_key}",
                         "conversation": [
                             {"role": "user", "content": user_msg},
                             {"role": "assistant", "content": final_assistant}
@@ -1429,12 +1442,12 @@ async def generate_sample_async(
                 }
 
                 # Canonical sample id must reflect the final example_type/evol_difficulty
+                # Use the checkpoint key (already present in metadata) to ensure
+                # uniqueness across files/fragments with the same `name`.
                 actual_type = metadata.get("example_type", example_type)
-                actual_difficulty = metadata.get("evol_difficulty")
-                frag_hash = hashlib.md5(
-                    f"{frag['name']}_{actual_type}_{actual_difficulty or ''}".encode()
-                ).hexdigest()[:12]
-                sample_id = f"v11_{actual_type}_{frag_hash}"
+                # actual_difficulty intentionally not included here because the
+                # checkpoint_key encodes fragment+file identity deterministically.
+                sample_id = f"v11_{actual_type}_{ck_key}"
 
                 return {
                     "status": "accepted",
@@ -1631,6 +1644,7 @@ async def process_fragment(
     writer_ok: AsyncFileWriter,
     writer_bad: AsyncFileWriter,
     tracker: ProgressTracker,
+    args,
     jinja_guide: str = "",
 ):
     """Process a fragment: assign type, generate, write result.
@@ -1685,17 +1699,32 @@ async def process_fragment(
             )
         # Ensure sample ID matches the actual example type (recompute if needed)
         try:
-            frag_hash = hashlib.md5(
-                f"{frag['name']}_{actual_type}_{actual_difficulty or ''}".encode()
-            ).hexdigest()[:12]
-            new_sample_id = f"v11_{actual_type}_{frag_hash}"
+            # Ensure canonical id uses checkpoint_key (unique per fragment+file)
+            ck = sample.get('metadata', {}).get('checkpoint_key')
+            if not ck:
+                # Fallback to deterministic checkpoint generation
+                ck = make_checkpoint_key(frag['name'], frag['virtual_filename'])
+            new_sample_id = f"v11_{actual_type}_{ck}"
             if sample.get('id') != new_sample_id:
                 sample['id'] = new_sample_id
         except Exception as _e:
-            logger.debug("Could not recompute sample id for %s: %s", frag['name'], _e)
+            logger.debug("Could not ensure sample id for %s: %s", frag['name'], _e)
 
         is_kept = sample["metadata"].get("curation", {}).get("kept", True)
         if is_kept:
+            # ── THINK FILTER: strip redundant reasoning before writing ──
+            if _think_filter_apply is not None and getattr(args, 'think_filter', True):
+                sample, _tf_stats = _think_filter_apply(
+                    sample, min_chars=getattr(args, 'think_filter_min_chars', 5000)
+                )
+                if _tf_stats:
+                    logger.debug(
+                        "think_filter [%s]: %.1f%% reduction (%d→%d chars)",
+                        sample.get('id', '?'),
+                        _tf_stats['reduction_pct'],
+                        _tf_stats['original_chars'],
+                        _tf_stats['distilled_chars'],
+                    )
             await writer_ok.write(sample)
         else:
             # Auto-rejected by post-validation (poison patterns)
@@ -1781,33 +1810,39 @@ async def main_async(args):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         output_path = OUTPUT_DIR / f"v11_theory_{timestamp}.jsonl"
         rejected_path = OUTPUT_DIR / f"v11_theory_rejected_{timestamp}.jsonl"
+
+        # --output always controls WHERE to write (highest priority)
         if args.output:
             output_path = Path(args.output)
 
-        # RESUME: load checkpoint if exists
+        # RESUME: only controls WHERE to read checkpoint from.
+        # If --output was not specified, also append to the resume file.
         done_keys = set()
         if args.resume:
-            output_path = Path(args.resume)
-            stem = output_path.stem
-            rejected_path = output_path.parent / f"{stem.replace('theory', 'theory_rejected')}.jsonl"
-            if not rejected_path.exists():
-                rejected_path = output_path.parent / f"{stem}_rejected.jsonl"
-            done_keys = load_checkpoint(output_path, rejected_path)
-            if done_keys:
-                before = len(expanded_frags)
-                expanded_frags = [
-                    tf for tf in expanded_frags
-                    if make_checkpoint_key(
-                        tf['name'], tf['virtual_filename'], rep=tf.get('_rep')
-                    ) not in done_keys
-                ]
-                logger.info(
-                    "RESUME: %d already processed, %d pending (of %d total)",
-                    before - len(expanded_frags), len(expanded_frags), before
-                )
-                if not expanded_frags:
-                    logger.info("All fragments already processed. Nothing to do.")
-                    return
+            resume_path = Path(args.resume)
+            if not args.output:
+                # No explicit output → append new samples to the resume file
+                output_path = resume_path
+            # Derive rejected path from output_path (never the same as output)
+            out_stem = output_path.stem
+            rejected_path = output_path.parent / f"{out_stem}_rejected.jsonl"
+            # Read checkpoint from the resume file (and its sidecar rejected file)
+            resume_rejected = resume_path.parent / f"{resume_path.stem}_rejected.jsonl"
+            done_keys = load_checkpoint(resume_path, resume_rejected)
+            before = len(expanded_frags)
+            expanded_frags = [
+                tf for tf in expanded_frags
+                if make_checkpoint_key(
+                    tf['name'], tf['virtual_filename'], rep=tf.get('_rep')
+                ) not in done_keys
+            ]
+            logger.info(
+                "RESUME: %d already processed, %d pending (of %d total) [%d checkpoint keys loaded]",
+                before - len(expanded_frags), len(expanded_frags), before, len(done_keys)
+            )
+            if not expanded_frags:
+                logger.info("All fragments already processed. Nothing to do.")
+                return
 
         writer_ok = AsyncFileWriter(output_path)
         writer_bad = AsyncFileWriter(rejected_path)
@@ -1821,7 +1856,13 @@ async def main_async(args):
                 client, args.model, tfrag, master, changelog, semaphore
             )
             if result["status"] == "accepted":
-                await writer_ok.write(result["sample"])
+                # ── THINK FILTER (theory mode) ──
+                _tsample = result["sample"]
+                if _think_filter_apply is not None and getattr(args, 'think_filter', True):
+                    _tsample, _tf_stats = _think_filter_apply(
+                        _tsample, min_chars=getattr(args, 'think_filter_min_chars', 5000)
+                    )
+                await writer_ok.write(_tsample)
             else:
                 await writer_bad.write({
                     "frag": result.get("fragment_name", "unknown"),
@@ -1956,31 +1997,36 @@ async def main_async(args):
     output_path = OUTPUT_DIR / f"v11_diversified_{timestamp}.jsonl"
     rejected_path = OUTPUT_DIR / f"v11_rejected_{timestamp}.jsonl"
 
+    # --output always controls WHERE to write (highest priority)
     if args.output:
         output_path = Path(args.output)
 
-    # RESUME: load checkpoint if exists
+    # RESUME: only controls WHERE to read checkpoint from.
+    # If --output was not specified, also append to the resume file.
     done_keys = set()
     if args.resume:
-        output_path = Path(args.resume)
-        stem = output_path.stem
-        rejected_path = output_path.parent / f"{stem.replace('diversified', 'rejected')}.jsonl"
-        if not rejected_path.exists():
-            rejected_path = output_path.parent / f"{stem}_rejected.jsonl"
-        done_keys = load_checkpoint(output_path, rejected_path)
-        if done_keys:
-            before = len(all_fragments)
-            all_fragments = [
-                f for f in all_fragments
-                if make_checkpoint_key(f['name'], f['virtual_filename']) not in done_keys
-            ]
-            logger.info(
-                "RESUME: %d already processed, %d pending (of %d total)",
-                before - len(all_fragments), len(all_fragments), before
-            )
-            if not all_fragments:
-                logger.info("All fragments already processed. Nothing to do.")
-                return
+        resume_path = Path(args.resume)
+        if not args.output:
+            # No explicit output → append new samples to the resume file
+            output_path = resume_path
+        # Derive rejected path from output_path (never the same as output)
+        out_stem = output_path.stem
+        rejected_path = output_path.parent / f"{out_stem}_rejected.jsonl"
+        # Read checkpoint from the resume file (and its sidecar rejected file)
+        resume_rejected = resume_path.parent / f"{resume_path.stem}_rejected.jsonl"
+        done_keys = load_checkpoint(resume_path, resume_rejected)
+        before = len(all_fragments)
+        all_fragments = [
+            f for f in all_fragments
+            if make_checkpoint_key(f['name'], f['virtual_filename']) not in done_keys
+        ]
+        logger.info(
+            "RESUME: %d already processed, %d pending (of %d total) [%d checkpoint keys loaded]",
+            before - len(all_fragments), len(all_fragments), before, len(done_keys)
+        )
+        if not all_fragments:
+            logger.info("All fragments already processed. Nothing to do.")
+            return
 
     writer_ok = AsyncFileWriter(output_path)
     writer_bad = AsyncFileWriter(rejected_path)
@@ -2003,6 +2049,7 @@ async def main_async(args):
         process_fragment(
             client, args.model, frag, master, changelog,
             semaphore, writer_ok, writer_bad, tracker,
+            args,
             jinja_guide=jinja_guide,
         )
         for frag in all_fragments
@@ -2093,6 +2140,18 @@ Usage examples:
     parser.add_argument(
         "--seed", type=int, default=42,
         help="Seed for reproducibility (default: 42)"
+    )
+    parser.add_argument(
+        "--think-filter", dest="think_filter", action="store_true", default=True,
+        help="Apply inline think-block distillation before writing (default: enabled)"
+    )
+    parser.add_argument(
+        "--no-think-filter", dest="think_filter", action="store_false",
+        help="Disable inline think-block distillation"
+    )
+    parser.add_argument(
+        "--think-filter-min-chars", type=int, default=5000, metavar="N",
+        help="Only distil think blocks >= N chars (default: 5000)"
     )
     parser.add_argument(
         "--resume", type=str, default=None, metavar="PATH",
