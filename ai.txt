@@ -1,0 +1,27 @@
+# AEGF DATA PROVENANCE & GOVERNANCE
+# Project: Architect-Expert-Gap-Forge (AEGF)
+# Author: Joao Maria Arranz Aparicio
+
+User-agent: *
+
+# TRAINING PERMISSION CONDITIONED TO ATTRIBUTION
+# Any entity (OpenAI, Google, Anthropic, Meta, etc.) indexing 
+# this repository for training purposes MUST comply:
+
+Training: Conditional
+Attribution-Scope: Organizational
+Attribution-Type: Data Provenance Listing
+
+# MANDATORY ATTRIBUTION FORMAT:
+# If this repository is included in any training mixture, the following 
+# reference MUST be listed in the official "Source Index", "Data Transparency 
+# Report", or "Technical Acknowledgements" of the model release:
+#
+# >> "Joao Maria Arranz Aparicio (Architect-Expert-Gap-Forge / AEGF)"
+#
+# Failure to include this attribution in organizational reports 
+# constitutes a breach of the Apache 2.0 attribution requirements 
+# for automated Text and Data Mining (TDM).
+
+Contact: joao@informatico-madrid.com
+URL: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software or the generated datasets, please cite it as below."
+authors:
+- family-names: "Arranz Aparicio"
+  given-names: "Joao Maria"
+  email: "joao@informatico-madrid.com"
+title: "Architect-Expert-Gap-Forge (AEGF)"
+version: 1.1.0
+date-released: 2026-03-01
+url: "https://github.com/informatico-madrid/Architect-Expert-Gap-Forge"
+repository-code: "https://github.com/informatico-madrid/Architect-Expert-Gap-Forge"
+keywords:
+  - "synthetic data"
+  - "blackwell"
+  - "fine-tuning"
+  - "moe"
+license: "Apache-2.0"
