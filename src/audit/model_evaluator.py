@@ -53,6 +53,11 @@ Environment
   AEGF_TEMPERATURE      Sampling temp    (default: 0.3)
   AEGF_RETRIES          API retry count  (default: 3)
   AEGF_RETRY_DELAY      Retry backoff s  (default: 5.0)
+
+  # Professor/Judge backend (Google Gemini — avoids using local GPU resources)
+  AEGF_PROFESSOR_BACKEND  gemini|vllm|auto   (default: auto = gemini if GOOGLE_API_KEY set)
+  AEGF_GEMINI_MODEL       Gemini model name  (default: gemini-2.0-flash)
+  GOOGLE_API_KEY          Google API key     (required when using Gemini backend)
 """
 
 from __future__ import annotations
@@ -77,6 +82,17 @@ from typing import Any, Dict, List, Optional
 import requests
 from dotenv import load_dotenv
 
+# Optional: Google Gemini SDK — professor calls run on Gemini to avoid
+# competing with local GPU training on vLLM.
+_GEMINI_AVAILABLE = False
+try:
+    from google import genai as _genai              # type: ignore[import]
+    from google.genai import types as _genai_types  # type: ignore[import]
+    _GEMINI_AVAILABLE = True
+except ImportError:
+    _genai = None        # type: ignore[assignment]
+    _genai_types = None  # type: ignore[assignment]
+
 # ---------------------------------------------------------------------------
 # Config & Constants
 # ---------------------------------------------------------------------------
@@ -100,6 +116,9 @@ DEFAULT_MAX_TOKENS = int(os.getenv("AEGF_MAX_TOKENS", "65536"))   # 64 k — no 
 DEFAULT_TEMPERATURE = float(os.getenv("AEGF_TEMPERATURE", "0.3"))
 DEFAULT_RETRIES = int(os.getenv("AEGF_RETRIES", "3"))
 DEFAULT_RETRY_DELAY = float(os.getenv("AEGF_RETRY_DELAY", "5.0"))
+# Professor/Judge backend
+DEFAULT_PROFESSOR_BACKEND = os.getenv("AEGF_PROFESSOR_BACKEND", "auto")
+DEFAULT_GEMINI_MODEL = os.getenv("AEGF_GEMINI_MODEL", "gemini-2.0-flash")
 
 # Scoring weights per LLM-judged dimension
 SCORING_WEIGHTS = {
@@ -480,17 +499,122 @@ def load_exam(audit_dir: str) -> List[ExamRecord]:
     return records
 
 
+# ---------------------------------------------------------------------------
+# Professor Backend — Gemini (remote) or vLLM (local)
+# ---------------------------------------------------------------------------
+
+
+def call_gemini(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    model: str = DEFAULT_GEMINI_MODEL,
+    max_tokens: int = 2048,
+    temperature: float = 0.7,
+) -> str:
+    """Call Google Gemini API and return the response text.
+
+    Uses the `google-genai` SDK (pip install google-genai).
+    Requires the GOOGLE_API_KEY environment variable.
+    API calls are independent of the local GPU — safe to call while vLLM trains.
+    """
+    if not _GEMINI_AVAILABLE:
+        raise RuntimeError(
+            "google-genai not installed. Run: pip install google-genai"
+        )
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "GOOGLE_API_KEY environment variable not set. "
+            "Export it, add to .env, or use --professor-backend vllm"
+        )
+
+    client = _genai.Client(api_key=api_key)
+    config = _genai_types.GenerateContentConfig(
+        system_instruction=system_prompt or "",
+        max_output_tokens=max_tokens,
+        temperature=temperature,
+        response_mime_type="text/plain",
+    )
+    t0 = time.perf_counter()
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=config,
+    )
+    latency = (time.perf_counter() - t0) * 1000
+    logger.debug("  ← Gemini %s: %.0fms", model, latency)
+    return response.text
+
+
+def _resolve_professor_backend(backend: str) -> str:
+    """Map 'auto' to the effective backend ('gemini' or 'vllm')."""
+    if backend != "auto":
+        return backend
+    if _GEMINI_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
+        return "gemini"
+    logger.debug(
+        "GOOGLE_API_KEY not set or google-genai unavailable — routing professor to vllm"
+    )
+    return "vllm"
+
+
+def _call_professor(
+    prompt: str,
+    system_prompt: Optional[str],
+    professor_backend: str,
+    gemini_model: str = DEFAULT_GEMINI_MODEL,
+    vllm_judge_model: str = DEFAULT_JUDGE_MODEL,
+    api_url: str = DEFAULT_API_URL,
+    max_tokens: int = 1024,
+    temperature: float = 0.7,
+    retries: int = DEFAULT_RETRIES,
+    retry_delay: float = DEFAULT_RETRY_DELAY,
+) -> str:
+    """Route a professor (exam-gen / judge) call to Gemini or vLLM.
+
+    Gemini runs on Google's servers — does not compete with local GPU training.
+    Falls back to vLLM automatically when GOOGLE_API_KEY is not set.
+    """
+    effective = _resolve_professor_backend(professor_backend)
+    if effective == "gemini":
+        logger.debug("Professor → Gemini (%s)", gemini_model)
+        return call_gemini(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            model=gemini_model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+    logger.debug("Professor → vLLM (%s)", vllm_judge_model)
+    result = call_vllm_with_retry(
+        prompt=prompt,
+        model=vllm_judge_model,
+        api_url=api_url,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        system_prompt=system_prompt,
+        retries=retries,
+        retry_delay=retry_delay,
+    )
+    return result.response
+
+
 def generate_exam_question(
     sample: SampleRecord,
     judge_model: str,
     api_url: str = DEFAULT_API_URL,
     retries: int = DEFAULT_RETRIES,
     retry_delay: float = DEFAULT_RETRY_DELAY,
+    professor_backend: str = DEFAULT_PROFESSOR_BACKEND,
+    gemini_model: str = DEFAULT_GEMINI_MODEL,
+    validate: bool = False,
 ) -> ExamRecord:
     """Ask the professor model to synthesise a novel exam question for a sample.
 
+    Routes to Gemini (default when GOOGLE_API_KEY set) or vLLM.
     Parses the JSON response from the professor and returns an ExamRecord.
     Falls back to the original user_prompt if the professor response is invalid.
+    In validate mode uses reduced token budget (512) for fast end-to-end testing.
     """
     ref_code = sample.reference_response
     # Truncate reference to ~4000 chars to stay within context for prompt
@@ -509,18 +633,21 @@ def generate_exam_question(
     eval_criteria: List[str] = []
     target_patterns: List[str] = []
 
+    max_exam_tokens = 512 if validate else 1024
     try:
-        result = call_vllm_with_retry(
+        raw = _call_professor(
             prompt=user_msg,
-            model=judge_model,
-            api_url=api_url,
-            max_tokens=2048,   # exam questions are short
-            temperature=0.7,   # slightly creative
             system_prompt=PROFESSOR_EXAM_SYSTEM,
+            professor_backend=professor_backend,
+            gemini_model=gemini_model,
+            vllm_judge_model=judge_model,
+            api_url=api_url,
+            max_tokens=max_exam_tokens,
+            temperature=0.7,
             retries=retries,
             retry_delay=retry_delay,
         )
-        raw = result.response.strip()
+        raw = raw.strip()
         # Strip accidental markdown fences
         raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
         raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE).strip()
@@ -858,11 +985,16 @@ def llm_judge_score(
     api_url: str = DEFAULT_API_URL,
     retries: int = DEFAULT_RETRIES,
     retry_delay: float = DEFAULT_RETRY_DELAY,
+    professor_backend: str = DEFAULT_PROFESSOR_BACKEND,
+    gemini_model: str = DEFAULT_GEMINI_MODEL,
+    validate: bool = False,
 ) -> Dict[str, Any]:
     """Ask the professor model to score baseline vs adapter on the rubric.
 
+    Routes to Gemini (default when GOOGLE_API_KEY set) or vLLM.
     Returns a dict with keys 'baseline', 'adapter' (each a scores dict)
     and 'reasoning' (str). Falls back to regex scoring on any error.
+    In validate mode uses reduced token budget (512) for fast end-to-end testing.
     """
     criteria_text = "\n".join(
         f"  {i+1}. {c}" for i, c in enumerate(exam.eval_criteria)
@@ -879,18 +1011,21 @@ def llm_judge_score(
         adapter_response=a_resp,
     )
 
+    max_judge_tokens = 512 if validate else 1024
     try:
-        result = call_vllm_with_retry(
+        raw = _call_professor(
             prompt=user_msg,
-            model=judge_model,
-            api_url=api_url,
-            max_tokens=1024,
-            temperature=0.1,   # low temp for consistent scoring
             system_prompt=PROFESSOR_JUDGE_SYSTEM,
+            professor_backend=professor_backend,
+            gemini_model=gemini_model,
+            vllm_judge_model=judge_model,
+            api_url=api_url,
+            max_tokens=max_judge_tokens,
+            temperature=0.1,   # low temp for consistent scoring
             retries=retries,
             retry_delay=retry_delay,
         )
-        raw = result.response.strip()
+        raw = raw.strip()
         raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
         raw = re.sub(r"```\s*$", "", raw, flags=re.MULTILINE).strip()
         parsed = json.loads(raw)
@@ -933,13 +1068,14 @@ def compute_scorecard(
     api_url: str = DEFAULT_API_URL,
     retries: int = DEFAULT_RETRIES,
     retry_delay: float = DEFAULT_RETRY_DELAY,
+    professor_backend: str = DEFAULT_PROFESSOR_BACKEND,
+    gemini_model: str = DEFAULT_GEMINI_MODEL,
+    validate: bool = False,
 ) -> ScoreCard:
     """Compute a multi-dimensional LLM-judged scorecard comparing adapter vs baseline.
 
-    Calls the professor model to score both responses. Falls back transparently
-    to regex scoring if the judge API call fails.
-
-    Also appends regex-detected legacy/modern pattern notes for diagnostics.
+    Routes professor calls to Gemini or vLLM via _call_professor.
+    Falls back transparently to regex scoring if the judge call fails.
     """
     judgment = llm_judge_score(
         exam=exam,
@@ -949,6 +1085,9 @@ def compute_scorecard(
         api_url=api_url,
         retries=retries,
         retry_delay=retry_delay,
+        professor_backend=professor_backend,
+        gemini_model=gemini_model,
+        validate=validate,
     )
 
     a = judgment["adapter"]
@@ -1227,6 +1366,9 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
             api_url=args.api_url,
             retries=args.retries,
             retry_delay=args.retry_delay,
+            professor_backend=args.professor_backend,
+            gemini_model=args.gemini_model,
+            validate=args.validate,
         )
         exam_records.append(record)
 
@@ -1319,6 +1461,9 @@ def cmd_score(args: argparse.Namespace) -> None:
             api_url=args.api_url,
             retries=args.retries,
             retry_delay=args.retry_delay,
+            professor_backend=args.professor_backend,
+            gemini_model=args.gemini_model,
+            validate=args.validate,
         )
         scorecards.append(sc)
 
@@ -1345,6 +1490,10 @@ def cmd_score(args: argparse.Namespace) -> None:
 
 def cmd_full(args: argparse.Namespace) -> None:
     """Run the full 5-stage evaluation pipeline."""
+    if args.validate:
+        args.sample_size = 1
+        args.force = True
+        logger.info("Validate mode: sample_size=1, force=True — minimal-token end-to-end flow test")
     logger.info("=== AEGF Quality Gate — High-Fidelity Exam Pipeline ===")
 
     logger.info("--- Stage 1/5: Stratified Sampling ---")
@@ -1402,6 +1551,22 @@ def _shared_parser() -> argparse.ArgumentParser:
         "--judge-model",
         default=DEFAULT_JUDGE_MODEL,
         help=f"Professor/judge model for exam generation and scoring (default: {DEFAULT_JUDGE_MODEL})",
+    )
+    shared.add_argument(
+        "--professor-backend",
+        default=DEFAULT_PROFESSOR_BACKEND,
+        choices=["auto", "gemini", "vllm"],
+        help="Backend for professor/judge calls: auto|gemini|vllm (default: auto; auto selects gemini if GOOGLE_API_KEY is set)",
+    )
+    shared.add_argument(
+        "--gemini-model",
+        default=DEFAULT_GEMINI_MODEL,
+        help=f"Gemini model name when professor-backend=gemini (default: {DEFAULT_GEMINI_MODEL})",
+    )
+    shared.add_argument(
+        "--validate",
+        action="store_true",
+        help="1-example end-to-end flow test (Gemini→vLLM→Gemini) with minimal token spend",
     )
     shared.add_argument(
         "--sample-size",
