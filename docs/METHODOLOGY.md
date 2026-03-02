@@ -109,3 +109,36 @@ Post-generation, all samples undergo a **Sanitization Pass** to ensure that no r
 To prevent data contamination and ensure 100% unique training samples, AEGF V11 implements a deterministic ID generation protocol:
 - **Collision-Proof IDs:** IDs are derived from a composite hash of the functional unit name and its virtual file path, ensuring uniqueness across large-scale repositories.
 - **Atomic Resume Protocol:** The factory strictly decouples the checkpoint source from the output stream, allowing for stateful interruptions and safe dataset merging without record duplication.
+
+### 4.4. Quality Gate — Dual-Inference Evaluation
+
+Before weight consolidation (merger), every training run passes through an automated **Quality Gate** (`src/audit/model_evaluator.py`). This mandatory checkpoint ensures that the LoRA adapter demonstrably improves upon the base model.
+
+#### Protocol
+
+1. **Stratified Sampling:** A deterministic sample (seed=42) is drawn from the training dataset, balanced across all four example types (nominal, contrast, error\_recovery, theory). The sample is persisted so both inference passes use identical prompts.
+
+2. **Dual Inference:** The same prompts are sent to both the base model (control group) and the LoRA adapter (treatment group) via the vLLM OpenAI-compatible API.
+
+3. **Multi-Dimensional Scoring:** Each response pair is scored across five dimensions:
+   - **Structural Fidelity (30%):** Code-level similarity to the gold reference using SequenceMatcher.
+   - **API Modernity (25%):** Ratio of modern HA 2026 API patterns (`entry.runtime_data`, `SensorDeviceClass`, `async_forward_entry_setups`) versus legacy patterns (`hass.data`, singular `async_forward_entry_setup`).
+   - **Reasoning Depth (20%):** Quality indicators within `<think>` blocks — structured reasoning, technical terminology, edge-case awareness.
+   - **Completeness (15%):** Coverage of all functions and classes present in the gold reference.
+   - **Style Consistency (10%):** Adherence to AEGF structural conventions (`<think>` → `<tool_call>`, no AI apologies, docstrings).
+
+4. **Verdict:** A composite score (0–100) determines the gate outcome:
+   - **≥ 80 → PASS:** Safe to merge.
+   - **60–79 → CONDITIONAL:** Manual review recommended.
+   - **40–59 → WARN:** Additional training or data review needed.
+   - **< 40 → FAIL:** Do NOT merge.
+
+#### Artifacts
+
+The evaluator produces:
+- `eval_sample.json` — Frozen sample with record IDs for reproducibility.
+- `inference_baseline.json` / `inference_adapter.json` — Raw model responses with latency metrics.
+- `audit_report_v11.md` — Human-readable comparative report with per-record scorecards.
+- `audit_report_v11.json` — Machine-readable structured report for CI integration.
+
+This stage prevents regression leaks — if the adapter has not learned the modern API patterns from the training data, the gate catches it before weights are permanently merged.

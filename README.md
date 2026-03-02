@@ -577,6 +577,73 @@ make train
 
 **Protocol:** Rank-64 RSLoRA (Rank-Stabilized LoRA) over Qwen3-30B-A3B-MoE. Optimized for `sm_120` kernels and `bf16` precision. Docker stack defined in `deploy/docker/`.
 
+### Stage 4.5 — Quality Gate (`src/audit/`)
+**Engine:** `model_evaluator.py`
+
+Automated dual-inference evaluation pipeline that acts as a **mandatory gate** between training and weight consolidation. The evaluator compares the base model (control) against the LoRA adapter (trained) on a stratified sample from the training dataset.
+
+#### Workflow
+
+```
+┌─────────┐    ┌──────────┐    ┌─────────┐    ┌─────────┐
+│ Sample  │───▶│ Baseline │───▶│ Adapter │───▶│  Score  │
+│ Extract │    │ Infer    │    │ Infer   │    │ Report  │
+└─────────┘    └──────────┘    └─────────┘    └─────────┘
+    ▼               ▼              ▼              ▼
+ eval_sample   inference_     inference_     audit_report
+   .json       baseline.json  adapter.json    _v11.md
+```
+
+#### Quick Start
+
+```bash
+# Full pipeline (sample → baseline → adapter → score)
+python -m src.audit.model_evaluator full \
+    --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \
+    --base-model qwen3-30b-a3b-thinking-fp8 \
+    --adapter-model platinum_adapter
+
+# Or step-by-step
+python -m src.audit.model_evaluator sample  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
+python -m src.audit.model_evaluator baseline --model qwen3-30b-a3b-thinking-fp8
+python -m src.audit.model_evaluator adapter  --model platinum_adapter
+python -m src.audit.model_evaluator score
+```
+
+#### Scoring Dimensions
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| Structural Fidelity | 30% | Code similarity to gold reference |
+| API Modernity | 25% | Modern HA 2026 patterns vs legacy |
+| Reasoning Depth | 20% | Quality of `<think>` block analysis |
+| Completeness | 15% | Coverage of functions/classes from reference |
+| Style Consistency | 10% | Adherence to AEGF conventions |
+
+The evaluator emits a **Final Grade (0–100)** with a verdict: `PASS` (≥80), `CONDITIONAL` (60–79), `WARN` (40–59), or `FAIL` (<40).
+
+#### Output
+
+| File | Description |
+|------|-------------|
+| `data/audit/eval_sample.json` | Persisted stratified sample (deterministic seed) |
+| `data/audit/inference_baseline.json` | Base model responses |
+| `data/audit/inference_adapter.json` | LoRA adapter responses |
+| `data/audit/audit_report_v11.md` | Full comparative Markdown report |
+| `data/audit/audit_report_v11.json` | Structured JSON report |
+
+#### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AEGF_VLLM_API_URL` | `http://localhost:8000/v1` | vLLM API endpoint |
+| `AEGF_AUDIT_DIR` | `data/audit` | Output directory |
+| `AEGF_SAMPLE_SIZE` | `20` | Records per evaluation sample |
+| `AEGF_BASE_MODEL` | `qwen3-30b-a3b-thinking-fp8` | Base model name |
+| `AEGF_ADAPTER_MODEL` | `platinum_adapter` | LoRA adapter name |
+| `AEGF_MAX_TOKENS` | `4096` | Max generation tokens |
+| `AEGF_TEMPERATURE` | `0.3` | Sampling temperature |
+
 ### Stage 5 — Merger (`src/merger/`)
 **Engine:** `surgical_merge.py`
 
@@ -705,6 +772,7 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 - [x] **Phase 2: Architecture.** Implementation of the modular 5-stage factory (Discovery to SFT) with NeMo Curator integration.
 - [x] **Phase 3: Data Synthesis.** Production of **67k+ high-density trajectories** using the V11 Diversified Engine (GI/GS Protocol).
 - [x] **Phase 4: Expert SFT.** Deep-scale training of Qwen3-30B-MoE using **RSLoRA** and **Selective Loss Masking** (sm_120 optimized).
+- [x] **Phase 4.5: Quality Gate.** Automated dual-inference evaluation (`src/audit/model_evaluator.py`) comparing base vs adapter on stratified samples.
 - [ ] **Phase 5: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
 
 ## 📄 License & Data Governance
