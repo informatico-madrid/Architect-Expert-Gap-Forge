@@ -256,7 +256,7 @@ python src/factory/production_v11.py --gap-dir /path/to/master/docs \
 | `--workers` | int | 8 | Number of parallel async workers (2-64 recommended) |
 | `--model` | str | `qwen3-30b-a3b-thinking-fp8` | Inference model endpoint |
 | `--base-url` | str | `http://localhost:8000/v1` | vLLM server URL |
-| `--api-key` | str | `sk-master-bunker-2026` | Server API key |
+| `--api-key` | str | `xxxx-xxxxx-xxxxx-xxxxx` | Server API key |
 | `--output` | str | Generated | Custom JSONL output path |
 | `--seed` | int | 42 | Reproducibility seed |
 | `--resume` | str | None | Path to previous JSONL to resume from checkpoint |
@@ -342,7 +342,7 @@ python src/factory/agentic_gen.py --test 3 --workers 2 --seed 123
 | `--workers` | int | 8 | Parallel async workers (2-64 recommended) |
 | `--model` | str | `qwen3-30b-a3b-thinking-fp8` | Inference model |
 | `--base-url` | str | `http://localhost:8000/v1` | vLLM server URL |
-| `--api-key` | str | `sk-master-bunker-2026` | Server API key |
+| `--api-key` | str | `xxxxx-xxxxxx-xxxxx-xxxxx` | Server API key |
 | `--output` | str | Generated | Custom JSONL output path |
 | `--seed` | int | 42 | Reproducibility seed |
 | `--resume` | str | None | Path to previous JSONL for checkpoint resume |
