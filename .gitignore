@@ -10,6 +10,13 @@ __pycache__/
 .venv/
 .env
 
+# Ignore local configurations
+configs/**/*.yaml
+configs/**/*.json
+
+# But keep the examples
+!configs/**/*.example
+
 # --- ARTIFACTS DE ENTRENAMIENTO ---
 nvme_offload/
 outputs/
