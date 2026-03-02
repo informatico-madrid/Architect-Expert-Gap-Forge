@@ -1,3 +1,8 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+# Licensed under the Apache License, Version 2.0
+
 # Extiende la imagen oficial de NeMo Curator
 # Añade dependencias python faltantes para AEGF curation pipeline
 FROM nvcr.io/nvidia/nemo-curator:25.09
