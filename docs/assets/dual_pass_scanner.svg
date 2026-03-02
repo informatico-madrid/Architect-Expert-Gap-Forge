@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="100%" height="360">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333" />
+    </marker>
+    <marker id="arrow-filled" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#111" />
+    </marker>
+  </defs>
+  <style>
+    .node { fill:#fff; stroke:#333; stroke-width:1.5px; rx:8; ry:8 }
+    .node-title { font: 700 14px/1.1 sans-serif; fill:#111 }
+    .node-sub { font: 12px/1.1 sans-serif; fill:#333 }
+    .dashed { stroke-dasharray:6 4; }
+    .muted { fill:#666 }
+  </style>
+
+  <!-- Row 1 -->
+  <rect class="node" x="20"  y="20"  width="180" height="56"></rect>
+  <text class="node-title" x="110" y="44" text-anchor="middle">Start — repository scan</text>
+
+  <rect class="node" x="220" y="20" width="180" height="56"></rect>
+  <text class="node-title" x="310" y="44" text-anchor="middle">Pass 1\nSystem Mapping</text>
+
+  <rect class="node" x="420" y="20" width="180" height="56"></rect>
+  <text class="node-title" x="510" y="36" text-anchor="middle">Emit TIPO‑5</text>
+  <text class="node-sub" x="510" y="52" text-anchor="middle">GOVERNANCE_RULES bundle (cached)</text>
+
+  <rect class="node" x="620" y="20" width="180" height="56"></rect>
+  <text class="node-title" x="710" y="44" text-anchor="middle">Pass 2\nModular Fragmentation</text>
+
+  <!-- Row 2 -->
+  <rect class="node" x="420" y="120" width="180" height="56"></rect>
+  <text class="node-title" x="510" y="144" text-anchor="middle">Abstraction Layer</text>
+  <text class="node-sub" x="510" y="160" text-anchor="middle">replace bodies with docstrings</text>
+
+  <rect class="node" x="620" y="120" width="180" height="56"></rect>
+  <text class="node-title" x="710" y="144" text-anchor="middle">Fragments</text>
+  <text class="node-sub" x="710" y="160" text-anchor="middle">signatures + governance + metadata</text>
+
+  <rect class="node" x="820" y="120" width="180" height="56"></rect>
+  <text class="node-title" x="910" y="144" text-anchor="middle">Gold‑injection decision</text>
+  <text class="node-sub" x="910" y="160" text-anchor="middle">legacy patterns?</text>
+
+  <!-- Row 3 -->
+  <rect class="node" x="520" y="230" width="160" height="48"></rect>
+  <text class="node-title" x="600" y="257" text-anchor="middle">Gold Injected</text>
+  <text class="node-sub" x="600" y="273" text-anchor="middle">attach ground‑truth code</text>
+
+  <rect class="node" x="720" y="230" width="160" height="48"></rect>
+  <text class="node-title" x="800" y="257" text-anchor="middle">Gold Skip</text>
+  <text class="node-sub" x="800" y="273" text-anchor="middle">use remediation implementation</text>
+
+  <rect class="node" x="980" y="200" width="160" height="56"></rect>
+  <text class="node-title" x="1060" y="232" text-anchor="middle">Output → staged fragments for factory</text>
+
+  <!-- Links -->
+  <line x1="200" y1="48" x2="220" y2="48" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="400" y1="48" x2="420" y2="48" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="600" y1="48" x2="620" y2="48" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="760" y1="48" x2="820" y2="148" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="600" y1="148" x2="620" y2="148" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="800" y1="148" x2="820" y2="148" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  <!-- GOV dashed -> AB -->
+  <path d="M510 76 L510 120" stroke="#666" stroke-width="2" class="dashed" marker-end="url(#arrow)"></path>
+
+  <!-- DEC -> GI and DEC -> GS -->
+  <line x1="910" y1="176" x2="600" y2="256" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="1000" y1="176" x2="800" y2="256" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  <!-- GI -> OUT and GS -> OUT -->
+  <line x1="680" y1="256" x2="980" y2="228" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+  <line x1="880" y1="256" x2="980" y2="228" stroke="#333" stroke-width="2" marker-end="url(#arrow)"></line>
+
+  <!-- labels small -->
+  <text x="665" y="248" font-size="12" fill="#333">No legacy</text>
+  <text x="860" y="248" font-size="12" fill="#333">Legacy detected</text>
+
+</svg>

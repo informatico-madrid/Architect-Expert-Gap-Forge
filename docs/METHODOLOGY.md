@@ -9,6 +9,35 @@ The V11.0 pipeline employs a **Context-Aware Dual-Pass Scanner** to resolve cros
 - **Pass 2 (Modular Fragmentation):** Extracts functional units using Abstract Syntax Tree (AST) parsing, maintaining the structural hierarchy of the automation component.
 - **Abstraction Layer:** Implementation bodies are replaced by high-seniority docstrings. This forces the generative model to derive the 2026 architectural standards from signatures, imports, and global system governance rather than rote copying.
 
+![Dual-Pass Scanner](assets/dual_pass_scanner.svg)
+
+<details>
+<summary>Fuente Mermaid (si el SVG no carga)</summary>
+
+```mermaid
+flowchart TD
+	S([Start — repository scan])
+	P1[Pass 1\\nSystem Mapping\\n(directory & coordinator detection)]
+	GOV([Emit TIPO‑5\\nGOVERNANCE_RULES bundle\\n(cached)])
+	P2[Pass 2\\nModular Fragmentation\\n(AST parsing → fragments)]
+	AB[Abstraction Layer\\n(replace bodies with docstrings)]
+	FR[Fragments\\n(signatures + governance + metadata)]
+	DEC{Gold‑injection decision\\n(legacy patterns?)}
+	GI[Gold Injected\\n(attach ground‑truth code)]
+	GS[Gold Skip\\n(use remediation implementation)]
+	OUT([Output → staged fragments for factory])
+
+	S --> P1 --> GOV --> P2 --> AB --> FR --> DEC
+	GOV -.-> AB
+	DEC -->|No legacy| GI --> OUT
+	DEC -->|Legacy detected| GS --> OUT
+
+	classDef gov fill:#f9f,stroke:#333,stroke-width:1px;
+	class GOV gov;
+```
+
+</details>
+
 ### 1.2. Hybrid Gold-Injection Protocol (GI vs. GS)
 To ensure maximum fidelity while allowing for the remediation of legacy technical debt, we implement a conditional injection logic:
 - **GI (Gold Injected):** If the source code is detected as "Clean" (compliant with modern asynchronous standards), the Assistant's reasoning is paired with the original **Ground-Truth Code**.

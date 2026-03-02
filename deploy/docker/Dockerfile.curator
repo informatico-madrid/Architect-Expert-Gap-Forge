@@ -1,0 +1,24 @@
+# Extiende la imagen oficial de NeMo Curator
+# Añade dependencias python faltantes para AEGF curation pipeline
+FROM nvcr.io/nvidia/nemo-curator:25.09
+
+# El venv no tiene pip instalado. Lo bootstrapeamos usando el wheel del sistema
+# (wheels son zips válidos para PYTHONPATH) y luego lo instalamos dentro del venv.
+RUN PYTHONPATH=/usr/share/python-wheels/pip-24.0-py3-none-any.whl \
+    /opt/venv/bin/python3 -m pip install \
+        --upgrade pip "setuptools>=77.0.3,<80" wheel && \
+    /opt/venv/bin/python3 -m pip install \
+        "datasketch>=1.9.0" \
+        "python-dotenv>=1.0.1" \
+        "pydantic>=2.9.2"
+
+# Valida que las dependencias se instalaron correctamente
+RUN /opt/venv/bin/python3 -c "import datasketch; print(f'datasketch {datasketch.__version__} OK')" && \
+    /opt/venv/bin/python3 -c "import ray; print('ray OK')" && \
+    /opt/venv/bin/python3 -c "import nemo_curator; print('nemo_curator OK')"
+
+# Limpia caché de pip
+RUN /opt/venv/bin/python3 -m pip cache purge
+
+WORKDIR /workspace
+CMD ["sleep", "infinity"]

@@ -404,194 +404,176 @@ python src/factory/production_v11.py --gap-dir /custom/master/docs --taxonomy /c
 ### Stage 3 — Curation (`src/curation/`)
 **Engine:** `nemo_curator_suite.py` — Unified AEGF Curation Suite
 
-A single, composable command-line engine combining **distributed quality filtering** (NeMo Curator + Ray) and **semantic deduplication** (MinHash-LSH) into a professional, agnóstic pipeline.
+A single, composable command-line engine that chains **four independent curation phases** into a professional pipeline. Phases can run individually or in any combination.
 
-#### 🔹 Architecture
+> ⚠️ **Phase 1 (`--filter`) requires the `aegf_curator` Docker container** (image: `nvcr.io/nvidia/nemo-curator:25.09`). Phases 0, 2 and 3 are pure-Python and run anywhere without special dependencies.
 
-The suite implements two independent, composable phases:
+#### 🔹 Launching the Container (required for Phase 1)
 
-1. **Phase 1 — Quality Filtering** (`--filter`):
-   - Distributed via Ray + NeMo Curator Pipeline
-   - Extracts assistant turns and applies a battery of NeMo text-quality filters
-   - Removes low-quality responses (word count, symbol ratios, boilerplate, repeated n-grams, etc.)
+The container is defined in `deploy/docker/docker-compose.yaml` (service `curator`) and configured via `deploy/.env`:
 
-2. **Phase 2 — Semantic Deduplication** (`--dedup`):
-   - In-memory MinHash-LSH clustering (via `datasketch`)
-   - Falls back to naive O(n²) Jaccard if `datasketch` unavailable
-   - Heuristic quality scoring and exemplar selection (best quality → longest text → lowest index)
-
-Both phases can run **independently or chained**:
 ```bash
-# Phase 1 only
---filter --apply
+# 1. Set variables in deploy/.env (already configured for "The Bunker"):
+#    NEMO_IMAGE=nvcr.io/nvidia/nemo-curator:25.09
+#    AEGF_PROJECT_ROOT=../../   # mounts as /workspace inside the container
 
-# Phase 2 only
---dedup --apply
+# 2. Start the curator container:
+cd deploy/docker
+docker compose up -d curator
 
-# Both phases, pipeline style (filter output → temp file → dedup → final output)
---filter --dedup --apply
+# 3. Open a shell inside the container:
+docker exec -it aegf_curator bash
+
+# 4. Run the suite from inside the container
+#    (project root is mounted at /workspace):
+python /workspace/src/curation/nemo_curator_suite.py \
+    --input  /workspace/data/synthetic/CLEAN.jsonl \
+    --output /workspace/data/synthetic/CURATED.jsonl \
+    --exact-dedup --filter --structural --dedup --apply
 ```
+
+#### 🔹 Four-Phase Architecture
+
+| Phase | Flag | Container required | Description |
+|-------|------|--------------------|-------------|
+| **0 — Exact dedup** | `--exact-dedup` | No | SHA-256 hash on full conversation; removes byte-identical records. |
+| **1 — NeMo filter** | `--filter` | **Yes** | Distributed Ray + NeMo Curator battery (word count, boilerplate, n-gram repetition, symbol ratio, etc.). |
+| **2 — Structural gate** | `--structural` | No | Syntax integrity (`</think><tool_call>`), think depth ≥ 500 chars, meta-speech detection, LDI on `<tool_call>` ≥ 0.15. |
+| **3 — Semantic dedup** | `--dedup` | No | MinHash-LSH near-duplicate clustering (`datasketch`); falls back to O(n²) Jaccard if unavailable. |
+
+Phases chain automatically in order. Intermediate results are written to temp files and cleaned up automatically.
 
 #### 🔹 CLI Reference
 
-**Required Arguments:**
+**Required I/O:**
 ```
---input    FILE      Path to source JSONL dataset
---output   FILE      Path to output JSONL dataset
+--input   FILE    Source JSONL dataset
+--output  FILE    Output JSONL dataset
 ```
 
 **Phase Selection (at least one required):**
 ```
---filter             Activate NeMo Curator quality filtering (requires nemo-curator[ray])
---dedup              Activate semantic deduplication via MinHash-LSH
+--exact-dedup    Phase 0: SHA-256 exact deduplication
+--filter         Phase 1: NeMo Curator quality filters  ⚠️  needs container
+--structural     Phase 2: Syntax, LDI, think-depth, meta-speech
+--dedup          Phase 3: MinHash-LSH semantic deduplication
 ```
 
-**Quality Filter Parameters** (`--filter`):
+**Execution flags:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `--min-words` | int | 80 | Minimum word count for assistant text |
-| `--max-symbol-ratio` | float | 0.10 | Max symbol-to-word ratio (10% = symbols are < 10% of text) |
-| `--max-non-alpha-ratio` | float | 0.25 | Max non-alphanumeric-to-text ratio |
-| `--max-url-ratio` | float | 0.20 | Max URL-to-text ratio |
-| `--max-no-endmark-ratio` | float | 0.85 | Max fraction of sentences without terminal punctuation |
-| `--max-boilerplate-ratio` | float | 0.40 | Max boilerplate-string ratio |
-| `--max-repeated-lines` | float | 0.70 | Max fraction of repeated lines |
-| `--max-ngram-ratio` | float | 0.08 | Max repeating top-N-gram ratio |
-| `--ngram-size` | int | 3 | N-gram order for repetition filter |
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--apply` | off | Persist output. Without this, runs in **dry-run** mode (statistics only). |
+| `--sample N` | 0 (all) | Process only the first N records for quick validation. |
+| `--reports-dir DIR` | `data/reports` | Directory for the JSON statistics report. |
 
-**Dedup Parameters** (`--dedup`):
+**Phase 1 — NeMo filter thresholds:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `--dedup-threshold` | float | 0.85 | MinHash similarity threshold for near-duplicate clustering (0.0–1.0) |
-| `--quality-cutoff` | float | 0.30 | Minimum heuristic quality score to retain (0.0–1.0) — below this, samples are removed |
-| `--minhash-perms` | int | 128 | Number of MinHash permutations (higher = more accurate, slower) |
-| `--shingle-k` | int | 5 | Character shingle size for MinHash signatures |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--min-words` | 80 | Minimum word count in assistant text |
+| `--max-symbol-ratio` | 0.10 | Max symbol-to-word ratio |
+| `--max-non-alpha-ratio` | 0.25 | Max non-alphanumeric ratio |
+| `--max-url-ratio` | 0.20 | Max URL-to-text ratio |
+| `--max-no-endmark-ratio` | 0.85 | Max sentences without terminal punctuation |
+| `--max-boilerplate-ratio` | 0.40 | Max boilerplate-string ratio |
+| `--max-repeated-lines` | 0.70 | Max fraction of repeated lines |
+| `--max-ngram-ratio` | 0.08 | Max repeating top-N-gram ratio |
+| `--ngram-size` | 3 | N-gram order for repetition filter |
 
-**Execution & Reporting:**
+**Phase 2 — Structural gate thresholds:**
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `--reports-dir` | str | `data/reports` | Directory for JSON statistics and removed-item preview |
-| `--apply` | flag | — | Write output file. Without this, runs in dry-run mode (statistics only) |
-| `--sample` | int | 0 | Process only first N records for testing (0 = all) |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--min-think-chars` | 500 | Minimum characters required in `<think>` block |
+| `--ldi-min-ratio` | 0.15 | Minimum Logic Density Index on `<tool_call>` block (Blackwell calibrated formula, range 0–1) |
+| `--no-attempt-check` | off | Disable `attempt_completion` check (use for single-turn `production_v11` data) |
+
+**Phase 3 — Dedup thresholds:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--dedup-threshold` | 0.85 | MinHash similarity threshold (0–1) |
+| `--quality-cutoff` | 0.30 | Minimum heuristic quality score to retain |
+| `--minhash-perms` | 128 | MinHash permutations (higher = more accurate, slower) |
+| `--shingle-k` | 5 | Character shingle size for MinHash signatures |
+
+> **Note:** Intermediate temporary files created during multi-phase runs live in `/tmp` and are automatically cleaned up. The engine retries with new names if a stale path already exists, so you should no longer encounter "File exists" errors when running multiple times.
 
 #### 🔹 Usage Examples
 
-**Example 1: Filter Only (NeMo Curator)**
+**Full pipeline — all four phases (inside container):**
 ```bash
-python src/curation/nemo_curator_suite.py \
-    --input  data/synthetic/CLEAN.jsonl \
-    --output data/synthetic/FILTERED.jsonl \
-    --filter \
-    --min-words 100 \
-    --max-symbol-ratio 0.08 \
+python /workspace/src/curation/nemo_curator_suite.py \
+    --input  /workspace/data/synthetic/v11_clean.jsonl \
+    --output /workspace/data/synthetic/CURATED.jsonl \
+    --exact-dedup --filter --structural --dedup \
+    --min-words 80 --dedup-threshold 0.85 --quality-cutoff 0.30 \
+    --reports-dir /workspace/data/reports \
     --apply
 ```
-Output: Filtered dataset with quality-curated samples. Stats saved to `data/reports/nemo_curator_suite_dedup_report.json`.
 
-**Example 2: Deduplicate Only (Dry-Run)**
+**Structural + semantic dedup only (no container needed):**
 ```bash
 python src/curation/nemo_curator_suite.py \
-    --input  data/synthetic/FILTERED.jsonl \
+    --input  data/synthetic/v11_clean.jsonl \
     --output data/synthetic/CURATED.jsonl \
-    --dedup \
-    --dedup-threshold 0.90 \
-    --quality-cutoff 0.35
+    --exact-dedup --structural --dedup \
+    --no-attempt-check \
+    --apply
 ```
-Output: Statistics printed, NO file written (dry-run mode). Useful for estimating dedup impact.
 
-**Example 3: Both Phases (Filter → Dedup)**
+**Dry-run — statistics without writing files:**
 ```bash
 python src/curation/nemo_curator_suite.py \
-    --input  data/synthetic/CLEAN.jsonl \
+    --input  data/synthetic/v11_clean.jsonl \
     --output data/synthetic/CURATED.jsonl \
-    --filter --dedup \
-    --min-words 80 \
-    --dedup-threshold 0.85 \
-    --quality-cutoff 0.30 \
-    --reports-dir data/reports \
-    --apply
+    --exact-dedup --structural --dedup
+# → Prints full curation report; no file written.
 ```
-Operation:
-1. Filters via NeMo to intermediate temp file
-2. Deduplicates temp → final output
-3. Cleans up temp file automatically
-4. Saves report + removed-items preview to `data/reports/`
 
-**Example 4: Quick Testing (Sampling)**
+**Quick validation on 1 000 records:**
 ```bash
 python src/curation/nemo_curator_suite.py \
-    --input  data/synthetic/LARGE.jsonl \
-    --output /tmp/test_curated.jsonl \
-    --filter --dedup \
-    --sample 1000 \
-    --apply
+    --input  data/synthetic/v11_clean.jsonl \
+    --output /tmp/test.jsonl \
+    --structural --dedup --sample 1000 --apply
 ```
-Processes first 1,000 records for validation before full run.
 
-#### 🔹 Output & Reports
+#### 🔹 Output
 
-After running with `--apply`, the suite generates:
+After `--apply`, the suite writes:
 
-1. **Curated JSONL** (`--output`):
-   - High-quality records with metadata annotation: `metadata.curation = {kept: true, quality_score: <float>}`
-
-2. **Statistics Report** (`data/reports/nemo_curator_suite_dedup_report.json`):
+1. **Curated JSONL** (`--output`): records annotated with `metadata.curation = {kept: true, quality_score: <float>}`.
+2. **Statistics report** (`data/reports/nemo_curator_suite_report.json`):
    ```json
    {
-     "total_input": 10000,
-     "filtered_low_quality": 1500,
-     "removed_semantic_duplicates": 2000,
-     "final_total": 6500
+     "timestamp": "2026-03-01T10:00:00Z",
+     "total_input": 17155,
+     "removed": {
+       "exact_duplicates": 42,
+       "nemo_filtered": 310,
+       "invalid_syntax": 88,
+       "shallow_thinking": 120,
+       "meta_speech": 35,
+       "low_ldi": 97,
+       "low_quality_score": 201,
+       "semantic_duplicates": 465,
+       "total": 1358
+     },
+     "total_output": 15797,
+     "retention_pct": 92.09
    }
    ```
 
-3. **Removed Items Preview** (`data/reports/nemo_curator_suite_removed_preview.jsonl`):
-   - All low-quality and duplicate records (useful for inspection and debugging)
+### Stage 4 — Training
+**Engine:** Axolotl
 
-#### 🔹 Dependency Requirements
-
-**For `--filter` (NeMo Curator + Ray):**
-```bash
-pip install 'nemo-curator[ray]'
+ ##### ⚡ Quick Start
+ ```bash
+make preprocess 
+make train
 ```
-
-**For `--dedup` (MinHash-LSH — optional but recommended):**
-```bash
-pip install datasketch
-```
-
-If `datasketch` is absent, the suite falls back to exact O(n²) Jaccard clustering. For large datasets (> 5K records), installing `datasketch` is highly recommended for performance.
-
-#### 🔹 Dry-Run vs. Persistent Modes
-
-**Dry-Run** (default — no `--apply`):
-```bash
-python src/curation/nemo_curator_suite.py \
-    --input data/CLEAN.jsonl --output /tmp/out.jsonl --dedup
-# → Prints statistics only; no output file written
-# → Useful for estimating dedup impact before committing
-```
-
-**Persistent** (with `--apply`):
-```bash
-python src/curation/nemo_curator_suite.py \
-    --input data/CLEAN.jsonl --output data/CURATED.jsonl --dedup --apply
-# → Writes curated JSONL + reports
-```
-
-#### 🔹 Legacy Scripts
-
-The original scripts are preserved for reference:
-- `src/curation/nemo_advanced_curation.py` — Quality filtering only
-- `src/curation/nemo_semantic_dedup.py` — Dedup only
-
-The unified suite (`nemo_curator_suite.py`) is the recommended interface for all new curation workflows.
-
-### Stage 4 — Training _(In Progress)_
-**Engine:** Axolotl on Dual RTX 5090 (Blackwell, `sm_120`)
 
 **Protocol:** Rank-64 RSLoRA (Rank-Stabilized LoRA) over Qwen3-30B-A3B-MoE. Optimized for `sm_120` kernels and `bf16` precision. Docker stack defined in `deploy/docker/`.
 
@@ -611,19 +593,69 @@ Rather than asking the model to invent code, we selectively inject production‑
 We mitigate hallucinations by injecting a **Temporal Context Layer**. By comparing the model's cutoff date with current `CHANGELOG.md` and `Breaking Changes` files, we train the agent to recognize and correct outdated patterns.
 
 ### 🔹 Logic Density Index (LDI) Filtering
-Our curation pipeline filters out "cognitive noise" by enforcing a minimum ratio of reasoning tokens to execution tokens. Earlier iterations used a saturating formula with a K‑factor (1200), but the current implementation is simply:
+Our curation pipeline filters out "cognitive noise" by measuring the density of code tokens relative to natural-language tokens inside the `<tool_call>` block. The current **Blackwell Calibrated** formula is:
 
 ```
-LDI = tokens(reasoning) / tokens(code)
+ldi_score = code_tokens / (natural_tokens + code_tokens)
+ldi_final = ldi_score × (code_tokens / (code_tokens + K))   # K = 1200
 ```
 
-This ratio ensures the model "thinks" before it "acts."  (See `src/factory/*` for the dynamic threshold logic.)
+The K‑factor dampens LDI for very short snippets (preventing false positives on micro-blocks). The output is in the range **[0, 1)** — typical well-formed records score between 0.10 and 0.45. The default acceptance threshold is **0.15** (`--ldi-min-ratio`). Records below this threshold are considered "verbosity-dominated" and discarded. (See `src/factory/*` for the dynamic threshold logic used during generation.)
 
 ### 🔹 Heuristic Health Auditing (Thought-Loop Prevention)
 Before standard curation, we run a deep structural audit (`diagnose/dataset_health_check.py`). This detects "cognitive loops" in reasoning models (using semantic Run-Length Encoding), penalizes "lazy coding" (e.g., `pass` or `...` in implementations), and validates strict `<think>` to `<tool_call>` boundaries for ready training.
 
 ### 🔹 Anti-Schizophrenia Legacy Filter
 Fragments containing 2023/2024 deprecated patterns are detected via regex before Gold Injection. If legacy patterns are found, the sample is forced into `contrast` or `error_recovery` mode — never `nominal` — preventing the model from learning contradictory reasoning-to-code mappings.
+
+### 🔹 AEGF Dataset Audit — Unified Quality Inspector
+
+After generation, the full dataset is audited with a single-entry-point tool (`diagnose/aegf_dataset_audit.py`) that replaces the four individual diagnostic scripts previously used during manual quality analysis. The auditor streams the entire JSONL and applies five independent detectors in a single pass:
+
+| Detector | What it flags |
+|---|---|
+| **legacy** | Deprecated HA patterns in the assistant response (`hass.data[]`, `TEMP_CELSIUS`, `async_forward_entry_setup`, blocking `requests.*` / `time.sleep` / `urllib.request`, `self._state`). |
+| **blocking_io** | Synchronous I/O calls (`requests.`, `time.sleep`, `urllib.request`) inside what should be async write actions. |
+| **contradiction** | Blocking I/O present in the final action *and* the reasoning chain references async / non-blocking — the model "thinks" async but "writes" sync. Direct training poison. |
+| **poison** | Jinja2 / template rendering artifacts and structural stubs that must never appear in a training corpus. |
+| **gold_problem** | A record has `gold_injected=True` but the generated action text is empty, a placeholder stub, or below the minimum length threshold. |
+
+Every flagged record is further classified as **gold injection** (`metadata.gold_injected == True`) or **gold skiping** (`False` / absent), giving a two-axis quality matrix per category.
+
+The legacy detector additionally decomposes results by `example_type` and response location:
+- `nominal`: any legacy in the response is a direct training error.
+- `contrast` / `error_recovery`: further split into `legacy_in_response`, `legacy_in_both` (user context + response), and `legacy_in_user_only` (less severe — the model received deprecated context but produced clean code).
+
+The tool has two operating modes:
+
+```bash
+# Mode 1 — Report only (no data modified):
+python diagnose/aegf_dataset_audit.py \
+    --input  data/synthetic/v11_diversified_*.jsonl \
+    --report-dir data/reports \
+    --mode   report \
+    --health-sample 60          # optional five-pillar health score
+
+# Mode 2 — Produce a cleaned dataset (after validating the report):
+python diagnose/aegf_dataset_audit.py \
+    --input  data/synthetic/v11_diversified_*.jsonl \
+    --output data/synthetic/v11_clean.jsonl \
+    --report-dir data/reports \
+    --mode   clean
+```
+
+> **Safety contract**: `--mode clean` writes a *new* JSONL and never touches the original file. The original dataset is the source of truth at all times.
+
+Output artefacts (all written to `--report-dir`):
+
+| File | Description |
+|---|---|
+| `aegf_audit_report.json` | Full structured report with all flagged IDs, per-category gold-label breakdowns, legacy-by-type decomposition, and optional health score. |
+| `aegf_audit_summary.txt` | Human-readable table suitable for quick review. |
+| `{category}_ids.txt` | One ID per line for each detector category. |
+| `{category}_ids_labeled.txt` | `id<TAB>gold injection\|gold skiping` TSV for downstream triage. |
+| `problem_ids_snapshot_YYYYMMDD.json` | Immutable reference snapshot of all flagged IDs captured before remediation. |
+| `problem_id_summary.json` | Master summary updated with latest audit metadata. |
 
 ---
 
@@ -669,7 +701,7 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 
 ## 🛠️ Roadmap & Development Status
 
-- [x] **Phase 1: Infrastructure.** Stable NVIDIA Blackwell vLLM stack with native `sm_120` support and 300GB NVMe Offloading.
+- [x] **Phase 1: Infrastructure.** Stable NVIDIA sm_120 vLLM stack with native Blackwell kernel support and 300GB NVMe Offloading.
 - [x] **Phase 2: Architecture.** Implementation of the modular 5-stage factory (Discovery to SFT) with NeMo Curator integration.
 - [x] **Phase 3: Data Synthesis.** Production of **67k+ high-density trajectories** using the V11 Diversified Engine (GI/GS Protocol).
 - [x] **Phase 4: Expert SFT.** Deep-scale training of Qwen3-30B-MoE using **RSLoRA** and **Selective Loss Masking** (sm_120 optimized).

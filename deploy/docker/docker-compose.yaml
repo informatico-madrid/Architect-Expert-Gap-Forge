@@ -6,6 +6,7 @@ services:
     privileged: true
     ipc: host
     shm_size: ${AEGF_SHM_SIZE}
+    cpuset: ${CPU_SET}
     ulimits:
       memlock: -1
       stack: 67108864
@@ -33,26 +34,46 @@ services:
   trainer:
     <<: *axolotl-base
     container_name: aegf_trainer
-    command: sleep infinity # Cambiar por el comando de 'accelerate launch' en producción
+    command: >
+      bash -c "
+      apt-get update && 
+      export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True" &&
+      accelerate launch 
+      --num_processes=2 
+      --num_machines=1 
+      --mixed_precision=bf16 
+      -m axolotl.cli.train /workspace/data_factory/configs/stage_4_training/axolotl/config.yaml &&
+      sleep infinity
+      "services:
 
   # --- SERVICIO DE PREPROCESADO ---
   preprocessor:
     <<: *axolotl-base
     container_name: aegf_preprocessor
+    image: axolotlai/axolotl:main-latest
+    user: "0:0"
     command: >
-      bash -c "python -m axolotl.cli.preprocess data_factory/configs/stage_4_training/axolotl/config.yaml --debug"
-
+      bash -c "python3 -m axolotl.cli.preprocess /workspace/data_factory/configs/stage_4_training/axolotl/config.yaml --debug"
+  
   # --- SERVICIO DE INFERENCIA ---
   inference_station:
     <<: *axolotl-base
     container_name: aegf_inference
     command: >
-      bash -c "python3 -m axolotl.cli.inference data_factory/configs/inference/config_infer.yaml"
+      bash -c "python3 -m axolotl.cli.inference /workspace/data_factory/configs/inference/config_infer.yaml"
 
   # --- SERVICIO NEMO CURATOR (STAGE 3) ---
   curator:
-    image: ${NEMO_IMAGE}
+    build:
+      context: .
+      dockerfile: Dockerfile.curator
+    image: nemo-curator-aegf:latest
     container_name: aegf_curator
+    # Exponer dashboard Ray en el host (puerto 8265)
+    ports:
+      - "8265:8265"
+    environment:
+      - RAY_DASHBOARD_HOST=0.0.0.0
     volumes:
       - ${AEGF_PROJECT_ROOT}:/workspace
     command: ["sleep", "infinity"]

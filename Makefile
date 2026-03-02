@@ -15,3 +15,9 @@ shell:
 
 logs:
 	docker exec -it aegf_trainer docker logs -f aegf_trainer
+
+# --- NUEVO: Atajo para auditar los tokens ---
+preprocess:
+	docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) run --rm preprocessor
+train:
+	docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) run --user 0 trainer

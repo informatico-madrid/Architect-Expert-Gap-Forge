@@ -636,12 +636,21 @@ async def generate_theory_sample_async(
                             {"role": "assistant", "content": final_assistant}
                         ],
                         "metadata": {
-                            "curation": {"kept": True},
+                            "curation": {"kept": True, "quality_score": 0.0},
                             "factory_version": "v11.0",
                             "example_type": "theory",
+                            # theory-specific
                             "theory_subtype": theory_subtype,
                             "section_name": theory_frag["name"],
                             "source_doc": theory_frag["source_doc"],
+                            # normal-type defaults (mantiene schema uniforme)
+                            "evol_difficulty": "none",
+                            "ldi": 0.0,
+                            "fragment_name": theory_frag["name"],
+                            "source_file": theory_frag.get("virtual_filename", "none"),
+                            "gold_injected": False,
+                            "legacy_detected": False,
+                            "legacy_patterns": [],
                             "checkpoint_key": ck_key,
                         },
                         "filter_text": final_assistant
@@ -1423,6 +1432,7 @@ async def generate_sample_async(
                 metadata: Dict[str, Any] = {
                     "curation": {
                         "kept": is_kept,
+                        "quality_score": 0.0,
                         **({
                             "poison_patterns": poison_reasons,
                             "auto_rejected": True,
@@ -1439,6 +1449,10 @@ async def generate_sample_async(
                     "legacy_detected": has_legacy,
                     "legacy_patterns": legacy_patterns or [],
                     "checkpoint_key": ck_key,
+                    # theory-type defaults (schema uniforme)
+                    "theory_subtype": "none",
+                    "section_name": "none",
+                    "source_doc": "none",
                 }
 
                 # Canonical sample id must reflect the final example_type/evol_difficulty
