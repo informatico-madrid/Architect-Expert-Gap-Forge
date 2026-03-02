@@ -1,5 +1,5 @@
 services:
-  # --- BASE TEMPLATE (Para no repetir configuración) ---
+  # --- BASE TEMPLATE (Avoid repeating configuration) ---
   x-axolotl-base: &axolotl-base
     image: ${AXOLOTL_IMAGE}
     user: "${USER_ID}:${GROUP_ID}"
@@ -30,7 +30,7 @@ services:
     tty: true
     working_dir: /workspace
 
-  # --- SERVICIO DE ENTRENAMIENTO ---
+  # --- TRAINING SERVICE ---
   trainer:
     <<: *axolotl-base
     container_name: aegf_trainer
@@ -46,7 +46,7 @@ services:
       sleep infinity
       "services:
 
-  # --- SERVICIO DE PREPROCESADO ---
+  # --- PREPROCESSING SERVICE ---
   preprocessor:
     <<: *axolotl-base
     container_name: aegf_preprocessor
@@ -55,21 +55,21 @@ services:
     command: >
       bash -c "python3 -m axolotl.cli.preprocess /workspace/data_factory/configs/stage_4_training/axolotl/config.yaml --debug"
   
-  # --- SERVICIO DE INFERENCIA ---
+  # --- INFERENCE SERVICE ---
   inference_station:
     <<: *axolotl-base
     container_name: aegf_inference
     command: >
       bash -c "python3 -m axolotl.cli.inference /workspace/data_factory/configs/inference/config_infer.yaml"
 
-  # --- SERVICIO NEMO CURATOR (STAGE 3) ---
+  # --- NEMO CURATOR SERVICE (STAGE 3) ---
   curator:
     build:
       context: .
       dockerfile: Dockerfile.curator
     image: nemo-curator-aegf:latest
     container_name: aegf_curator
-    # Exponer dashboard Ray en el host (puerto 8265)
+    # Expose Ray dashboard on the host (port 8265)
     ports:
       - "8265:8265"
     environment:
@@ -84,3 +84,21 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+
+  # --- MERGE SERVICE (Model weights consolidation) ---
+  merger:
+    <<: *axolotl-base
+    container_name: aegf_merger
+    # Use user 0:0 to avoid permission issues when writing the final model
+    user: "0:0"
+    environment:
+      - AEGF_MERGE_CHECKPOINT=${AEGF_MERGE_CHECKPOINT:-final}
+    command: >
+      bash -c "
+      python3 -m axolotl.cli.merge_lora \
+      /workspace/data_factory/configs/stage_4_training/axolotl/config.yaml \
+      --lora_model_dir=/workspace/data_factory/data/outputs/checkpoint-$$AEGF_MERGE_CHECKPOINT \
+      --output_dir=/workspace/data_factory/data/merged_model_platinum \
+      --save_safetensors=True &&
+      echo '--- MERGE COMPLETO: Modelo guardado en data/merged_model_platinum ---'
+      "
