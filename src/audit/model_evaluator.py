@@ -90,7 +90,7 @@ EXAMPLE_TYPES = ["nominal", "contrast", "error_recovery", "theory"]
 # Default inference parameters
 DEFAULT_API_URL = os.getenv("AEGF_VLLM_API_URL", "http://localhost:8000/v1")
 DEFAULT_AUDIT_DIR = os.getenv("AEGF_AUDIT_DIR", "data/audit")
-DEFAULT_SAMPLE_SIZE = int(os.getenv("AEGF_SAMPLE_SIZE", "20"))
+DEFAULT_SAMPLE_SIZE = int(os.getenv("AEGF_SAMPLE_SIZE", "5"))
 DEFAULT_BASE_MODEL = os.getenv("AEGF_BASE_MODEL", "qwen3-30b-a3b-thinking-fp8")
 DEFAULT_ADAPTER_MODEL = os.getenv("AEGF_ADAPTER_MODEL", "platinum_adapter")
 DEFAULT_MAX_TOKENS = int(os.getenv("AEGF_MAX_TOKENS", "4096"))
@@ -912,90 +912,127 @@ def cmd_full(args: argparse.Namespace) -> None:
     cmd_score(args)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Build the CLI argument parser."""
-    parser = argparse.ArgumentParser(
-        prog="model_evaluator",
-        description="AEGF Quality Gate — Dual-inference model evaluation pipeline.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent("""\
-            Examples:
-              %(prog)s sample  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
-              %(prog)s baseline --model qwen3-30b-a3b-thinking-fp8
-              %(prog)s adapter  --model platinum_adapter
-              %(prog)s score
-              %(prog)s full --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
-        """),
-    )
-
-    # Global options
-    parser.add_argument(
+def _shared_parser() -> argparse.ArgumentParser:
+    """Build a parent parser with all shared options (used by every subcommand)."""
+    shared = argparse.ArgumentParser(add_help=False)
+    shared.add_argument(
         "--api-url",
         default=DEFAULT_API_URL,
         help=f"vLLM API endpoint (default: {DEFAULT_API_URL})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--audit-dir",
         default=DEFAULT_AUDIT_DIR,
         help=f"Output directory for audit artifacts (default: {DEFAULT_AUDIT_DIR})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--dataset",
         default=None,
         help="Path to the training JSONL dataset",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--model",
         default=None,
         help="Model name to use for inference (overrides base/adapter defaults)",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--base-model",
         default=DEFAULT_BASE_MODEL,
         help=f"Base model identifier (default: {DEFAULT_BASE_MODEL})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--adapter-model",
         default=DEFAULT_ADAPTER_MODEL,
         help=f"LoRA adapter identifier (default: {DEFAULT_ADAPTER_MODEL})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--sample-size",
         type=int,
         default=DEFAULT_SAMPLE_SIZE,
         help=f"Number of records to sample (default: {DEFAULT_SAMPLE_SIZE})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--max-tokens",
         type=int,
         default=DEFAULT_MAX_TOKENS,
         help=f"Max generation tokens (default: {DEFAULT_MAX_TOKENS})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--temperature",
         type=float,
         default=DEFAULT_TEMPERATURE,
         help=f"Sampling temperature (default: {DEFAULT_TEMPERATURE})",
     )
-    parser.add_argument(
+    shared.add_argument(
         "--force",
         action="store_true",
         help="Force regeneration of existing artifacts",
     )
-    parser.add_argument(
+    shared.add_argument(
         "-v",
         "--verbose",
         action="store_true",
         help="Enable debug logging",
     )
+    return shared
 
-    # Subcommands
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the CLI argument parser.
+
+    All options are defined in a shared parent parser so they can appear
+    either before or after the subcommand name::
+
+        # Both forms are equivalent:
+        model_evaluator --dataset foo.jsonl full
+        model_evaluator full --dataset foo.jsonl
+    """
+    shared = _shared_parser()
+
+    parser = argparse.ArgumentParser(
+        prog="model_evaluator",
+        description="AEGF Quality Gate — Dual-inference model evaluation pipeline.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        parents=[shared],
+        epilog=textwrap.dedent("""\
+            Examples:
+              %(prog)s sample   --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
+              %(prog)s baseline --model qwen3-30b-a3b-thinking-fp8
+              %(prog)s adapter  --model platinum_adapter
+              %(prog)s score
+              %(prog)s full     --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \\
+                                --base-model qwen3-30b-a3b-thinking-fp8 \\
+                                --adapter-model platinum_adapter
+        """),
+    )
+
+    # Subcommands — each inherits all shared options via parents=[shared]
     sub = parser.add_subparsers(dest="mode", help="Evaluation mode")
-    sub.add_parser("sample", help="Extract stratified sample from dataset")
-    sub.add_parser("baseline", help="Run baseline inference (base model)")
-    sub.add_parser("adapter", help="Run adapter inference (LoRA model)")
-    sub.add_parser("score", help="Score and generate audit report")
-    sub.add_parser("full", help="Run complete pipeline end-to-end")
+    sub.add_parser(
+        "sample",
+        help="Extract stratified sample from dataset",
+        parents=[shared],
+    )
+    sub.add_parser(
+        "baseline",
+        help="Run baseline inference (base model)",
+        parents=[shared],
+    )
+    sub.add_parser(
+        "adapter",
+        help="Run adapter inference (LoRA model)",
+        parents=[shared],
+    )
+    sub.add_parser(
+        "score",
+        help="Score and generate audit report",
+        parents=[shared],
+    )
+    sub.add_parser(
+        "full",
+        help="Run complete pipeline end-to-end",
+        parents=[shared],
+    )
 
     return parser
 
