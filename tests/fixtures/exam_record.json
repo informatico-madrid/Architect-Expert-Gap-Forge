@@ -1,0 +1,28 @@
+{
+  "id": "v11_nominal_golden_001",
+  "example_type": "nominal",
+  "evol_difficulty": "hard",
+  "fragment_name": "climate_coordinator",
+  "source_file": "components/climate/__init__.py",
+  "user_prompt": "Implementar una entidad Climate moderna con CoordinatorEntity. El sistema debe manejar múltiples sensores de temperatura (interior, exterior) y controlar un termostato. Usar async/await correctamente.",
+  "reference_response": "<think>\nThe reference implementation should demonstrate:\n1. Proper use of CoordinatorEntity for data fetching\n2. Async initialization with async_setup_entry\n3. State machine transitions\n4. Runtime data typing\n5. Error recovery in coordinator update\n</think>\n\nclass ClimateEntity(CoordinatorEntity, ClimateEntity):\n    def __init__(self, coordinator, entry_id):\n        super().__init__(coordinator)\n        self._entry = entry_id\n        self._attr_target_temperature = 20.0\n    \n    async def async_set_temperature(self, **kwargs):\n        temp = kwargs.get(ATTR_TEMPERATURE, 20.0)\n        await self.coordinator.async_request_refresh()",
+  "gold_injected": true,
+  "ldi": 0.92,
+  "reference_standards": "MASTER_GUIDE:\n# HA MASTER GUIDE 2026\n\nKey standards:\n1. Use entry.runtime_data for type-safe state\n2. Implement CoordinatorEntity for data refresh\n3. Async/await in all I/O operations\n4. Proper error handling in coordinator\n\nTECHNICAL_CHANGELOG:\n## Migration Guide to 2026\n\n- BREAKING: ConfigEntry.data is now read-only\n- NEW: entry.runtime_data for mutable state\n- DEPRECATED: setup_component (use async_setup_entry)\n\nJINJA_YAML_GUIDE:\n# Jinja2 Templates in manifests\n\nUse {%- if condition %} for clean YAML.",
+  "gap_analysis": "Analysis:\n\nCURRENT_ISSUES:\n1. Missing type annotations on runtime_data\n2. No error handling in coordinator update\n3. Hardcoded temperature values (should use config)\n4. Missing async context manager for setup\n\nRECOMMENDATIONS:\n1. Add `type MyRuntimeData = TypedDict(...)` at module level\n2. Wrap coordinator.async_request_refresh() with try/except\n3. Load temperature from entry.data during __init__\n4. Use async context manager for API client lifecycle",
+  "exam_question": "Refactor the provided Climate integration to follow HA 2026 standards:\n\n1. Define a TypedDict for entry.runtime_data with temperature limits\n2. Implement error recovery in the coordinator's async_request_refresh()\n3. Move hardcoded values to ConfigEntry.data\n4. Add async context manager for API client lifecycle\n5. Document the state machine transitions with comments\n\nYour implementation must pass type checking with pyright in strict mode and handle network timeouts gracefully.",
+  "eval_criteria": [
+    "Uses entry.runtime_data with proper TypedDict",
+    "Implements try/except in coordinator update",
+    "Reads config from entry.data (not hardcoded)",
+    "Uses async context manager for resources",
+    "Passes pyright --strict type checking"
+  ],
+  "target_patterns": [
+    "entry.runtime_data",
+    "async_request_refresh",
+    "ConfigEntry.data",
+    "async with",
+    "TypedDict"
+  ]
+}

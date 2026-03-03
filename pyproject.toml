@@ -1,0 +1,72 @@
+# ============================================================
+# AEGF — pyproject.toml
+# Single source of truth for build, test, and coverage config.
+# ============================================================
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "aegf"
+version = "0.1.0"
+description = "Architect-Expert-Gap-Forge: Synthetic data factory for LLM fine-tuning"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "Apache-2.0"}
+dependencies = [
+    "PyYAML>=6.0",
+    "pydantic>=2.0",
+    "requests>=2.28",
+    "google-genai>=1.0",
+    "tqdm>=4.64",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0",
+    "pytest-cov>=7.0",
+]
+
+# ----------------------------------------------------------------
+# pytest — base test-runner configuration.
+# Active only when pytest.ini contains NO [pytest] section.
+# See: https://docs.pytest.org/en/stable/reference/customize.html
+# ----------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--import-mode=importlib",
+]
+markers = [
+    "unit: Pure unit tests (no I/O, no network)",
+    "integration: Tests that cross module boundaries",
+    "slow: Tests that may take noticeable time",
+]
+
+# ----------------------------------------------------------------
+# Coverage — scoped to the well-tested utility modules.
+# Expand coverage scope by adding directories to [tool.coverage.run] source.
+# ----------------------------------------------------------------
+
+[tool.coverage.run]
+source = ["src/audit", "src/utils"]
+omit = [
+    "*/research/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+fail_under = 84
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abc.abstractmethod",
+]

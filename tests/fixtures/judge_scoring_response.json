@@ -1,0 +1,30 @@
+{
+  "record_id": "v11_nominal_golden_001",
+  "judge_reasoning": "Evaluating the adapter response against baseline:\n\nBASELINE ANALYSIS:\n- Uses CoordinatorEntity (good)\n- Basic TypedDict definition (adequate)\n- Minimal error handling (weak point)\n- No config validation (problematic)\n- Missing API client lifecycle management (critical)\n\nADAPTER ANALYSIS:\n- Full TypedDict with docstring (excellent)\n- Comprehensive error handling (excellent)\n- Config validation via entry.data (excellent)\n- Async context manager for API client (excellent)\n- Proper logging and type checking (excellent)\n- async_config_entry_first_refresh (correct pattern)\n- UpdateFailed with descriptive messages (best practice)\n\nDELTA: The adapter demonstrates 3 critical improvements:\n1. Error boundary definition (try/except with proper exception types)\n2. Resource lifecycle management (async context manager)\n3. Configuration injection pattern (entry.data vs hardcoded)\n\nThese improvements directly address modern HA 2.0+ requirements for reliability and maintainability.",
+  "dimensions": {
+    "ha_modernity": {
+      "score": 0.95,
+      "reasoning": "Adapter uses latest HA patterns (async_config_entry_first_refresh, entry.runtime_data with TypedDict, proper coordinator pattern). Baseline is slightly behind."
+    },
+    "reasoning_depth": {
+      "score": 0.88,
+      "reasoning": "Adapter shows understanding of why patterns matter (lifecycle, error boundaries, config injection). Baseline is mechanically correct but lacks depth."
+    },
+    "functionality": {
+      "score": 0.90,
+      "reasoning": "Both implementations are functionally sound, but adapter's error handling prevents silent failures. UpdateFailed is the correct exception type."
+    },
+    "completeness": {
+      "score": 0.92,
+      "reasoning": "Adapter covers setup, coordinator creation, config entry forwarding, and full data update logic. Baseline is incomplete (missing setup_entry)."
+    },
+    "style": {
+      "score": 0.85,
+      "reasoning": "Adapter has better docstrings and logging. Code is well-structured and follows PEP 8."
+    }
+  },
+  "composite_score": 0.90,
+  "delta_vs_baseline": 0.18,
+  "verdict": "PASS",
+  "notes": "Adapter demonstrates 18% improvement over baseline. Key differentiators are error handling patterns, resource lifecycle management, and configuration injection. Meets all evaluation criteria."
+}

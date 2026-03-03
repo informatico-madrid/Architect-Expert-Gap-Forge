@@ -96,7 +96,7 @@ class TestSampleRecord:
             gold_injected=False,
             ldi=0.0,
         )
-        assert r.ha_standards == ""
+        assert r.reference_standards == ""
         assert r.gap_analysis == ""
 
     def test_is_dataclass(self) -> None:
@@ -108,7 +108,7 @@ class TestSampleRecord:
         required = {
             "id", "example_type", "evol_difficulty", "fragment_name",
             "source_file", "user_prompt", "reference_response",
-            "gold_injected", "ldi", "ha_standards", "gap_analysis",
+            "gold_injected", "ldi", "reference_standards", "gap_analysis",
         }
         assert required.issubset(field_names)
 

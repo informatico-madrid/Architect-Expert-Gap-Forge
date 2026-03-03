@@ -52,7 +52,7 @@ def _make_raw(
                         "source_file": f"components/{et}/{j}.py",
                         "gold_injected": True,
                         "ldi": base_ldi + j * 0.01,
-                        "ha_standards": "Use entry.runtime_data.",
+                        "reference_standards": "Use entry.runtime_data.",
                         "gap_analysis": "Legacy pattern detected.",
                     },
                     "conversation": [

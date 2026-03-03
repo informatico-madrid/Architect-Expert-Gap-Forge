@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
+
+"""Shared pytest fixtures for the AEGF test suite.
+
+All domain objects are constructed here so individual test modules stay
+focused on behaviour rather than boilerplate.
+"""
+from __future__ import annotations
+
+import textwrap
+from pathlib import Path
+from typing import Any, Dict, List
+from unittest.mock import MagicMock
+
+import pytest
+import yaml
+
+from src.audit.schema import (
+    AuditReport,
+    ExamRecord,
+    InferenceResult,
+    SampleRecord,
+    ScoreCard,
+)
+
+
+# ---------------------------------------------------------------------------
+# Domain entity factories
+# ---------------------------------------------------------------------------
+
+
+def make_sample(
+    id: str = "sample-001",
+    example_type: str = "nominal",
+    evol_difficulty: str = "medium",
+    fragment_name: str = "climate_entity",
+    source_file: str = "components/climate/__init__.py",
+    user_prompt: str = "Implement a CoordinatorEntity for a climate sensor.",
+    reference_response: str = "<think>I need to use modern HA APIs.</think>\n```python\npass\n```",
+    gold_injected: bool = True,
+    ldi: float = 0.85,
+    reference_standards: str = "Use entry.runtime_data, CoordinatorEntity, async_setup_entry.",
+    gap_analysis: str = "Missing DataUpdateCoordinator pattern.",
+) -> SampleRecord:
+    """Construct a minimal but valid SampleRecord."""
+    return SampleRecord(
+        id=id,
+        example_type=example_type,
+        evol_difficulty=evol_difficulty,
+        fragment_name=fragment_name,
+        source_file=source_file,
+        user_prompt=user_prompt,
+        reference_response=reference_response,
+        gold_injected=gold_injected,
+        ldi=ldi,
+        reference_standards=reference_standards,
+        gap_analysis=gap_analysis,
+    )
+
+
+def make_exam_record(sample: SampleRecord | None = None, **kwargs: Any) -> ExamRecord:
+    """Construct a minimal ExamRecord from an optional base sample."""
+    base = sample or make_sample()
+    defaults: Dict[str, Any] = {
+        "exam_question": "Implement a climate entity using CoordinatorEntity.",
+        "eval_criteria": ["Uses entry.runtime_data", "Proper error handling"],
+        "target_patterns": ["CoordinatorEntity", "async_setup_entry"],
+    }
+    defaults.update(kwargs)
+    return ExamRecord.from_sample(base, **defaults)
+
+
+def make_scorecard(
+    record_id: str = "sample-001",
+    example_type: str = "nominal",
+    fragment_name: str = "climate_entity",
+    ha_modernity: float = 0.9,
+    reasoning_depth: float = 0.8,
+    functionality: float = 0.85,
+    completeness: float = 0.9,
+    style: float = 0.7,
+    composite_score: float = 0.86,
+) -> ScoreCard:
+    """Construct a ScoreCard with sensible defaults."""
+    return ScoreCard(
+        record_id=record_id,
+        example_type=example_type,
+        fragment_name=fragment_name,
+        ha_modernity=ha_modernity,
+        reasoning_depth=reasoning_depth,
+        functionality=functionality,
+        completeness=completeness,
+        style=style,
+        composite_score=composite_score,
+        delta_vs_baseline=0.05,
+        judge_reasoning="Model shows correct API usage.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pytest fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sample_record() -> SampleRecord:
+    """A single valid SampleRecord."""
+    return make_sample()
+
+
+@pytest.fixture
+def exam_record(sample_record: SampleRecord) -> ExamRecord:
+    """An ExamRecord derived from the base sample_record fixture."""
+    return make_exam_record(sample_record)
+
+
+@pytest.fixture
+def scorecard() -> ScoreCard:
+    """A single ScoreCard with default values."""
+    return make_scorecard()
+
+
+@pytest.fixture
+def audit_report(scorecard: ScoreCard) -> AuditReport:
+    """A minimal AuditReport with one scorecard."""
+    return AuditReport(
+        timestamp="2026-03-03T00:00:00",
+        dataset_path="data/audit/baseline.jsonl",
+        base_model="qwen3-30b-a3b-thinking-fp8",
+        adapter_model="platinum_adapter",
+        judge_model="gemini-2.5-flash",
+        sample_size=1,
+        type_distribution={"nominal": 1},
+        scorecards=[scorecard],
+        final_grade=86.0,
+        verdict="PASS",
+    )
+
+
+@pytest.fixture
+def multi_sample_records() -> List[SampleRecord]:
+    """A list of SampleRecords covering all four canonical example_types."""
+    types = ["nominal", "contrast", "error_recovery", "theory"]
+    records: List[SampleRecord] = []
+    for i, et in enumerate(types):
+        for j in range(3):  # 3 records per type → 12 total
+            records.append(
+                make_sample(
+                    id=f"{et}-{j:03d}",
+                    example_type=et,
+                    ldi=0.5 + j * 0.1,
+                )
+            )
+    return records
+
+
+@pytest.fixture
+def raw_records() -> List[Dict[str, Any]]:
+    """Raw JSONL-like dicts as returned by load_jsonl(), used for sampling tests."""
+    types = ["nominal", "contrast", "error_recovery", "theory"]
+    records: List[Dict[str, Any]] = []
+    for i, et in enumerate(types):
+        for j in range(4):
+            records.append(
+                {
+                    "id": f"{et}-{j:03d}",
+                    "metadata": {
+                        "example_type": et,
+                        "evol_difficulty": "medium",
+                        "fragment_name": f"fragment_{j}",
+                        "source_file": "components/sensor/__init__.py",
+                        "gold_injected": True,
+                        "ldi": 0.7 + j * 0.05,
+                        "reference_standards": "Use entry.runtime_data.",
+                        "gap_analysis": "Missing CoordinatorEntity.",
+                    },
+                    "conversation": [
+                        {"role": "user", "content": f"Implement sensor {j}."},
+                        {
+                            "role": "assistant",
+                            "content": f"<think>Thinking...</think>\n```python\npass\n```",
+                        },
+                    ],
+                }
+            )
+    return records
+
+
+@pytest.fixture
+def prompts_yaml_path(tmp_path: Path) -> Path:
+    """Write a minimal eval_prompts.yaml into a temp dir and return the path."""
+    content = textwrap.dedent("""\
+        test_group:
+          system: "You are a test assistant."
+          user: "Hello {name}, answer {question}."
+        another_group:
+          system: "Second system prompt."
+          user: "Second user prompt."
+    """)
+    p = tmp_path / "eval_prompts.yaml"
+    p.write_text(content, encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def gap_dir(tmp_path: Path) -> Path:
+    """Create a temporary gap_dir with the three required master docs."""
+    d = tmp_path / "gap"
+    d.mkdir()
+    (d / "HA_MASTER_GUIDE_2026.md").write_text("# Master Guide content", encoding="utf-8")
+    (d / "technical_changelog_2026.md").write_text("# Changelog content", encoding="utf-8")
+    (d / "HA_JINJA_YAML_GUIDE_2026.md").write_text("# Jinja guide content", encoding="utf-8")
+    return d
+
+
+@pytest.fixture
+def mock_inference_client() -> MagicMock:
+    """A MagicMock that conforms to BaseInferenceClient's interface."""
+    client = MagicMock()
+    client.generate.return_value = '{"result": "ok"}'
+    client.generate_with_retry.return_value = '{"result": "ok"}'
+    return client
