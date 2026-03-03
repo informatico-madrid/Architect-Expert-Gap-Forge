@@ -35,6 +35,21 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
+      - name: Prepare CI config files
+        # Copy any provided example configuration into place so CI tests
+        # that expect real config files (eval_config.yaml, eval_prompts.yaml, ...)
+        # can run without committing user-specific files to the repo.
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for src in configs/stage_5_evaluation/*.example; do
+            dest="${src%%.example}"
+            if [ -f "$src" ] && [ ! -f "$dest" ]; then
+              cp "$src" "$dest"
+              echo "Copied $src -> $dest"
+            fi
+          done
+
       - name: Run tests with coverage
         # make coverage delegates to pytest with --cov-fail-under=95.
         # GOOGLE_API_KEY is intentionally empty: GeminiClient integration tests
