@@ -644,10 +644,51 @@ The evaluator emits a **Final Grade (0–100)** with a verdict: `PASS` (≥80), 
 | `AEGF_MAX_TOKENS` | `4096` | Max generation tokens |
 | `AEGF_TEMPERATURE` | `0.3` | Sampling temperature |
 
-### Stage 5 — Merger (`src/merger/`)
-**Engine:** `surgical_merge.py`
 
-Low-level `safetensors` weight fusion. A "surgical" fallback approach to ensure model integrity where standard merging fails due to architectural complexity in MoE layers.
+### Stage 5 — Validation & Merger (LLM-as-Judge + peso fusión)
+
+Stage 5 agrupa dos actividades complementarias:
+
+- **Validación (AEGF Quality Gate)** — implementación principal en `src/audit/model_evaluator.py`.
+  Este flujo ejecuta la evaluación en cinco fases: `sample` → `generate-exam` → `baseline` → `adapter` → `score`.
+  El resultado son artefactos de auditoría escritos en `--audit-dir` (por ejemplo: `eval_sample.json`,
+  `eval_exam.json`, `inference_baseline.json`, `inference_adapter.json`, `audit_report_v11.md|json`).
+
+- **Merger (fusión de pesos)** — fusión de pesos a bajo nivel (safetensors) mediante una estrategia "quirúrgica".
+  La ubicación prevista es `src/merger/` (engine objetivo: `surgical_merge.py`). Nota: en este repositorio
+  `src/merger/` puede estar como marcador/placeholder; la implementación de fusión de pesos es una tarea
+  separada que puede añadirse cuando se disponga de pesos y de un procedimiento de validación post-merge.
+
+Cómo ejecutar la validación (modo `--validate`) — recomendado para pruebas locales
+---------------------------------------------------------------
+
+`--validate` activa un recorrido end-to-end de bajo coste: reduce `sample_size` a 1 y fuerza regeneración
+(`force=True`) para hacer una comprobación de humo sin consumir muchos tokens en LLMs.
+
+Ejemplo mínimo (usar Gemini como backend para profesor/juez y para inferencia):
+
+```bash
+export GOOGLE_API_KEY="ya29.YOUR_ACTUAL_KEY"   # necesario para llamadas reales a Gemini
+python -m src.audit.model_evaluator full \
+  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \
+  --audit-dir data/audit/validate_run \
+  --gap-dir data/Gap \
+  --professor-backend gemini \
+  --inference-backend gemini \
+  --judge-model gemini-2.5-flash \
+  --gemini-model gemini-2.5-flash \
+  --validate
+```
+
+Notas importantes:
+- `GOOGLE_API_KEY` debe estar configurada si eliges `gemini` como backend; las llamadas reales a Gemini
+  generan uso de API y posible coste. Comprueba cuotas y coste antes de ejecutar a gran escala.
+- Para desarrollo local sin llamadas externas se recomienda usar `--validate` *y* mocks (los tests ya
+  parchean `_inference_router` para devolver clientes deterministas). Esto permite verificar el flujo
+  completo sin consumir tokens.
+
+Si necesitas que documente un ejemplo práctico de mocking local (script reproducible), lo añado bajo
+`scripts/` y lo referencio aquí.
 
 ---
 
