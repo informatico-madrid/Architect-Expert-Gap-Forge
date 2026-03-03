@@ -8,3 +8,6 @@ tqdm>=4.64
 # Optional: Google Gemini inference backend.
 # Remove this line if running without Gemini (vLLM-only deployments).
 google-genai>=1.0
+
+# dotenv support for loading environment variables in dev/CI
+python-dotenv>=1.0
