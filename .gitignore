@@ -41,3 +41,6 @@ legacy/
 # --- TESTING ---
 .coverage
 *.xml
+
+# --- IDE ---
+.vscode/
