@@ -37,3 +37,7 @@ data/
 *.img
 .DS_Store
 legacy/
+
+# --- TESTING ---
+.coverage
+*.xml
