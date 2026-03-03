@@ -44,6 +44,10 @@ jobs:
         env:
           GOOGLE_API_KEY: ""
           PYTHONPATH: .
+          # Prevent python-dotenv from auto-loading .env files during CI test runs.
+          # This avoids test flakiness caused by repo-local .env values (AEGF_DOC_*)
+          # that alter document resolution in unit tests.
+          PYTHON_DOTENV_DISABLED: '1'
 
       - name: Upload coverage report (Python 3.12 only)
         if: matrix.python-version == '3.12'
