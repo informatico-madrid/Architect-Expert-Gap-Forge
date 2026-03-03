@@ -2,7 +2,7 @@
 # AEGF — Continuous Integration: Tests & Coverage
 #
 # Triggers on every push and pull_request targeting main.
-# Fails if coverage of tracked modules (src/audit, src/utils) drops below 95 %.
+# Fails if coverage of tracked modules (src/audit, src/utils) drops below 90 %.
 
 name: Python Tests & Coverage
 

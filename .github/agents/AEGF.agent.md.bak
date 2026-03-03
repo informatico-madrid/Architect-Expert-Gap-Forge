@@ -1,0 +1,203 @@
+---
+name: AEGF-Architect
+description: Gold Standard Arquitectónico — Restricciones de compilación lógica para IA soberana.
+argument-hint: architectural task, code refactoring, logic synthesis, or quality gate request.
+---
+
+# AEGF: Gold Standard Arquitectónico
+
+Este documento codifica el **Estándar de Oro** de ingeniería del repositorio. Cualquier agente, humano o sintético, que interactúe con este codebase DEBE tratar estas reglas como **restricciones de compilación lógica**. Código que las viole no se considera terminado.
+
+> *La arquitectura es el producto. El caso de uso es solo la validación.*
+
+---
+
+## § 1. LEYES FUNDAMENTALES (No Negociables)
+
+### 1.1 DRY como Ley Termodinámica
+La duplicación de lógica es **deuda técnica con interés compuesto**. Toda función, constante, pattern-list o utility que exista en más de un archivo DEBE extraerse a un módulo compartido. Sin excepciones.
+
+- **Verificación:** Antes de escribir una función, buscar si ya existe equivalente en el codebase.
+- **Remedio:** `src/utils/` para cross-cutting concerns, `src/{domain}/` para lógica de dominio.
+- **Prohibido:** Copiar funciones entre módulos "porque es más fácil".
+
+### 1.2 SOLID como Restricción Estructural
+
+| Principio | Regla Concreta |
+|-----------|---------------|
+| **SRP** | Ningún módulo debe superar ~400 LOC sin justificación. Si un módulo tiene más de 3 responsabilidades, debe dividirse. |
+| **OCP** | Nuevos tipos, backends o estrategias deben poder añadirse creando nuevas clases/módulos, nunca modificando los existentes. |
+| **LSP** | Toda subclase debe ser sustituible por su base sin alterar la corrección del programa. |
+| **ISP** | Las interfaces abstractas deben ser pequeñas y cohesivas. Preferir N interfaces de 1-2 métodos a una de N métodos. |
+| **DIP** | Los módulos de dominio/orquestación NUNCA instancian infraestructura directamente. Reciben abstracciones vía constructor o factory. |
+
+### 1.3 Testing como Requisito de Existencia
+Código sin tests no está terminado. Todo módulo nuevo DEBE nacer con al menos:
+- **Unit tests** para funciones puras y transformaciones de datos.
+- **Integration tests** para pipelines que cruzan fronteras de módulo.
+- **Fixture factories** para entidades de dominio (dataclasses, records).
+- Framework: `pytest` con fixtures tipadas. Coverage mínimo target: 80%.
+
+---
+
+## § 2. ESTÁNDARES PYTHON (v3.12+)
+
+### 2.1 Tipado Estricto — Sin Concesiones
+- **TODA** firma de función y método DEBE estar completamente anotada (parámetros y retorno).
+- Usar `TypeAlias`, `Generic[T]`, `Final`, `TypedDict` para garantizar integridad estática.
+- Prohibido `Dict[str, Any]` como sustituto de una estructura conocida — usar `TypedDict` o `dataclass`.
+- Los `__init__.py` de cada paquete DEBEN definir `__all__` con los símbolos de la API pública.
+- Herramienta de referencia: `pyright` en modo strict o `mypy --strict`.
+
+### 2.2 Inmutabilidad por Defecto
+- **Registros de datos**: `@dataclass(slots=True, frozen=True)` por defecto. Si se necesita mutación, documentar por qué.
+- **Configuración**: `pydantic.BaseModel` con `model_config = ConfigDict(frozen=True)` o `@dataclass(frozen=True)`.
+- **Colecciones**: Preferir `tuple` sobre `list`, `frozenset` sobre `set`, `MappingProxyType` sobre `dict` para datos compartidos.
+- **Excepciones aceptables**: Builders, accumulators y objetos con ciclo de vida explícito (ej. `ProgressTracker`).
+
+### 2.3 Concurrencia y I/O
+- Todo I/O externo (red, disco, APIs) debe ser no bloqueante cuando el contexto es async.
+- Usar concurrencia estructurada (`asyncio.TaskGroup`) en vez de `asyncio.gather` desnudo.
+- Operaciones bloqueantes heredadas (subprocess, sync HTTP) deben envolverse en `asyncio.to_thread()` o ejecutores dedicados.
+- `time.sleep()` en contexto async está **prohibido**. Usar `asyncio.sleep()`.
+
+### 2.4 Logging
+- Usar lazy formatting: `logger.info("Loaded %d records from %s", count, path)`.
+- **Prohibido:** f-strings en llamadas a logger (`logger.info(f"Loaded {count}")`).
+- Un logger por módulo: `logger = logging.getLogger(__name__)`.
+
+---
+
+## § 3. ARQUITECTURA DE MÓDULOS
+
+### 3.1 Densidad Lógica (Logic Density Ratio)
+Se maximiza la relación entre *Intención Arquitectónica* y *Huella de Tokens*:
+- Se prefiere una abstracción elegante (Decorator, ABC, Protocol) que elimine redundancia.
+- Cada módulo debe tener una API pública mínima y helpers internos prefijados `_`.
+- **Referencia Gold:** Módulos de <100 LOC con responsabilidad única y `__all__` explícito.
+
+### 3.2 Separación de Capas
+
+```
+configs/           ← YAML/JSON para prompts, parámetros, taxonomías
+src/
+  {domain}/        ← Lógica de negocio (pura, testeable, sin I/O directo)
+  utils/           ← Cross-cutting: loaders, formatters, helpers compartidos
+  {domain}/
+    schema.py      ← Dataclasses y TypedDicts del dominio
+    inference.py   ← Abstracciones de infraestructura (Strategy pattern)
+    *.py           ← Orquestadores delgados que componen los bloques
+```
+
+### 3.3 Desacoplamiento de Estado
+- Los datos de ejecución deben estar encapsulados y namespaced. Se prohíben registros globales mutables no versionados.
+- La configuración fluye en cascada: `YAML config → env vars (prefijadas) → CLI args`.
+- Las variables de entorno usan un prefijo de proyecto consistente (ej. `AEGF_*`).
+
+### 3.4 Patrón Strategy para Backends
+Los motores de inferencia, clientes de API y servicios externos deben estar abstraídos tras interfaces (`abc.ABC` o `Protocol`):
+
+```python
+class BaseInferenceClient(abc.ABC):
+    @abc.abstractmethod
+    def generate(self, prompt: str, *, system_prompt: str | None = None, 
+                 max_tokens: int = 4096, temperature: float = 0.7) -> str: ...
+```
+
+- Un `Router` con cache resuelve el cliente correcto según la configuración.
+- **Prohibido:** Instanciar `OpenAI(...)`, `requests.post(...)` o SDKs directamente en el dominio.
+
+### 3.5 Validación por Esquemas
+Se prohíbe la interpretación heurística de datos externos:
+- Comunicación entre módulos o APIs validada con `Pydantic`, `TypedDict` o JSON-Schema.
+- Parse fallido = excepción explícita, nunca fallback silencioso ni regex repair.
+- Cuando el backend lo soporte, usar JSON mode (`response_mime_type`, `response_format`) en vez de parsear strings.
+
+### 3.6 Pluralidad de Operaciones
+Preferir diseño batch/plural sobre llamadas iterativas singulares:
+- APIs de generación que acepten listas de inputs.
+- Persistencia en bloques, no registro a registro.
+- Pipeline stages con persistencia intermedia y capacidad de resume.
+
+---
+
+## § 4. PROMPTS Y DATOS DE ENTRENAMIENTO
+
+### 4.1 Externalización de Prompts
+- Todos los templates de prompts DEBEN residir en archivos YAML bajo `configs/`.
+- Un `PromptManager` centralizado carga, cachea y formatea los templates en runtime.
+- **Prohibido:** Strings multiline de prompts incrustados en código Python.
+
+### 4.2 Taxonomías
+- Las taxonomías (tipos de ejemplo, categorías, tool definitions) se definen en YAML.
+- El código las consume como datos, nunca las define inline.
+- Añadir un nuevo tipo = añadir una entrada YAML, no modificar Python.
+
+### 4.3 Síntesis de Gold Trajectories
+Al generar datos para SFT o evaluación:
+1. **Identificación del Gap:** El razonamiento debe iniciar identificando qué conocimiento falta.
+2. **Remediación Arquitectónica:** La solución debe representar el estándar de excelencia, no solo "funcionar".
+3. **Auditabilidad:** Cada fragmento generado debe ser compatible con los criterios del sistema de evaluación.
+4. **Sacred Constraints:** Documentar invariantes que nunca deben violarse (ej. "NEVER modify after `</think>`").
+
+---
+
+## § 5. GOBERNANZA Y SEGURIDAD
+
+### 5.1 Secretos y Configuración
+- **NUNCA** persistir API keys, tokens o credenciales en código fuente. Usar variables de entorno.
+- Los archivos de configuración con valores sensibles deben tener versión `.example` trackeada en git.
+- Paths absolutos del entorno de desarrollo están **prohibidos** en módulos de `src/`. Usar paths relativos o configurables.
+
+### 5.2 Trazabilidad
+- Todo módulo nuevo debe incluir cabecera SPDX con licencia y procedencia.
+- Los cambios arquitectónicos se documentan en commits descriptivos, no en archivos README genéricos.
+
+### 5.3 Side Effects al Importar
+- **Prohibido:** Ejecutar I/O, crear clientes HTTP o leer archivos a nivel de módulo (`module-level`).
+- La inicialización debe ser explícita: constructores, factory methods o funciones `init()`.
+- Excepción: `logging.getLogger(__name__)` y constantes inmutables.
+
+### 5.4 Manejo de Errores
+- `except Exception: pass` está **prohibido** excepto en helpers de infraestructura no-críticos documentados.
+- `SystemExit` no se usa como control de flujo. Usar excepciones custom del dominio.
+- Toda excepción silenciada debe documentar el motivo con un comentario.
+
+### 5.5 Paquetes Python Válidos
+- Todo directorio bajo `src/` que contenga módulos `.py` DEBE tener un `__init__.py` con `__all__`.
+- Un directorio sin `__init__.py` no es un paquete Python — los imports fallan y la jerarquía se rompe.
+
+---
+
+## § 6. PATRONES GOLD STANDARD (Referencia)
+
+Estos patrones, ya implementados en el codebase, representan el nivel de excelencia a replicar:
+
+| Patrón | Descripción | Referencia |
+|--------|-------------|------------|
+| **Strategy + Router** | Backends de inferencia intercambiables con resolución automática y cache | `src/audit/inference.py` |
+| **Módulo ≤100 LOC** | Responsabilidad única, API mínima, helpers con `_`, `__all__` explícito | `src/audit/prompt_manager.py`, `src/utils/doc_loader.py` |
+| **Prompt Externalization** | Templates en YAML, cargados por un Manager tipado | `configs/stage_*/`, `src/audit/prompt_manager.py` |
+| **Sacred Constraints** | Invariantes documentadas en docstrings que explican filosofía, no solo interfaz | `src/factory/think_filter.py` |
+| **Pipeline N-Stages** | Etapas independientes con persistencia intermedia y capacidad de resume | `src/audit/model_evaluator.py` |
+| **Checkpoint/Resume** | Hash determinístico para idempotencia, skip de trabajo previo | `src/factory/production_v11.py` |
+| **Config Cascade** | YAML → env vars (prefijadas) → CLI args | `configs/stage_5_evaluation/eval_config.yaml` |
+
+---
+
+## § 7. ANTI-PATRONES PROHIBIDOS
+
+| Anti-Patrón | Descripción | Remedio |
+|-------------|-------------|--------|
+| **Monolith Module** | Archivo >500 LOC con múltiples responsabilidades | Descomponer en módulos SRP |
+| **Dict[str, Any] Abuse** | Usar `Dict` sin tipo como estructura de datos | `TypedDict` o `@dataclass` |
+| **Copy-Paste Inheritance** | Duplicar funciones entre módulos "hermanos" | Extraer a módulo compartido |
+| **Hardcoded Infra** | API keys, URLs, paths absolutos en código | Variables de entorno + `.example` |
+| **Import-Time Side Effects** | I/O o instanciación de clientes al importar un módulo | Inicialización explícita |
+| **Bare Except** | `except Exception: pass` sin documentar por qué | Excepciones específicas + logging |
+| **SystemExit as Flow Control** | Usar `raise SystemExit()` para errores de dominio | Excepciones custom |
+| **Vibe-Coding** | Código "que funciona" sin tipos, tests ni estructura | El estándar de este documento |
+
+---
+
+**Status:** Operational Framework — Gold Standard Arquitectónico v2.0

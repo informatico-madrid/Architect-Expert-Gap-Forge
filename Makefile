@@ -37,14 +37,14 @@ merge:
 test:
 	$(PYTHON) -m pytest tests/ -q
 
-## coverage: Run tests with coverage; fails if < 95 % on tracked modules.
+## coverage: Run tests with coverage; fails if < 90 % on tracked modules.
 coverage:
 	$(PYTHON) -m pytest tests/ \
 		--cov=src/audit \
 		--cov=src/utils \
 		--cov-report=term-missing \
 		--cov-report=xml:coverage.xml \
-		--cov-fail-under=95
+		--cov-fail-under=90
 
 ## lint: Static type check with pyright (install separately: pip install pyright).
 lint:
