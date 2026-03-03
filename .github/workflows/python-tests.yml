@@ -35,20 +35,63 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Prepare CI config files
-        # Copy any provided example configuration into place so CI tests
-        # that expect real config files (eval_config.yaml, eval_prompts.yaml, ...)
-        # can run without committing user-specific files to the repo.
+      - name: Prepare CI test mocks
+        # Create deterministic mock config files used by unit/integration tests
+        # instead of relying on developer-local files. These mocks replicate the
+        # minimal keys tests expect (master_docs, master_docs_formatting, prompts).
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          for src in configs/stage_5_evaluation/*.example; do
-            dest="${src%%.example}"
-            if [ -f "$src" ] && [ ! -f "$dest" ]; then
-              cp "$src" "$dest"
-              echo "Copied $src -> $dest"
-            fi
-          done
+          mkdir -p configs/stage_5_evaluation
+
+          cat > configs/stage_5_evaluation/eval_config.yaml <<'YAML'
+          # Minimal mock eval_config for CI tests
+          api_url: "http://localhost:8000/v1"
+          audit_dir: "data/audit"
+          gap_dir: "data/Gap"
+
+          # Master docs filenames used by test fixtures
+          master_docs:
+            master_guide: "HA_MASTER_GUIDE_2026.md"
+            technical_changelog: "technical_changelog_2026.md"
+            jinja_yaml_guide: "HA_JINJA_YAML_GUIDE_2026.md"
+
+          # Ensure formatting labels so tests that assert for 'MASTER_GUIDE' pass
+          master_docs_formatting:
+            master_guide:
+              label: "MASTER_GUIDE"
+              truncate_at: 8000
+            technical_changelog:
+              label: "TECHNICAL_CHANGELOG"
+              truncate_at: 8000
+            jinja_yaml_guide:
+              label: "JINJA_YAML_GUIDE"
+              truncate_at: 4000
+          YAML
+
+          cat > configs/stage_5_evaluation/eval_prompts.yaml <<'YAML'
+          professor_exam:
+            system: |
+              You are a test professor model.
+            user: |
+              Generate an exam question for {fragment_name}
+
+          professor_judge:
+            system: |
+              You are a test judge model.
+            user: |
+              Score responses for {exam_question}
+
+          gap_analysis:
+            system: |
+              You are a test gap analyst.
+            user: |
+              Produce a concise gap analysis for {fragment_name}
+          YAML
+
+          cat > configs/stage_5_evaluation/ha_patterns.yaml <<'YAML'
+          default_standards: |
+            MASTER_GUIDE
+          YAML
 
       - name: Run tests with coverage
         # make coverage delegates to pytest with --cov-fail-under=95.
