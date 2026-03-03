@@ -1,0 +1,62 @@
+# AEGF Quality Gate — Example configuration file
+# Copy this file to `eval_config.yaml` and edit values for your environment.
+# WARNING: Do NOT commit secrets. Use environment variables for sensitive values
+# (e.g. GOOGLE_API_KEY, AEGF_* overrides). See README Development section.
+
+# --- Endpoints ---
+api_url: "http://localhost:8000/v1"       # vLLM / OpenAI-compatible endpoint
+audit_dir: "data/audit"                    # Where audit artifacts are written
+gap_dir: "data/Gap"                        # Directory containing master docs
+
+# --- Models ---
+base_model: "your-base-model"              # e.g. qwen3-30b-a3b-thinking-fp8
+adapter_model: "your-adapter-model"        # e.g. platinum_adapter
+judge_model: null                            # null → inherit base_model
+gemini_model: "gemini-2.5-flash"           # when using Gemini backend
+
+# --- Backends ---
+professor_backend: "auto"                  # auto | gemini | vllm
+inference_backend: "vllm"                  # vllm | gemini
+
+# --- Inference parameters ---
+sample_size: 5
+max_tokens: 65536
+temperature: 0.3
+retries: 3
+retry_delay: 5.0
+
+# --- Professor-specific ---
+professor_max_tokens: 12288
+inference_max_tokens: 65536
+
+# --- Scoring weights (sum = 1.0) ---
+scoring_weights:
+  ha_modernity: 0.30
+  reasoning_depth: 0.25
+  functionality: 0.25
+  completeness: 0.12
+  style: 0.08
+
+# --- Master docs filenames (place your files under `gap_dir`) ---
+master_docs:
+  master_guide: "HA_MASTER_GUIDE_2026.md"
+  technical_changelog: "technical_changelog_2026.md"
+  jinja_yaml_guide: "HA_JINJA_YAML_GUIDE_2026.md"
+
+# --- Master docs enrichment format (for reference_standards injection) ---
+# Defines how reference documents are formatted when injected into SampleRecords.
+# Keys MUST match the master_docs keys above.
+# Externalizing this makes the pipeline domain-agnostic and configurable.
+#   - label: section header to use in the formatted output
+#   - truncate_at: character limit per section
+master_docs_formatting:
+  master_guide:
+    label: "MASTER_GUIDE"
+    truncate_at: 8000
+  technical_changelog:
+    label: "TECHNICAL_CHANGELOG"
+    truncate_at: 8000
+  jinja_yaml_guide:
+    label: "JINJA_YAML_GUIDE"
+    truncate_at: 4000
+

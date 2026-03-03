@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+# AEGF — Continuous Integration: Tests & Coverage
+#
+# Triggers on every push and pull_request targeting main.
+# Fails if coverage of tracked modules (src/audit, src/utils) drops below 95 %.
+
+name: Python Tests & Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        # make coverage delegates to pytest with --cov-fail-under=95.
+        # GOOGLE_API_KEY is intentionally empty: GeminiClient integration tests
+        # that require a real key are skipped automatically; mock-based unit
+        # tests run without a key and provide full coverage.
+        run: make coverage PYTHON=python
+        env:
+          GOOGLE_API_KEY: ""
+          PYTHONPATH: .
+
+      - name: Upload coverage report (Python 3.12 only)
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn

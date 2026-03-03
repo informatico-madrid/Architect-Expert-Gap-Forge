@@ -775,6 +775,72 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 - [x] **Phase 4.5: Quality Gate.** Automated dual-inference evaluation (`src/audit/model_evaluator.py`) comparing base vs adapter on stratified samples.
 - [ ] **Phase 5: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
 
+---
+
+## 🧑‍💻 Development
+
+### Prerequisites
+
+- Python 3.12+
+- A virtual environment is recommended:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Linux / macOS
+# .venv\Scripts\activate         # Windows
+pip install -r requirements-dev.txt
+```
+
+### Running Tests
+
+| Command | Description |
+|---------|-------------|
+| `make test` | Fast test run — no coverage overhead |
+| `make coverage` | Full test run; fails if covered modules drop below **95 %** |
+| `make lint` | Static type check via `pyright` (install separately: `pip install pyright`) |
+| `make fmt` | Auto-format with `ruff` (install separately: `pip install ruff`) |
+
+Override the Python interpreter if needed:
+
+```bash
+make test PYTHON=/path/to/python3.12
+```
+
+### Coverage Scope
+
+Coverage is measured over `src/audit` and `src/utils` (the well-tested utility modules).  
+`model_evaluator.py` and integration-bound modules are excluded from the threshold — they are tracked in [REFACTOR_TODO.md](REFACTOR_TODO.md).
+
+```bash
+# Equivalent to make coverage
+python -m pytest tests/ \
+    --cov=src/audit \
+    --cov=src/utils \
+    --cov-report=term-missing \
+    --cov-fail-under=95
+```
+
+### Continuous Integration
+
+The project ships a GitHub Actions workflow at [.github/workflows/python-tests.yml](.github/workflows/python-tests.yml).
+
+It runs automatically on every `push` and `pull_request` to `main`:
+- Matrix: **Python 3.12** and **3.13** on `ubuntu-latest`
+- Dependencies installed from `requirements-dev.txt`
+- Fails if coverage of tracked modules drops below **95 %**
+- Uploads `coverage.xml` as a build artifact (Python 3.12 run)
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `pyproject.toml` | Build metadata, pytest settings, coverage thresholds |
+| `pytest.ini` | Intentionally empty — redirects to `pyproject.toml` |
+| `requirements.txt` | Runtime dependencies |
+| `requirements-dev.txt` | Runtime + test dependencies |
+
+---
+
 ## 📄 License & Data Governance
 
 ### Code License

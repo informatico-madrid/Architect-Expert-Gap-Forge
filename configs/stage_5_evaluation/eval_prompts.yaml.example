@@ -1,0 +1,118 @@
+# AEGF Quality Gate — Prompt Templates (example)
+# Copy this file to `eval_prompts.yaml` and adjust phrasing or criteria as needed.
+# Use `{placeholders}` for runtime formatting via PromptManager.
+
+professor_exam:
+  system: |
+    You are a senior Architecture architect creating rigorous, measurable exam
+    questions that test migration and architectural reasoning (LDI, CoordinatorEntity,
+    DataUpdateCoordinator, enum device classes). Produce structured JSON only when
+    requested by the user template.
+
+  user: |
+    Design a NEW and complex exam question based on this integration fragment.
+
+    Fragment     : {fragment_name}
+    Source file  : {source_file}
+    Example type : {example_type}  (LDI score: {ldi:.3f})
+
+    Reference Gold implementation (context only — do NOT include it in the question):
+    ```python
+    {reference_code}
+    ```
+
+    ### Architecture OFFICIAL STANDARDS
+
+    {reference_standards_section}
+
+    Requirements for the question:
+    - Introduce a realistic variation (different sensor, added error path, new platform, etc.)
+    - Require at least 2-3 of: entry.runtime_data, async_forward_entry_setups,
+      SensorDeviceClass enum, DataUpdateCoordinator, CoordinatorEntity, ConfigEntryNotReady
+    - Cannot be answered by copying the reference code verbatim
+    - Must require a proper <think> reasoning block from the developer
+
+    Return ONLY a JSON object (no markdown wrapper) with this schema:
+    {{
+      "exam_question": "<full question text>",
+      "eval_criteria": [
+        "<specific measurable criterion 1>",
+        "<specific measurable criterion 2>",
+        "<specific measurable criterion 3>"
+      ],
+      "target_patterns": ["<pattern1>", "<pattern2>"]
+    }}
+
+professor_judge:
+  system: |
+    You are a senior Architecture code reviewer scoring developer exam responses.
+    Score objectively and strictly based on the rubric. Provide concise reasoning.
+
+  user: |
+    Score these two exam responses using the rubric below.
+
+    EXAM QUESTION:
+    {exam_question}
+
+    EVALUATION CRITERIA:
+    {eval_criteria}
+
+    --- BASELINE RESPONSE (base model, no fine-tuning) ---
+    {baseline_response}
+
+    --- ADAPTER RESPONSE (LoRA fine-tuned model) ---
+    {adapter_response}
+
+    Score BOTH responses from 0.0 to 1.0 on each dimension:
+    1. ha_modernity    — Uses modern Architecture APIs (entry.runtime_data, plural setup,
+                         enum device classes, DataUpdateCoordinator, etc.)
+    2. reasoning_depth — <think> block correctly identifies edge cases and migration paths
+    3. functionality   — Code is syntactically correct and would work in Architecture
+    4. completeness    — All required functions/classes from the question are implemented
+    5. style           — AEGF conventions: <think> present, no apologies, docstrings, typing
+
+    Return ONLY a JSON object with this exact schema (no markdown wrapper):
+    {{
+      "baseline": {{
+        "ha_modernity": 0.0,
+        "reasoning_depth": 0.0,
+        "functionality": 0.0,
+        "completeness": 0.0,
+        "style": 0.0
+      }},
+      "adapter": {{
+        "ha_modernity": 0.0,
+        "reasoning_depth": 0.0,
+        "functionality": 0.0,
+        "completeness": 0.0,
+        "style": 0.0
+      }},
+      "reasoning": "<2-3 sentences explaining key differences between the two responses>"
+    }}
+
+gap_analysis:
+  system: |
+    You are an expert in migration to Architecture 2026. Given a fragment and the
+    master documents (Master Guide, Technical Changelog, Jinja/YAML Guide), produce a
+    concise, actionable gap analysis: which APIs are outdated, what patterns are
+    deprecated, and what changes are necessary. Reply in plain text (no JSON).
+
+  user: |
+    Fragment : {fragment_name}
+    File     : {source_file}
+
+    Reference implementation (gold):
+    ```python
+    {reference_code}
+    ```
+
+    MASTER GUIDE:
+    {master}
+
+    TECHNICAL CHANGELOG:
+    {changelog}
+
+    JINJA/YAML GUIDE:
+    {jinja}
+
+    Produce the gap analysis for this fragment. Be direct and specific.
