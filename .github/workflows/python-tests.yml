@@ -33,22 +33,14 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
-        run: |
-          # If repository contains a nested 'data_factory' folder (local multi-project
-          # workspace), run from there; otherwise run at repo root.
-          if [ -d data_factory ]; then cd data_factory; fi
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Run tests with coverage
         # make coverage delegates to pytest with --cov-fail-under=95.
         # GOOGLE_API_KEY is intentionally empty: GeminiClient integration tests
         # that require a real key are skipped automatically; mock-based unit
         # tests run without a key and provide full coverage.
-        run: |
-          # Run tests from nested folder if present, otherwise from repo root.
-          if [ -d data_factory ]; then cd data_factory; fi
-          make coverage PYTHON=python
+        run: make coverage PYTHON=python
         env:
           GOOGLE_API_KEY: ""
           PYTHONPATH: .
@@ -56,15 +48,16 @@ jobs:
           # This avoids test flakiness caused by repo-local .env values (AEGF_DOC_*)
           # that alter document resolution in unit tests.
           PYTHON_DOTENV_DISABLED: '1'
+          # Ensure doc_loader resolves the filenames created by pytest fixtures
+          # when configs/stage_5_evaluation/eval_config.yaml is not present.
+          AEGF_DOC_1: "HA_MASTER_GUIDE_2026.md"
+          AEGF_DOC_2: "technical_changelog_2026.md"
+          AEGF_DOC_3: "HA_JINJA_YAML_GUIDE_2026.md"
 
       - name: Upload coverage report (Python 3.12 only)
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-xml
-          # Accept the coverage artifact either at repo root or inside a nested
-          # 'data_factory' folder so the workflow works for both repository layouts.
-          path: |
-            data_factory/coverage.xml
-            coverage.xml
+          path: coverage.xml
           if-no-files-found: warn
