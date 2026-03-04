@@ -372,31 +372,21 @@ class TestLoadMasterDocsIntegration:
     def test_load_master_docs_file_reading(self, tmp_path) -> None:
         """load_master_docs must read master, changelog, and jinja files."""
         from src.audit.model_evaluator import load_master_docs
-        
         master_content = "Master documentation content"
         changelog_content = "Version 2.0: Added features"
         jinja_content = "Jinja template guide"
-        
-        # Create temp gap directory
+
+        # Create temp gap directory and actual files to avoid flaky mocks
         gap_dir = tmp_path / "gap_audit"
         gap_dir.mkdir()
+        # Use filenames expected by the repository evaluation config
+        (gap_dir / "HA_MASTER_GUIDE_2026.md").write_text(master_content, encoding="utf-8")
+        (gap_dir / "technical_changelog_2026.md").write_text(changelog_content, encoding="utf-8")
+        (gap_dir / "HA_JINJA_YAML_GUIDE_2026.md").write_text(jinja_content, encoding="utf-8")
 
-        with patch("builtins.open", mock_open(read_data=master_content)):
-            with patch("pathlib.Path.read_text") as mock_read:
-                # Mock returns for different files
-                mock_read.side_effect = [
-                    master_content,
-                    changelog_content,
-                    jinja_content,
-                ]
+        master, changelog, jinja_guide = load_master_docs(gap_dir=str(gap_dir))
 
-                try:
-                    master, changelog, jinja_guide = load_master_docs(gap_dir=str(gap_dir))
-                    
-                    # Verify files were read
-                    assert isinstance(master, str)
-                    assert isinstance(changelog, str)
-                    assert isinstance(jinja_guide, str)
-                except FileNotFoundError:
-                    # If actual files don't exist, that's okay for this test
-                    pytest.skip("Master docs files not found in test environment")
+        # Verify files were read
+        assert isinstance(master, str)
+        assert isinstance(changelog, str)
+        assert isinstance(jinja_guide, str)

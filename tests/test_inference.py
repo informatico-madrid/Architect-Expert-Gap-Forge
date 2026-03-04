@@ -220,18 +220,26 @@ class TestVLLMClientRetry:
 @pytest.mark.unit
 class TestGeminiClientGuards:
     def test_raises_import_error_when_sdk_unavailable(self) -> None:
-        if _GEMINI_AVAILABLE:
-            pytest.skip("google-genai is installed; cannot test ImportError path")
+        # Ensure we can exercise the ImportError path even if the SDK is
+        # installed in the environment by monkeypatching the module globals.
+        import src.audit.inference as inf
+        from unittest.mock import patch as _patch
+        # Simulate SDK absence
+        inf._GEMINI_AVAILABLE = False
+        inf._genai = None
+        inf._genai_types = None
         from src.audit.inference import GeminiClient
         with pytest.raises(ImportError, match="google-genai SDK"):
             GeminiClient()
 
     def test_raises_environment_error_when_api_key_missing(self) -> None:
-        if not _GEMINI_AVAILABLE:
-            pytest.skip("google-genai not installed; cannot test EnvironmentError path")
+        # Simulate SDK presence and ensure missing API key raises EnvironmentError
+        import src.audit.inference as inf
+        inf._GEMINI_AVAILABLE = True
+        inf._genai = MagicMock()
+        inf._genai_types = MagicMock()
         from src.audit.inference import GeminiClient
         with patch.dict(os.environ, {}, clear=True):
-            # Ensure GOOGLE_API_KEY is absent
             os.environ.pop("GOOGLE_API_KEY", None)
             with pytest.raises(EnvironmentError, match="GOOGLE_API_KEY"):
                 GeminiClient()
@@ -351,7 +359,6 @@ class TestInferenceRouterGeminiPaths:
 
 
 @pytest.mark.unit
-@pytest.mark.skipif(not _GEMINI_AVAILABLE, reason="google-genai not installed")
 class TestGeminiClientWithMock:
     """Test GeminiClient body paths with fully mocked SDK internals.
 

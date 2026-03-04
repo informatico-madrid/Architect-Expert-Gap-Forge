@@ -41,7 +41,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import yaml
 from dotenv import load_dotenv
@@ -99,15 +99,19 @@ class ModuleFile:
     size: int = 0
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class Module:
-    """A discovered logical module (integration / package / virtual root)."""
+    """A discovered logical module (integration / package / virtual root).
+
+    Immutable canonical record for module metadata. Use immutable tuples for
+    `files` and `neighbors` to prevent accidental mutation at runtime.
+    """
     name: str
     path: Path
     anchor_type: str = ""          # manifest | init | infrastructure
-    files: List[ModuleFile] = field(default_factory=list)
+    files: Tuple[ModuleFile, ...] = field(default_factory=tuple)
     manifest: dict = field(default_factory=dict)
-    neighbors: List[str] = field(default_factory=list)
+    neighbors: Tuple[str, ...] = field(default_factory=tuple)
 
 
 # ---------------------------------------------------------------------------
@@ -232,12 +236,13 @@ class RepoProcessor:
             if mod_dir in seen_dirs:
                 continue
             seen_dirs.add(mod_dir)
-            mod = self._build_module(mod_dir, anchor_type="manifest")
+            # Load manifest content and build an immutable Module record
+            manifest_data: dict = {}
             try:
-                mod.manifest = json.loads(manifest_path.read_text(errors="ignore"))
+                manifest_data = json.loads(manifest_path.read_text(errors="ignore"))
             except Exception:
-                pass
-            modules.append(mod)
+                manifest_data = {}
+            modules.append(self._build_module(mod_dir, anchor_type="manifest", manifest=manifest_data))
 
         # 2. __init__.py = package anchor (only if not already covered by manifest)
         for init_path in root.rglob("__init__.py"):
@@ -252,26 +257,29 @@ class RepoProcessor:
         self._stats["modules_found"] += len(modules)
         return modules
 
-    def _build_module(self, mod_dir: Path, anchor_type: str) -> Module:
-        """Scan the directory of a discovered module and classify its files."""
-        mod = Module(
-            name=mod_dir.name,
-            path=mod_dir,
-            anchor_type=anchor_type,
-        )
+    def _build_module(self, mod_dir: Path, anchor_type: str, manifest: Optional[dict] = None) -> Module:
+        """Scan the directory of a discovered module and return an immutable Module record."""
+        files_list: List[ModuleFile] = []
         all_names: List[str] = []
         for f in sorted(mod_dir.iterdir()):
             if f.is_file() and f.suffix in (self.cfg.extensions | {".json", ".yaml", ".yml"}):
                 if self._is_ignored(f):
                     continue
                 all_names.append(f.name)
-                mod.files.append(ModuleFile(
+                files_list.append(ModuleFile(
                     path=f,
                     role=self._classify_role(f),
                     size=f.stat().st_size,
                 ))
-        mod.neighbors = all_names
-        return mod
+
+        return Module(
+            name=mod_dir.name,
+            path=mod_dir,
+            anchor_type=anchor_type,
+            files=tuple(files_list),
+            manifest=manifest or {},
+            neighbors=tuple(all_names),
+        )
 
     # ------------------------------------------------------------------
     # Segment-path shortcut  (e.g. homeassistant/components/<component>)
@@ -282,14 +290,14 @@ class RepoProcessor:
     ) -> None:
         """Process a single segmented component directory as a module."""
         anchor = "manifest" if (mod_dir / "manifest.json").exists() else "init"
-        mod = self._build_module(mod_dir, anchor_type=anchor)
+        manifest_data: dict = {}
         if anchor == "manifest":
             try:
-                mod.manifest = json.loads(
-                    (mod_dir / "manifest.json").read_text(errors="ignore")
-                )
+                manifest_data = json.loads((mod_dir / "manifest.json").read_text(errors="ignore"))
             except Exception:
-                pass
+                manifest_data = {}
+
+        mod = self._build_module(mod_dir, anchor_type=anchor, manifest=manifest_data)
         self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix)
 
     # ------------------------------------------------------------------

@@ -60,6 +60,7 @@ python src/factory/production_v11.py --gap-dir data/Gap --test 10
 - Agents MUST present a concise plan using the `manage_todo_list` tool that lists intended file edits and wait for explicit user confirmation before staging files.
 - Agents MUST NOT create or modify commits, branches, tags, or push to any remote without explicit user instruction and affirmative confirmation.
 - Agents SHOULD provide the exact patch or a human-readable summary of changes and allow the user to review before staging.
+ - Agents MUST NOT modify production scripts solely to make tests pass. If a test indicates a real production bug, agents MUST stop, report the issue, and obtain explicit human confirmation before editing production code.
 
 If you'd like, I can expand this into a longer agent guide with targeted examples (e.g., a `model_evaluator` smoke-test snippet or test fixtures examples).
 

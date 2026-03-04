@@ -42,7 +42,7 @@ All code should conform to the **Architectural Gold Standard** defined in `.gith
 - Agents MUST use the `manage_todo_list` tool to declare planned edits before making file changes, and must wait for explicit confirmation to stage files.
 - Agents MUST NOT create branches, tags, or modify remote refs without explicit approval.
 - Agents MUST provide a clear summary of the proposed changes and the exact files that will be staged.
+ - Agents MUST NOT modify production scripts solely to make tests pass. If a test indicates a real production bug, agents MUST stop, report the issue, and obtain explicit human confirmation before editing production code.
 - Violation of these rules renders the agent non-compliant with the Architectural Gold Standard.
-
 
 ---
