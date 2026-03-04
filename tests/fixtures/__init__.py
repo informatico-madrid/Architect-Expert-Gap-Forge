@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
+
 """Fixtures for Golden File Testing in model_evaluator integration tests."""
 from __future__ import annotations
 
