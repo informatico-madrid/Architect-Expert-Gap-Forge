@@ -54,5 +54,12 @@ python src/factory/production_v11.py --gap-dir data/Gap --test 10
 8) Governance references
 - Follow the Architectural Gold Standard in `.github/agents/AEGF.agent.md` and the operational notes in `AGENTS.md`. The `processor` collects repository governance files (e.g., `AGENTS.md`, `CLAUDE.md`) and injects them as high-authority prompts (TIPO 5).
 
+9) Agent Operational Rules (MANDATORY)
+- Agents MUST NOT run `git commit`, `git commit -m`, `git push`, or any command that modifies remote branches or repository history.
+- Agents MAY run `git add` only for files that have been explicitly confirmed by the user in the current session or conversation.
+- Agents MUST present a concise plan using the `manage_todo_list` tool that lists intended file edits and wait for explicit user confirmation before staging files.
+- Agents MUST NOT create or modify commits, branches, tags, or push to any remote without explicit user instruction and affirmative confirmation.
+- Agents SHOULD provide the exact patch or a human-readable summary of changes and allow the user to review before staging.
+
 If you'd like, I can expand this into a longer agent guide with targeted examples (e.g., a `model_evaluator` smoke-test snippet or test fixtures examples).
 

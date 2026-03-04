@@ -36,4 +36,13 @@ This file documents the project's operational surface and the expected governanc
 ## 📜 Governance Reference
 All code should conform to the **Architectural Gold Standard** defined in `.github/agents/AEGF.agent.md`. This document remains the canonical policy;
 
+### Agent Operational Rules (Non-Negotiable)
+- Agents MUST NOT run `git commit` or `git push` or any command that modifies remote repository history.
+- Agents MAY run `git add` only for files that have been explicitly confirmed by a human reviewer or the repository owner in the active conversation.
+- Agents MUST use the `manage_todo_list` tool to declare planned edits before making file changes, and must wait for explicit confirmation to stage files.
+- Agents MUST NOT create branches, tags, or modify remote refs without explicit approval.
+- Agents MUST provide a clear summary of the proposed changes and the exact files that will be staged.
+- Violation of these rules renders the agent non-compliant with the Architectural Gold Standard.
+
+
 ---

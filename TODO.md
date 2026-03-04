@@ -1,10 +1,11 @@
 ## 🔎 Self-Audit — Key Deviations (actionable)
 The following issues were discovered during an automated/manual scan. These are prioritized by impact and mapped to simple remediation actions.
 
-1) Missing package initializers
-    - Affected paths: `src/discovery/`, `src/factory/`, `src/curation/` — each contains Python modules but no `__init__.py` file.
-    - Impact: Import-time package resolution can fail in some import modes; contravenes §5.5 of the Gold Standard.
-    - Remediation: Add `__init__.py` to each folder and export a minimal `__all__` list for public API symbols.
+1) Missing package initializers — RESOLVED
+    - Affected paths: `src/discovery/`, `src/factory/`, `src/curation/`.
+    - Status: Completed — added `__init__.py` files to each folder and exported minimal `__all__` public APIs. Files staged for review: `src/discovery/__init__.py`, `src/factory/__init__.py`, `src/curation/__init__.py`.
+    - Impact: Import-time package resolution issue mitigated; now complies with §5.5 of the Gold Standard.
+    - Remediation: See staged files for exact exports and SPDX headers.
 
 2) Mutable / non-frozen dataclasses
     - Examples: `src/curation/nemo_curator_suite.py::CurationStats`, `src/discovery/processor.py::Module` / `ModuleFile` are declared with `@dataclass` but not `frozen=True`.
