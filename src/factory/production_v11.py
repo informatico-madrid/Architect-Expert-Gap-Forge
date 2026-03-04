@@ -39,6 +39,7 @@ import time
 from pathlib import Path
 from string import Template
 from typing import List, Dict, Any, Tuple, Optional
+from src.schemas.common import FragmentTypedDict
 
 import yaml
 from openai import AsyncOpenAI
@@ -352,7 +353,7 @@ def build_system_error_recovery_jinja(jinja_guide: str) -> str:
 # USER PROMPT BUILDERS — Python integrations
 # ======================================================================
 
-def build_user_nominal(frag: Dict, difficulty: str) -> str:
+def build_user_nominal(frag: FragmentTypedDict, difficulty: str) -> str:
     """Build user prompt for nominal examples with Evol-Instruct difficulty."""
     subs = dict(
         context=frag['context'],
@@ -377,7 +378,7 @@ def build_user_nominal(frag: Dict, difficulty: str) -> str:
             return _render(_prompt("user.python.nominal_hard_anchor"), **subs)
 
 
-def build_user_contrast(frag: Dict) -> str:
+def build_user_contrast(frag: FragmentTypedDict) -> str:
     """Build user prompt where user employs 2023 pattern (model must correct)."""
     pattern = random.choice(LEGACY_2023_PATTERNS)
     return _render(
@@ -390,7 +391,7 @@ def build_user_contrast(frag: Dict) -> str:
     )
 
 
-def build_user_error_recovery(frag: Dict) -> str:
+def build_user_error_recovery(frag: FragmentTypedDict) -> str:
     """Build user prompt with a simulated HA error."""
     err_template = random.choice(HA_ERROR_TEMPLATES)
     # Customize error with fragment data

@@ -8,6 +8,8 @@ from typing import Any
 import pytest
 
 from src.audit.schema import ExamRecord, InferenceResult, SampleRecord
+from src.schemas.converters import normalize_judge_response
+from src.schemas.common import NormalizedJudgeResponse
 
 
 FIXTURES_DIR = Path(__file__).parent
@@ -79,3 +81,16 @@ def golden_inference_results() -> tuple[InferenceResult, InferenceResult]:
 def golden_judge_response() -> dict[str, Any]:
     """Load a golden judge scoring response from fixture."""
     return load_golden_json("judge_scoring_response.json")
+
+
+@pytest.fixture
+def golden_normalized_judge_response() -> NormalizedJudgeResponse:
+    """Provide a normalized judge response (adapter/baseline -> float scores).
+
+    This converts the legacy golden JSON `judge_scoring_response.json` into
+    the normalized shape used by the evaluator (useful for newer tests).
+    """
+    data = load_golden_json("judge_scoring_response.json")
+    adapter_scores = {k: v["score"] for k, v in data.get("dimensions", {}).items()}
+    raw = {"adapter": adapter_scores, "baseline": {}, "reasoning": data.get("judge_reasoning", "")}
+    return normalize_judge_response(raw)

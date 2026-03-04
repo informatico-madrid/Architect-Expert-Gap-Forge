@@ -13,6 +13,7 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 from typing import Any, Dict, List
+from src.schemas.common import RawRecord
 from unittest.mock import MagicMock
 
 import pytest
@@ -158,7 +159,7 @@ def multi_sample_records() -> List[SampleRecord]:
 
 
 @pytest.fixture
-def raw_records() -> List[Dict[str, Any]]:
+def raw_records() -> List[RawRecord]:
     """Raw JSONL-like dicts as returned by load_jsonl(), used for sampling tests."""
     types = ["nominal", "contrast", "error_recovery", "theory"]
     records: List[Dict[str, Any]] = []

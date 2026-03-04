@@ -56,6 +56,8 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from src.schemas.common import NormalizedJudgeResponse
+from src.schemas.converters import normalize_judge_response
 
 import yaml
 from dotenv import load_dotenv
@@ -511,7 +513,7 @@ def llm_judge_score(
     professor_backend: str = DEFAULT_PROFESSOR_BACKEND,
     gemini_model: str = DEFAULT_GEMINI_MODEL,
     validate: bool = False,
-) -> dict[str, Any]:
+) -> NormalizedJudgeResponse:
     """Ask the professor model to score baseline vs adapter on the rubric.
 
     Uses JSON mode for structured output. Raises PromptGenerationError on any
@@ -572,22 +574,19 @@ def llm_judge_score(
                 logger.error("Failed to persist raw judge output for %s: %s", exam.id, save_exc)
             raise exc_parse
 
-        # Validate expected keys
+        # Ensure expected top-level keys are present (fail-fast for malformed judge)
         for key in ("baseline", "adapter", "reasoning"):
             if key not in parsed:
                 raise ValueError(f"Missing key '{key}' in judge response")
-        for section in ("baseline", "adapter"):
-            for dim in SCORING_WEIGHTS:
-                if dim not in parsed[section]:
-                    parsed[section][dim] = 0.5
-                else:
-                    parsed[section][dim] = max(0.0, min(1.0, float(parsed[section][dim])))
+
+        # Normalize numeric dimensions and fill defaults
+        normalized = normalize_judge_response(parsed)
 
         logger.debug(
             "  Judge scores — adapter composite: %.3f",
-            sum(parsed["adapter"][d] * w for d, w in SCORING_WEIGHTS.items()),
+            sum(normalized["adapter"][d] * w for d, w in SCORING_WEIGHTS.items()),
         )
-        return parsed
+        return normalized
 
     except Exception as exc:
         msg = f"LLM judge failed for {exam.id}: {exc}"

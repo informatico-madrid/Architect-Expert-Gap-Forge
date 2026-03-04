@@ -34,6 +34,7 @@ import logging
 import re
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional, Tuple
+from src.schemas.common import RawRecord
 
 logger = logging.getLogger(__name__)
 
@@ -294,9 +295,9 @@ def filter_think_content(
 
 
 def apply_to_record(
-    record: Dict[str, Any],
+    record: RawRecord,
     min_chars: int = MIN_THINK_CHARS,
-) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+) -> Tuple[RawRecord, Optional[Dict[str, Any]]]:
     """Apply think-filter to the first assistant message in a conversation record.
 
     Args:

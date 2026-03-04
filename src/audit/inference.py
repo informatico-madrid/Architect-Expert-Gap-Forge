@@ -17,6 +17,7 @@ import logging
 import os
 import time
 from typing import Any
+from src.schemas.common import InferencePayload, ChatMessage
 
 import requests
 
@@ -211,12 +212,12 @@ class VLLMClient(BaseInferenceClient):
         temperature: float = 0.3,
         json_mode: bool = False,
     ) -> str:
-        messages: list[dict[str, str]] = []
+        messages: list[ChatMessage] = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload: dict[str, Any] = {
+        payload: InferencePayload = {
             "model": self._model,
             "messages": messages,
             "max_tokens": max_tokens,

@@ -23,6 +23,8 @@ import logging
 import random
 from collections import defaultdict
 from typing import Any
+from src.schemas.common import RawRecord
+from src.schemas.converters import raw_to_sample
 
 from src.audit.schema import SampleRecord
 
@@ -31,7 +33,7 @@ __all__ = ["load_dataset", "stratified_sample"]
 logger = logging.getLogger(__name__)
 
 
-def load_dataset(path: str) -> list[dict[str, Any]]:
+def load_dataset(path: str) -> list[RawRecord]:
     """Load a JSONL dataset into memory.
 
     Skips malformed lines with a warning instead of aborting.
@@ -42,7 +44,7 @@ def load_dataset(path: str) -> list[dict[str, Any]]:
     Returns:
         List of raw record dicts.
     """
-    records: list[dict[str, Any]] = []
+    records: list[RawRecord] = []
     with open(path, "r", encoding="utf-8") as fh:
         for line_no, line in enumerate(fh, 1):
             line = line.strip()
@@ -57,7 +59,7 @@ def load_dataset(path: str) -> list[dict[str, Any]]:
 
 
 def stratified_sample(
-    records: list[dict[str, Any]],
+    records: list[RawRecord],
     sample_size: int = 5,
     seed: int = 42,
 ) -> list[SampleRecord]:
@@ -79,7 +81,7 @@ def stratified_sample(
     rng = random.Random(seed)
 
     # Bucket by example_type
-    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    buckets: dict[str, list[RawRecord]] = defaultdict(list)
     for rec in records:
         et = rec.get("metadata", {}).get("example_type", "unknown")
         buckets[et].append(rec)
@@ -117,36 +119,8 @@ def stratified_sample(
         pool = buckets[et]
         rng.shuffle(pool)
         for rec in pool[: allocation[et]]:
-            meta = rec.get("metadata", {})
-            conv = rec.get("conversation", []) or rec.get("conversations", []) or []
-            user_msg = ""
-            asst_msg = ""
-            for t in conv:
-                role = (t.get("role") or t.get("from") or "").lower()
-                content = (t.get("content") or t.get("value") or "").strip()
-                if not content:
-                    continue
-                if "user" in role and not user_msg:
-                    user_msg = content
-                if ("assistant" in role or "bot" in role) and not asst_msg:
-                    asst_msg = content
-                if user_msg and asst_msg:
-                    break
-            samples.append(
-                SampleRecord(
-                    id=rec.get("id", f"unknown_{len(samples)}"),
-                    example_type=et,
-                    evol_difficulty=meta.get("evol_difficulty", "unknown"),
-                    fragment_name=meta.get("fragment_name", ""),
-                    source_file=meta.get("source_file", ""),
-                    user_prompt=user_msg,
-                    reference_response=asst_msg,
-                    gold_injected=meta.get("gold_injected", False),
-                    ldi=meta.get("ldi", 0.0),
-                    reference_standards=meta.get("reference_standards", ""),
-                    gap_analysis=meta.get("gap_analysis", ""),
-                )
-            )
+            sample = raw_to_sample(rec)
+            samples.append(sample)
 
     missing_standards = [s.id for s in samples if not (s.reference_standards and s.reference_standards.strip())]
     missing_gaps = [s.id for s in samples if not (s.gap_analysis and s.gap_analysis.strip())]

@@ -77,6 +77,24 @@ class BundleTypedDict(TypedDict, total=False):
     fragment_context: str
 
 
+class FragmentTypedDict(TypedDict, total=False):
+    """TypedDict describing a code fragment / bundle used by factory pipelines.
+
+    Use `total=False` to remain tolerant to additional fields present in
+    upstream harvested fragments. Keys here cover the minimal set used by
+    `production_v11.py` prompt builders and related utilities.
+    """
+    id: NotRequired[str]
+    name: NotRequired[str]
+    virtual_filename: NotRequired[str]
+    context: NotRequired[str]
+    skeleton: NotRequired[str]
+    original: NotRequired[str]
+    source_file: NotRequired[str]
+    fragment_name: NotRequired[str]
+    metadata: NotRequired[Dict[str, Any]]
+
+
 class CurationRecord(TypedDict, total=False):
     record: RawRecord
     metadata: MetadataDict
@@ -94,5 +112,6 @@ __all__ = [
     "InferencePayload",
     "NormalizedJudgeResponse",
     "BundleTypedDict",
+    "FragmentTypedDict",
     "CurationRecord",
 ]
