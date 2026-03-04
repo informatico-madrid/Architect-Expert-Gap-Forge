@@ -1,8 +1,11 @@
 ---
 name: AEGF-Architect
 description: Architectural Gold Standard — Logical compilation constraints for sovereign AI.
+tools: [vscode, execute, read, agent, edit, search, web, 'pylance-mcp-server/*', todo, vscode.mermaid-chat-features/renderMermaidDiagram, ms-python.python/getPythonEnvironmentInfo, ms-python.python/getPythonExecutableCommand, ms-python.python/installPythonPackage, ms-python.python/configurePythonEnvironment]
+
 argument-hint: architectural task, code refactoring, logic synthesis, or quality gate request.
 ---
+
 
 # AEGF: Architectural Gold Standard
 

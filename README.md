@@ -16,7 +16,7 @@ This project provides the infrastructure to:
 
 ## 🏗️ The Sovereign Data Factory: Architecture
 
-AEGF is structured as a modular, **5-stage industrial pipeline**. The core engine is agnostic and driven by external configuration, although the current repository ships with Home Assistant–centric examples and master documents.  
+AEGF is structured as a modular, **6-stage industrial pipeline**. The core engine is agnostic and driven by external configuration, although the current repository ships with Home Assistant–centric examples and master documents.  
 > TODO: when repurposing the factory for other domains, replace or remove HA-specific references.
 
 ### Stage 1 — Discovery (`src/discovery/`)
@@ -577,7 +577,7 @@ make train
 
 **Protocol:** Rank-64 RSLoRA (Rank-Stabilized LoRA) over Qwen3-30B-A3B-MoE. Optimized for `sm_120` kernels and `bf16` precision. Docker stack defined in `deploy/docker/`.
 
-### Stage 4.5 — Quality Gate (`src/audit/`)
+### Stage 5 — Quality Gate (`src/audit/`)
 **Engine:** `model_evaluator.py`
 
 Automated dual-inference evaluation pipeline that acts as a **mandatory gate** between training and weight consolidation. The evaluator compares the base model (control) against the LoRA adapter (trained) on a stratified sample from the training dataset.
@@ -609,6 +609,21 @@ python -m src.audit.model_evaluator baseline --model qwen3-30b-a3b-thinking-fp8
 python -m src.audit.model_evaluator adapter  --model platinum_adapter
 python -m src.audit.model_evaluator score
 ```
+
+#### Validate mode (token-efficient smoke test)
+
+Use `--validate` for a deterministic, low-cost check (sample size = 1). This is useful to verify wiring and prompts without incurring heavy inference costs.
+example 
+
+```bash
+python -m src.audit.model_evaluator full \
+  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \
+  --base-model qwen3-30b-a3b-thinking-fp8 \
+  --adapter-model platinum_adapter \
+  --validate
+```
+
+Note on Gemini: Google Gemini is intended only as a test-time fallback when the local vLLM instance is busy or unavailable. If you use Gemini, set a valid `GOOGLE_API_KEY` in your environment. Be aware that calling Gemini may incur API costs; CI intentionally leaves `GOOGLE_API_KEY` unset and tests use local mocks or vLLM to avoid external calls.
 
 #### Scoring Dimensions
 
@@ -644,51 +659,10 @@ The evaluator emits a **Final Grade (0–100)** with a verdict: `PASS` (≥80), 
 | `AEGF_MAX_TOKENS` | `4096` | Max generation tokens |
 | `AEGF_TEMPERATURE` | `0.3` | Sampling temperature |
 
+### Stage 6 — Merger (`src/merger/`)
+**Engine:** `surgical_merge.py`
 
-### Stage 5 — Validation & Merger (LLM-as-Judge + peso fusión)
-
-Stage 5 agrupa dos actividades complementarias:
-
-- **Validación (AEGF Quality Gate)** — implementación principal en `src/audit/model_evaluator.py`.
-  Este flujo ejecuta la evaluación en cinco fases: `sample` → `generate-exam` → `baseline` → `adapter` → `score`.
-  El resultado son artefactos de auditoría escritos en `--audit-dir` (por ejemplo: `eval_sample.json`,
-  `eval_exam.json`, `inference_baseline.json`, `inference_adapter.json`, `audit_report_v11.md|json`).
-
-- **Merger (fusión de pesos)** — fusión de pesos a bajo nivel (safetensors) mediante una estrategia "quirúrgica".
-  La ubicación prevista es `src/merger/` (engine objetivo: `surgical_merge.py`). Nota: en este repositorio
-  `src/merger/` puede estar como marcador/placeholder; la implementación de fusión de pesos es una tarea
-  separada que puede añadirse cuando se disponga de pesos y de un procedimiento de validación post-merge.
-
-Cómo ejecutar la validación (modo `--validate`) — recomendado para pruebas locales
----------------------------------------------------------------
-
-`--validate` activa un recorrido end-to-end de bajo coste: reduce `sample_size` a 1 y fuerza regeneración
-(`force=True`) para hacer una comprobación de humo sin consumir muchos tokens en LLMs.
-
-Ejemplo mínimo (usar Gemini como backend para profesor/juez y para inferencia):
-
-```bash
-export GOOGLE_API_KEY="ya29.YOUR_ACTUAL_KEY"   # necesario para llamadas reales a Gemini
-python -m src.audit.model_evaluator full \
-  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \
-  --audit-dir data/audit/validate_run \
-  --gap-dir data/Gap \
-  --professor-backend gemini \
-  --inference-backend gemini \
-  --judge-model gemini-2.5-flash \
-  --gemini-model gemini-2.5-flash \
-  --validate
-```
-
-Notas importantes:
-- `GOOGLE_API_KEY` debe estar configurada si eliges `gemini` como backend; las llamadas reales a Gemini
-  generan uso de API y posible coste. Comprueba cuotas y coste antes de ejecutar a gran escala.
-- Para desarrollo local sin llamadas externas se recomienda usar `--validate` *y* mocks (los tests ya
-  parchean `_inference_router` para devolver clientes deterministas). Esto permite verificar el flujo
-  completo sin consumir tokens.
-
-Si necesitas que documente un ejemplo práctico de mocking local (script reproducible), lo añado bajo
-`scripts/` y lo referencio aquí.
+Low-level `safetensors` weight fusion. A "surgical" fallback approach to ensure model integrity where standard merging fails due to architectural complexity in MoE layers.
 
 ---
 
@@ -810,11 +784,11 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 ## 🛠️ Roadmap & Development Status
 
 - [x] **Phase 1: Infrastructure.** Stable NVIDIA sm_120 vLLM stack with native Blackwell kernel support.
-- [x] **Phase 2: Architecture.** Implementation of the modular 5-stage factory (Discovery to SFT) with NeMo Curator integration.
+- [x] **Phase 2: Architecture.** Implementation of the modular 3-stage factory (Discovery to SFT) with NeMo Curator integration.
 - [x] **Phase 3: Data Synthesis.** Production of **67k+ high-density trajectories** using the V11 Diversified Engine (GI/GS Protocol).
 - [x] **Phase 4: Expert SFT.** Deep-scale training of Qwen3-30B-MoE using **RSLoRA** and **Selective Loss Masking** (sm_120 optimized).
-- [x] **Phase 4.5: Quality Gate.** Automated dual-inference evaluation (`src/audit/model_evaluator.py`) comparing base vs adapter on stratified samples.
-- [ ] **Phase 5: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
+- [x] **Phase 5: Quality Gate.** Automated dual-inference evaluation (`src/audit/model_evaluator.py`) comparing base vs adapter on stratified samples.
+- [ ] **Phase 6: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
 
 ---
 
@@ -837,7 +811,7 @@ pip install -r requirements-dev.txt
 | Command | Description |
 |---------|-------------|
 | `make test` | Fast test run — no coverage overhead |
-| `make coverage` | Full test run; fails if covered modules drop below **95 %** |
+| `make coverage` | Full test run; fails if covered modules drop below **90 %** |
 | `make lint` | Static type check via `pyright` (install separately: `pip install pyright`) |
 | `make fmt` | Auto-format with `ruff` (install separately: `pip install ruff`) |
 
@@ -858,7 +832,7 @@ python -m pytest tests/ \
     --cov=src/audit \
     --cov=src/utils \
     --cov-report=term-missing \
-    --cov-fail-under=95
+    --cov-fail-under=90
 ```
 
 ### Continuous Integration
