@@ -25,7 +25,7 @@ from src.audit.model_evaluator import (
     compute_scorecard,
     generate_report,
 )
-from src.audit.schema import AuditReport, ScoreCard
+from src.audit.schema import AuditReport, ScoreCard, ExamRecord
 from tests.fixtures import (
     golden_exam,
     golden_inference_results,
@@ -76,8 +76,10 @@ class TestComputeScorecardGoldenFile:
             "src.audit.model_evaluator.llm_judge_score",
             return_value=judge_data,
         ):
+            # Ensure deterministic testing by removing target patterns
+            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
             sc = compute_scorecard(
-                exam=golden_exam,
+                exam=local_exam,
                 baseline_resp="baseline response",
                 adapter_resp="adapter response",
                 judge_model="test-judge",
@@ -118,8 +120,9 @@ class TestComputeScorecardGoldenFile:
             "src.audit.model_evaluator.llm_judge_score",
             return_value=judge_data,
         ):
+            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
             sc = compute_scorecard(
-                exam=golden_exam,
+                exam=local_exam,
                 baseline_resp="baseline",
                 adapter_resp="adapter",
                 judge_model="test-judge",
@@ -159,8 +162,9 @@ class TestComputeScorecardGoldenFile:
             "src.audit.model_evaluator.llm_judge_score",
             return_value=judge_data,
         ):
+            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
             sc = compute_scorecard(
-                exam=golden_exam,
+                exam=local_exam,
                 baseline_resp="baseline",
                 adapter_resp="adapter",
                 judge_model="test-judge",
@@ -199,6 +203,7 @@ async with self.client.get(url) as resp:
             "src.audit.model_evaluator.llm_judge_score",
             return_value=judge_data,
         ):
+            # Keep target_patterns for this test so pattern detection is exercised
             sc = compute_scorecard(
                 exam=golden_exam,
                 baseline_resp="baseline",
@@ -255,7 +260,7 @@ class TestGenerateReportGoldenFile:
             verdict="PASS",
         )
 
-        report_path = generate_report(
+        report_path, _ = generate_report(
             report,
             [scorecard],
             [golden_exam],
@@ -361,7 +366,7 @@ class TestGenerateReportGoldenFile:
             verdict="PASS",
         )
 
-        report_path = generate_report(
+        report_path, _ = generate_report(
             report,
             [scorecard],
             [golden_exam],
@@ -422,8 +427,9 @@ class TestFullPipelineGoldenFile:
             "src.audit.model_evaluator.llm_judge_score",
             return_value=judge_data,
         ):
+            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
             scorecard = compute_scorecard(
-                exam=golden_exam,
+                exam=local_exam,
                 baseline_resp=baseline.response,
                 adapter_resp=adapter.response,
                 judge_model="test-judge",
@@ -448,7 +454,7 @@ class TestFullPipelineGoldenFile:
             verdict="PASS",
         )
 
-        report_path = generate_report(
+        report_path, _ = generate_report(
             report,
             [scorecard],
             [golden_exam],

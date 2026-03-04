@@ -540,7 +540,7 @@ class TestCmdScorePhase5:
             return_value=mock_sc,
         ) as mock_score, patch(
             "src.audit.model_evaluator.generate_report",
-            return_value=mock_report_path,
+            return_value=(mock_report_path, AuditReport()),
         ) as mock_report:
             cmd_score(args)
 
@@ -571,5 +571,5 @@ class TestCmdScorePhase5:
         mock_report_path.write_text("# Report", encoding="utf-8")
 
         with patch("src.audit.model_evaluator.compute_scorecard", return_value=mock_sc), \
-             patch("src.audit.model_evaluator.generate_report", return_value=mock_report_path):
+             patch("src.audit.model_evaluator.generate_report", return_value=(mock_report_path, AuditReport())):
             cmd_score(args)  # must not raise

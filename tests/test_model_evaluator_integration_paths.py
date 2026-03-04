@@ -29,7 +29,7 @@ from src.audit.model_evaluator import (
     cmd_adapter,
     cmd_score,
 )
-from src.audit.schema import InferenceResult, ScoreCard, SampleRecord, ExamRecord
+from src.audit.schema import InferenceResult, ScoreCard, SampleRecord, ExamRecord, AuditReport
 from tests.fixtures import golden_sample, golden_exam
 
 
@@ -177,7 +177,7 @@ class TestComputeScorecardAggregation:
             mock_router.return_value.professor.return_value = mock_client
 
             scorecard = compute_scorecard(
-                golden_exam,
+                ExamRecord.from_sample(golden_exam, target_patterns=[]),
                 baseline_resp,
                 adapter_resp,
                 judge_model="gemini-2.0-flash",
@@ -216,7 +216,7 @@ class TestComputeScorecardAggregation:
             mock_router.return_value.professor.return_value = mock_client
 
             scorecard = compute_scorecard(
-                golden_exam,
+                ExamRecord.from_sample(golden_exam, target_patterns=[]),
                 baseline_resp,
                 adapter_resp,
                 judge_model="gemini-2.0-flash",
@@ -466,6 +466,8 @@ class TestCmdScoreBatchProcessing:
                     with patch("src.audit.model_evaluator.compute_scorecard") as mock_score:
                         with patch("src.audit.model_evaluator.generate_report") as mock_report:
                             mock_load_exam.return_value = exams
+                            # Make generate_report return the new (Path, AuditReport) tuple
+                            mock_report.return_value = (Path(args.audit_dir) / "audit_report_v11.md", AuditReport())
                             
                             # Set up load_inference side effect
                             def load_inference_side_effect(backend, audit_dir_arg):
@@ -525,7 +527,8 @@ class TestCmdScoreBatchProcessing:
                     with patch("src.audit.model_evaluator.compute_scorecard") as mock_score:
                         with patch("src.audit.model_evaluator.generate_report") as mock_report:
                             mock_load_exam.return_value = exams
-                            
+                            mock_report.return_value = (Path(args.audit_dir) / "audit_report_v11.md", AuditReport())
+
                             def load_inference_side_effect(backend, audit_dir_arg):
                                 if backend == "baseline":
                                     return baseline_results
@@ -878,7 +881,7 @@ class TestScorecardDimensionAggregation:
             mock_router.return_value.professor.return_value = mock_client
 
             scorecard = compute_scorecard(
-                golden_exam,
+                ExamRecord.from_sample(golden_exam, target_patterns=[]),
                 baseline_resp,
                 adapter_resp,
                 judge_model="gemini-2.0-flash",
@@ -1214,7 +1217,7 @@ class TestScoringAndDimensionCalculation:
             mock_router.return_value.professor.return_value = mock_client
 
             scorecard = compute_scorecard(
-                golden_exam,
+                ExamRecord.from_sample(golden_exam, target_patterns=[]),
                 baseline_resp,
                 adapter_resp,
                 judge_model="gemini-2.0-flash",
@@ -1250,7 +1253,7 @@ class TestScoringAndDimensionCalculation:
             mock_router.return_value.professor.return_value = mock_client
 
             scorecard = compute_scorecard(
-                golden_exam,
+                ExamRecord.from_sample(golden_exam, target_patterns=[]),
                 baseline_resp,
                 adapter_resp,
                 judge_model="gemini-2.0-flash",

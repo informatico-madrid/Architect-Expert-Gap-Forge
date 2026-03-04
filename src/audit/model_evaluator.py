@@ -158,7 +158,7 @@ DEFAULT_RETRY_DELAY: float = CFG.get("retry_delay", 5.0)
 DEFAULT_PROFESSOR_BACKEND: str = CFG.get("professor_backend", "auto")
 DEFAULT_INFERENCE_BACKEND: str = CFG.get("inference_backend", "vllm")
 DEFAULT_GEMINI_MODEL: str = CFG.get("gemini_model", "gemini-2.5-flash")
-DEFAULT_PROFESSOR_MAX_TOKENS: int = CFG.get("professor_max_tokens", 12288)
+DEFAULT_PROFESSOR_MAX_TOKENS: int = CFG.get("professor_max_tokens", 65536)
 DEFAULT_INFERENCE_MAX_TOKENS: int = CFG.get("inference_max_tokens", 65536)
 
 # Singletons
@@ -500,8 +500,6 @@ def _extract_code_blocks(text: str) -> str:
 
 
 # Modernity patterns are loaded lazily from ha_patterns.yaml via _load_domain_patterns().
-
-
 def llm_judge_score(
     exam: ExamRecord,
     baseline_resp: str,
@@ -523,6 +521,12 @@ def llm_judge_score(
         f"  {i+1}. {c}" for i, c in enumerate(exam.eval_criteria)
     ) if exam.eval_criteria else "  (no specific criteria defined)"
 
+    # Format target_patterns as a bullet checklist for the judge
+    if exam.target_patterns:
+        tp_text = "\n".join(f"  - {p}" for p in exam.target_patterns)
+    else:
+        tp_text = "  (no specific patterns required)"
+
     # Truncate responses to avoid exceeding context
     b_resp = baseline_resp[:6000] + "\n...[truncated]" if len(baseline_resp) > 6000 else baseline_resp
     a_resp = adapter_resp[:6000] + "\n...[truncated]" if len(adapter_resp) > 6000 else adapter_resp
@@ -532,6 +536,7 @@ def llm_judge_score(
         "professor_judge",
         exam_question=exam.exam_question or exam.user_prompt,
         eval_criteria=criteria_text,
+        target_patterns=tp_text,
         baseline_response=b_resp,
         adapter_response=a_resp,
     )
@@ -625,8 +630,39 @@ def compute_scorecard(
         validate=validate,
     )
 
-    a = judgment["adapter"]
-    b = judgment["baseline"]
+    # Work with mutable copies so deterministic corrections do not mutate cached judgment
+    a: dict[str, float] = dict(judgment["adapter"])
+    b: dict[str, float] = dict(judgment["baseline"])
+
+    adapter_code = _extract_code_blocks(adapter_resp)
+
+    # --- Deterministic target-pattern coverage penalty ---
+    # Applied AFTER the LLM judgment so it cannot be bypassed by <think> labia.
+    # For each expected architectural marker absent from the code block, deduct 0.3
+    # from ha_modernity and functionality (same penalty the prompt instructs the LLM
+    # to apply, but enforced deterministically here as a hard floor).
+    target_patterns_list: list[str] = list(exam.target_patterns or [])
+    missing_patterns: list[str] = []
+    if target_patterns_list:
+        missing_patterns = [
+            p for p in target_patterns_list
+            if not re.search(re.escape(p), adapter_code, re.IGNORECASE)
+        ]
+        if missing_patterns:
+            per_pattern_penalty = 0.3
+            total_penalty = round(
+                min(per_pattern_penalty * len(missing_patterns) / len(target_patterns_list), 0.3),
+                3,
+            )
+            a["ha_modernity"] = round(max(0.0, a.get("ha_modernity", 0.0) - total_penalty), 3)
+            a["functionality"] = round(max(0.0, a.get("functionality", 0.0) - total_penalty), 3)
+            logger.info(
+                "  [pattern-penalty] %s: -%.3f on ha_modernity+functionality "
+                "(%d/%d markers absent from code: %s)",
+                exam.id, total_penalty,
+                len(missing_patterns), len(target_patterns_list),
+                missing_patterns,
+            )
 
     def _composite(scores: dict[str, float]) -> float:
         return sum(scores.get(dim, 0.0) * weight for dim, weight in SCORING_WEIGHTS.items())
@@ -635,11 +671,10 @@ def compute_scorecard(
     baseline_composite = _composite(b)
     delta = adapter_composite - baseline_composite
 
-    # Diagnostic notes from regex pattern detection (taxonomy from ha_patterns.yaml)
+    # Diagnostic notes: domain taxonomy regex (ha_patterns.yaml) + target_pattern coverage
     _patterns = _load_domain_patterns()
     _legacy = [(e["pattern"], e["description"]) for e in _patterns.get("legacy_patterns", [])]
     _modern = [(e["pattern"], e["description"]) for e in _patterns.get("modern_patterns", [])]
-    adapter_code = _extract_code_blocks(adapter_resp)
     notes_parts: list[str] = []
     for pat, desc in _legacy:
         if re.search(pat, adapter_code):
@@ -647,6 +682,9 @@ def compute_scorecard(
     for pat, desc in _modern:
         if re.search(pat, adapter_code):
             notes_parts.append(f"✓ Modern: {desc}")
+    # Append missing target-pattern fingerprints to notes for report visibility
+    for mp in missing_patterns:
+        notes_parts.append(f"✗ Missing marker: {mp}")
 
     return ScoreCard(
         record_id=exam.id,
@@ -702,8 +740,10 @@ def generate_report(
     baseline_results: list[InferenceResult],
     adapter_results: list[InferenceResult],
     audit_dir: str,
-) -> Path:
-    """Generate a comprehensive Markdown audit report."""
+) -> tuple[Path, AuditReport]:
+    """Generate a comprehensive Markdown audit report and return the
+    path to the written report plus the updated `AuditReport` instance.
+    """
     out_dir = Path(audit_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -842,7 +882,7 @@ def generate_report(
     )
     logger.info("Structured report → %s", json_path)
 
-    return report_path
+    return report_path, report
 
 
 # ---------------------------------------------------------------------------
@@ -1047,7 +1087,7 @@ def cmd_score(args: argparse.Namespace) -> None:
         scorecards=scorecards,
     )
 
-    report_path = generate_report(
+    report_path, report = generate_report(
         report, scorecards, exam_records, baseline_results, adapter_results, args.audit_dir,
     )
     print(f"\n{'='*64}")
