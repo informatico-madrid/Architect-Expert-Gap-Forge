@@ -70,6 +70,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set
+from src.schemas.common import RawRecord
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -206,12 +207,12 @@ class CurationStats:
 # ===========================================================================
 
 def exact_dedup(
-    records: List[Dict[str, Any]],
+    records: List[RawRecord],
     stats: CurationStats,
-) -> List[Dict[str, Any]]:
+) -> List[RawRecord]:
     """Remove records whose full conversation is byte-identical to a prior record."""
     seen: Set[str] = set()
-    kept: List[Dict[str, Any]] = []
+    kept: List[RawRecord] = []
     for rec in records:
         h = hashlib.sha256(
             json.dumps(rec.get("conversation", ""), sort_keys=True).encode()
@@ -407,7 +408,7 @@ def _ldi(text: str) -> float:
     K = 1200.0 # Factor de estabilidad para registros cortos
     ldi_score = code_tokens / max(1.0, (natural_tokens + code_tokens))
     ldi_final = ldi_score * (code_tokens / (code_tokens + K))
-    return ldi_final # Ahora el threshold debería ser ~0.1 o 0.2, no 2.5
+    return ldi_final  # Now the threshold should be ~0.1 or 0.2, not 2.5
 
 
 def _has_meta_speech(think_content: str) -> bool:
@@ -423,13 +424,13 @@ def _has_meta_speech(think_content: str) -> bool:
 # --- Structural filter -----------------------------------------------------
 
 def structural_quality_filter(
-    records: List[Dict[str, Any]],
+    records: List[RawRecord],
     stats: CurationStats,
     *,
     min_think_chars: int = DEFAULT_MIN_THINK_CHARS,
     ldi_min_ratio: float = DEFAULT_LDI_MIN_RATIO,
     check_attempt_completion: bool = True,
-) -> List[Dict[str, Any]]:
+) -> List[RawRecord]:
     """Apply structural quality checks from the AEGF curation protocol.
 
     Filters applied (each removes a record if it fails):
@@ -447,7 +448,7 @@ def structural_quality_filter(
        assistant turn must contain "attempt_completion" (agentic datasets only;
        disable with ``--no-attempt-check`` for production_v11 single-turn data).
     """
-    kept: List[Dict[str, Any]] = []
+    kept: List[RawRecord] = []
 
     for rec in records:
         conversation = rec.get("conversation", [])
@@ -544,7 +545,7 @@ def structural_quality_filter(
 # Phase 3 — Semantic deduplication (MinHash-LSH)
 # ===========================================================================
 
-def _extract_assistant_text(rec: Dict[str, Any]) -> str:
+def _extract_assistant_text(rec: RawRecord) -> str:
     """Extract concatenated assistant turns from a record."""
     for key in ("assistant", "assistant_response", "response", "output", "text"):
         val = rec.get(key)
@@ -667,14 +668,14 @@ def _build_clusters_naive(
 
 
 def semantic_dedup(
-    records: List[Dict[str, Any]],
+    records: List[RawRecord],
     stats: CurationStats,
     *,
     threshold: float = DEFAULT_DEDUP_THRESHOLD,
     quality_cutoff: float = DEFAULT_QUALITY_CUTOFF,
     num_perm: int = DEFAULT_MINHASH_PERMS,
     shingle_k: int = DEFAULT_SHINGLE_K,
-) -> List[Dict[str, Any]]:
+) -> List[RawRecord]:
     """Quality-gate + MinHash-LSH semantic deduplication."""
     # Annotate
     for rec in records:
@@ -698,7 +699,7 @@ def semantic_dedup(
 
     idx_map = {i: rec for i, rec in enumerate(candidates)}
     removed_idx: Set[int] = set()
-    kept_records: List[Dict[str, Any]] = []
+    kept_records: List[RawRecord] = []
 
     for cluster in clusters:
         if not cluster:
@@ -720,7 +721,7 @@ def semantic_dedup(
 
     stats.semantic_duplicates += len(removed_idx)
 
-    final: List[Dict[str, Any]] = []
+    final: List[RawRecord] = []
     for r in kept_records:
         r_out = {k: v for k, v in r.items() if not k.startswith("_")}
         r_out.setdefault("metadata", {})
@@ -738,9 +739,9 @@ def semantic_dedup(
 # I/O helpers
 # ===========================================================================
 
-def load_jsonl(path: str, sample: int = 0) -> List[Dict[str, Any]]:
+def load_jsonl(path: str, sample: int = 0) -> List[RawRecord]:
     """Load a JSONL file; optionally limit to first ``sample`` records."""
-    records: List[Dict[str, Any]] = []
+    records: List[RawRecord] = []
     with open(path, "r", encoding="utf-8") as fh:
         for lineno, line in enumerate(fh, 1):
             if sample and len(records) >= sample:
@@ -755,7 +756,7 @@ def load_jsonl(path: str, sample: int = 0) -> List[Dict[str, Any]]:
     return records
 
 
-def write_jsonl(path: str, records: Iterable[Dict[str, Any]]) -> int:
+def write_jsonl(path: str, records: Iterable[RawRecord]) -> int:
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     count = 0
     with open(path, "w", encoding="utf-8") as fh:

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+python3 scripts/check_headers.py --check
+EXIT_CODE=$?
+if [ "$EXIT_CODE" -ne 0 ]; then
+  echo "Header check failed. Run 'python scripts/check_headers.py --check' locally to see details." >&2
+  exit $EXIT_CODE
+fi

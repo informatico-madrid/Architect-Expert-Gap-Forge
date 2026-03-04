@@ -61,6 +61,17 @@ python src/factory/production_v11.py --gap-dir data/Gap --test 10
 - Agents MUST NOT create or modify commits, branches, tags, or push to any remote without explicit user instruction and affirmative confirmation.
 - Agents SHOULD provide the exact patch or a human-readable summary of changes and allow the user to review before staging.
  - Agents MUST NOT modify production scripts solely to make tests pass. If a test indicates a real production bug, agents MUST stop, report the issue, and obtain explicit human confirmation before editing production code.
+ - Agents MUST include the project's standard file header in every new source file they create. The header must include a shebang for Python files, the project identifier `Architect-Expert-Gap-Forge (AEGF)`, a copyright line, and an `SPDX-License-Identifier:` entry.
+   - Agents MUST run `scripts/check_headers.py --check` locally (or enable the repo githook / pre-commit) before staging files; CI will also validate the header via `.github/workflows/header-check.yml`.
+ - Agents MUST format proposed commit messages using the Conventional Commits convention: `type(scope?): subject`.
+   - Allowed `type` values: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`, `perf`, `style`, `revert`.
+   - The `subject` must be imperative, lower-case, and no longer than 50 characters. An optional body may follow after a blank line and should be wrapped at 72 characters.
+   - Agents MUST NOT include secrets, credentials, or personal-identifying information in commit messages.
+   - Agents MUST only *propose* commit messages; they MUST NOT execute `git commit` without explicit human confirmation.
+
+  10) Language requirement for agents
+  - Agents MUST use English for all assistant messages, code comments, docstrings, file headers, and proposed commit messages.
+  - When writing inline comments or docstrings, prefer clear, idiomatic English suitable for an international engineering audience.
 
 If you'd like, I can expand this into a longer agent guide with targeted examples (e.g., a `model_evaluator` smoke-test snippet or test fixtures examples).
 

@@ -1,0 +1,19 @@
+name: Header Check
+
+on:
+  push:
+  pull_request: {}
+
+jobs:
+  header-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dev deps (best-effort)
+        run: python -m pip install -r requirements-dev.txt || true
+      - name: Run header check
+        run: python scripts/check_headers.py --check
