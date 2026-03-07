@@ -405,7 +405,7 @@ def _ldi(text: str) -> float:
     natural_tokens = _count_natural_tokens(text)
     if code_tokens == 0: return 0.0
     
-    K = 1200.0 # Factor de estabilidad para registros cortos
+    K = 800.0 # Factor de estabilidad para registros cortos (calibrado)
     ldi_score = code_tokens / max(1.0, (natural_tokens + code_tokens))
     ldi_final = ldi_score * (code_tokens / (code_tokens + K))
     return ldi_final  # Now the threshold should be ~0.1 or 0.2, not 2.5
@@ -416,8 +416,14 @@ def _has_meta_speech(think_content: str) -> bool:
     lines = think_content.split("\n")
     if not lines:
         return False
-    lower = think_content.lower()
-    count = sum(1 for p in _META_PATTERNS if re.search(p, lower))
+    # Count how many lines match any meta-speech pattern (case-insensitive)
+    count = 0
+    for line in lines:
+        ln = line.strip().lower()
+        if not ln:
+            continue
+        if any(re.search(p, ln) for p in _META_PATTERNS):
+            count += 1
     return (count / len(lines)) > 0.20
 
 
@@ -570,10 +576,15 @@ def _extract_assistant_text(rec: RawRecord) -> str:
 
 
 def _heuristic_quality_score(text: str) -> float:
-    """Heuristic quality score in [0, 1] — higher is better."""
+    """Heuristic quality score in [0, 1] — higher is better.
+
+    Treat only alphabetic words as tokens so numeric-only strings
+    (e.g. "123 456 789") do not produce an artificially high score.
+    """
     if not text.strip():
         return 0.0
-    tokens = re.findall(r"\w+", text.lower())
+    # Only consider alphabetic words of length >= 2 as valid tokens
+    tokens = re.findall(r"[a-z]{2,}", text.lower())
     if not tokens:
         return 0.0
     n = len(tokens)

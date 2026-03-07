@@ -42,6 +42,8 @@ coverage:
 	$(PYTHON) -m pytest tests/ \
 		--cov=src/audit \
 		--cov=src/utils \
+		--cov=src/factory \
+		--cov=src/curation \
 		--cov-report=term-missing \
 		--cov-report=xml:coverage.xml \
 		--cov-fail-under=90
