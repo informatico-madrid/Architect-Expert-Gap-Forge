@@ -1,0 +1,18 @@
+{
+	"mcpServers": {
+		"qdrant-memoria": {
+			"command": "uvx",
+			"args": [
+				"mcp-server-qdrant"
+			],
+			"env": {
+				"QDRANT_URL": "http://192.168.1.201:6333",
+				"COLLECTION_NAME": "data_factory_context"
+			},
+			"alwaysAllow": [
+				"qdrant-find",
+				"qdrant-store"
+			]
+		}
+	}
+}
