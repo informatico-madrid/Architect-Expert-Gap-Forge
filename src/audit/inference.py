@@ -69,7 +69,7 @@ class BaseInferenceClient(abc.ABC):
         *,
         system_prompt: str | None = None,
         max_tokens: int = 65536,
-        temperature: float = 0.3,
+        temperature: float = 0.6,
         json_mode: bool = False,
     ) -> str:
         """Generate a text completion and return the raw response string.
@@ -94,7 +94,7 @@ class BaseInferenceClient(abc.ABC):
         *,
         system_prompt: str | None = None,
         max_tokens: int = 65536,
-        temperature: float = 0.3,
+        temperature: float = 0.6,
         retries: int = 3,
         retry_delay: float = 5.0,
         json_mode: bool = False,
@@ -209,7 +209,7 @@ class VLLMClient(BaseInferenceClient):
         *,
         system_prompt: str | None = None,
         max_tokens: int = 65536,
-        temperature: float = 0.3,
+        temperature: float = 0.6,
         json_mode: bool = False,
     ) -> str:
         messages: list[ChatMessage] = []
@@ -229,7 +229,7 @@ class VLLMClient(BaseInferenceClient):
         resp = requests.post(
             f"{self._api_url}/chat/completions",
             json=payload,
-            timeout=600,
+            timeout=3600,
         )
         resp.raise_for_status()
         data = resp.json()

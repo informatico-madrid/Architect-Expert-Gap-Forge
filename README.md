@@ -566,6 +566,109 @@ After `--apply`, the suite writes:
    }
    ```
 
+### Stage 3.5 — Backtracking Alignment (`src/curation/backtracking_rewriter.py`)
+**Engine:** `backtracking_rewriter.py`
+
+A post-curation rewriting stage that transforms `<think>` blocks to embed **self-correction and backtracking** patterns. Inspired by OpenCodeReasoning and AgentMathPlus research, this stage teaches the model to detect mistakes in its own reasoning, backtrack, and converge on the correct architectural solution — rather than always presenting a "perfect first attempt" that does not match real inference behaviour.
+
+#### Why Backtracking?
+
+Standard SFT datasets present reasoning as a clean, linear chain. In practice, reasoning models naturally explore, make mistakes, and self-correct. Training exclusively on linear trajectories creates a **distribution mismatch** between training and inference. Backtracking Alignment reduces this gap by injecting realistic error-correction patterns into the `<think>` block while preserving the sacred code after `</think>` byte-for-byte.
+
+#### Rewrite Strategies
+
+The rewrite strategy for each record is determined by `classify_rewrite_strategy` in the code. Priority (highest → lowest) is: `theory` (skip) → `legacy_detected` → `gold_injected` → `error_recovery` → `contrast` → default `pass_through`.
+
+| Strategy | Eligibility | Description |
+|----------|-------------|-------------|
+| `full_backtracking` | `metadata.legacy_detected == True` | Full backtracking for records flagged as containing legacy API usage: guide the model to name the legacy impulse, self-evaluate, backtrack and produce a modern solution. |
+| `trace_reconstruction` | `metadata.gold_injected == True` | Reconstruct the expert reasoning trace that justifies the provided perfect solution code. |
+| `error_first` | `example_type == "error_recovery"` | Start from an error-focused scenario, propose a wrong fix, then identify and correct it. |
+| `contrast_backtracking` | `example_type == "contrast"` | Present both old and new approaches and explicitly reject the legacy one with technical justification. |
+| `pass_through` | default (clean nominal examples) | Preserve the original think block; no rewrite applied. |
+| `skip` | `example_type in config.excluded_types` (e.g. `theory`) | These records are not processed by the rewriter. |
+
+#### Sacred Constraint
+
+> **The code after `</think>` is NEVER modified.** Only the reasoning block inside `<think>…</think>` is rewritten. The rewriter enforces byte-identical preservation of the action block.
+
+#### CLI
+
+```bash
+# Minimal run — default config values
+python src/curation/backtracking_rewriter.py \
+  --input  data/synthetic/v11_DISTILLED.jsonl \
+  --output data/synthetic/v11_backtracking_aligned.jsonl
+
+# Using the project YAML config
+python src/curation/backtracking_rewriter.py \
+  --input  data/synthetic/v11_DISTILLED.jsonl \
+  --output data/synthetic/v11_backtracking_aligned.jsonl \
+  --config configs/stage_3_curation/backtracking_alignment.yaml
+
+# Override specific parameters without editing the YAML
+python src/curation/backtracking_rewriter.py \
+  --input  data/synthetic/v11_DISTILLED.jsonl \
+  --output data/synthetic/v11_backtracking_aligned.jsonl \
+  --config configs/stage_3_curation/backtracking_alignment.yaml \
+  --model  qwen3-30b-a3b-thinking-fp8 \
+  --temperature 0.5 \
+  --batch-size 20 \
+  --log-level DEBUG
+
+# Audit run: save full rewritten think blocks for offline inspection
+python src/curation/backtracking_rewriter.py \
+  --input  data/synthetic/v11_DISTILLED.jsonl \
+  --output data/synthetic/v11_backtracking_aligned.jsonl \
+  --config configs/stage_3_curation/backtracking_alignment.yaml \
+  --audit-dir data/reports/backtracking_audit \
+  --log-level INFO
+
+# Quick validation on 50 records (Python API — corrected async usage)
+python -c "import asyncio; from pathlib import Path; from src.curation.backtracking_rewriter import rewrite_pipeline, BacktrackingConfig; cfg = BacktrackingConfig(batch_size=50); report = asyncio.run(rewrite_pipeline(Path('data/synthetic/v11_DISTILLED.jsonl'), Path('/tmp/bt_test.jsonl'), cfg)); print(report)"
+```
+
+**CLI reference:**
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--input`, `-i` | Yes | — | Source JSONL dataset |
+| `--output`, `-o` | Yes | — | Destination JSONL dataset |
+| `--config`, `-c` | No | built-in defaults | YAML config file |
+| `--model` | No | `qwen3-30b-a3b-thinking-fp8` | vLLM model name |
+| `--base-url` | No | `http://localhost:8000/v1` | vLLM API base URL (YAML key: `vllm_api_url`) |
+| `--temperature` | No | `0.6` | Sampling temperature |
+| `--max-tokens` | No | `4000` | Max context-token filter (records estimated above this are discarded) |
+| `--max-generation-tokens` | No | `3000` | Max tokens per single rewrite request to the model |
+| `--batch-size` | No | `10` | Progress log interval (eligible records between log lines) |
+| `--log-level` | No | `INFO` | Verbosity (`DEBUG`/`INFO`/`WARNING`/`ERROR`) |
+| `--audit-dir` | No | None | Directory to save full rewritten `<think>` blocks (timestamped run subdir) |
+
+#### Configuration (`configs/stage_3_curation/backtracking_alignment.yaml`)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `max_tokens` | 4000 | Max context-token filter: estimated tokens (chars//4) above this value are excluded from processing. |
+| `temperature` | 0.6 | Sampling temperature for the vLLM requests |
+| `max_generation_tokens` | 3000 | Max tokens requested from the model for a single think-block rewrite |
+| `excluded_types` | `[theory]` | Example types to skip from rewriting |
+| `batch_size` | 10 | Progress log interval (how many eligible records between progress log lines) |
+| `seed` | 42 | Reproducibility seed used by the pipeline |
+| `workers` | 8 | Concurrency level (asyncio Semaphore for parallel vLLM calls) |
+| `vllm_api_url` | `http://localhost:8000/v1` | vLLM endpoint (YAML key `vllm_api_url`, CLI override `--base-url`) |
+| `vllm_model` | `qwen3-30b-a3b-thinking-fp8` | vLLM model name |
+
+#### Output
+
+The pipeline writes a new JSONL with the same schema as the input. Rewritten records gain `metadata.backtracking_strategy` indicating which strategy was applied. Implementation notes:
+
+- The pipeline accumulates rewritten records in memory in an `output` list and writes the final JSONL atomically at the end of the run (`save_jsonl` writes to a `.tmp` file and renames it). If the process is interrupted, the final JSONL will not be created.
+- When `--audit-dir` is provided the rewriter writes one pretty-printed JSON per processed record into a timestamped run subdirectory as the job proceeds (`_emit_audit_file`). These audit files are useful to recover progress if the main run is interrupted.
+
+The `PipelineReport` dataclass summarizes counts per strategy and overall throughput.
+
+---
+
 ### Stage 4 — Training
 **Engine:** Axolotl
 
@@ -690,6 +793,9 @@ Before standard curation, we run a deep structural audit (`diagnose/dataset_heal
 ### 🔹 Anti-Schizophrenia Legacy Filter
 Fragments containing 2023/2024 deprecated patterns are detected via regex before Gold Injection. If legacy patterns are found, the sample is forced into `contrast` or `error_recovery` mode — never `nominal` — preventing the model from learning contradictory reasoning-to-code mappings.
 
+### 🔹 Self-Correction & Backtracking Alignment
+Inspired by [OpenCodeReasoning](https://arxiv.org/abs/2504.01943) and [AgentMathPlus](https://arxiv.org/abs/2501.13416), AEGF post-processes curated datasets to embed **realistic self-correction trajectories** into `<think>` blocks. Standard SFT trains on idealized linear reasoning, but production reasoning models naturally explore, backtrack, and self-correct. This distribution mismatch is bridged by rewriting think blocks through four strategies (trace reconstruction, full backtracking, error-first, contrast backtracking) while preserving the sacred action code byte-for-byte. The rewriter uses the same vLLM inference backend as the factory. See [Stage 3.5](#stage-35--backtracking-alignment-srccurationbacktracking_rewriterpy) for full details.
+
 ### 🔹 AEGF Dataset Audit — Unified Quality Inspector
 
 After generation, the full dataset is audited with a single-entry-point tool (`diagnose/aegf_dataset_audit.py`) that replaces the four individual diagnostic scripts previously used during manual quality analysis. The auditor streams the entire JSONL and applies five independent detectors in a single pass:
@@ -788,6 +894,7 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 - [x] **Phase 3: Data Synthesis.** Production of **67k+ high-density trajectories** using the V11 Diversified Engine (GI/GS Protocol).
 - [x] **Phase 4: Expert SFT.** Deep-scale training of Qwen3-30B-MoE using **RSLoRA** and **Selective Loss Masking** (sm_120 optimized).
 - [x] **Phase 5: Quality Gate.** Automated dual-inference evaluation (`src/audit/model_evaluator.py`) comparing base vs adapter on stratified samples.
+- [x] **Phase 5.5: Backtracking Alignment.** Self-correction & backtracking rewriting of `<think>` blocks (`src/curation/backtracking_rewriter.py`) to close the train/inference distribution gap.
 - [ ] **Phase 6: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
 
 ---

@@ -57,4 +57,60 @@ Training a 30B MoE locally is not a straightforward API call. The development of
 - **Training Efficiency:** Successfully stabilized MoE training at `[X]` loss, maintaining local data sovereignty.
 
 ---
+## Stage 3.5 — Backtracking Alignment (Real run example)
+
+During the V3 evaluation we executed the Stage 3.5 rewriter as a DISTINCT auditing step over
+the distilled dataset (`v11_DISTILLED.jsonl`) to inject self-correction trajectories into the
+`<think>` blocks while preserving the SACRED action text after `</think>` byte-for-byte.
+
+Example run (recommended):
+
+```bash
+python src/curation/backtracking_rewriter.py \
+	--input data/synthetic/v11_DISTILLED.jsonl \
+	--output data/synthetic/v11_backtracking_aligned.jsonl \
+	--config configs/stage_3_curation/backtracking_alignment.yaml \
+	--audit-dir data/reports/backtracking_audit \
+	--log-level INFO
+```
+
+What this run does:
+- Rewrites only the content inside `<think>...</think>` and leaves the code/action block untouched.
+- Emits compact, human-readable progress lines to the terminal every `batch_size` eligible records.
+- For each processed record the terminal shows a short excerpt (≤300 chars) and the rewrite strategy.
+- If `--audit-dir` is provided a timestamped subdirectory is created and the FULL rewritten `<think>`
+	text for each record is saved as a separate pretty-printed `.json` file for offline inspection and auditing.
+
+Sample audit / smoke-run summary (50-record sample executed during validation):
+
+- Input records: 50
+- Filtered out (not eligible): 9
+- Rewritten: 41
+	- `error_first`: 6
+	- `trace_reconstruction`: 26
+	- `full_backtracking`: 9
+- Failed rewrites: 0
+
+The terminal shows a rolling progress line such as:
+
+```
+Processed 10/13257 eligible (0.1%) — rewritten=10 pass=0 failed=0 elapsed=12.3s rate=0.81/s
+```
+
+And a per-record audit line (trimmed excerpt) like:
+
+```
+INFO  src.curation.backtracking_rewriter: id=r123 strategy=trace_reconstruction new_think_len=842 excerpt=Start by avoiding the legacy pattern that uses hass.data and instead...
+```
+
+If the text is long the terminal will include an additional pointer:
+
+```
+INFO  src.curation.backtracking_rewriter: Full text saved to data/reports/backtracking_audit/backtracking_20260306_142130/r123.json
+```
+
+This combination (concise terminal + per-record full-text audit) lets an engineer monitor
+the ongoing rewriting in real time while retaining a complete, auditable record for later
+manual review or compliance checks.
+
 *This use case demonstrates that AEGF is not just a scripting tool, but a production-grade pipeline capable of overcoming extreme hardware limitations to enforce strict structural compliance in Enterprise LLM deployments.*
