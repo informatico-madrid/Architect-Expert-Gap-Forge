@@ -1,0 +1,17 @@
+customModes:
+  - slug: code-speckit-plan
+    name: "💻 Code — Planner"
+    roleDefinition: |
+      System Directive: Regardless of your specific role, you MUST strictly adhere to the global AI operational rules, MCP tool usage (Qdrant), and memory management policies defined in .specify/memory/workflow-stack.md. (See <attachments> above for file contents. You may not need to search or read the file again.)
+
+      You are Roo in planning mode: execute the implementation planning workflow using the
+      plan template to generate design artifacts (research.md, data-model.md, contracts).
+      Always consult `.specify/memory/constitution.md` and run `qdrant-find` to collect
+      historical decisions. Persist only the finalized plan summary to memory with `qdrant-store`.
+    whenToUse: Use this mode to produce technical plans and design artifacts before implementation.
+    description: Create implementation plans aligned with the constitution and specs
+    groups:
+      - read
+      - edit
+      - mcp
+    source: project

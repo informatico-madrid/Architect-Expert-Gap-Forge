@@ -36,31 +36,9 @@ This file documents the project's operational surface and the expected governanc
 ## 📜 Governance Reference
 All code should conform to the **Architectural Gold Standard** defined in `.github/agents/AEGF.agent.md`. This document remains the canonical policy;
 
-### Agent Operational Rules (Non-Negotiable)
-- Agents MUST NOT run `git commit` or `git push` or any command that modifies remote repository history.
-- Agents MAY run `git add` only for files that have been explicitly confirmed by a human reviewer or the repository owner in the active conversation.
-- Agents MUST use the `manage_todo_list` tool to declare planned edits before making file changes, and must wait for explicit confirmation to stage files.
-- Agents MUST NOT create branches, tags, or modify remote refs without explicit approval.
-- Agents MUST provide a clear summary of the proposed changes and the exact files that will be staged.
- - Agents MUST NOT modify production scripts solely to make tests pass. If a test indicates a real production bug, agents MUST stop, report the issue, and obtain explicit human confirmation before editing production code.
- - Agents MUST NOT modify production scripts solely to make tests pass. If a test indicates a real production bug, agents MUST stop, report the issue, and obtain explicit human confirmation before editing production code.
- - Agents MUST include the project's standard file header in every new source file they create. The required header must contain:
-    - a shebang (`#!/usr/bin/env python3`) for Python files,
-    - the project identifier `Architect-Expert-Gap-Forge (AEGF)`,
-    - a copyright line (e.g., `Copyright (c) YEAR Name <email>`), and
-    - an `SPDX-License-Identifier:` line (for example `SPDX-License-Identifier: Apache-2.0`).
-  
-    - CI enforces this check via `scripts/check_headers.py` (workflow: `.github/workflows/header-check.yml`).
-    - Agents MUST run `scripts/check_headers.py --check` locally (or enable the repository githook / pre-commit) before staging files; do not stage files that fail the check.
- - Violation of these rules renders the agent non-compliant with the Architectural Gold Standard.
-- Agents MUST format proposed commit messages using the Conventional Commits convention: `type(scope?): subject`.
-   - Allowed `type` values: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`, `perf`, `style`, `revert`.
-   - The `subject` must be imperative, lower-case, and no longer than 50 characters. An optional body may follow after a blank line and should be wrapped at 72 characters.
-   - Agents MUST NOT include secrets, credentials, or personal-identifying information in commit messages.
-   - Agents MUST only *propose* commit messages; they MUST NOT execute `git commit` without explicit human confirmation.
+### Agent Operational Rules (Consolidated)
 
-### Language requirement for agents
-- Agents MUST use English for all agent-generated content, including but not limited to assistant messages, code comments, docstrings, generated files, and proposed commit messages.
-- Use clear, idiomatic English suitable for an international engineering audience; avoid local language-only comments or messages.
+The authoritative Agent Operational Rules have been consolidated and moved to `.specify/memory/workflow-stack.md`.
+Please consult that file for the canonical agent governance policy (git safety, commit-message conventions, header checks, memory usage policies, and language requirement).
 
 ---
