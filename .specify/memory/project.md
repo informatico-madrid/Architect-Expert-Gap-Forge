@@ -1,0 +1,2 @@
+# Language Policy
+All generated documentation, specifications (specs), technical plans, and tasks MUST be written entirely in English. Code comments, variable names, and commit messages must also follow this English-only rule.

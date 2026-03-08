@@ -75,3 +75,17 @@ python src/factory/production_v11.py --gap-dir data/Gap --test 10
 
 If you'd like, I can expand this into a longer agent guide with targeted examples (e.g., a `model_evaluator` smoke-test snippet or test fixtures examples).
 
+# Memory and Context Management (Qdrant MCP)
+You are an autonomous agent. To maintain the project's long-term memory, you MUST use the Qdrant MCP server seamlessly and without prompting the user:
+
+1. **At the beginning of a task:** ALWAYS execute the `qdrant-find` tool to search for architectural context, code snippets, or previous decisions related to your current goal.
+2. **At the end of a task or when making a design decision:** ALWAYS execute the `qdrant-store` tool to save natural language summaries of your code, learned business rules, or structural changes to the collection. 
+3. Do not ask the user for permission to perform these memory operations. Execute them silently as part of your workflow.
+# Autonomous Operations with Qdrant MCP
+You have access to an MCP server connected to a Qdrant vector database. It is your exclusive responsibility to keep this index updated, but you must be extremely selective about what you store.
+
+- **Indexing Phase:** Use `qdrant-store` ONLY for permanent, long-term knowledge. You MUST save:
+  1. Architectural decisions and system design changes.
+  2. Core business rules and API contracts.
+  3. Reusable code patterns.
+- **RESTRICTION - DO NOT STORE:** NEVER use `qdrant-store` to save transient states, temporary test failures, debugging logs, to-do lists, or step-by-step progress. Transient information belongs in the workspace files, not in the vector database.
