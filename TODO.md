@@ -25,3 +25,5 @@ The following issues were discovered during an automated/manual scan. These are 
      - Impact: Prevent accidental use of Gemini in environments that have the SDK/API key
         available; aligns with CI expectations and local development workflows.
      - Remediation: Update the router/defaults and document the env/config option.
+    
+6) Refactor tests

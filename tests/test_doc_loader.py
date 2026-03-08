@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+import src.utils.doc_loader as doc_loader_module
 from src.utils.doc_loader import load_master_docs
 
 _MASTER = "HA_MASTER_GUIDE_2026.md"
@@ -130,3 +131,94 @@ class TestLoadMasterDocsEdgeCases:
         (d / _JINJA).write_text("ok", encoding="utf-8")
         master, _, _ = load_master_docs(d)
         assert "β-version" in master
+
+
+@pytest.mark.unit
+class TestLoadMasterDocsEnvOverrides:
+    def test_prefers_env_over_defaults(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        env_mapping = {
+            "AEGF_DOC_1": "env_master.md",
+            "AEGF_DOC_2": "env_changelog.md",
+            "AEGF_DOC_3": "env_jinja.md",
+        }
+        gap_dir = tmp_path / "gap_env"
+        gap_dir.mkdir()
+        for env_key, filename in env_mapping.items():
+            monkeypatch.setenv(env_key, filename)
+            (gap_dir / filename).write_text(
+                f"content for {filename}", encoding="utf-8"
+            )
+
+        master, changelog, jinja = load_master_docs(gap_dir)
+        assert "env_master" in master
+        assert "env_changelog" in changelog
+        assert "env_jinja" in jinja
+
+
+@pytest.mark.unit
+class TestLoadMasterDocsConfigFallback:
+    def test_reads_filenames_from_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        for key in ("AEGF_DOC_1", "AEGF_DOC_2", "AEGF_DOC_3"):
+            monkeypatch.delenv(key, raising=False)
+
+        config_dir = tmp_path / "configs" / "stage_5_evaluation"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "eval_config.yaml"
+        config_file.write_text(
+            """
+            master_docs:
+              doc_1: cfg_master.md
+              doc_2: cfg_changelog.md
+              doc_3: cfg_jinja.md
+            """,
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(doc_loader_module, "_DEFAULT_CONFIG_PATH", config_file)
+
+        gap_dir = tmp_path / "gap_cfg"
+        gap_dir.mkdir()
+        for filename in ("cfg_master.md", "cfg_changelog.md", "cfg_jinja.md"):
+            (gap_dir / filename).write_text(f"cfg {filename}", encoding="utf-8")
+
+        master, changelog, jinja = load_master_docs(gap_dir)
+        assert "cfg" in master
+        assert "cfg" in changelog
+        assert "cfg" in jinja
+
+    def test_supports_legacy_config_keys(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        for key in ("AEGF_DOC_1", "AEGF_DOC_2", "AEGF_DOC_3"):
+            monkeypatch.delenv(key, raising=False)
+
+        config_dir = tmp_path / "configs" / "stage_5_evaluation"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "eval_config.yaml"
+        config_file.write_text(
+            """
+            master_docs:
+              master_guide: legacy_master.md
+              technical_changelog: legacy_changelog.md
+              jinja_yaml_guide: legacy_jinja.md
+            """,
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(doc_loader_module, "_DEFAULT_CONFIG_PATH", config_file)
+
+        gap_dir = tmp_path / "gap_cfg_legacy"
+        gap_dir.mkdir()
+        for filename in ("legacy_master.md", "legacy_changelog.md", "legacy_jinja.md"):
+            (gap_dir / filename).write_text(f"legacy {filename}", encoding="utf-8")
+
+        master, changelog, jinja = load_master_docs(gap_dir)
+        assert "legacy" in master
+        assert "legacy" in changelog
+        assert "legacy" in jinja
+
+
+@pytest.mark.unit
+def test_resolve_doc_names_handles_invalid_config() -> None:
+    assert doc_loader_module._resolve_doc_names_from_cfg(None) == (None, None, None)
+    assert doc_loader_module._resolve_doc_names_from_cfg({"master_docs": []}) == (
+        None,
+        None,
+        None,
+    )

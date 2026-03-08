@@ -30,7 +30,9 @@ from src.factory.think_filter import (
     MIN_THINK_CHARS,
     _collapse_consecutive_lines,
     _dedup_code_blocks,
+    _dedup_bullets_in_para,
     _dedup_paragraphs,
+    _prune_revision_cycles,
     apply_to_record,
     filter_think_content,
 )
@@ -129,7 +131,7 @@ class TestFilterThinkNoOp:
         """A think block with no duplicates must pass stats=None (no reduction)."""
         unique = "\n\n".join(f"Unique paragraph {i}." for i in range(60))
         content = unique + _POST_THINK
-        _, stats = filter_think_content(content)
+        _, stats = filter_think_content(content, min_chars=0)
         # stats may be None or have reduction_pct == 0
         if stats is not None:
             assert stats["reduction_pct"] == 0.0
@@ -223,6 +225,41 @@ class TestDedupCodeBlocks:
 
 
 @pytest.mark.unit
+class TestDedupBulletsInPara:
+    def test_removes_duplicate_bullets(self) -> None:
+        para = "- duplicate\n- unique\n- duplicate\n"
+        result = _dedup_bullets_in_para(para)
+        assert result.count("duplicate") == 1
+
+    def test_preserves_non_duplicate_lines(self) -> None:
+        para = "First line.\nSecond line.\n- bullet one\n- bullet two"
+        assert _dedup_bullets_in_para(para).startswith("First line.")
+
+    def test_handles_numbered_items(self) -> None:
+        para = "1. repeat\n2. keep\n1. repeat\n"
+        result = _dedup_bullets_in_para(para)
+        assert result.count("repeat") == 1
+
+
+@pytest.mark.unit
+class TestPruneRevisionCycles:
+    def test_prune_revision_cycles_discards_previous_cycles(self) -> None:
+        paragraphs = [
+            "1. First pass",
+            "2. Second pass",
+            "1. First pass",
+            "2. Second pass",
+        ]
+        pruned = _prune_revision_cycles(paragraphs)
+        assert sum(1 for p in pruned if "First pass" in p) == 1
+        assert sum(1 for p in pruned if "Second pass" in p) == 1
+
+    def test_prune_revision_cycles_without_duplicates_keeps_all(self) -> None:
+        paragraphs = ["1. Only pass", "2. Next pass"]
+        assert _prune_revision_cycles(paragraphs) == paragraphs
+
+
+@pytest.mark.unit
 class TestDedupParagraphs:
     def test_removes_duplicate_paragraph_keeping_last(self) -> None:
         dup_para = "The coordinator must call async_config_entry_first_refresh on startup to ensure data is available before entities are added to Home Assistant."
@@ -249,6 +286,36 @@ class TestDedupParagraphs:
         ]
         result = _dedup_paragraphs(paras)
         assert len(result) == 5
+
+    def test_dedup_similar_paragraphs(self) -> None:
+        base = "Sensor vintage paragraphs repeated with minimal edits."
+        para_a = base
+        para_b = base.replace("vintage", "modern")
+        text_paras = [para_a, para_b, para_a]
+        result = _dedup_paragraphs(text_paras)
+        assert len(result) < len(text_paras)
+
+
+@pytest.mark.unit
+class TestFilterThinkStrategies:
+    def test_stats_cover_all_strategies(self) -> None:
+        bullet_paragraph = "- repeated bullet long text\n- repeated bullet long text\n- unique bullet"
+        repeated_para = "Paragraph " + "A" * 120
+        cycle_paragraphs = [
+            "1. cycle start " + "Y" * 80,
+            "2. cycle flow " + "Z" * 80,
+            "1. cycle start " + "Y" * 80,
+            "2. cycle flow " + "Z" * 80,
+        ]
+        think_parts = [bullet_paragraph, repeated_para, repeated_para, *cycle_paragraphs]
+        think = "\n\n".join(think_parts)
+        content = think + "\n\n" + think + _POST_THINK
+        _, stats = filter_think_content(content, min_chars=0)
+        assert stats is not None
+        strategies = ",".join(stats["strategies"])
+        assert "bullet_dedup" in strategies
+        assert "revision_cycle_prune" in strategies
+        assert "paragraph_dedup" in strategies
 
 
 # ---------------------------------------------------------------------------
@@ -309,8 +376,12 @@ class TestApplyToRecord:
         think = _large_think("Dup. " * 200)
         content = think + post
         record = _make_record(content)
-        result, _ = apply_to_record(record)
+        record["filter_text"] = content
+        result, stats = apply_to_record(record)
         asst_content = result["conversation"][1]["content"]
         idx = asst_content.lower().find("</think>")
         if idx >= 0:
             assert asst_content[idx:] == post
+        assert stats is not None
+        assert result["filter_text"] != content
+        assert "</think>" in result["filter_text"]

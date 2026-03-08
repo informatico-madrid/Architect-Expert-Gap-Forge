@@ -30,7 +30,10 @@ import src.curation.nemo_curator_suite as ncs
 from src.curation.nemo_curator_suite import (
     ConversationExtractor,
     CurationStats,
+    _build_clusters_naive,
     _char_shingles,
+    _count_code_tokens,
+    _count_natural_tokens,
     _extract_assistant_text,
     _has_meta_speech,
     _heuristic_quality_score,
@@ -323,6 +326,39 @@ class TestHasMetaSpeech:
         # empty → no lines after split → returns False
         assert not _has_meta_speech("")
 
+
+class TestTokenCounting:
+    def test_count_code_tokens_detects_code_and_json(self) -> None:
+        text = (
+            "```python\nasync def foo(hass):\n    return hass.data[]\n```\n"
+            "{\"name\": \"foo\", \"arguments\": {\"content\": \"pass\"}}"
+        )
+        tokens = _count_code_tokens(text)
+        assert tokens > 5
+
+    def test_count_natural_tokens_ignores_keywords(self) -> None:
+        narrative = "Home Assistant 2026 recommends using entry.runtime_data instead of hass.data[] to keep data clean."
+        tokens = _count_natural_tokens(narrative)
+        assert tokens >= 10
+
+
+class TestNaiveClustering:
+    def test_build_clusters_naive_groups_similar_texts(self) -> None:
+        texts = [
+            "Duplicate content used as reference.",
+            "Duplicate content used as reference.",
+            "Completely different narration about automations.",
+        ]
+        clusters = _build_clusters_naive(texts, threshold=0.5, shingle_k=3)
+        assert any(len(cluster) > 1 for cluster in clusters)
+
+    def test_build_clusters_naive_returns_separate_when_distinct(self) -> None:
+        texts = [
+            "A unique paragraph about sensors.",
+            "Another unrelated paragraph about automations.",
+        ]
+        clusters = _build_clusters_naive(texts, threshold=0.9, shingle_k=3)
+        assert all(len(cluster) == 1 for cluster in clusters)
 
 # ===========================================================================
 # Phase 2 — structural_quality_filter
@@ -627,3 +663,133 @@ class TestSaveReport:
         reports_dir = str(tmp_path / "new_reports")
         save_report({"data": "x"}, reports_dir, "r.json")
         assert os.path.isdir(reports_dir)
+
+
+class _DummyStage:
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self.args = args
+        self.kwargs = kwargs
+
+
+class _DummyPipeline:
+    last_instance: "_DummyPipeline" | None = None
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.stages: list[object] = []
+        self.ran = False
+        _DummyPipeline.last_instance = self
+
+    def add_stage(self, stage: object) -> None:
+        self.stages.append(stage)
+
+    def run(self) -> None:
+        self.ran = True
+
+
+class _DummyRayClient:
+    def __init__(self) -> None:
+        self.started = False
+        self.stopped = False
+
+    def start(self) -> None:
+        self.started = True
+
+    def stop(self) -> None:
+        self.stopped = True
+
+
+class _DummySocket:
+    def settimeout(self, _: float) -> None:
+        pass
+
+    def connect(self, _: tuple[str, int]) -> None:
+        pass
+
+    def getsockname(self) -> tuple[str, int]:
+        return ("127.0.0.1", 12345)
+
+    def close(self) -> None:
+        pass
+
+
+class TestRunNemoFilterPipelineMocked:
+    def test_pipeline_runs_with_mocked_dependencies(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(ncs, "_NEMO_AVAILABLE", True)
+        dummy_client = _DummyRayClient()
+        monkeypatch.setattr(ncs, "RayClient", lambda: dummy_client, raising=False)
+        monkeypatch.setattr(ncs, "Pipeline", _DummyPipeline, raising=False)
+        for attr in (
+            "JsonlReader",
+            "JsonlWriter",
+            "Modify",
+            "ScoreFilter",
+            "WordCountFilter",
+            "SymbolsToWordsFilter",
+            "NonAlphaNumericFilter",
+            "PunctuationFilter",
+            "BoilerPlateStringFilter",
+            "UrlsFilter",
+            "RepeatedLinesFilter",
+            "RepeatingTopNGramsFilter",
+        ):
+            monkeypatch.setattr(ncs, attr, _DummyStage, raising=False)
+        monkeypatch.setattr(ncs.socket, "socket", lambda *args, **kwargs: _DummySocket())
+
+        input_path = tmp_path / "in.jsonl"
+        input_path.write_text("{}", encoding="utf-8")
+        output = tmp_path / "out"
+        ncs.run_nemo_filter_pipeline(str(input_path), str(output))
+
+        assert dummy_client.started
+        assert dummy_client.stopped
+        assert _DummyPipeline.last_instance is not None
+        assert _DummyPipeline.last_instance.ran
+        assert _DummyPipeline.last_instance.stages
+
+
+class _DummyMinHash:
+    def __init__(self, num_perm: int) -> None:
+        self.num_perm = num_perm
+        self.data: list[bytes] = []
+
+    def update(self, value: bytes) -> None:
+        self.data.append(value)
+
+
+class _DummyMinHashLSH:
+    def __init__(self, threshold: float, num_perm: int) -> None:
+        self.threshold = threshold
+        self.num_perm = num_perm
+        self.keys: list[str] = []
+
+    def insert(self, key: str, _: _DummyMinHash) -> None:
+        self.keys.append(key)
+
+    def query(self, _: _DummyMinHash) -> list[str]:
+        return list(self.keys)
+
+
+class TestSemanticDedupWithDatasketch:
+    def test_datasketch_path_handles_duplicates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(ncs, "_DATASKETCH_AVAILABLE", True)
+        monkeypatch.setattr(ncs, "MinHash", _DummyMinHash, raising=False)
+        monkeypatch.setattr(ncs, "MinHashLSH", _DummyMinHashLSH, raising=False)
+
+        records = [{"assistant": "alpha alpha"}, {"assistant": "alpha alpha"}]
+        stats = CurationStats()
+        curated = semantic_dedup(
+            records,
+            stats,
+            threshold=0.0,
+            quality_cutoff=0.0,
+            num_perm=2,
+            shingle_k=3,
+        )
+
+        assert stats.semantic_duplicates == 1
+        assert len(curated) == 1

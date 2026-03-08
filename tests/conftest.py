@@ -1,4 +1,90 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python3
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
+
+"""Pytest conftest: ensure a minimal prompt taxonomy is loaded for tests.
+
+This session-scoped autouse fixture writes a minimal taxonomy YAML and
+invokes `src.factory.production_v11.load_taxonomy` so tests that rely on
+prompt templates and tools have a stable baseline during the test run.
+"""
+
+from __future__ import annotations
+
+import yaml
+from pathlib import Path
+
+import pytest
+
+from src.factory import production_v11 as pv11
+
+
+@pytest.fixture(scope="session", autouse=True)
+def minimal_taxonomy(tmp_path_factory) -> Path:
+    """Create and load a minimal taxonomy for the whole test session.
+
+    The taxonomy contains the small set of keys used by the prompt builders
+    and avoids KeyError('system') during tests that do not explicitly load
+    a taxonomy file.
+    """
+    tax_dir = tmp_path_factory.mktemp("taxonomy")
+    tax_file = tax_dir / "taxonomy_minimal.yaml"
+    taxonomy = {
+        "ha_error_templates": [{"error": "Error in {entity} at {component}"}],
+        "legacy_2023_patterns": [{"legacy_code": "hass.data["}],
+        "jinja_ha_error_templates": [{"error": "Jinja error {component}"}],
+        "jinja_legacy_2023_patterns": [{"legacy_code": "platform:"}],
+        "theory_question_templates": [
+            {"template": "Write a doctrinal note about {section_title}.", "type": "explain"}
+        ],
+        "tools_definition": [
+            {"name": "write_to_file", "arguments": {"path": "<path>", "content": "<content>"}}
+        ],
+        "prompts": {
+            "system": {
+                "python": {
+                    "base": "BASE $tools_json master:$master changelog:$changelog",
+                    "nominal_suffix": "NOMINAL",
+                    "contrast_suffix": "CONTRAST",
+                    "error_recovery_suffix": "ERROR",
+                    "blueprint_context": "BLUEPRINT: $blueprint\nLOCAL IMPORTS: $local_imports",
+                    "governance_context": "GOVERNANCE: $governance_rules",
+                },
+                "jinja": {
+                    "base": "BASE_JINJA $tools_json jinja:$jinja_guide",
+                    "nominal_suffix": "JINJA_NOMINAL",
+                    "contrast_suffix": "JINJA_CONTRAST",
+                    "error_recovery_suffix": "JINJA_ERROR",
+                },
+                "theory": "THEORY SYSTEM: master:$master changelog:$changelog",
+            },
+            "user": {
+                "python": {
+                    "nominal_easy": "EASY $virtual_filename",
+                    "nominal_medium": "MEDIUM $virtual_filename",
+                    "nominal_hard_anchor_free": ["ANCHOR_FREE $virtual_filename"],
+                    "nominal_hard_anchor": "HARD $virtual_filename",
+                    "contrast": "CONTRAST $legacy_code",
+                    "error_recovery": "ERROR_RECOVERY",
+                    "functional_unit": "FUNCTIONAL UNIT: $virtual_filename\nNAME: $name\nSKELETON:\n$skeleton",
+                },
+                "jinja": {
+                    "nominal_easy": "JINJA_EASY",
+                    "nominal_medium": "JINJA_MEDIUM",
+                    "nominal_hard_anchor_free": ["JINJA_ANCHOR_FREE"],
+                    "nominal_hard_anchor": "JINJA_HARD_ANCHOR",
+                    "contrast": "JINJA_CONTRAST",
+                    "error_recovery": "JINJA_ERROR_RECOVERY",
+                },
+            },
+        },
+    }
+    tax_file.write_text(yaml.safe_dump(taxonomy, allow_unicode=True))
+    pv11.load_taxonomy(tax_file)
+    return tax_file
+#!/usr/bin/env python3
 # Architect-Expert-Gap-Forge (AEGF)
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
@@ -8,7 +94,6 @@
 All domain objects are constructed here so individual test modules stay
 focused on behaviour rather than boilerplate.
 """
-from __future__ import annotations
 
 import textwrap
 from pathlib import Path
