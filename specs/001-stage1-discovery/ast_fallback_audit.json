@@ -1,0 +1,553 @@
+[
+  {
+    "path": "src/curation/backtracking_rewriter.py",
+    "matches": [
+      {
+        "line": 229,
+        "text": "# When None the built-in fallback strings are used."
+      }
+    ]
+  },
+  {
+    "path": "src/factory/production_v11.py",
+    "matches": [
+      {
+        "line": 448,
+        "text": "if not pool:  # defensive fallback"
+      },
+      {
+        "line": 470,
+        "text": "if not pool:  # defensive fallback"
+      },
+      {
+        "line": 738,
+        "text": "Supports <write_action> and fallback to <tool_call>."
+      },
+      {
+        "line": 840,
+        "text": "# MODULE_MAP (MODULE_BLUEPRINT) — fallback when no ARCH_HEADER"
+      },
+      {
+        "line": 849,
+        "text": "# GOVERNANCE_HEADER (GOVERNANCE_RULES) — fallback when neither present"
+      },
+      {
+        "line": 867,
+        "text": "def _ast_fragment_list("
+      },
+      {
+        "line": 908,
+        "text": "# Whole-file fallback"
+      },
+      {
+        "line": 944,
+        "text": "local_imports_raw = arch.get(\"LOCAL_IMPORTS\", \"[]\")"
+      },
+      {
+        "line": 979,
+        "text": "return _ast_fragment_list(logic_fname, logic_code, bundle[\"context\"], extra)"
+      },
+      {
+        "line": 1719,
+        "text": "\"TYPE SYNC [%s]: assigned=%s → actual=%s (fallback)\","
+      }
+    ]
+  },
+  {
+    "path": "src/factory/deprecated/production_v10.py",
+    "matches": [
+      {
+        "line": 434,
+        "text": "if not pool:  # defensive fallback"
+      },
+      {
+        "line": 456,
+        "text": "if not pool:  # defensive fallback"
+      },
+      {
+        "line": 668,
+        "text": "Supports <write_action> and fallback to <tool_call>."
+      }
+    ]
+  },
+  {
+    "path": "src/discovery/processor.py",
+    "matches": [
+      {
+        "line": 29,
+        "text": "LOCAL_IMPORTS, NEIGHBORS and REPO_PREFIX so the model learns both the"
+      },
+      {
+        "line": 587,
+        "text": "f\"LOCAL_IMPORTS: {local_imports}\","
+      }
+    ]
+  },
+  {
+    "path": "src/audit/model_evaluator.py",
+    "matches": [
+      {
+        "line": 212,
+        "text": "logger.warning(\"master_docs_formatting not configured; using fallback format\")"
+      },
+      {
+        "line": 328,
+        "text": "from ``ha_patterns.yaml`` (domain-agnostic fallback)."
+      },
+      {
+        "line": 350,
+        "text": "Uses JSON mode when available. Raises PromptGenerationError on failure (no fallback)."
+      },
+      {
+        "line": 487,
+        "text": "# Scoring Engine — LLM-as-Judge (fail-fast, no fallback)"
+      },
+      {
+        "line": 518,
+        "text": "judge failure — no fallback is performed."
+      },
+      {
+        "line": 618,
+        "text": "Raises PromptGenerationError if the judge call fails (no fallback)."
+      },
+      {
+        "line": 782,
+        "text": "w(\"> Evaluation: LLM-as-Judge (Professor model) — fail-fast (no fallback)\")"
+      },
+      {
+        "line": 849,
+        "text": "w(\"No regex fallback: judge failures abort the audit.\")"
+      }
+    ]
+  },
+  {
+    "path": "src/utils/doc_loader.py",
+    "matches": [
+      {
+        "line": 12,
+        "text": "3. Generic internal fallbacks"
+      },
+      {
+        "line": 34,
+        "text": "# Generic fallbacks (domain-agnostic names)"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_inference.py",
+    "matches": [
+      {
+        "line": 75,
+        "text": "def test_base_class_backend_name_is_fallback(self) -> None:"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_sampling.py",
+    "matches": [
+      {
+        "line": 222,
+        "text": "def test_missing_id_gets_fallback(self) -> None:"
+      },
+      {
+        "line": 225,
+        "text": "del r[\"id\"]  # Remove id to trigger fallback"
+      },
+      {
+        "line": 227,
+        "text": "assert all(s.id for s in samples)  # fallback id must be non-empty"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_model_evaluator_integration_paths.py",
+    "matches": [
+      {
+        "line": 551,
+        "text": "\"\"\"Test cmd_baseline and cmd_adapter with fallback and loop coverage.\"\"\""
+      },
+      {
+        "line": 604,
+        "text": "\"\"\"cmd_baseline should fallback to sample when exam not found.\"\"\""
+      },
+      {
+        "line": 646,
+        "text": "# Verify fallback occurred"
+      },
+      {
+        "line": 817,
+        "text": "def test_run_inference_with_fallback_to_user_prompt("
+      },
+      {
+        "line": 820,
+        "text": "\"\"\"run_inference should handle missing exam_question fallback.\"\"\""
+      },
+      {
+        "line": 1001,
+        "text": "\"\"\"Test exam loading with fallback to sample.\"\"\""
+      },
+      {
+        "line": 1003,
+        "text": "def test_load_exam_with_fallback_path(self, golden_sample: Any) -> None:"
+      },
+      {
+        "line": 1035,
+        "text": "response=\"fallback response\","
+      },
+      {
+        "line": 1042,
+        "text": "# Execute with fallback"
+      },
+      {
+        "line": 1045,
+        "text": "# Verify fallback happened"
+      },
+      {
+        "line": 1052,
+        "text": "\"\"\"Test configuration loading with env vars and fallbacks.\"\"\""
+      },
+      {
+        "line": 1054,
+        "text": "def test_format_reference_standards_with_fallback_config("
+      },
+      {
+        "line": 1057,
+        "text": "\"\"\"_format_reference_standards with missing config must use fallback.\"\"\""
+      },
+      {
+        "line": 1066,
+        "text": "# Call with missing config should trigger fallback path"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_model_evaluator_extended_paths.py",
+    "matches": [
+      {
+        "line": 8,
+        "text": "Covers error propagation, fallback logic, and all command dispatch paths."
+      },
+      {
+        "line": 252,
+        "text": "\"\"\"Test _build_domain_standards_section covering fallback logic.\"\"\""
+      }
+    ]
+  },
+  {
+    "path": "tests/test_nemo_curator_suite.py",
+    "matches": [
+      {
+        "line": 12,
+        "text": "Phase 3  — semantic_dedup (naive fallback; datasketch not required)"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_clean_lora.py",
+    "matches": [
+      {
+        "line": 90,
+        "text": "def test_clean_lora_uses_model_index_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_production_v11_helpers.py",
+    "matches": [
+      {
+        "line": 106,
+        "text": "def test_ast_fragment_list_and_get_fragments_py_jinja_yaml():"
+      },
+      {
+        "line": 112,
+        "text": "frags = pv11._ast_fragment_list(\"logic.py\", py_code, \"CTX\", extra)"
+      },
+      {
+        "line": 180,
+        "text": "\"LOCAL_IMPORTS: [\\\"a\\\"]\\n\""
+      },
+      {
+        "line": 192,
+        "text": "def test_ast_fragment_list_generates_fragments() -> None:"
+      },
+      {
+        "line": 194,
+        "text": "fragments = factory_v11._ast_fragment_list(\"module.py\", code, \"ctx\", {\"extra\": True})"
+      },
+      {
+        "line": 199,
+        "text": "def test_ast_fragment_list_fallback_on_error() -> None:"
+      },
+      {
+        "line": 200,
+        "text": "fragments = factory_v11._ast_fragment_list(\"module.py\", \"invalid code..\", \"ctx\", {})"
+      },
+      {
+        "line": 210,
+        "text": "\"arch\": {\"MODULE\": \"mod\", \"REPO_PREFIX\": \"root\", \"LOCAL_IMPORTS\": \"[]\"},"
+      },
+      {
+        "line": 223,
+        "text": "\"arch\": {\"MODULE\": \"mod\", \"REPO_PREFIX\": \"root\", \"LOCAL_IMPORTS\": \"[]\"},"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_production_v11_additional.py",
+    "matches": [
+      {
+        "line": 146,
+        "text": "\"LOCAL_IMPORTS\": \"[]\","
+      },
+      {
+        "line": 245,
+        "text": "LOCAL_IMPORTS: []"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_production_v11.py",
+    "matches": [
+      {
+        "line": 11,
+        "text": "- parse_raw_response / get_file_chunks / parse_bundle / _ast_fragment_list"
+      },
+      {
+        "line": 366,
+        "text": "def test_parses_tool_call_fallback(self) -> None:"
+      },
+      {
+        "line": 484,
+        "text": "def test_parses_governance_header_fallback(self) -> None:"
+      },
+      {
+        "line": 497,
+        "text": "# _ast_fragment_list"
+      },
+      {
+        "line": 509,
+        "text": "frags = v11._ast_fragment_list(\"sensor.py\", code, \"test_ctx\", {\"virtual_filename\": \"sensor.py\"})"
+      },
+      {
+        "line": 515,
+        "text": "frags = v11._ast_fragment_list(\"sensor.py\", code, \"ctx\", {\"virtual_filename\": \"sensor.py\"})"
+      },
+      {
+        "line": 520,
+        "text": "frags = v11._ast_fragment_list(\"f.py\", code, \"\", {\"virtual_filename\": \"f.py\"})"
+      },
+      {
+        "line": 526,
+        "text": "frags = v11._ast_fragment_list(\"f.py\", code, \"\", {\"virtual_filename\": \"f.py\"})"
+      },
+      {
+        "line": 529,
+        "text": "def test_invalid_python_fallback_to_whole_file(self) -> None:"
+      },
+      {
+        "line": 530,
+        "text": "frags = v11._ast_fragment_list(\"bad.py\", \"def broken(::\", \"ctx\", {\"virtual_filename\": \"bad.py\"})"
+      },
+      {
+        "line": 537,
+        "text": "frags = v11._ast_fragment_list(\"sensor.py\", code, \"ctx\", extra)"
+      },
+      {
+        "line": 658,
+        "text": "\"arch\": {\"MODULE\": \"ha_sensor\", \"REPO_PREFIX\": \"repo\", \"LOCAL_IMPORTS\": \"[]\"},"
+      },
+      {
+        "line": 671,
+        "text": "\"arch\": {\"MODULE\": \"ha_sensor\", \"REPO_PREFIX\": \"repo\", \"LOCAL_IMPORTS\": \"[]\"},"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_production_v11_end_to_end.py",
+    "matches": [
+      {
+        "line": 60,
+        "text": "LOCAL_IMPORTS: []"
+      }
+    ]
+  },
+  {
+    "path": "tests/test_nemo_curator_extra.py",
+    "matches": [
+      {
+        "line": 8,
+        "text": "Cover LDI, quality score, naive clustering fallback and I/O helpers."
+      }
+    ]
+  },
+  {
+    "path": "tests/fixtures/production_v11_mocks.py",
+    "matches": [
+      {
+        "line": 40,
+        "text": "\"\"\"Compose a <tool_call> response with JSON payload (tool_call fallback).\"\"\""
+      }
+    ]
+  },
+  {
+    "path": "specs/001-stage1-discovery/spec.md",
+    "matches": [
+      {
+        "line": 6,
+        "text": "**FR-006 (Prohibición de fallback silencioso / Política por defecto ante ParseError)**: Si el extractor falla al parsear un archivo, NO se debe aplicar un fallback heurístico silencioso. El extractor debe levantar una excepción `ParseError` con estructura documentada (`file_path`, `line`, `error`, `diagnosis`, `fix_hint`, `adapter`) y registrar el evento en el informe de ejecución."
+      },
+      {
+        "line": 8,
+        "text": "- **Política por defecto (normativa):** marcar el archivo como `needs_manual_review` y **abortar el procesamiento del repositorio actual**. Este proyecto **elimina** la práctica de preservar silent fallbacks: la compatibilidad hacia atrás se conseguirá migrando los tests y consumidores (ver tarea T031), no manteniendo comportamiento silencioso."
+      },
+      {
+        "line": 49,
+        "text": "- Nota: La política canónica sobre fallos de parseo está definida en la sección **FR-006** (Prohibición de fallback silencioso / Política por defecto ante ParseError). Consulte FR-006 para la definición normativa de la conducta por defecto y las opciones configurables (`on_parse_error`)."
+      },
+      {
+        "line": 97,
+        "text": "- **FR-006 (Prohibición de fallback silencioso / Política por defecto ante ParseError)**: Si el extractor falla al parsear un archivo, NO se debe aplicar un fallback heurístico silencioso. El extractor debe levantar una excepción `ParseError` con estructura documentada (`file_path`, `line`, `error`, `diagnosis`, `fix_hint`) y registrar el evento en el informe de ejecución."
+      },
+      {
+        "line": 203,
+        "text": "*Especificación actualizada para soportar múltiples lenguajes y perfiles de uso. Este refactor **no preservará** silent fallbacks: la compatibilidad hacia atrás se logrará mediante migración de tests y consumidores (ver tarea T031). `production_v11.load_master_docs` deberá aceptar `profile` y usar `configs/stage_1_discovery/master_docs_map.yaml`.*"
+      }
+    ]
+  },
+  {
+    "path": "specs/001-stage1-discovery/plan.md",
+    "matches": [
+      {
+        "line": 15,
+        "text": "This refactor removes any silent parser fallback: the default `FR-006` behavior is to abort on `ParseError`. All tests and consumers that depended on previous fallback behavior must be audited and migrated before implementing adapter changes (see task T031)."
+      },
+      {
+        "line": 133,
+        "text": "3. Execute the T031 audit to produce `specs/001-stage1-discovery/ast_fallback_audit.json` and review the list of tests that depend on legacy fallback behavior; migrate those tests to the `ParseError`-first model before implementing adapter changes."
+      }
+    ]
+  },
+  {
+    "path": "specs/001-stage1-discovery/tasks.md",
+    "matches": [
+      {
+        "line": 58,
+        "text": "- **Tests:** `tests/unit/test_ingestor_git_fallback.py`, `tests/integration/test_ingestor_git_recovery.py` (escenarios: network error, diverged history, shallow clone)."
+      },
+      {
+        "line": 64,
+        "text": "- [ ] T031 Auditar tests existentes que dependen del fallback AST (p.ej. `_ast_fragment_list` fallback) y producir plan de migración (lista de tests a actualizar + cambios propuestos). Generar `specs/001-stage1-discovery/ast_fallback_audit.json` con resultados y marcar esta tarea `in-progress`."
+      }
+    ]
+  },
+  {
+    "path": "specs/001-stage1-discovery/contracts/adapter.md",
+    "matches": [
+      {
+        "line": 72,
+        "text": "- `generic_regex` — best-effort regex-based extractor (fallback for tiny profiles; use only for simple heuristics)."
+      }
+    ]
+  },
+  {
+    "path": "configs/taxonomy/home_assistant/hacs_expert/plugin_architecture.yaml",
+    "matches": [
+      {
+        "line": 22,
+        "text": "- Dual-mode automático (cloud fallback si LAN falla)"
+      },
+      {
+        "line": 36,
+        "text": "Analizo el patrón SonoffLAN: XRegistry dual-mode, Store para cache, cloud auth con fallback, Zeroconf para mDNS, dispatcher signals para sincronización async."
+      },
+      {
+        "line": 302,
+        "text": "async def test_setup_local_fallback(hass: HomeAssistant, mock_cloud_devices):"
+      },
+      {
+        "line": 303,
+        "text": "\"\"\"Test fallback to local when cloud fails.\"\"\""
+      }
+    ]
+  },
+  {
+    "path": "configs/stage_2_factory/taxonomy/home_assistant/plugin_architecture.yaml",
+    "matches": [
+      {
+        "line": 22,
+        "text": "- Dual-mode automático (cloud fallback si LAN falla)"
+      },
+      {
+        "line": 36,
+        "text": "Analizo el patrón SonoffLAN: XRegistry dual-mode, Store para cache, cloud auth con fallback, Zeroconf para mDNS, dispatcher signals para sincronización async."
+      },
+      {
+        "line": 302,
+        "text": "async def test_setup_local_fallback(hass: HomeAssistant, mock_cloud_devices):"
+      },
+      {
+        "line": 303,
+        "text": "\"\"\"Test fallback to local when cloud fails.\"\"\""
+      }
+    ]
+  },
+  {
+    "path": "configs/stage_5_evaluation/ha_patterns.yaml",
+    "matches": [
+      {
+        "line": 48,
+        "text": "# Default fallback text injected when a SampleRecord has no ha_standards"
+      }
+    ]
+  },
+  {
+    "path": "scripts/check_headers.py",
+    "matches": [
+      {
+        "line": 49,
+        "text": "Si git no está disponible, hace un fallback a búsqueda recursiva."
+      }
+    ]
+  },
+  {
+    "path": "scripts/audit_ast_fallback.py",
+    "matches": [
+      {
+        "line": 2,
+        "text": "\"\"\"Audit the repository for references to legacy AST fallback behavior."
+      },
+      {
+        "line": 4,
+        "text": "Writes JSON to `specs/001-stage1-discovery/ast_fallback_audit.json` containing"
+      },
+      {
+        "line": 15,
+        "text": "OUT = ROOT / \"specs\" / \"001-stage1-discovery\" / \"ast_fallback_audit.json\""
+      },
+      {
+        "line": 18,
+        "text": "\"_ast_fragment_list\","
+      },
+      {
+        "line": 19,
+        "text": "\"invalid_python_fallback_to_whole_file\","
+      },
+      {
+        "line": 20,
+        "text": "\"fallback to whole-file\","
+      },
+      {
+        "line": 21,
+        "text": "\"fallback\","
+      },
+      {
+        "line": 22,
+        "text": "\"LOCAL_IMPORTS\","
+      },
+      {
+        "line": 23,
+        "text": "\"test_ast_fragment_list_fallback_on_error\","
+      }
+    ]
+  }
+]

@@ -32,6 +32,7 @@ This file documents the project's operational surface and the expected governanc
 - Tests / coverage: `make test` / `make coverage` — coverage configured in `pyproject.toml` and `Makefile` (tracked sources: `src/audit`, `src/utils`; `--cov-fail-under=90`).
 - Formatting: `make fmt` runs `ruff format` (install `ruff` in dev environment).
 - Lint/type-check: `make lint` runs `pyright` (optional).
+- Test-First Imperative (TDD): All development MUST strictly follow       Test-Driven Development. Agents must write failing unit/integration tests that define the expected behavior before writing any implementation code. Code generation must only proceed to make the failing tests pass.
 
 ## 📜 Governance Reference
 All code should conform to the **Architectural Gold Standard** defined in `.github/agents/AEGF.agent.md`. This document remains the canonical policy;

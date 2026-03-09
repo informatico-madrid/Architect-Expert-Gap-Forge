@@ -323,21 +323,64 @@ def _sanitize_generated_reasoning(text: str) -> str:
     The rewriter must never include code or tool-call JSON inside the reasoning
     block. This function strips common markers (triple-backticks, inline
     backticks, <tool_call>...</tool_call> and leftover angle tags) while
-    preserving the readable explanation.
+    preserving technical identifiers (class names, function names, etc.).
+
+    Sacred Constraint (AEGF § 4.2):
+    ────────────────────────────────
+    Technical identifiers wrapped in single backticks (e.g., `device_class`,
+    `async_forward_entry_setups`) MUST NOT be removed. These are essential for
+    training Home Assistant integration components. Only code blocks containing
+    executable syntax (fenced code, tool-calls, stray XML tags) are sanitized.
     """
     if not text:
         return text
-    # Remove fenced code blocks ```...``` (multiline)
-    text = re.sub(r"```[\s\S]*?```", "", text)
-    # Remove inline code `...`
-    text = re.sub(r"`[^`]*`", "", text)
-    # Remove explicit <tool_call>...</tool_call> blocks
-    text = re.sub(r"<tool_call>[\s\S]*?</tool_call>", "", text, flags=re.IGNORECASE)
-    # Remove any remaining angle-bracket tags (conservative)
-    text = re.sub(r"<[^>]+>", "", text)
-    # Collapse multiple blank lines
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
+    
+    # STEP 1: Preserve technical identifiers (single backticks)
+    # Save them in a map before sanitization
+    identifier_map: dict[str, str] = {}
+    preserved_text = text
+    
+    # Pattern: preserve code-like inline backticked spans. We accept two
+    # flavours: (A) short, single-token identifiers with no whitespace
+    # (`async_update`, `SensorDeviceClass`), and (B) short code-like
+    # expressions that may contain parentheses/commas but are still
+    # compact (e.g. ``discovery_flow.async_create_flow(hass, DOMAIN)``).
+    # The combined regex uses a lookahead to detect punctuation typical
+    # of code and a conservative max-length to avoid preserving long
+    # natural-language fragments placed inside backticks.
+    preserve_pattern = re.compile(
+        r"`((?=[^`]*[()\[\]{},.;:=<>])[^`\n]{1,256}|[^`\s]{1,256})`"
+    )
+    for match in preserve_pattern.finditer(text):
+        placeholder = f"__PRESERVED_ID_{len(identifier_map)}__"
+        identifier_map[placeholder] = match.group(0)
+    
+    # Replace identifiers with placeholders
+    for placeholder, identifier in identifier_map.items():
+        preserved_text = preserved_text.replace(identifier, placeholder)
+    
+    # STEP 2: Remove fenced code blocks ```...``` (multiline)
+    preserved_text = re.sub(r"```[\s\S]*?```", "", preserved_text)
+    
+    # STEP 3: Remove backticks that remain (inline code with spaces/syntax)
+    # These are likely code snippets like `def func(x)` or `key: value`
+    preserved_text = re.sub(r"`[^`]*`", "", preserved_text)
+    
+    # STEP 4: Remove explicit <tool_call>...</tool_call> blocks
+    preserved_text = re.sub(r"<tool_call>[\s\S]*?</tool_call>", "", 
+                            preserved_text, flags=re.IGNORECASE)
+    
+    # STEP 5: Remove any remaining angle-bracket tags (conservative)
+    preserved_text = re.sub(r"<[^>]+>", "", preserved_text)
+    
+    # STEP 6: Restore technical identifiers
+    for placeholder, identifier in identifier_map.items():
+        preserved_text = preserved_text.replace(placeholder, identifier)
+    
+    # STEP 7: Collapse multiple blank lines
+    preserved_text = re.sub(r"\n{3,}", "\n\n", preserved_text)
+    
+    return preserved_text.strip()
 
 
 def _detect_language_hint(text: str) -> str:

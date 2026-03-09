@@ -48,7 +48,6 @@ This document records the conventions, architectural patterns, toolchain and gov
 
 ## Repository & CI Governance
 
-- **No remote history changes:** agents and automation must not run `git commit`/`git push` without human confirmation.
 - **Staging policy:** files may be created/edited, but staging/committing requires explicit human approval.
 - **Header policy for new source files:** Python source files must include the project header (shebang, project id `Architect-Expert-Gap-Forge (AEGF)`, copyright, SPDX license); CI checks headers with `scripts/check_headers.py --check`.
 - **Commit message style:** Conventional Commits required for proposed commit messages (type(scope?): subject).
