@@ -45,11 +45,11 @@ Final Phase — Polish & Cross-cutting
 
 - [ ] T019 [P] Añadir ejemplos versionados: `configs/stage_1_discovery/examples/homeassistant.yaml` y `configs/stage_1_discovery/examples/php_hexagonal.yaml` con `on_parse_error: abort` por defecto
 - [x] T020 Crear pruebas unitarias para validar políticas `on_parse_error` (`tests/unit/test_parse_error_policy.py`)
-- [ ] T021 Ejecutar test suite completa y corregir fallos: `pytest tests/unit tests/integration` (entregar logs y correcciones)
+- [x] T021 Ejecutar test suite completa y corregir fallos: `pytest tests/unit tests/integration` (entregar logs y correcciones)
   - **Criterios de salida:** todos los tests unitarios deben pasar localmente; generar `reports/tests-report.xml` y `reports/pytest-logs.txt` adjuntos al PR.
-- [ ] T022 Ejecutar formateo y comprobaciones: `ruff format .` y `python scripts/check_headers.py --check`
+- [x] T022 Ejecutar formateo y comprobaciones: `ruff format .` y `python scripts/check_headers.py --check`
 - [ ] T023 Actualizar `specs/001-stage1-discovery/quickstart.md` si cambian comandos o flags
-- [ ] T024 Preparar un PR draft con los cambios y artefactos — incluir: `specs/*`, `src/utils/extractors/*`, `src/discovery/processor.py` y tests
+- [x] T024 Preparar un PR draft con los cambios y artefactos — incluir: `specs/*`, `src/utils/extractors/*`, `src/discovery/processor.py` y tests
   - **Criterios de salida:** PR draft debe incluir: lista de tests que fueron migrados (resultado T031), benchmark baseline (T032), checklist de cambios y un archivo `PR_CHECKLIST.md` con pasos de verificación para reviewers.
 
 Additional Critical Test Tasks (added to cover spec gaps)

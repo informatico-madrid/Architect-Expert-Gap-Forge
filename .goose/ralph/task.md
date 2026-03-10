@@ -49,7 +49,7 @@ Final Phase — Polish & Cross-cutting
   - **Criterios de salida:** todos los tests unitarios deben pasar localmente; generar `reports/tests-report.xml` y `reports/pytest-logs.txt` adjuntos al PR.
 - [x] T022 Ejecutar formateo y comprobaciones: `ruff format .` y `python scripts/check_headers.py --check`
 - [x] T023 Actualizar `specs/001-stage1-discovery/quickstart.md` si cambian comandos o flags
-- [ ] T024 Preparar un PR draft con los cambios y artefactos — incluir: `specs/*`, `src/utils/extractors/*`, `src/discovery/processor.py` y tests
+- [x] T024 Preparar un PR draft con los cambios y artefactos — incluir: `specs/*`, `src/utils/extractors/*`, `src/discovery/processor.py` y tests
   - **Criterios de salida:** PR draft debe incluir: lista de tests que fueron migrados (resultado T031), benchmark baseline (T032), checklist de cambios y un archivo `PR_CHECKLIST.md` con pasos de verificación para reviewers.
 
 Additional Critical Test Tasks (added to cover spec gaps)
