@@ -208,9 +208,15 @@ def test_ast_fragment_list_generates_fragments() -> None:
 
 
 def test_ast_fragment_list_fallback_on_error() -> None:
-    fragments = factory_v11._ast_fragment_list("module.py", "invalid code..", "ctx", {})
-    assert len(fragments) == 1
-    assert fragments[0]["name"].startswith("Module:")
+    """Test that invalid Python code raises ParseError (FR-006: abort policy)."""
+    from src.utils.extractors.base import ParseError
+
+    with pytest.raises(ParseError) as exc:
+        factory_v11._ast_fragment_list("module.py", "invalid code..", "ctx", {})
+    err = exc.value
+    assert err.file_path.name == "module.py"
+    assert err.line == 1
+    assert "SyntaxError" in err.message or "invalid" in err.message.lower()
 
 
 def _functional_bundle() -> dict:

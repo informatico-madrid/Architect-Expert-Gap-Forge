@@ -64,7 +64,7 @@ class ExtractorAdapter(Protocol):
         ...
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class ParseError(Exception):
     """Structured exception for parse failures.
 
@@ -80,6 +80,11 @@ class ParseError(Exception):
     file_path: Path
     line: int
     message: str
+
+    def __post_init__(self) -> None:
+        # Convert file_path to Path if it's a string
+        if isinstance(self.file_path, str):
+            object.__setattr__(self, "file_path", Path(self.file_path))
 
     def __str__(self) -> str:
         return f"ParseError in {self.file_path}:{self.line}: {self.message}"
