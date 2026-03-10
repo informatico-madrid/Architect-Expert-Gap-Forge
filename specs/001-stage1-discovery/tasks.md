@@ -25,16 +25,16 @@ Phase 3 — User Stories (en prioridad)
 
 User Story 1 — Ingestar repositorios (Priority: P1)
 
-- [ ] T010 [US1] Crear prueba unitaria `tests/unit/test_ingestor_profile_filter.py` que valide que `ingestor` aplica filtros del `profile` (dry-run)
-- [ ] T011 [US1] Actualizar `src/discovery/ingestor.py` y `DiscoveryConfig` para aceptar `profile` y aplicar filtros por `extensions`/`ignored_paths` — archivo: `src/discovery/ingestor.py`
+- [x] T010 [US1] Crear prueba unitaria `tests/unit/test_ingestor_profile_filter.py` que valide que `ingestor` aplica filtros del `profile` (dry-run)
+- [x] T011 [US1] Actualizar `src/discovery/ingestor.py` y `DiscoveryConfig` para aceptar `profile` y aplicar filtros por `extensions`/`ignored_paths` — archivo: `src/discovery/ingestor.py`
 
 User Story 2 — Emitir paquetes por módulo (Priority: P1)
 
-- [ ] T012 [US2] Crear prueba unitaria `tests/unit/test_processor_module_discovery_manifest.py` que defina comportamiento esperado para `strategy: manifest`
-- [ ] T013 [US2] Implementar soporte `strategy: manifest` en `src/discovery/processor.py` (leer manifestos/anchors)
-- [ ] T014 [US2] Crear prueba unitaria `tests/unit/test_processor_module_discovery_directory_and_manual.py` que cubra `strategy: directory` y `strategy: manual_mapping` con `overrides`
-- [ ] T015 [US2] Implementar `directory` y `manual_mapping` strategies y `overrides` en `src/discovery/processor.py`
-- [ ] T016 [US2] Crear prueba de integración `tests/integration/test_processor_emits_bundles_with_arch_header.py` que verifique que los bundles `.txt` contienen `[ARCH_HEADER]` con `MODULE`, `DEPENDENCIES`, etc.
+- [x] T012 [US2] Crear prueba unitaria `tests/unit/test_processor_module_discovery_manifest.py` que defina comportamiento esperado para `strategy: manifest`
+- [x] T013 [US2] Implementar soporte `strategy: manifest` en `src/discovery/processor.py` (leer manifestos/anchors)
+- [x] T014 [US2] Crear prueba unitaria `tests/unit/test_processor_module_discovery_directory_and_manual.py` que cubra `strategy: directory` y `strategy: manual_mapping` con `overrides`
+- [x] T015 [US2] Implementar `directory` y `manual_mapping` strategies y `overrides` en `src/discovery/processor.py`
+- [x] T016 [US2] Crear prueba de integración `tests/integration/test_processor_emits_bundles_with_arch_header.py` que verifique que los bundles `.txt` contienen `[ARCH_HEADER]` con `MODULE`, `DEPENDENCIES`, etc.
 
 User Story 3 — Carga dinámica de Master Documents (Priority: P2)
 
@@ -43,29 +43,29 @@ User Story 3 — Carga dinámica de Master Documents (Priority: P2)
 
 Final Phase — Polish & Cross-cutting
 
-- [ ] T019 [P] Añadir ejemplos versionados: `configs/stage_1_discovery/examples/homeassistant.yaml` y `configs/stage_1_discovery/examples/php_hexagonal.yaml` con `on_parse_error: abort` por defecto
+- [x] T019 [P] Añadir ejemplos versionados: `configs/stage_1_discovery/examples/homeassistant.yaml` y `configs/stage_1_discovery/examples/php_hexagonal.yaml` con `on_parse_error: abort` por defecto
 - [x] T020 Crear pruebas unitarias para validar políticas `on_parse_error` (`tests/unit/test_parse_error_policy.py`)
 - [x] T021 Ejecutar test suite completa y corregir fallos: `pytest tests/unit tests/integration` (entregar logs y correcciones)
   - **Criterios de salida:** todos los tests unitarios deben pasar localmente; generar `reports/tests-report.xml` y `reports/pytest-logs.txt` adjuntos al PR.
 - [x] T022 Ejecutar formateo y comprobaciones: `ruff format .` y `python scripts/check_headers.py --check`
-- [ ] T023 Actualizar `specs/001-stage1-discovery/quickstart.md` si cambian comandos o flags
+- [x] T023 Actualizar `specs/001-stage1-discovery/quickstart.md` si cambian comandos o flags
 - [x] T024 Preparar un PR draft con los cambios y artefactos — incluir: `specs/*`, `src/utils/extractors/*`, `src/discovery/processor.py` y tests
   - **Criterios de salida:** PR draft debe incluir: lista de tests que fueron migrados (resultado T031), benchmark baseline (T032), checklist de cambios y un archivo `PR_CHECKLIST.md` con pasos de verificación para reviewers.
 
 Additional Critical Test Tasks (added to cover spec gaps)
 
-- [ ] T025 Pruebas unitarias/integración para la resiliencia Git: validar `git pull --ff-only` y la política segura de recuperación mediante `fetch`+`reset`.
+- [x] T025 Pruebas unitarias/integración para la resiliencia Git: validar `git pull --ff-only` y la política segura de recuperación mediante `fetch`+`reset`.
   - **Política de retry:** intentar hasta **3** veces (`pull` → `fetch`+`reset`) con backoff exponencial (1s, 2s, 4s) antes de fallar.
   - **Criterios de seguridad:** aplicar `reset` solo cuando el remote contenga el commit objetivo en su historia; comprobar ancestry/commit-IDs para evitar resets destructivos.
   - **Tests:** `tests/unit/test_ingestor_git_fallback.py`, `tests/integration/test_ingestor_git_recovery.py` (escenarios: network error, diverged history, shallow clone).
-- [ ] T026 Hardening e implementación de la recuperación en `src/discovery/ingestor.py` con las comprobaciones listadas arriba (implementación + tests). Incluir validaciones de checksum/HEAD para abortar cuando la historia es incoherente.
-- [ ] T027 Tests de backoff por rate-limit: simular respuestas 403 con `X-RateLimit-Reset` y verificar sleep+retry+logs (tests/unit/test_rate_limit_backoff.py). Policy: sleep hasta `X-RateLimit-Reset + 5s`, máximo 2 reintentos por endpoint.
-- [ ] T028 Crear harness de integración y fixtures: conjunto referencial de **5** repositorios por `profile` en `tests/fixtures/reference_corpus/<profile>/` con `gold_dependencies.json` para medir recall.
-- [ ] T029 Implementar scripts de medición automática (recall/precision) y reporte para extractor (scripts/measure_recall.py, tests/integration/test_recall_harness.py). Métrica canon: `recall@N` (N=5,10) por archivo/por repositorio.
-- [ ] T030 Observabilidad: implementar métricas exportables (Prometheus-friendly) para `ParseError` (contador por repo/profile), latencias y tasa de archivos marcados; añadir tests que verifiquen la emisión de métricas.
+- [x] T026 Hardening e implementación de la recuperación en `src/discovery/ingestor.py` con las comprobaciones listadas arriba (implementación + tests). Incluir validaciones de checksum/HEAD para abortar cuando la historia es incoherente.
+- [x] T027 Tests de backoff por rate-limit: simular respuestas 403 con `X-RateLimit-Reset` y verificar sleep+retry+logs (tests/unit/test_rate_limit_backoff.py). Policy: sleep hasta `X-RateLimit-Reset + 5s`, máximo 2 reintentos por endpoint.
+- [x] T028 Crear harness de integración y fixtures: conjunto referencial de **5** repositorios por `profile` en `tests/fixtures/reference_corpus/<profile>/` con `gold_dependencies.json` para medir recall.
+- [x] T029 Implementar scripts de medición automática (recall/precision) y reporte para extractor (scripts/measure_recall.py, tests/integration/test_recall_harness.py). Métrica canon: `recall@N` (N=5,10) por archivo/por repositorio.
+- [x] T030 Observabilidad: implementar métricas exportables (Prometheus-friendly) para `ParseError` (contador por repo/profile), latencias y tasa de archivos marcados; añadir tests que verifiquen la emisión de métricas.
  - [x] T031 Auditar tests existentes que dependen del fallback AST (p.ej. `_ast_fragment_list` fallback) y producir plan de migración (lista de tests a actualizar + cambios propuestos). Generar `specs/001-stage1-discovery/ast_fallback_audit.json` con resultados y marcar esta tarea `in-progress`.
   - **Salida (spec-only):** `specs/001-stage1-discovery/migrations/test_migration_plan.md` contiene la estrategia recomendada y plantilla de migración por test. Implementación de cambios en tests o código corresponde a otro agente.
-- [ ] T032 Performance: benchmarking & CI comparison — crear scripts para medir throughput (files/hour per worker), latency per-file (mean and P95) y comparar baseline vs post-refactor (scripts/benchmark/; tests/integration/test_benchmark_compare.py).
+- [x] T032 Performance: benchmarking & CI comparison — crear scripts para medir throughput (files/hour per worker), latency per-file (mean and P95) y comparar baseline vs post-refactor (scripts/benchmark/; tests/integration/test_benchmark_compare.py).
 
 ---
 
@@ -114,30 +114,24 @@ Generated by: copilot agent (plan: specs/001-stage1-discovery/plan.md)
 
 Las siguientes entradas derivan de specs/001-stage1-discovery/migrations/test_migration_plan.md y sirven para tracking TDD (actualizar cada ítem cuando el test sea modificado y las correcciones implementadas).
 
-- [ ] `tests/test_production_v11.py` — Migrar a ParseError-first.
+- [x] `tests/test_production_v11.py` — Migrar a ParseError-first.
   - Paso 1: Actualizar el test para esperar `ParseError` (ver plantilla en `migrations/test_migration_plan.md`) y ejecutar `pytest`.
   - Paso 2: Implementador adapta el adapter/`production_v11` para lanzar `ParseError` y pasar la prueba.
   - Paso 3: Añadir nota en la PR enlazando FR-006.
 
-- [ ] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first.
+- [x] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first.
   - Paso 1: Actualizar el test para usar `pytest.raises(ParseError)`.
   - Paso 2: Ejecutar pruebas locales.
   - Paso 3: Implementador hace cambios en `_ast_fragment_list` o adapter.
 
-- [ ] `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related.
-  - Paso 1: Identificar sub-tests que llaman a `_ast_fragment_list`.
-  - Paso 2: Aplicar patrón ParseError-first a esos sub-tests.
-  - Paso 3: Documentar cambios.
+- [x] `tests/test_model_evaluator_integration_paths.py` — Clasificado: NO AST-related (no usa _ast_fragment_list ni LOCAL_IMPORTS).
+  - Análisis: El archivo no contiene referencias a _ast_fragment_list o LOCAL_IMPORTS. No requiere migración.
 
-- [ ] `tests/test_sampling.py` — Revisar y clasificar.
-  - Paso 1: Confirmar si depende de AST fallback.
-  - Paso 2: Si no, dejar y marcar como no-ast.
-  - Paso 3: Si sí, migrar según plantilla.
+- [x] `tests/test_sampling.py` — Clasificado: NO AST-related (no usa _ast_fragment_list ni LOCAL_IMPORTS).
+  - Análisis: El archivo no contiene referencias a _ast_fragment_list o LOCAL_IMPORTS. No requiere migración.
 
-- [ ] `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar.
-  - Paso 1: Extraer tests AST-specific.
-  - Paso 2: Migrar AST-cases a ParseError-first.
-  - Paso 3: Documentar y parametrizar si es necesario.
+- [x] `tests/test_model_evaluator_extended_paths.py` — Clasificado: NO AST-related (no usa _ast_fragment_list ni LOCAL_IMPORTS).
+  - Análisis: El archivo no contiene referencias a _ast_fragment_list o LOCAL_IMPORTS. No requiere migración.
 
 Referencias:
 
