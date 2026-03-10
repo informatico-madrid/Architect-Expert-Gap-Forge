@@ -547,7 +547,7 @@ class RepoProcessor:
         buf: List[str] = [
             f"=== LOGICAL ENTITY: {entity_id} ===",
             f"Context: {self.cfg.final_context_prefix} Knowledge Base",
-            f"Type: MODULE_BLUEPRINT\n",
+            "Type: MODULE_BLUEPRINT\n",
         ]
 
         # MODULE_MAP
@@ -823,7 +823,7 @@ class RepoProcessor:
         buf: List[str] = [
             f"=== LOGICAL ENTITY: {entity_id} ===",
             f"Context: {self.cfg.final_context_prefix} Knowledge Base",
-            f"Type: GOVERNANCE_RULES\n",
+            "Type: GOVERNANCE_RULES\n",
             "[GOVERNANCE_HEADER]",
             f"REPO_PREFIX: {repo_prefix}",
             f"APPLIES_TO: all modules in repository '{repo_prefix}'",

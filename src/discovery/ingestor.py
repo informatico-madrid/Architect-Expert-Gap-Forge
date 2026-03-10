@@ -22,9 +22,8 @@ import logging
 import os
 import subprocess
 import time
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import List, Literal, Optional, Set
 import requests
 import yaml
 from dotenv import load_dotenv
@@ -311,7 +310,7 @@ if __name__ == "__main__":
     # Environment override for security
     token = os.getenv("GITHUB_TOKEN")
     if token:
-        config.github_token = token
+        config = config.model_copy(update={"github_token": token})
 
     engine = RepoIngestor(config)
     engine.run(dry_run=args.dry_run)
