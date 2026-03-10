@@ -40,6 +40,7 @@ from pathlib import Path
 from string import Template
 from typing import List, Dict, Any, Tuple, Optional
 from src.schemas.common import FragmentTypedDict
+from src.utils.extractors.base import ParseError
 
 import yaml
 from openai import AsyncOpenAI
@@ -1001,53 +1002,51 @@ def _ast_fragment_list(
 ) -> List[Dict]:
     """Extract AST-based fragment dicts from a Python logic file.
 
-    Returns one dict per top-level class/function.  Falls back to a
-    single whole-file fragment if AST parsing fails or produces nothing.
+    Returns one dict per top-level class/function.
+    Raises ParseError if AST parsing fails (FR-006).
     """
     frags: List[Dict] = []
     try:
         tree = ast.parse(logic_code)
-        imports = [
-            ast.unparse(n)
-            for n in tree.body
-            if isinstance(n, (ast.Import, ast.ImportFrom))
-        ]
-        ctx = "\n".join(imports) or context_str
-        for node in tree.body:
-            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
-                node_copy = ast.parse(ast.unparse(node)).body[0]
-                placeholder = "... # [Expert HA 2026 Implementation]"
-                if isinstance(node_copy, ast.ClassDef):
-                    for item in node_copy.body:
-                        if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            item.body = [
-                                ast.Expr(value=ast.Constant(value=placeholder))
-                            ]
-                else:
-                    node_copy.body = [ast.Expr(value=ast.Constant(value=placeholder))]
-                frags.append(
-                    {
-                        **extra_fields,
-                        "name": node.name,
-                        "skeleton": ast.unparse(node_copy),
-                        "original": ast.unparse(node),
-                        "context": ctx,
-                    }
-                )
-    except Exception:
-        pass
+    except SyntaxError as e:
+        raise ParseError(
+            file_path=Path(logic_fname),
+            line=e.lineno or 1,
+            message=f"SyntaxError: {e.msg}",
+        )
+
+    imports = [
+        ast.unparse(n) for n in tree.body if isinstance(n, (ast.Import, ast.ImportFrom))
+    ]
+    ctx = "\n".join(imports) or context_str
+    for node in tree.body:
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            node_copy = ast.parse(ast.unparse(node)).body[0]
+            placeholder = "... # [Expert HA 2026 Implementation]"
+            if isinstance(node_copy, ast.ClassDef):
+                for item in node_copy.body:
+                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        item.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+            else:
+                node_copy.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+            frags.append(
+                {
+                    **extra_fields,
+                    "name": node.name,
+                    "skeleton": ast.unparse(node_copy),
+                    "original": ast.unparse(node),
+                    "context": ctx,
+                }
+            )
 
     if not frags:
-        # Whole-file fallback
-        frags.append(
-            {
-                **extra_fields,
-                "name": f"Module: {Path(logic_fname).stem}",
-                "skeleton": "# [Expert HA 2026 Implementation]",
-                "original": logic_code,
-                "context": context_str,
-            }
+        # Empty file - raise ParseError instead of fallback (FR-006)
+        raise ParseError(
+            file_path=Path(logic_fname),
+            line=1,
+            message="No top-level classes or functions found",
         )
+
     return frags
 
 

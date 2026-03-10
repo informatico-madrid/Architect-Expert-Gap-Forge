@@ -545,12 +545,16 @@ class TestAstFragmentList:
         frags = v11._ast_fragment_list("f.py", code, "", {"virtual_filename": "f.py"})
         assert "42" in frags[0]["original"] or "return 42" in frags[0]["original"]
 
-    def test_invalid_python_fallback_to_whole_file(self) -> None:
-        frags = v11._ast_fragment_list(
-            "bad.py", "def broken(::", "ctx", {"virtual_filename": "bad.py"}
-        )
-        assert len(frags) == 1
-        assert "Module:" in frags[0]["name"] or frags[0]["name"] == "Module: bad"
+    def test_invalid_python_raises_parse_error(self) -> None:
+        """Test that invalid Python code raises ParseError instead of fallback."""
+        from src.utils.extractors.base import ParseError
+
+        with pytest.raises(ParseError) as exc:
+            v11._ast_fragment_list(
+                "bad.py", "def broken(::", "ctx", {"virtual_filename": "bad.py"}
+            )
+        err = exc.value
+        assert "bad.py" in str(err.file_path)
 
     def test_extra_fields_propagated(self) -> None:
         extra = {"virtual_filename": "sensor.py", "context": "HA"}
