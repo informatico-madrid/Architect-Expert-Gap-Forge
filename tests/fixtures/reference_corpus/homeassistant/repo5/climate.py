@@ -15,7 +15,7 @@ from homeassistant.components.climate import (
     ATTR_HVAC_MODE,
     ATTR_TARGET_TEMP_HIGH,
     ATTR_TARGET_TEMP_LOW,
-   ClimateEntity,
+    ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
 )

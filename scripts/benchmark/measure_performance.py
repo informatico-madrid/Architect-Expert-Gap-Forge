@@ -117,7 +117,13 @@ def benchmark_profile(
 
     if repos is None:
         # Use reference corpus
-        corpus_path = Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "reference_corpus" / profile
+        corpus_path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "tests"
+            / "fixtures"
+            / "reference_corpus"
+            / profile
+        )
         if not corpus_path.exists():
             raise FileNotFoundError(f"Reference corpus not found: {corpus_path}")
         repos = [d for d in corpus_path.iterdir() if d.is_dir()]
@@ -164,8 +170,12 @@ def benchmark_profile(
             "max_ms": float(np.max(latencies)),
         },
         "throughput": {
-            "files_per_second": total_files / (sum(latencies) / 1000) if latencies else 0,
-            "files_per_hour": (total_files / (sum(latencies) / 1000 / 3600)) if latencies else 0,
+            "files_per_second": total_files / (sum(latencies) / 1000)
+            if latencies
+            else 0,
+            "files_per_hour": (total_files / (sum(latencies) / 1000 / 3600))
+            if latencies
+            else 0,
         },
         "targets": {
             "throughput_target": 1000,  # files/hour/worker
@@ -191,13 +201,18 @@ def check_targets(results: dict[str, Any]) -> dict[str, bool]:
 
     # Estimate repos per hour based on files per repo
     files_per_repo = results["files_per_repo"]
-    repos_per_hour = (3600 * 1000) / (results["latency"]["mean_ms"] * files_per_repo) if files_per_repo > 0 else 0
+    repos_per_hour = (
+        (3600 * 1000) / (results["latency"]["mean_ms"] * files_per_repo)
+        if files_per_repo > 0
+        else 0
+    )
 
     return {
         "throughput_ok": throughput >= results["targets"]["throughput_target"],
         "latency_mean_ok": latency_mean < results["targets"]["latency_mean_target_ms"],
         "latency_p95_ok": latency_p95 < results["targets"]["latency_p95_target_ms"],
-        "repos_per_hour_ok": repos_per_hour >= results["targets"]["repos_per_hour_target"],
+        "repos_per_hour_ok": repos_per_hour
+        >= results["targets"]["repos_per_hour_target"],
     }
 
 
@@ -235,7 +250,13 @@ def main():
     args = parser.parse_args()
 
     # Load repos
-    corpus_path = Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "reference_corpus" / args.profile
+    corpus_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "tests"
+        / "fixtures"
+        / "reference_corpus"
+        / args.profile
+    )
     if not corpus_path.exists():
         print(f"Error: Reference corpus not found: {corpus_path}", file=sys.stderr)
         sys.exit(1)
@@ -273,10 +294,16 @@ def main():
             print(f"Files with errors: {results['total_errors']}")
             print(f"Dependencies extracted: {results['total_dependencies']}")
             print(f"\nLatency:")
-            print(f"  Mean: {results['latency']['mean_ms']:.2f}ms (target: <{results['targets']['latency_mean_target_ms']}ms)")
-            print(f"  P95:  {results['latency']['p95_ms']:.2f}ms (target: <{results['targets']['latency_p95_target_ms']}ms)")
+            print(
+                f"  Mean: {results['latency']['mean_ms']:.2f}ms (target: <{results['targets']['latency_mean_target_ms']}ms)"
+            )
+            print(
+                f"  P95:  {results['latency']['p95_ms']:.2f}ms (target: <{results['targets']['latency_p95_target_ms']}ms)"
+            )
             print(f"\nThroughput:")
-            print(f"  {results['throughput']['files_per_hour']:.0f} files/hour (target: >={results['targets']['throughput_target']})")
+            print(
+                f"  {results['throughput']['files_per_hour']:.0f} files/hour (target: >={results['targets']['throughput_target']})"
+            )
             print(f"\nTarget Checks:")
             for check, passed in target_checks.items():
                 status = "✓ PASS" if passed else "✗ FAIL"

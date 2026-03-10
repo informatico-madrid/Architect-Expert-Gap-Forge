@@ -85,7 +85,9 @@ class TestBenchmarkCompare:
         assert corpus_path.exists(), f"Reference corpus not found: {corpus_path}"
 
         homeassistant_path = corpus_path / "homeassistant"
-        assert homeassistant_path.exists(), f"Home Assistant corpus not found: {homeassistant_path}"
+        assert homeassistant_path.exists(), (
+            f"Home Assistant corpus not found: {homeassistant_path}"
+        )
 
         repos = [d for d in homeassistant_path.iterdir() if d.is_dir()]
         assert len(repos) >= 5, f"Expected at least 5 repos, found {len(repos)}"
@@ -143,7 +145,9 @@ class TestBenchmarkCompare:
                 total_files += 1
 
         total_time_seconds = sum(all_latencies) / 1000
-        files_per_hour = (total_files / total_time_seconds) * 3600 if total_time_seconds > 0 else 0
+        files_per_hour = (
+            (total_files / total_time_seconds) * 3600 if total_time_seconds > 0 else 0
+        )
 
         assert files_per_hour >= THROUGHPUT_TARGET, (
             f"Throughput {files_per_hour:.0f} files/hour is below target {THROUGHPUT_TARGET}"
@@ -197,7 +201,9 @@ class TestBenchmarkCompare:
         p95_latency = np.percentile(all_latencies, 95)
         p99_latency = np.percentile(all_latencies, 99)
         total_time_seconds = sum(all_latencies) / 1000
-        files_per_hour = (total_files / total_time_seconds) * 3600 if total_time_seconds > 0 else 0
+        files_per_hour = (
+            (total_files / total_time_seconds) * 3600 if total_time_seconds > 0 else 0
+        )
 
         # Prometheus-style metrics (gauge format)
         metrics = [

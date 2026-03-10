@@ -60,7 +60,9 @@ class MySwitch(SwitchEntity):
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, timeout=DEFAULT_TIMEOUT) as resp:
+                async with session.post(
+                    url, json=payload, timeout=DEFAULT_TIMEOUT
+                ) as resp:
                     if resp.status == 200:
                         self._state = state
                         self._attr_is_on = state

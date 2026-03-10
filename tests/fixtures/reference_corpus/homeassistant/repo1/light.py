@@ -27,11 +27,13 @@ from .const import DEFAULT_PORT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    CONF_HOST: str,
-    CONF_PORT: int,
-    CONF_NAME: str,
-})
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        CONF_HOST: str,
+        CONF_PORT: int,
+        CONF_NAME: str,
+    }
+)
 
 
 async def async_setup_entry(
