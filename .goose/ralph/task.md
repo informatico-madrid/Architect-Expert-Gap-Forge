@@ -59,13 +59,13 @@ Additional Critical Test Tasks (added to cover spec gaps)
   - **Criterios de seguridad:** aplicar `reset` solo cuando el remote contenga el commit objetivo en su historia; comprobar ancestry/commit-IDs para evitar resets destructivos.
   - **Tests:** `tests/unit/test_ingestor_git_fallback.py`, `tests/integration/test_ingestor_git_recovery.py` (escenarios: network error, diverged history, shallow clone).
 - [x] T026 Hardening e implementación de la recuperación en `src/discovery/ingestor.py` con las comprobaciones listadas arriba (implementación + tests). Incluir validaciones de checksum/HEAD para abortar cuando la historia es incoherente.
-- [ ] T027 Tests de backoff por rate-limit: simular respuestas 403 con `X-RateLimit-Reset` y verificar sleep+retry+logs (tests/unit/test_rate_limit_backoff.py). Policy: sleep hasta `X-RateLimit-Reset + 5s`, máximo 2 reintentos por endpoint.
-- [ ] T028 Crear harness de integración y fixtures: conjunto referencial de **5** repositorios por `profile` en `tests/fixtures/reference_corpus/<profile>/` con `gold_dependencies.json` para medir recall.
-- [ ] T029 Implementar scripts de medición automática (recall/precision) y reporte para extractor (scripts/measure_recall.py, tests/integration/test_recall_harness.py). Métrica canon: `recall@N` (N=5,10) por archivo/por repositorio.
-- [ ] T030 Observabilidad: implementar métricas exportables (Prometheus-friendly) para `ParseError` (contador por repo/profile), latencias y tasa de archivos marcados; añadir tests que verifiquen la emisión de métricas.
+- [x] T027 Tests de backoff por rate-limit: simular respuestas 403 con `X-RateLimit-Reset` y verificar sleep+retry+logs (tests/unit/test_rate_limit_backoff.py). Policy: sleep hasta `X-RateLimit-Reset + 5s`, máximo 2 reintentos por endpoint.
+- [x] T028 Crear harness de integración y fixtures: conjunto referencial de **5** repositorios por `profile` en `tests/fixtures/reference_corpus/<profile>/` con `gold_dependencies.json` para medir recall.
+- [x] T029 Implementar scripts de medición automática (recall/precision) y reporte para extractor (scripts/measure_recall.py, tests/integration/test_recall_harness.py). Métrica canon: `recall@N` (N=5,10) por archivo/por repositorio.
+- [x] T030 Observabilidad: implementar métricas exportables (Prometheus-friendly) para `ParseError` (contador por repo/profile), latencias y tasa de archivos marcados; añadir tests que verifiquen la emisión de métricas.
  - [x] T031 Auditar tests existentes que dependen del fallback AST (p.ej. `_ast_fragment_list` fallback) y producir plan de migración (lista de tests a actualizar + cambios propuestos). Generar `specs/001-stage1-discovery/ast_fallback_audit.json` con resultados y marcar esta tarea `in-progress`.
   - **Salida (spec-only):** `specs/001-stage1-discovery/migrations/test_migration_plan.md` contiene la estrategia recomendada y plantilla de migración por test. Implementación de cambios en tests o código corresponde a otro agente.
-- [ ] T032 Performance: benchmarking & CI comparison — crear scripts para medir throughput (files/hour per worker), latency per-file (mean and P95) y comparar baseline vs post-refactor (scripts/benchmark/; tests/integration/test_benchmark_compare.py).
+- [x] T032 Performance: benchmarking & CI comparison — crear scripts para medir throughput (files/hour per worker), latency per-file (mean and P95) y comparar baseline vs post-refactor (scripts/benchmark/; tests/integration/test_benchmark_compare.py).
 
 ---
 
