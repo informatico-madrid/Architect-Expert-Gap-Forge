@@ -1,0 +1,19 @@
+{
+  "files": {
+    "switch.py": {
+      "dependencies": [
+        {"name": "asyncio", "module_type": "stdlib"},
+        {"name": "typing", "module_type": "stdlib"},
+        {"name": "homeassistant.components.switch", "module_type": "external"},
+        {"name": "homeassistant.config_entries", "module_type": "external"},
+        {"name": "homeassistant.const", "module_type": "external"},
+        {"name": "homeassistant.core", "module_type": "external"},
+        {"name": "homeassistant.helpers.entity_platform", "module_type": "external"},
+        {"name": "aiohttp", "module_type": "external"},
+        {"name": ".const", "module_type": "relative"}
+      ]
+    }
+  },
+  "expected_recall_files": ["switch.py"],
+  "description": "Home Assistant async switch component"
+}

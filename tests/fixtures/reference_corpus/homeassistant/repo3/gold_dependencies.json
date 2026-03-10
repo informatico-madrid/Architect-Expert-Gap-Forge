@@ -1,0 +1,18 @@
+{
+  "files": {
+    "binary_sensor.py": {
+      "dependencies": [
+        {"name": "typing", "module_type": "stdlib"},
+        {"name": "homeassistant.components.binary_sensor", "module_type": "external"},
+        {"name": "homeassistant.config_entries", "module_type": "external"},
+        {"name": "homeassistant.const", "module_type": "external"},
+        {"name": "homeassistant.core", "module_type": "external"},
+        {"name": "homeassistant.helpers.entity_platform", "module_type": "external"},
+        {"name": "homeassistant.helpers.typing", "module_type": "external"},
+        {"name": "requests", "module_type": "external"}
+      ]
+    }
+  },
+  "expected_recall_files": ["binary_sensor.py"],
+  "description": "Home Assistant binary sensor with config flow"
+}

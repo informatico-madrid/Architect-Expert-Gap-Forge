@@ -1,0 +1,23 @@
+{
+  "files": {
+    "sensor.py": {
+      "dependencies": [
+        {"name": "datetime", "module_type": "stdlib"},
+        {"name": "typing", "module_type": "stdlib"},
+        {"name": "logging", "module_type": "stdlib"},
+        {"name": "homeassistant.components.sensor", "module_type": "external"},
+        {"name": "homeassistant.config_entries", "module_type": "external"},
+        {"name": "homeassistant.const", "module_type": "external"},
+        {"name": "homeassistant.core", "module_type": "external"},
+        {"name": "homeassistant.helpers.device_registry", "module_type": "external"},
+        {"name": "homeassistant.helpers.entity_platform", "module_type": "external"},
+        {"name": "homeassistant.helpers.update_coordinator", "module_type": "external"},
+        {"name": "aiohttp", "module_type": "external"},
+        {"name": "async_timeout", "module_type": "external"},
+        {"name": ".const", "module_type": "relative"}
+      ]
+    }
+  },
+  "expected_recall_files": ["sensor.py"],
+  "description": "Home Assistant sensor with async/coordinator pattern"
+}
