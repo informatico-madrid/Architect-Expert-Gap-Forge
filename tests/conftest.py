@@ -37,10 +37,16 @@ def minimal_taxonomy(tmp_path_factory) -> Path:
         "jinja_ha_error_templates": [{"error": "Jinja error {component}"}],
         "jinja_legacy_2023_patterns": [{"legacy_code": "platform:"}],
         "theory_question_templates": [
-            {"template": "Write a doctrinal note about {section_title}.", "type": "explain"}
+            {
+                "template": "Write a doctrinal note about {section_title}.",
+                "type": "explain",
+            }
         ],
         "tools_definition": [
-            {"name": "write_to_file", "arguments": {"path": "<path>", "content": "<content>"}}
+            {
+                "name": "write_to_file",
+                "arguments": {"path": "<path>", "content": "<content>"},
+            }
         ],
         "prompts": {
             "system": {
@@ -84,6 +90,8 @@ def minimal_taxonomy(tmp_path_factory) -> Path:
     tax_file.write_text(yaml.safe_dump(taxonomy, allow_unicode=True))
     pv11.load_taxonomy(tax_file)
     return tax_file
+
+
 #!/usr/bin/env python3
 # Architect-Expert-Gap-Forge (AEGF)
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
@@ -296,9 +304,15 @@ def gap_dir(tmp_path: Path) -> Path:
     """Create a temporary gap_dir with the three required master docs."""
     d = tmp_path / "gap"
     d.mkdir()
-    (d / "HA_MASTER_GUIDE_2026.md").write_text("# Master Guide content", encoding="utf-8")
-    (d / "technical_changelog_2026.md").write_text("# Changelog content", encoding="utf-8")
-    (d / "HA_JINJA_YAML_GUIDE_2026.md").write_text("# Jinja guide content", encoding="utf-8")
+    (d / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# Master Guide content", encoding="utf-8"
+    )
+    (d / "technical_changelog_2026.md").write_text(
+        "# Changelog content", encoding="utf-8"
+    )
+    (d / "HA_JINJA_YAML_GUIDE_2026.md").write_text(
+        "# Jinja guide content", encoding="utf-8"
+    )
     return d
 
 

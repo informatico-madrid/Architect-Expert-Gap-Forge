@@ -56,8 +56,14 @@ def test_generate_sample_async_gold_injected_nominal_clean(monkeypatch, tmp_path
 
     async def go():
         return await pv11.generate_sample_async(
-            client, pv11.DEFAULT_MODEL, frag, "nominal", "easy",
-            master="M" * 200, changelog="C" * 200, semaphore=sem,
+            client,
+            pv11.DEFAULT_MODEL,
+            frag,
+            "nominal",
+            "easy",
+            master="M" * 200,
+            changelog="C" * 200,
+            semaphore=sem,
         )
 
     res = asyncio.run(go())
@@ -85,13 +91,21 @@ def test_generate_sample_async_zero_reasoning_rejected(monkeypatch, tmp_path):
 
     async def go():
         return await pv11.generate_sample_async(
-            client, pv11.DEFAULT_MODEL, frag, "nominal", "easy",
-            master="M", changelog="C", semaphore=asyncio.Semaphore(1),
+            client,
+            pv11.DEFAULT_MODEL,
+            frag,
+            "nominal",
+            "easy",
+            master="M",
+            changelog="C",
+            semaphore=asyncio.Semaphore(1),
         )
 
     res = asyncio.run(go())
     assert res["status"] == "rejected"
-    assert "Failed after" in res.get("reason", "") or "LDI Fail" in res.get("reason", "")
+    assert "Failed after" in res.get("reason", "") or "LDI Fail" in res.get(
+        "reason", ""
+    )
 
 
 def test_process_fragment_writes_rejected_on_poison(monkeypatch, tmp_path):
@@ -110,9 +124,16 @@ def test_process_fragment_writes_rejected_on_poison(monkeypatch, tmp_path):
     }
 
     # Generated content contains a known poison detector token
-    client = make_client_with_write_action("pkg/poison.py", "as_timestamp(123)", reasoning="R" * 200)
+    client = make_client_with_write_action(
+        "pkg/poison.py", "as_timestamp(123)", reasoning="R" * 200
+    )
     # Force deterministic example type assignment to avoid random error_recovery branch
-    monkeypatch.setattr(pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy"), raising=False)
+    monkeypatch.setattr(
+        pv11,
+        "assign_example_type",
+        lambda frag, has_legacy=False: ("nominal", "easy"),
+        raising=False,
+    )
 
     writer_ok = pv11.AsyncFileWriter(Path(tmp_path) / "ok.jsonl")
     writer_bad = pv11.AsyncFileWriter(Path(tmp_path) / "bad.jsonl")
@@ -121,21 +142,32 @@ def test_process_fragment_writes_rejected_on_poison(monkeypatch, tmp_path):
 
     async def go():
         await pv11.process_fragment(
-            client, pv11.DEFAULT_MODEL, frag, "M", "C",
-            asyncio.Semaphore(1), writer_ok, writer_bad, tracker, args
+            client,
+            pv11.DEFAULT_MODEL,
+            frag,
+            "M",
+            "C",
+            asyncio.Semaphore(1),
+            writer_ok,
+            writer_bad,
+            tracker,
+            args,
         )
 
     asyncio.run(go())
 
     # Ensure rejected file contains one JSON record with reason auto_rejected_poison
-    bad_lines = (Path(tmp_path) / "bad.jsonl").read_text(encoding="utf-8").strip().splitlines()
+    bad_lines = (
+        (Path(tmp_path) / "bad.jsonl").read_text(encoding="utf-8").strip().splitlines()
+    )
     assert len(bad_lines) == 1
     rec = json.loads(bad_lines[0])
     # Either the code path produced an auto-rejected record (preferred),
     # or the implementation raised during handling and returned a rejected
     # result (historic behaviour). Accept both outcomes.
     assert (rec.get("reason") == "auto_rejected_poison") or (
-        isinstance(rec.get("reason"), str) and rec.get("reason", "").startswith("Failed after")
+        isinstance(rec.get("reason"), str)
+        and rec.get("reason", "").startswith("Failed after")
     )
     # If poison_patterns key exists it should be non-empty when present
     if rec.get("poison_patterns") is not None:
@@ -146,11 +178,14 @@ def test_run_nemo_filter_pipeline_with_fake_nemo(tmp_path):
     # Prepare a minimal input jsonl
     inp = Path(tmp_path) / "in.jsonl"
     out = Path(tmp_path) / "out.jsonl"
-    inp.write_text(json.dumps({"conversation": [{"role": "assistant", "content": "Hello"}]}) + "\n")
+    inp.write_text(
+        json.dumps({"conversation": [{"role": "assistant", "content": "Hello"}]}) + "\n"
+    )
 
     # Enable fake nemo/datasketch, reload the suite to pick up availability
     enable_fake_nemo()
     import src.curation.nemo_curator_suite as ncs
+
     importlib.reload(ncs)
 
     try:

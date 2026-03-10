@@ -8,6 +8,7 @@
 Expose common TypedDicts used across the repo. Keep this file small
 so callers can import from `src.schemas`.
 """
+
 from .common import (
     RawRecord,
     MetadataDict,

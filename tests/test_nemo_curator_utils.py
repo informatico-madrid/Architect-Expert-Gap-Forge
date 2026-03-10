@@ -28,7 +28,7 @@ def test_conversation_extractor_and_token_counts() -> None:
     ]
     assert extractor(conv) == "first reply second reply"
 
-    text = "{\"k\":1}```python\nprint(1)\n``` some async def f(): pass"
+    text = '{"k":1}```python\nprint(1)\n``` some async def f(): pass'
     ct = ncs._count_code_tokens(text)
     nt = ncs._count_natural_tokens(text)
     assert ct > 0

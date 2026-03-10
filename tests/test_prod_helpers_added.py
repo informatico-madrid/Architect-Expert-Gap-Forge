@@ -3,6 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 """Added unit tests for selected pure helpers in src/factory/production_v11.py."""
+
 from __future__ import annotations
 
 import json

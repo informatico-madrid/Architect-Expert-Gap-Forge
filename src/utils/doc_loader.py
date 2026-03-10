@@ -15,6 +15,7 @@ This module intentionally separates the *capability* to load files from the
 *specification* of which files to load (domain configuration). That allows the
 evaluation pipeline to be reused for other domains without code changes.
 """
+
 from __future__ import annotations
 
 import logging
@@ -37,7 +38,9 @@ _DEFAULT_FN_2: Final[str] = "technical_changelog.md"
 _DEFAULT_FN_3: Final[str] = "syntax_guide.md"
 
 
-def _resolve_doc_names_from_cfg(cfg: dict | None) -> tuple[str | None, str | None, str | None]:
+def _resolve_doc_names_from_cfg(
+    cfg: dict | None,
+) -> tuple[str | None, str | None, str | None]:
     """Extract candidate filenames from the YAML config.
 
     Supports both the new keys (`doc_1/doc_2/doc_3`) and the legacy
@@ -97,7 +100,7 @@ def load_master_docs(gap_dir: Path | str) -> tuple[str, str, str]:
     for path, label in resolved:
         if not path.exists():
             raise FileNotFoundError(
-                f"{label} not found at {path}. Check AEGF_DOC_* env vars or { _DEFAULT_CONFIG_PATH }"
+                f"{label} not found at {path}. Check AEGF_DOC_* env vars or {_DEFAULT_CONFIG_PATH}"
             )
 
     # Read contents

@@ -31,13 +31,18 @@ import src.factory.agentic_gen as ag
 # Fixtures
 # ===========================================================================
 
+
 @pytest.fixture()
 def gap_dir_two_docs(tmp_path: Path) -> Path:
     """Create a minimal gap_dir with the two required master documents."""
     gap = tmp_path / "Gap"
     gap.mkdir()
-    (gap / "HA_MASTER_GUIDE_2026.md").write_text("# HA Guide 2026\ncontent", encoding="utf-8")
-    (gap / "technical_changelog_2026.md").write_text("## Changelog\nbreaks", encoding="utf-8")
+    (gap / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# HA Guide 2026\ncontent", encoding="utf-8"
+    )
+    (gap / "technical_changelog_2026.md").write_text(
+        "## Changelog\nbreaks", encoding="utf-8"
+    )
     return gap
 
 
@@ -92,6 +97,7 @@ def minimal_agentic_taxonomy(tmp_path: Path) -> Path:
 # _render
 # ===========================================================================
 
+
 class TestRender:
     def test_basic_substitution(self) -> None:
         assert ag._render("Hello $name!", name="World") == "Hello World!"
@@ -111,6 +117,7 @@ class TestRender:
 # ===========================================================================
 # detect_legacy_patterns
 # ===========================================================================
+
 
 class TestDetectLegacyPatterns:
     def test_clean_code_is_empty(self) -> None:
@@ -155,9 +162,12 @@ class TestDetectLegacyPatterns:
 # ToolCallModel (Pydantic validation)
 # ===========================================================================
 
+
 class TestToolCallModel:
     def test_valid_model(self) -> None:
-        m = ag.ToolCallModel(name="write_to_file", arguments={"path": "a.py", "content": "x"})
+        m = ag.ToolCallModel(
+            name="write_to_file", arguments={"path": "a.py", "content": "x"}
+        )
         assert m.name == "write_to_file"
         assert m.arguments["path"] == "a.py"
 
@@ -177,6 +187,7 @@ class TestToolCallModel:
 # ===========================================================================
 # make_checkpoint_key
 # ===========================================================================
+
 
 class TestMakeCheckpointKey:
     def test_deterministic(self) -> None:
@@ -207,6 +218,7 @@ class TestMakeCheckpointKey:
 # load_checkpoint
 # ===========================================================================
 
+
 class TestLoadCheckpoint:
     def test_empty_when_no_files(self, tmp_path: Path) -> None:
         done = ag.load_checkpoint(tmp_path / "out.jsonl", tmp_path / "rej.jsonl")
@@ -234,7 +246,8 @@ class TestLoadCheckpoint:
         output = tmp_path / "out.jsonl"
         rejected = tmp_path / "rej.jsonl"
         output.write_text(
-            json.dumps({"metadata": {"checkpoint_key": "k_out"}}) + "\n", encoding="utf-8"
+            json.dumps({"metadata": {"checkpoint_key": "k_out"}}) + "\n",
+            encoding="utf-8",
         )
         rejected.write_text(
             json.dumps({"checkpoint_key": "k_rej"}) + "\n", encoding="utf-8"
@@ -245,7 +258,9 @@ class TestLoadCheckpoint:
     def test_tolerates_invalid_json(self, tmp_path: Path) -> None:
         output = tmp_path / "out.jsonl"
         output.write_text(
-            "INVALID\n" + json.dumps({"metadata": {"checkpoint_key": "valid_k"}}) + "\n",
+            "INVALID\n"
+            + json.dumps({"metadata": {"checkpoint_key": "valid_k"}})
+            + "\n",
             encoding="utf-8",
         )
         done = ag.load_checkpoint(output, tmp_path / "rej.jsonl")
@@ -256,12 +271,10 @@ class TestLoadCheckpoint:
 # get_file_chunks
 # ===========================================================================
 
+
 class TestGetFileChunks:
     def test_splits_correctly(self) -> None:
-        content = (
-            "--- FILE: a.py ---\ncode_a\n"
-            "--- FILE: b.py ---\ncode_b\n"
-        )
+        content = "--- FILE: a.py ---\ncode_a\n--- FILE: b.py ---\ncode_b\n"
         chunks = ag.get_file_chunks(content)
         assert len(chunks) == 2
         assert chunks[0] == ("a.py", "code_a")
@@ -279,6 +292,7 @@ class TestGetFileChunks:
 # ===========================================================================
 # get_fragments
 # ===========================================================================
+
 
 class TestGetFragments:
     def test_extracts_python_class(self) -> None:
@@ -315,14 +329,19 @@ class TestGetFragments:
 # validate_ldi
 # ===========================================================================
 
+
 class TestValidateLdi:
     def test_zero_reasoning_fails(self) -> None:
-        ok, ldi, reason = ag.validate_ldi(code_len=200, reasoning_len=0, f_subtype="code")
+        ok, ldi, reason = ag.validate_ldi(
+            code_len=200, reasoning_len=0, f_subtype="code"
+        )
         assert not ok
         assert "Zero" in reason
 
     def test_doc_subtype_passes_with_sufficient_reasoning(self) -> None:
-        ok, _, reason = ag.validate_ldi(code_len=500, reasoning_len=200, f_subtype="doc")
+        ok, _, reason = ag.validate_ldi(
+            code_len=500, reasoning_len=200, f_subtype="doc"
+        )
         assert ok
         assert "Pass" in reason
 
@@ -332,13 +351,17 @@ class TestValidateLdi:
 
     def test_micro_snippet_exception(self) -> None:
         """Code < 100 chars with any LDI passes via micro-snippet exception."""
-        ok, _, reason = ag.validate_ldi(code_len=50, reasoning_len=5000, f_subtype="code")
+        ok, _, reason = ag.validate_ldi(
+            code_len=50, reasoning_len=5000, f_subtype="code"
+        )
         assert ok
         assert "Micro-Snippet" in reason
 
     def test_verbose_reasoning_fails_dynamic_threshold(self) -> None:
         """Very long reasoning relative to short code should fail."""
-        ok, ldi, _ = ag.validate_ldi(code_len=200, reasoning_len=100_000, f_subtype="code")
+        ok, ldi, _ = ag.validate_ldi(
+            code_len=200, reasoning_len=100_000, f_subtype="code"
+        )
         assert not ok
 
     def test_balanced_code_passes(self) -> None:
@@ -349,6 +372,7 @@ class TestValidateLdi:
 # ===========================================================================
 # assign_example_type
 # ===========================================================================
+
 
 class TestAssignExampleType:
     def test_has_legacy_never_nominal(self) -> None:
@@ -375,6 +399,7 @@ class TestAssignExampleType:
 # ===========================================================================
 # extract_and_validate
 # ===========================================================================
+
 
 class TestExtractAndValidate:
     def test_valid_tool_call(self) -> None:
@@ -410,6 +435,7 @@ class TestExtractAndValidate:
 # load_master_docs
 # ===========================================================================
 
+
 class TestLoadMasterDocs:
     def test_loads_two_files(self, gap_dir_two_docs: Path) -> None:
         master, changelog = ag.load_master_docs(gap_dir_two_docs)
@@ -434,6 +460,7 @@ class TestLoadMasterDocs:
 # load_taxonomy
 # ===========================================================================
 
+
 class TestLoadTaxonomy:
     def test_populates_globals(self, minimal_agentic_taxonomy: Path) -> None:
         ag.load_taxonomy(minimal_agentic_taxonomy)
@@ -448,7 +475,9 @@ class TestLoadTaxonomy:
         assert isinstance(parsed, list)
         assert len(parsed) == 1
 
-    def test_prompt_accessor_works_after_load(self, minimal_agentic_taxonomy: Path) -> None:
+    def test_prompt_accessor_works_after_load(
+        self, minimal_agentic_taxonomy: Path
+    ) -> None:
         ag.load_taxonomy(minimal_agentic_taxonomy)
         result = ag._prompt("system.base")
         assert "$master" in result

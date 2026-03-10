@@ -41,6 +41,7 @@ Usage
   python -m src.audit.model_evaluator adapter        --adapter-model platinum_adapter
   python -m src.audit.model_evaluator score          --judge-model qwen3-30b-a3b-thinking-fp8
 """
+
 from __future__ import annotations
 
 import argparse
@@ -113,26 +114,32 @@ def _load_config() -> dict[str, Any]:
 
     # Env overrides (AEGF_ prefix)
     _env = {
-        "api_url":              os.getenv("AEGF_VLLM_API_URL"),
-        "audit_dir":            os.getenv("AEGF_AUDIT_DIR"),
-        "sample_size":          os.getenv("AEGF_SAMPLE_SIZE"),
-        "base_model":           os.getenv("AEGF_BASE_MODEL"),
-        "adapter_model":        os.getenv("AEGF_ADAPTER_MODEL"),
-        "judge_model":          os.getenv("AEGF_JUDGE_MODEL"),
-        "max_tokens":           os.getenv("AEGF_MAX_TOKENS"),
-        "temperature":          os.getenv("AEGF_TEMPERATURE"),
-        "retries":              os.getenv("AEGF_RETRIES"),
-        "retry_delay":          os.getenv("AEGF_RETRY_DELAY"),
-        "professor_backend":    os.getenv("AEGF_PROFESSOR_BACKEND"),
-        "inference_backend":    os.getenv("AEGF_INFERENCE_BACKEND"),
-        "gemini_model":         os.getenv("AEGF_GEMINI_MODEL"),
+        "api_url": os.getenv("AEGF_VLLM_API_URL"),
+        "audit_dir": os.getenv("AEGF_AUDIT_DIR"),
+        "sample_size": os.getenv("AEGF_SAMPLE_SIZE"),
+        "base_model": os.getenv("AEGF_BASE_MODEL"),
+        "adapter_model": os.getenv("AEGF_ADAPTER_MODEL"),
+        "judge_model": os.getenv("AEGF_JUDGE_MODEL"),
+        "max_tokens": os.getenv("AEGF_MAX_TOKENS"),
+        "temperature": os.getenv("AEGF_TEMPERATURE"),
+        "retries": os.getenv("AEGF_RETRIES"),
+        "retry_delay": os.getenv("AEGF_RETRY_DELAY"),
+        "professor_backend": os.getenv("AEGF_PROFESSOR_BACKEND"),
+        "inference_backend": os.getenv("AEGF_INFERENCE_BACKEND"),
+        "gemini_model": os.getenv("AEGF_GEMINI_MODEL"),
         "professor_max_tokens": os.getenv("AEGF_PROFESSOR_MAX_TOKENS"),
         "inference_max_tokens": os.getenv("AEGF_INFERENCE_MAX_TOKENS"),
     }
     for k, v in _env.items():
         if v is not None:
             # Coerce numeric types
-            if k in ("sample_size", "max_tokens", "retries", "professor_max_tokens", "inference_max_tokens"):
+            if k in (
+                "sample_size",
+                "max_tokens",
+                "retries",
+                "professor_max_tokens",
+                "inference_max_tokens",
+            ):
                 cfg[k] = int(v)
             elif k in ("temperature", "retry_delay"):
                 cfg[k] = float(v)
@@ -212,8 +219,10 @@ def _format_reference_standards(
         logger.warning("master_docs_formatting not configured; using fallback format")
         return (
             "# Reference Documents\n\n"
-            + master[:8000] + "\n\n"
-            + changelog[:8000] + "\n\n"
+            + master[:8000]
+            + "\n\n"
+            + changelog[:8000]
+            + "\n\n"
             + jinja_guide[:4000]
         )
 
@@ -293,7 +302,9 @@ def generate_gap_analysis(
     )
 
     if validate:
-        logger.info("Validate mode: skipping professor call for gap_analysis %s", sample.id)
+        logger.info(
+            "Validate mode: skipping professor call for gap_analysis %s", sample.id
+        )
         return f"[validate] gap_analysis placeholder for {sample.fragment_name} ({sample.source_file})"
 
     client = _inference_router().professor(
@@ -312,7 +323,9 @@ def generate_gap_analysis(
     )
     gap_text = raw.strip()
     if not gap_text:
-        raise PromptGenerationError(f"Professor produced empty gap_analysis for {sample.id}")
+        raise PromptGenerationError(
+            f"Professor produced empty gap_analysis for {sample.id}"
+        )
     return gap_text
 
 
@@ -354,7 +367,8 @@ def generate_exam_question(
         ref_code = ref_code[:4000] + "\n... [truncated] ..."
 
     reference_standards_section = _build_domain_standards_section(
-        sample.reference_standards, sample.gap_analysis,
+        sample.reference_standards,
+        sample.gap_analysis,
     )
 
     pm = _prompts()
@@ -393,7 +407,9 @@ def generate_exam_question(
     except json.JSONDecodeError as exc:
         logger.error(
             "Professor returned invalid JSON for %s: %s\nRaw:\n%s",
-            sample.id, exc, raw[:2000],
+            sample.id,
+            exc,
+            raw[:2000],
         )
         raise PromptGenerationError(
             f"Professor failed to generate valid JSON for {sample.id}: {exc}"
@@ -406,7 +422,8 @@ def generate_exam_question(
     if not exam_question or not eval_criteria:
         logger.error(
             "Professor response missing required fields for %s. Raw:\n%s",
-            sample.id, raw[:2000],
+            sample.id,
+            raw[:2000],
         )
         raise PromptGenerationError(
             f"Professor response missing required fields for {sample.id}"
@@ -455,8 +472,12 @@ def run_inference(
         prompt = getattr(sample, "exam_question", "") or sample.user_prompt
         logger.info(
             "[%d/%d] Inferring %s (type=%s, frag=%s) via %s",
-            idx, total, sample.id, sample.example_type,
-            sample.fragment_name, inference_backend,
+            idx,
+            total,
+            sample.id,
+            sample.example_type,
+            sample.fragment_name,
+            inference_backend,
         )
         t0 = time.perf_counter()
         raw = client.generate_with_retry(
@@ -517,9 +538,11 @@ def llm_judge_score(
     Uses JSON mode for structured output. Raises PromptGenerationError on any
     judge failure — no fallback is performed.
     """
-    criteria_text = "\n".join(
-        f"  {i+1}. {c}" for i, c in enumerate(exam.eval_criteria)
-    ) if exam.eval_criteria else "  (no specific criteria defined)"
+    criteria_text = (
+        "\n".join(f"  {i + 1}. {c}" for i, c in enumerate(exam.eval_criteria))
+        if exam.eval_criteria
+        else "  (no specific criteria defined)"
+    )
 
     # Format target_patterns as a bullet checklist for the judge
     if exam.target_patterns:
@@ -528,8 +551,16 @@ def llm_judge_score(
         tp_text = "  (no specific patterns required)"
 
     # Truncate responses to avoid exceeding context
-    b_resp = baseline_resp[:6000] + "\n...[truncated]" if len(baseline_resp) > 6000 else baseline_resp
-    a_resp = adapter_resp[:6000] + "\n...[truncated]" if len(adapter_resp) > 6000 else adapter_resp
+    b_resp = (
+        baseline_resp[:6000] + "\n...[truncated]"
+        if len(baseline_resp) > 6000
+        else baseline_resp
+    )
+    a_resp = (
+        adapter_resp[:6000] + "\n...[truncated]"
+        if len(adapter_resp) > 6000
+        else adapter_resp
+    )
 
     pm = _prompts()
     user_msg = pm.format(
@@ -574,9 +605,15 @@ def llm_judge_score(
                 out_dir.mkdir(parents=True, exist_ok=True)
                 raw_path = out_dir / f"judge_raw_{exam.id}.txt"
                 raw_path.write_text(raw, encoding="utf-8")
-                logger.error("Judge produced invalid JSON for %s; raw saved to %s", exam.id, raw_path)
+                logger.error(
+                    "Judge produced invalid JSON for %s; raw saved to %s",
+                    exam.id,
+                    raw_path,
+                )
             except Exception as save_exc:
-                logger.error("Failed to persist raw judge output for %s: %s", exam.id, save_exc)
+                logger.error(
+                    "Failed to persist raw judge output for %s: %s", exam.id, save_exc
+                )
             raise exc_parse
 
         # Ensure expected top-level keys are present (fail-fast for malformed judge)
@@ -645,27 +682,41 @@ def compute_scorecard(
     missing_patterns: list[str] = []
     if target_patterns_list:
         missing_patterns = [
-            p for p in target_patterns_list
+            p
+            for p in target_patterns_list
             if not re.search(re.escape(p), adapter_code, re.IGNORECASE)
         ]
         if missing_patterns:
             per_pattern_penalty = 0.3
             total_penalty = round(
-                min(per_pattern_penalty * len(missing_patterns) / len(target_patterns_list), 0.3),
+                min(
+                    per_pattern_penalty
+                    * len(missing_patterns)
+                    / len(target_patterns_list),
+                    0.3,
+                ),
                 3,
             )
-            a["ha_modernity"] = round(max(0.0, a.get("ha_modernity", 0.0) - total_penalty), 3)
-            a["functionality"] = round(max(0.0, a.get("functionality", 0.0) - total_penalty), 3)
+            a["ha_modernity"] = round(
+                max(0.0, a.get("ha_modernity", 0.0) - total_penalty), 3
+            )
+            a["functionality"] = round(
+                max(0.0, a.get("functionality", 0.0) - total_penalty), 3
+            )
             logger.info(
                 "  [pattern-penalty] %s: -%.3f on ha_modernity+functionality "
                 "(%d/%d markers absent from code: %s)",
-                exam.id, total_penalty,
-                len(missing_patterns), len(target_patterns_list),
+                exam.id,
+                total_penalty,
+                len(missing_patterns),
+                len(target_patterns_list),
                 missing_patterns,
             )
 
     def _composite(scores: dict[str, float]) -> float:
-        return sum(scores.get(dim, 0.0) * weight for dim, weight in SCORING_WEIGHTS.items())
+        return sum(
+            scores.get(dim, 0.0) * weight for dim, weight in SCORING_WEIGHTS.items()
+        )
 
     adapter_composite = _composite(a)
     baseline_composite = _composite(b)
@@ -673,8 +724,12 @@ def compute_scorecard(
 
     # Diagnostic notes: domain taxonomy regex (ha_patterns.yaml) + target_pattern coverage
     _patterns = _load_domain_patterns()
-    _legacy = [(e["pattern"], e["description"]) for e in _patterns.get("legacy_patterns", [])]
-    _modern = [(e["pattern"], e["description"]) for e in _patterns.get("modern_patterns", [])]
+    _legacy = [
+        (e["pattern"], e["description"]) for e in _patterns.get("legacy_patterns", [])
+    ]
+    _modern = [
+        (e["pattern"], e["description"]) for e in _patterns.get("modern_patterns", [])
+    ]
     notes_parts: list[str] = []
     for pat, desc in _legacy:
         if re.search(pat, adapter_code):
@@ -794,9 +849,9 @@ def generate_report(
     w(f"| Avg Δ vs Baseline | {avg_delta:+.3f} |")
     w(f"| Positive Deltas | {sum(1 for d in deltas if d > 0)}/{len(deltas)} |")
     if base_lat:
-        w(f"| Baseline Avg Latency | {sum(base_lat)/len(base_lat):.0f}ms |")
+        w(f"| Baseline Avg Latency | {sum(base_lat) / len(base_lat):.0f}ms |")
     if adapt_lat:
-        w(f"| Adapter Avg Latency | {sum(adapt_lat)/len(adapt_lat):.0f}ms |")
+        w(f"| Adapter Avg Latency | {sum(adapt_lat) / len(adapt_lat):.0f}ms |")
     w("")
 
     w("## Score Breakdown by Example Type")
@@ -835,12 +890,18 @@ def generate_report(
 
     w("## Scoring Methodology (LLM-as-Judge)")
     w("")
-    w(f"The Professor model (`{report.judge_model}`) scores each exam response across 5 dimensions:")
+    w(
+        f"The Professor model (`{report.judge_model}`) scores each exam response across 5 dimensions:"
+    )
     w("")
     w("| Dimension | Weight | Description |")
     w("|-----------|--------|-------------|")
-    w("| HA Modernity | 30% | Uses entry.runtime_data, plural setup, enum device classes |")
-    w("| Reasoning Depth | 25% | `<think>` block correctly identifies edge cases and migration paths |")
+    w(
+        "| HA Modernity | 30% | Uses entry.runtime_data, plural setup, enum device classes |"
+    )
+    w(
+        "| Reasoning Depth | 25% | `<think>` block correctly identifies edge cases and migration paths |"
+    )
     w("| Functionality | 25% | Code compiles and runs correctly in Home Assistant |")
     w("| Completeness | 12% | All required functions/classes implemented |")
     w("| Style | 8% | AEGF conventions: `<think>` present, docstrings, no apologies |")
@@ -869,7 +930,9 @@ def generate_report(
 
     w("---")
     w("")
-    w("*Report generated by `src/audit/model_evaluator.py` — AEGF Quality Gate v3.0 (LLM-as-Judge)*")
+    w(
+        "*Report generated by `src/audit/model_evaluator.py` — AEGF Quality Gate v3.0 (LLM-as-Judge)*"
+    )
 
     report_path = out_dir / "audit_report_v11.md"
     report_path.write_text("\n".join(lines), encoding="utf-8")
@@ -894,7 +957,9 @@ def cmd_sample(args: argparse.Namespace) -> None:
     """Extract and persist a stratified evaluation sample."""
     sample_path = Path(args.audit_dir) / "eval_sample.json"
     if sample_path.exists() and not args.force:
-        logger.info("Sample already exists at %s (use --force to regenerate)", sample_path)
+        logger.info(
+            "Sample already exists at %s (use --force to regenerate)", sample_path
+        )
         samples = load_persisted_sample(args.audit_dir)
     else:
         if not args.dataset:
@@ -920,7 +985,10 @@ def cmd_sample(args: argparse.Namespace) -> None:
             if not (s_enriched.gap_analysis and s_enriched.gap_analysis.strip()):
                 try:
                     gap = generate_gap_analysis(
-                        s_enriched, master, changelog, jinja_guide,
+                        s_enriched,
+                        master,
+                        changelog,
+                        jinja_guide,
                         professor_backend=args.professor_backend,
                         gemini_model=args.gemini_model,
                         judge_model=args.judge_model,
@@ -933,7 +1001,9 @@ def cmd_sample(args: argparse.Namespace) -> None:
                 except PromptGenerationError as exc:
                     # Propagated from generate_gap_analysis; tested via mock failure
                     logger.error("Gap analysis generation failed for %s: %s", s.id, exc)
-                    raise SystemExit(f"Gap analysis generation failed for {s.id}: {exc}") from exc
+                    raise SystemExit(
+                        f"Gap analysis generation failed for {s.id}: {exc}"
+                    ) from exc
             enriched.append(s_enriched)
         samples = enriched
 
@@ -954,20 +1024,33 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
 
     samples = load_persisted_sample(args.audit_dir)
     missing = [
-        s.id for s in samples
+        s.id
+        for s in samples
         if not (s.reference_standards and s.reference_standards.strip())
         or not (s.gap_analysis and s.gap_analysis.strip())
     ]
     if missing:
         logger.error("Persisted sample has records missing HA metadata: %s", missing)
-        raise SystemExit("Persisted sample validation failed: all records must include reference_standards and gap_analysis.")
+        raise SystemExit(
+            "Persisted sample validation failed: all records must include reference_standards and gap_analysis."
+        )
 
     judge_model = args.judge_model
-    logger.info("Generating %d exam questions with professor model: %s", len(samples), judge_model)
+    logger.info(
+        "Generating %d exam questions with professor model: %s",
+        len(samples),
+        judge_model,
+    )
 
     exam_records: list[ExamRecord] = []
     for idx, sample in enumerate(samples, 1):
-        logger.info("[%d/%d] Generating exam for %s (%s)", idx, len(samples), sample.id, sample.fragment_name)
+        logger.info(
+            "[%d/%d] Generating exam for %s (%s)",
+            idx,
+            len(samples),
+            sample.id,
+            sample.fragment_name,
+        )
         try:
             record = generate_exam_question(
                 sample=sample,
@@ -986,8 +1069,14 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
         exam_records.append(record)
 
     persist_exam(exam_records, args.audit_dir)
-    generated = sum(1 for r in exam_records if r.exam_question and r.exam_question != r.user_prompt)
-    logger.info("Exam generation complete: %d/%d questions generated by professor", generated, len(samples))
+    generated = sum(
+        1 for r in exam_records if r.exam_question and r.exam_question != r.user_prompt
+    )
+    logger.info(
+        "Exam generation complete: %d/%d questions generated by professor",
+        generated,
+        len(samples),
+    )
 
 
 def cmd_baseline(args: argparse.Namespace) -> None:
@@ -996,7 +1085,9 @@ def cmd_baseline(args: argparse.Namespace) -> None:
         records = load_exam(args.audit_dir)
         logger.info("Using exam questions for baseline inference")
     except FileNotFoundError:
-        logger.warning("No exam found — using original sample prompts (run generate-exam first)")
+        logger.warning(
+            "No exam found — using original sample prompts (run generate-exam first)"
+        )
         records = load_persisted_sample(args.audit_dir)
 
     results = run_inference(
@@ -1019,7 +1110,9 @@ def cmd_adapter(args: argparse.Namespace) -> None:
         records = load_exam(args.audit_dir)
         logger.info("Using exam questions for adapter inference")
     except FileNotFoundError:
-        logger.warning("No exam found — using original sample prompts (run generate-exam first)")
+        logger.warning(
+            "No exam found — using original sample prompts (run generate-exam first)"
+        )
         records = load_persisted_sample(args.audit_dir)
 
     results = run_inference(
@@ -1043,7 +1136,9 @@ def cmd_score(args: argparse.Namespace) -> None:
     except FileNotFoundError:
         logger.warning("No exam found — scoring without exam criteria")
         raw_samples = load_persisted_sample(args.audit_dir)
-        exam_records = [ExamRecord.from_sample(s, exam_question=s.user_prompt) for s in raw_samples]
+        exam_records = [
+            ExamRecord.from_sample(s, exam_question=s.user_prompt) for s in raw_samples
+        ]
 
     baseline_results = load_inference("baseline", args.audit_dir)
     adapter_results = load_inference("adapter", args.audit_dir)
@@ -1052,14 +1147,18 @@ def cmd_score(args: argparse.Namespace) -> None:
     adapter_map = {r.record_id: r for r in adapter_results}
     judge_model = args.judge_model
 
-    logger.info("Scoring %d records with judge model: %s", len(exam_records), judge_model)
+    logger.info(
+        "Scoring %d records with judge model: %s", len(exam_records), judge_model
+    )
     scorecards: list[ScoreCard] = []
     total = len(exam_records)
     for idx, exam in enumerate(exam_records, 1):
         base_r = baseline_map.get(exam.id)
         adapt_r = adapter_map.get(exam.id)
         if not base_r or not adapt_r:
-            logger.warning("[%d/%d] Missing inference for %s — skipping", idx, total, exam.id)
+            logger.warning(
+                "[%d/%d] Missing inference for %s — skipping", idx, total, exam.id
+            )
             continue
         logger.info("[%d/%d] Judging %s", idx, total, exam.id)
         sc = compute_scorecard(
@@ -1088,13 +1187,18 @@ def cmd_score(args: argparse.Namespace) -> None:
     )
 
     report_path, report = generate_report(
-        report, scorecards, exam_records, baseline_results, adapter_results, args.audit_dir,
+        report,
+        scorecards,
+        exam_records,
+        baseline_results,
+        adapter_results,
+        args.audit_dir,
     )
-    print(f"\n{'='*64}")
+    print(f"\n{'=' * 64}")
     print(f"  AEGF QUALITY GATE — FINAL GRADE: {report.final_grade}/100")
     print(f"  Verdict: {report.verdict}")
     print(f"  Report:  {report_path}")
-    print(f"{'='*64}\n")
+    print(f"{'=' * 64}\n")
 
 
 def cmd_full(args: argparse.Namespace) -> None:
@@ -1102,7 +1206,9 @@ def cmd_full(args: argparse.Namespace) -> None:
     if args.validate:
         args.sample_size = 1
         args.force = True
-        logger.info("Validate mode: sample_size=1, force=True — minimal-token end-to-end flow test")
+        logger.info(
+            "Validate mode: sample_size=1, force=True — minimal-token end-to-end flow test"
+        )
     logger.info("=== AEGF Quality Gate — High-Fidelity Exam Pipeline ===")
 
     logger.info("--- Stage 1/5: Stratified Sampling ---")
@@ -1131,46 +1237,100 @@ def cmd_full(args: argparse.Namespace) -> None:
 def _shared_parser() -> argparse.ArgumentParser:
     """Build a parent parser with all shared options."""
     shared = argparse.ArgumentParser(add_help=False)
-    shared.add_argument("--api-url", default=DEFAULT_API_URL,
-                        help=f"vLLM API endpoint (default: {DEFAULT_API_URL})")
-    shared.add_argument("--audit-dir", default=DEFAULT_AUDIT_DIR,
-                        help=f"Output directory for audit artifacts (default: {DEFAULT_AUDIT_DIR})")
-    shared.add_argument("--dataset", default=None,
-                        help="Path to the training JSONL dataset")
-    shared.add_argument("--model", default=None,
-                        help="Model name override for inference")
-    shared.add_argument("--base-model", default=DEFAULT_BASE_MODEL,
-                        help=f"Base model identifier (default: {DEFAULT_BASE_MODEL})")
-    shared.add_argument("--adapter-model", default=DEFAULT_ADAPTER_MODEL,
-                        help=f"LoRA adapter identifier (default: {DEFAULT_ADAPTER_MODEL})")
-    shared.add_argument("--judge-model", default=DEFAULT_JUDGE_MODEL,
-                        help=f"Professor/judge model (default: {DEFAULT_JUDGE_MODEL})")
-    shared.add_argument("--professor-backend", default=DEFAULT_PROFESSOR_BACKEND,
-                        choices=["auto", "gemini", "vllm"],
-                        help="Backend for professor/judge calls (default: auto)")
-    shared.add_argument("--gemini-model", default=DEFAULT_GEMINI_MODEL,
-                        help=f"Gemini model name (default: {DEFAULT_GEMINI_MODEL})")
-    shared.add_argument("--inference-backend", default=DEFAULT_INFERENCE_BACKEND,
-                        choices=["vllm", "gemini"],
-                        help="Backend for student inference (default: vllm)")
-    shared.add_argument("--validate", action="store_true",
-                        help="1-example end-to-end flow test with minimal token spend")
-    shared.add_argument("--sample-size", type=int, default=DEFAULT_SAMPLE_SIZE,
-                        help=f"Number of records to sample (default: {DEFAULT_SAMPLE_SIZE})")
-    shared.add_argument("--gap-dir", default=CFG.get("gap_dir", "data/Gap"),
-                        help="Path to directory containing HA master docs")
-    shared.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS,
-                        help=f"Max generation tokens (default: {DEFAULT_MAX_TOKENS})")
-    shared.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE,
-                        help=f"Sampling temperature (default: {DEFAULT_TEMPERATURE})")
-    shared.add_argument("--retries", type=int, default=DEFAULT_RETRIES,
-                        help=f"API retry attempts (default: {DEFAULT_RETRIES})")
-    shared.add_argument("--retry-delay", type=float, default=DEFAULT_RETRY_DELAY,
-                        help=f"Base retry backoff in seconds (default: {DEFAULT_RETRY_DELAY})")
-    shared.add_argument("--force", action="store_true",
-                        help="Force regeneration of existing artifacts")
-    shared.add_argument("-v", "--verbose", action="store_true",
-                        help="Enable debug logging")
+    shared.add_argument(
+        "--api-url",
+        default=DEFAULT_API_URL,
+        help=f"vLLM API endpoint (default: {DEFAULT_API_URL})",
+    )
+    shared.add_argument(
+        "--audit-dir",
+        default=DEFAULT_AUDIT_DIR,
+        help=f"Output directory for audit artifacts (default: {DEFAULT_AUDIT_DIR})",
+    )
+    shared.add_argument(
+        "--dataset", default=None, help="Path to the training JSONL dataset"
+    )
+    shared.add_argument(
+        "--model", default=None, help="Model name override for inference"
+    )
+    shared.add_argument(
+        "--base-model",
+        default=DEFAULT_BASE_MODEL,
+        help=f"Base model identifier (default: {DEFAULT_BASE_MODEL})",
+    )
+    shared.add_argument(
+        "--adapter-model",
+        default=DEFAULT_ADAPTER_MODEL,
+        help=f"LoRA adapter identifier (default: {DEFAULT_ADAPTER_MODEL})",
+    )
+    shared.add_argument(
+        "--judge-model",
+        default=DEFAULT_JUDGE_MODEL,
+        help=f"Professor/judge model (default: {DEFAULT_JUDGE_MODEL})",
+    )
+    shared.add_argument(
+        "--professor-backend",
+        default=DEFAULT_PROFESSOR_BACKEND,
+        choices=["auto", "gemini", "vllm"],
+        help="Backend for professor/judge calls (default: auto)",
+    )
+    shared.add_argument(
+        "--gemini-model",
+        default=DEFAULT_GEMINI_MODEL,
+        help=f"Gemini model name (default: {DEFAULT_GEMINI_MODEL})",
+    )
+    shared.add_argument(
+        "--inference-backend",
+        default=DEFAULT_INFERENCE_BACKEND,
+        choices=["vllm", "gemini"],
+        help="Backend for student inference (default: vllm)",
+    )
+    shared.add_argument(
+        "--validate",
+        action="store_true",
+        help="1-example end-to-end flow test with minimal token spend",
+    )
+    shared.add_argument(
+        "--sample-size",
+        type=int,
+        default=DEFAULT_SAMPLE_SIZE,
+        help=f"Number of records to sample (default: {DEFAULT_SAMPLE_SIZE})",
+    )
+    shared.add_argument(
+        "--gap-dir",
+        default=CFG.get("gap_dir", "data/Gap"),
+        help="Path to directory containing HA master docs",
+    )
+    shared.add_argument(
+        "--max-tokens",
+        type=int,
+        default=DEFAULT_MAX_TOKENS,
+        help=f"Max generation tokens (default: {DEFAULT_MAX_TOKENS})",
+    )
+    shared.add_argument(
+        "--temperature",
+        type=float,
+        default=DEFAULT_TEMPERATURE,
+        help=f"Sampling temperature (default: {DEFAULT_TEMPERATURE})",
+    )
+    shared.add_argument(
+        "--retries",
+        type=int,
+        default=DEFAULT_RETRIES,
+        help=f"API retry attempts (default: {DEFAULT_RETRIES})",
+    )
+    shared.add_argument(
+        "--retry-delay",
+        type=float,
+        default=DEFAULT_RETRY_DELAY,
+        help=f"Base retry backoff in seconds (default: {DEFAULT_RETRY_DELAY})",
+    )
+    shared.add_argument(
+        "--force", action="store_true", help="Force regeneration of existing artifacts"
+    )
+    shared.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable debug logging"
+    )
     return shared
 
 
@@ -1207,12 +1367,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub = parser.add_subparsers(dest="mode", help="Evaluation stage")
-    sub.add_parser("sample",        help="Stage 1: Extract stratified sample",          parents=[shared])
-    sub.add_parser("generate-exam", help="Stage 2: Professor generates exam questions", parents=[shared])
-    sub.add_parser("baseline",      help="Stage 3: Base model inference",               parents=[shared])
-    sub.add_parser("adapter",       help="Stage 4: LoRA adapter inference",             parents=[shared])
-    sub.add_parser("score",         help="Stage 5: LLM-as-Judge scoring + report",      parents=[shared])
-    sub.add_parser("full",          help="Run all 5 stages end-to-end",                 parents=[shared])
+    sub.add_parser(
+        "sample", help="Stage 1: Extract stratified sample", parents=[shared]
+    )
+    sub.add_parser(
+        "generate-exam",
+        help="Stage 2: Professor generates exam questions",
+        parents=[shared],
+    )
+    sub.add_parser("baseline", help="Stage 3: Base model inference", parents=[shared])
+    sub.add_parser("adapter", help="Stage 4: LoRA adapter inference", parents=[shared])
+    sub.add_parser(
+        "score", help="Stage 5: LLM-as-Judge scoring + report", parents=[shared]
+    )
+    sub.add_parser("full", help="Run all 5 stages end-to-end", parents=[shared])
 
     return parser
 

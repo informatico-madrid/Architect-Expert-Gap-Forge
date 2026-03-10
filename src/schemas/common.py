@@ -9,6 +9,7 @@ Prefer `TypedDict(total=False)` for external/dynamic payloads and use
 these types as the contract for conversion helpers. Keep keys permissive
 where fields are optional to avoid breaking legacy dicts during migration.
 """
+
 from __future__ import annotations
 
 from typing import TypedDict, NotRequired, Any, Dict, List
@@ -84,6 +85,7 @@ class FragmentTypedDict(TypedDict, total=False):
     upstream harvested fragments. Keys here cover the minimal set used by
     `production_v11.py` prompt builders and related utilities.
     """
+
     id: NotRequired[str]
     name: NotRequired[str]
     virtual_filename: NotRequired[str]

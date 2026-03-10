@@ -17,6 +17,7 @@ Covers:
 - InferenceRouter.professor() and .student() return cached client on second call
 - InferenceRouter cache isolation between professor() and student()
 """
+
 from __future__ import annotations
 
 import os
@@ -70,6 +71,7 @@ class TestBackendNameContract:
 
     def test_gemini_client_backend_name(self) -> None:
         from src.audit.inference import GeminiClient
+
         assert GeminiClient._backend_name == "Gemini"
 
     def test_base_class_backend_name_is_fallback(self) -> None:
@@ -86,15 +88,15 @@ class TestBackendNameContract:
 class TestVLLMClientGenerate:
     def _mock_response(self, content: str = "response text") -> MagicMock:
         resp = MagicMock()
-        resp.json.return_value = {
-            "choices": [{"message": {"content": content}}]
-        }
+        resp.json.return_value = {"choices": [{"message": {"content": content}}]}
         resp.raise_for_status.return_value = None
         return resp
 
     def test_returns_content_from_response(self) -> None:
         client = VLLMClient(api_url="http://localhost:8000/v1", model="test-model")
-        with patch("requests.post", return_value=self._mock_response("hello")) as mock_post:
+        with patch(
+            "requests.post", return_value=self._mock_response("hello")
+        ) as mock_post:
             result = client.generate("say hello")
         assert result == "hello"
 
@@ -135,7 +137,9 @@ class TestVLLMClientGenerate:
 
     def test_json_mode_sets_response_format(self) -> None:
         client = VLLMClient(api_url="http://localhost:8000/v1", model="test-model")
-        with patch("requests.post", return_value=self._mock_response("{}")) as mock_post:
+        with patch(
+            "requests.post", return_value=self._mock_response("{}")
+        ) as mock_post:
             client.generate("prompt", json_mode=True)
         _, kwargs = mock_post.call_args
         assert kwargs["json"]["response_format"] == {"type": "json_object"}
@@ -198,7 +202,9 @@ class TestVLLMClientRetry:
         client = VLLMClient(api_url="http://localhost:8000/v1", model="m")
         with patch("requests.post", side_effect=requests.ConnectionError("down")):
             with patch("time.sleep"):
-                with pytest.raises(RuntimeError, match="vLLM generation failed after 3 attempts"):
+                with pytest.raises(
+                    RuntimeError, match="vLLM generation failed after 3 attempts"
+                ):
                     client.generate_with_retry("p", retries=3, retry_delay=0.01)
 
     def test_exponential_backoff_delays(self) -> None:
@@ -224,21 +230,25 @@ class TestGeminiClientGuards:
         # installed in the environment by monkeypatching the module globals.
         import src.audit.inference as inf
         from unittest.mock import patch as _patch
+
         # Simulate SDK absence
         inf._GEMINI_AVAILABLE = False
         inf._genai = None
         inf._genai_types = None
         from src.audit.inference import GeminiClient
+
         with pytest.raises(ImportError, match="google-genai SDK"):
             GeminiClient()
 
     def test_raises_environment_error_when_api_key_missing(self) -> None:
         # Simulate SDK presence and ensure missing API key raises EnvironmentError
         import src.audit.inference as inf
+
         inf._GEMINI_AVAILABLE = True
         inf._genai = MagicMock()
         inf._genai_types = MagicMock()
         from src.audit.inference import GeminiClient
+
         with patch.dict(os.environ, {}, clear=True):
             os.environ.pop("GOOGLE_API_KEY", None)
             with pytest.raises(EnvironmentError, match="GOOGLE_API_KEY"):
@@ -313,7 +323,9 @@ class TestInferenceRouterCaching:
             "src.audit.inference.VLLMClient",
             side_effect=[sentinel_a, sentinel_b],
         ):
-            prof = router.professor(backend="vllm", api_url="http://x/v1", vllm_model="m")
+            prof = router.professor(
+                backend="vllm", api_url="http://x/v1", vllm_model="m"
+            )
             stu = router.student(backend="vllm", api_url="http://x/v1", model="m")
         assert prof is not stu
 
@@ -330,7 +342,9 @@ class TestInferenceRouterGeminiPaths:
     def test_professor_creates_gemini_client_when_backend_is_gemini(self) -> None:
         router = InferenceRouter()
         mock_instance = MagicMock(spec=BaseInferenceClient)
-        with patch("src.audit.inference.GeminiClient", return_value=mock_instance) as MockGemini:
+        with patch(
+            "src.audit.inference.GeminiClient", return_value=mock_instance
+        ) as MockGemini:
             client = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
         MockGemini.assert_called_once_with(model="gemini-2.5-flash")
         assert client is mock_instance
@@ -338,7 +352,9 @@ class TestInferenceRouterGeminiPaths:
     def test_student_creates_gemini_client_when_backend_is_gemini(self) -> None:
         router = InferenceRouter()
         mock_instance = MagicMock(spec=BaseInferenceClient)
-        with patch("src.audit.inference.GeminiClient", return_value=mock_instance) as MockGemini:
+        with patch(
+            "src.audit.inference.GeminiClient", return_value=mock_instance
+        ) as MockGemini:
             client = router.student(backend="gemini", gemini_model="gemini-2.5-flash")
         MockGemini.assert_called_once_with(model="gemini-2.5-flash")
         assert client is mock_instance
@@ -346,7 +362,9 @@ class TestInferenceRouterGeminiPaths:
     def test_professor_gemini_client_is_cached(self) -> None:
         router = InferenceRouter()
         mock_instance = MagicMock(spec=BaseInferenceClient)
-        with patch("src.audit.inference.GeminiClient", return_value=mock_instance) as MockGemini:
+        with patch(
+            "src.audit.inference.GeminiClient", return_value=mock_instance
+        ) as MockGemini:
             c1 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
             c2 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
         MockGemini.assert_called_once()
@@ -438,14 +456,20 @@ class TestGeminiClientWithMock:
                     good,
                 ]
                 with patch("time.sleep"):
-                    result = client.generate_with_retry("prompt", retries=3, retry_delay=0.01)
+                    result = client.generate_with_retry(
+                        "prompt", retries=3, retry_delay=0.01
+                    )
         assert result == "success"
 
     def test_generate_with_retry_raises_after_exhaustion(self) -> None:
         with patch("src.audit.inference._genai") as mock_genai:
             with patch("src.audit.inference._genai_types"):
                 client, genai_mock = self._make_client(mock_genai, None)
-                genai_mock.models.generate_content.side_effect = Exception("always fails")
+                genai_mock.models.generate_content.side_effect = Exception(
+                    "always fails"
+                )
                 with patch("time.sleep"):
                     with pytest.raises(RuntimeError, match="Gemini generation failed"):
-                        client.generate_with_retry("prompt", retries=2, retry_delay=0.01)
+                        client.generate_with_retry(
+                            "prompt", retries=2, retry_delay=0.01
+                        )

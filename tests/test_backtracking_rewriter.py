@@ -8,6 +8,7 @@
 TDD-first: these tests define the expected behaviour for
 ``src.curation.backtracking_rewriter`` before the implementation exists.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,6 +26,7 @@ from src.schemas.common import RawRecord
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_record(
     *,
@@ -133,14 +135,18 @@ class TestClassifyRewriteStrategy:
     def test_gold_injected_no_legacy_gets_trace_reconstruction(self) -> None:
         from src.curation.backtracking_rewriter import classify_rewrite_strategy
 
-        record = _make_record(gold_injected=True, legacy_detected=False, example_type="nominal")
+        record = _make_record(
+            gold_injected=True, legacy_detected=False, example_type="nominal"
+        )
         assert classify_rewrite_strategy(record) == "trace_reconstruction"
 
     def test_error_recovery_gets_error_first(self) -> None:
         from src.curation.backtracking_rewriter import classify_rewrite_strategy
 
         record = _make_record(
-            gold_injected=False, legacy_detected=False, example_type="error_recovery",
+            gold_injected=False,
+            legacy_detected=False,
+            example_type="error_recovery",
         )
         assert classify_rewrite_strategy(record) == "error_first"
 
@@ -148,7 +154,9 @@ class TestClassifyRewriteStrategy:
         from src.curation.backtracking_rewriter import classify_rewrite_strategy
 
         record = _make_record(
-            gold_injected=False, legacy_detected=False, example_type="contrast",
+            gold_injected=False,
+            legacy_detected=False,
+            example_type="contrast",
         )
         assert classify_rewrite_strategy(record) == "contrast_backtracking"
 
@@ -156,7 +164,9 @@ class TestClassifyRewriteStrategy:
         from src.curation.backtracking_rewriter import classify_rewrite_strategy
 
         record = _make_record(
-            gold_injected=False, legacy_detected=False, example_type="nominal",
+            gold_injected=False,
+            legacy_detected=False,
+            example_type="nominal",
         )
         assert classify_rewrite_strategy(record) == "pass_through"
 
@@ -236,14 +246,21 @@ class TestBuildRewritePrompt:
             legacy_patterns=["hass.data[] dict pattern -> entry.runtime_data"],
         )
         system_prompt, user_prompt = build_rewrite_prompt(record, "full_backtracking")
-        assert "backtracking" in system_prompt.lower() or "self-evaluation" in system_prompt.lower()
+        assert (
+            "backtracking" in system_prompt.lower()
+            or "self-evaluation" in system_prompt.lower()
+        )
         assert "hass.data[]" in user_prompt or "legacy" in user_prompt.lower()
 
     def test_trace_reconstruction_includes_code(self) -> None:
         from src.curation.backtracking_rewriter import build_rewrite_prompt
 
-        record = _make_record(gold_injected=True, code_text="```python\nclass MyEntity:\n    pass\n```")
-        system_prompt, user_prompt = build_rewrite_prompt(record, "trace_reconstruction")
+        record = _make_record(
+            gold_injected=True, code_text="```python\nclass MyEntity:\n    pass\n```"
+        )
+        system_prompt, user_prompt = build_rewrite_prompt(
+            record, "trace_reconstruction"
+        )
         assert "MyEntity" in user_prompt or "code" in user_prompt.lower()
 
     def test_pass_through_returns_empty(self) -> None:
@@ -280,9 +297,13 @@ class TestApplyBacktrackingRewrite:
             "Según el changelog de HA 2026, debo usar entry.runtime_data."
         )
 
-        result = asyncio.run(apply_backtracking_rewrite(
-            record, mock_client, BacktrackingConfig(),
-        ))
+        result = asyncio.run(
+            apply_backtracking_rewrite(
+                record,
+                mock_client,
+                BacktrackingConfig(),
+            )
+        )
         assert result is not None
         assistant = result["conversation"][-1]["content"]
         # Code after </think> must be preserved
@@ -304,9 +325,13 @@ class TestApplyBacktrackingRewrite:
             legacy_detected=False,
         )
         mock_client = AsyncMock()
-        result = asyncio.run(apply_backtracking_rewrite(
-            record, mock_client, BacktrackingConfig(),
-        ))
+        result = asyncio.run(
+            apply_backtracking_rewrite(
+                record,
+                mock_client,
+                BacktrackingConfig(),
+            )
+        )
         assert result is not None
         # Client should NOT have been called
         mock_client.generate.assert_not_called()
@@ -323,10 +348,16 @@ class TestApplyBacktrackingRewrite:
         mock_client.generate.side_effect = RuntimeError("vLLM down")
 
         # Patch asyncio.sleep so retry back-off does not slow the test suite
-        with patch("src.curation.backtracking_rewriter.asyncio.sleep", new_callable=AsyncMock):
-            result = asyncio.run(apply_backtracking_rewrite(
-                record, mock_client, BacktrackingConfig(),
-            ))
+        with patch(
+            "src.curation.backtracking_rewriter.asyncio.sleep", new_callable=AsyncMock
+        ):
+            result = asyncio.run(
+                apply_backtracking_rewrite(
+                    record,
+                    mock_client,
+                    BacktrackingConfig(),
+                )
+            )
         assert result is None
 
 

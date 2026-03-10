@@ -20,20 +20,47 @@ def test_passes_backtracking_filter_and_classify_strategy():
     assert br.passes_backtracking_filter(rec, cfg)
     assert br.classify_rewrite_strategy(rec) == "error_first"
 
-    rec2 = {"conversation": [{"role": "assistant", "content": "no think here"}], "metadata": {"example_type": "nominal"}}
+    rec2 = {
+        "conversation": [{"role": "assistant", "content": "no think here"}],
+        "metadata": {"example_type": "nominal"},
+    }
     assert not br.passes_backtracking_filter(rec2, cfg)
 
 
 def test_build_rewrite_prompt_strategies():
     record = {
-        "conversation": [{"role": "user", "content": "do X"}, {"role": "assistant", "content": "<think>t</think>code"}],
+        "conversation": [
+            {"role": "user", "content": "do X"},
+            {"role": "assistant", "content": "<think>t</think>code"},
+        ],
         "metadata": {"legacy_patterns": ["p1"]},
     }
-    sys_bt, user_bt = br.build_rewrite_prompt(record, "full_backtracking", system_bt="SYSBT", system_rc="SYSRC", governance_context="CTX", language="Spanish")
+    sys_bt, user_bt = br.build_rewrite_prompt(
+        record,
+        "full_backtracking",
+        system_bt="SYSBT",
+        system_rc="SYSRC",
+        governance_context="CTX",
+        language="Spanish",
+    )
     assert "DETECTED LEGACY PATTERNS" in user_bt
-    sys_rc, user_rc = br.build_rewrite_prompt(record, "trace_reconstruction", system_bt="SYSBT", system_rc="SYSRC", governance_context=None, language=None)
+    sys_rc, user_rc = br.build_rewrite_prompt(
+        record,
+        "trace_reconstruction",
+        system_bt="SYSBT",
+        system_rc="SYSRC",
+        governance_context=None,
+        language=None,
+    )
     assert "PERFECT SOLUTION CODE" in user_rc
-    sys_error, user_err = br.build_rewrite_prompt(record, "error_first", system_bt="SYSBT", system_rc="SYSRC", governance_context=None, language=None)
+    sys_error, user_err = br.build_rewrite_prompt(
+        record,
+        "error_first",
+        system_bt="SYSBT",
+        system_rc="SYSRC",
+        governance_context=None,
+        language=None,
+    )
     assert "Rewrite the think block" in user_err
 
 
@@ -71,12 +98,28 @@ def test_rewrite_pipeline_end_to_end(tmp_path, monkeypatch):
     # create input JSONL with two records, one eligible and one theory (filtered)
     input_path = tmp_path / "in.jsonl"
     recs = [
-        {"id": "1", "conversation": [{"role": "user", "content": "u1"}, {"role": "assistant", "content": "<think>old</think>code"}], "metadata": {}},
-        {"id": "2", "conversation": [{"role": "assistant", "content": "no think"}], "metadata": {"example_type": "theory"}},
+        {
+            "id": "1",
+            "conversation": [
+                {"role": "user", "content": "u1"},
+                {"role": "assistant", "content": "<think>old</think>code"},
+            ],
+            "metadata": {},
+        },
+        {
+            "id": "2",
+            "conversation": [{"role": "assistant", "content": "no think"}],
+            "metadata": {"example_type": "theory"},
+        },
     ]
     input_path.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in recs))
     out_path = tmp_path / "out.jsonl"
-    cfg = br.BacktrackingConfig(backtracking_system_prompt_path=str(bt), reconstruction_system_prompt_path=str(rc), gap_dir=str(gapdir), audit_dir=str(tmp_path))
+    cfg = br.BacktrackingConfig(
+        backtracking_system_prompt_path=str(bt),
+        reconstruction_system_prompt_path=str(rc),
+        gap_dir=str(gapdir),
+        audit_dir=str(tmp_path),
+    )
 
     class FakeClient:
         async def generate(self, prompt, *, system_prompt, max_tokens, temperature):
@@ -86,7 +129,9 @@ def test_rewrite_pipeline_end_to_end(tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr(asyncio, "sleep", _nosleep)
-    report = asyncio.run(br.rewrite_pipeline(input_path, out_path, cfg, client=FakeClient()))
+    report = asyncio.run(
+        br.rewrite_pipeline(input_path, out_path, cfg, client=FakeClient())
+    )
     assert isinstance(report, br.PipelineReport)
     assert out_path.exists()
     out = br.load_jsonl(out_path)

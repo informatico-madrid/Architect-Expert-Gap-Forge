@@ -1,4 +1,3 @@
-```markdown
 # Tasks: Stage 1 — Refactor (Language Abstraction)
 
 Feature: Stage 1 — Discovery, Processor y Master Documents (refactor brownfield)
@@ -9,18 +8,18 @@ Spec: specs/001-stage1-discovery/spec.md
 
 Phase 1 — Setup
 
-- [ ] T001 [P] Crear paquete de extractores y archivo de inicialización en `src/utils/extractors/__init__.py`
+- [x] T001 [P] Crear paquete de extractores y archivo de inicialización en `src/utils/extractors/__init__.py`
 
 Phase 2 — Foundational (bloqueantes; seguir TDD: tests antes de implementación)
 
-- [ ] T002 Crear prueba unitaria que defina el contrato del adapter: `tests/unit/test_extractor_adapter_contract.py` (falla esperado)
-- [ ] T003 Implementar `ExtractorAdapter` y tipos en `src/utils/extractors/base.py` para satisfacer `tests/unit/test_extractor_adapter_contract.py`
-- [ ] T004 Crear prueba unitaria para `python_ast_adapter`: `tests/unit/test_python_ast_adapter.py` (uso de fixtures con archivos Python de ejemplo)
-- [ ] T005 Implementar `src/utils/extractors/python_ast_adapter.py` (portar la lógica actual de `processor._extract_local_imports`) para pasar `tests/unit/test_python_ast_adapter.py`
-- [ ] T006 Crear prueba unitaria para la fábrica de adapters: `tests/unit/test_extractors_factory.py` (espera `get_adapter('homeassistant')`)
-- [ ] T007 Implementar `src/utils/extractors/factory.py` con `get_adapter(profile: str) -> ExtractorAdapter` (importación perezosa)
-- [ ] T008 Crear prueba de integración que verifique que `processor` usa el adapter para extraer dependencias: `tests/integration/test_processor_adapter_integration.py`
-- [ ] T009 Refactorizar `src/discovery/processor.py` para usar `adapter.parse_file()` / `adapter.extract_dependencies()` y añadir manejo `on_parse_error` (política por defecto: marcar `needs_manual_review` y abortar el repo) — archivo: `src/discovery/processor.py`
+- [x] T002 Crear prueba unitaria que defina el contrato del adapter: `tests/unit/test_extractor_adapter_contract.py` (falla esperado)
+- [x] T003 Implementar `ExtractorAdapter` y tipos en `src/utils/extractors/base.py` para satisfacer `tests/unit/test_extractor_adapter_contract.py`
+- [x] T004 Crear prueba unitaria para `python_ast_adapter`: `tests/unit/test_python_ast_adapter.py` (uso de fixtures con archivos Python de ejemplo)
+- [x] T005 Implementar `src/utils/extractors/python_ast_adapter.py` (portar la lógica actual de `processor._extract_local_imports`) para pasar `tests/unit/test_python_ast_adapter.py`
+- [x] T006 Crear prueba unitaria para la fábrica de adapters: `tests/unit/test_extractors_factory.py` (espera `get_adapter('homeassistant')`)
+- [x] T007 Implementar `src/utils/extractors/factory.py` con `get_adapter(profile: str) -> ExtractorAdapter` (importación perezosa)
+- [x] T008 Crear prueba de integración que verifique que `processor` usa el adapter para extraer dependencias: `tests/integration/test_processor_adapter_integration.py`
+- [x] T009 Refactorizar `src/discovery/processor.py` para usar `adapter.parse_file()` / `adapter.extract_dependencies()` y añadir manejo `on_parse_error` (política por defecto: marcar `needs_manual_review` y abortar el repo) — archivo: `src/discovery/processor.py`
 
 Phase 3 — User Stories (en prioridad)
 
@@ -39,13 +38,13 @@ User Story 2 — Emitir paquetes por módulo (Priority: P1)
 
 User Story 3 — Carga dinámica de Master Documents (Priority: P2)
 
-- [ ] T017 [US3] Crear prueba unitaria `tests/unit/test_load_master_docs_profile.py` que falle cuando falta un `master_doc` obligatorio
-- [ ] T018 [US3] Actualizar `src/factory/production_v11.py` para exponer `load_master_docs(gap_dir: Path, profile: str)` y leer `configs/stage_1_discovery/master_docs_map.yaml` — archivo: `src/factory/production_v11.py`
+- [x] T017 [US3] Crear prueba unitaria `tests/unit/test_load_master_docs_profile.py` que falle cuando falta un `master_doc` obligatorio
+- [x] T018 [US3] Actualizar `src/factory/production_v11.py` para exponer `load_master_docs(gap_dir: Path, profile: str)` y leer `configs/stage_1_discovery/master_docs_map.yaml` — archivo: `src/factory/production_v11.py`
 
 Final Phase — Polish & Cross-cutting
 
 - [ ] T019 [P] Añadir ejemplos versionados: `configs/stage_1_discovery/examples/homeassistant.yaml` y `configs/stage_1_discovery/examples/php_hexagonal.yaml` con `on_parse_error: abort` por defecto
-- [ ] T020 Crear pruebas unitarias para validar políticas `on_parse_error` (`tests/unit/test_parse_error_policy.py`)
+- [x] T020 Crear pruebas unitarias para validar políticas `on_parse_error` (`tests/unit/test_parse_error_policy.py`)
 - [ ] T021 Ejecutar test suite completa y corregir fallos: `pytest tests/unit tests/integration` (entregar logs y correcciones)
   - **Criterios de salida:** todos los tests unitarios deben pasar localmente; generar `reports/tests-report.xml` y `reports/pytest-logs.txt` adjuntos al PR.
 - [ ] T022 Ejecutar formateo y comprobaciones: `ruff format .` y `python scripts/check_headers.py --check`
@@ -64,7 +63,7 @@ Additional Critical Test Tasks (added to cover spec gaps)
 - [ ] T028 Crear harness de integración y fixtures: conjunto referencial de **5** repositorios por `profile` en `tests/fixtures/reference_corpus/<profile>/` con `gold_dependencies.json` para medir recall.
 - [ ] T029 Implementar scripts de medición automática (recall/precision) y reporte para extractor (scripts/measure_recall.py, tests/integration/test_recall_harness.py). Métrica canon: `recall@N` (N=5,10) por archivo/por repositorio.
 - [ ] T030 Observabilidad: implementar métricas exportables (Prometheus-friendly) para `ParseError` (contador por repo/profile), latencias y tasa de archivos marcados; añadir tests que verifiquen la emisión de métricas.
- - [ ] T031 Auditar tests existentes que dependen del fallback AST (p.ej. `_ast_fragment_list` fallback) y producir plan de migración (lista de tests a actualizar + cambios propuestos). Generar `specs/001-stage1-discovery/ast_fallback_audit.json` con resultados y marcar esta tarea `in-progress`.
+ - [x] T031 Auditar tests existentes que dependen del fallback AST (p.ej. `_ast_fragment_list` fallback) y producir plan de migración (lista de tests a actualizar + cambios propuestos). Generar `specs/001-stage1-discovery/ast_fallback_audit.json` con resultados y marcar esta tarea `in-progress`.
   - **Salida (spec-only):** `specs/001-stage1-discovery/migrations/test_migration_plan.md` contiene la estrategia recomendada y plantilla de migración por test. Implementación de cambios en tests o código corresponde a otro agente.
 - [ ] T032 Performance: benchmarking & CI comparison — crear scripts para medir throughput (files/hour per worker), latency per-file (mean and P95) y comparar baseline vs post-refactor (scripts/benchmark/; tests/integration/test_benchmark_compare.py).
 
@@ -115,15 +114,32 @@ Generated by: copilot agent (plan: specs/001-stage1-discovery/plan.md)
 
 Las siguientes entradas derivan de specs/001-stage1-discovery/migrations/test_migration_plan.md y sirven para tracking TDD (actualizar cada ítem cuando el test sea modificado y las correcciones implementadas).
 
-- [ ] `tests/test_production_v11.py` — Migrar a ParseError-first. Pasos TDD: 1) Actualizar el test para esperar `ParseError` (ver plantilla en `migrations/test_migration_plan.md`) y ejecutar `pytest`; 2) Implementador adapta el adapter/`production_v11` para lanzar `ParseError` y pasar la prueba; 3) Añadir nota en la PR enlazando FR-006.
-- [ ] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first. Pasos TDD: 1) Actualizar el test para usar `pytest.raises(ParseError)`; 2) Ejecutar pruebas locales; 3) Implementador hace cambios en `_ast_fragment_list` o adapter.
-- [ ] `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related. Pasos TDD: 1) Identificar sub-tests que llaman a `_ast_fragment_list`; 2) Aplicar patrón ParseError-first a esos sub-tests; 3) Documentar cambios.
-- [ ] `tests/test_sampling.py` — Revisar y clasificar. Pasos TDD: 1) Confirmar si depende de AST fallback; 2) Si no, dejar y marcar como no-ast; 3) Si sí, migrar según plantilla.
-- [ ] `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar. Pasos TDD: 1) Extraer tests AST-specific; 2) Migrar AST-cases a ParseError-first; 3) Documentar y parametrizar si es necesario.
+- [ ] `tests/test_production_v11.py` — Migrar a ParseError-first.
+  - Paso 1: Actualizar el test para esperar `ParseError` (ver plantilla en `migrations/test_migration_plan.md`) y ejecutar `pytest`.
+  - Paso 2: Implementador adapta el adapter/`production_v11` para lanzar `ParseError` y pasar la prueba.
+  - Paso 3: Añadir nota en la PR enlazando FR-006.
+
+- [ ] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first.
+  - Paso 1: Actualizar el test para usar `pytest.raises(ParseError)`.
+  - Paso 2: Ejecutar pruebas locales.
+  - Paso 3: Implementador hace cambios en `_ast_fragment_list` o adapter.
+
+- [ ] `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related.
+  - Paso 1: Identificar sub-tests que llaman a `_ast_fragment_list`.
+  - Paso 2: Aplicar patrón ParseError-first a esos sub-tests.
+  - Paso 3: Documentar cambios.
+
+- [ ] `tests/test_sampling.py` — Revisar y clasificar.
+  - Paso 1: Confirmar si depende de AST fallback.
+  - Paso 2: Si no, dejar y marcar como no-ast.
+  - Paso 3: Si sí, migrar según plantilla.
+
+- [ ] `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar.
+  - Paso 1: Extraer tests AST-specific.
+  - Paso 2: Migrar AST-cases a ParseError-first.
+  - Paso 3: Documentar y parametrizar si es necesario.
 
 Referencias:
 
 - Migration plan: specs/001-stage1-discovery/migrations/test_migration_plan.md
 - Audit report: specs/001-stage1-discovery/ast_fallback_audit.json
-
-```

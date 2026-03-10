@@ -13,7 +13,7 @@ Este documento define las entidades y validaciones usadas por el refactor.
   - `module_heuristics: dict` — see below
   - `master_docs_map: dict` — populated from `configs/stage_1_discovery/master_docs_map.yaml` (mapping: `profile -> { required: [paths], optional: [paths] }`)
   - `extractor_adapter: str` — adapter key used by factory
-  - `on_parse_error: Literal['abort','skip','mark_and_continue']` — runtime policy
+  - `on_parse_error: Literal['abort','skip','fallback']` — runtime policy
 
 - Validation rules:
   - `profile` must be non-empty; `extensions` must contain at least one extension.
@@ -72,7 +72,7 @@ class ProcessingConfig(BaseModel):
     raw_subdir: str = 'raw'
     output_subdir: str = 'outputs'
     module_heuristics: dict
-    on_parse_error: Literal['abort','skip','mark_and_continue'] = 'abort'
+    on_parse_error: Literal['abort','skip','fallback'] = 'abort'
     overrides: Dict[str, Any] = {}
 ```
 

@@ -30,14 +30,14 @@ for f in files:
     print(f"Processing shard: {f}...")
     shard_path = os.path.join(path, f)
     shard = load_file(shard_path)
-    
+
     for key, value in shard.items():
         # 1. Remove duplicated prefixes (base_model.model.model -> base_model.model)
         new_key = key.replace("base_model.model.model.", "base_model.model.")
-        
+
         # 2. Remove '.default' suffix (lora_A.default.weight -> lora_A.weight)
         new_key = new_key.replace(".default.", ".")
-        
+
         clean_state_dict[new_key] = value
     del shard
 

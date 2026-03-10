@@ -18,6 +18,7 @@ Coverage targets:
   cmd_adapter     — Phase 4: adapter inference persistence
   cmd_score       — Phase 5: scoring + report
 """
+
 from __future__ import annotations
 
 import argparse
@@ -86,26 +87,28 @@ def _make_raw_jsonl(
     records: list[dict[str, Any]] = []
     for i in range(n_records):
         et = types[i % len(types)]
-        records.append({
-            "id": f"{et}-{i:03d}",
-            "metadata": {
-                "example_type": et,
-                "evol_difficulty": "medium",
-                "fragment_name": f"fragment_{i}",
-                "source_file": f"components/sensor/{i}.py",
-                "gold_injected": True,
-                "ldi": 0.7 + i * 0.01,
-                "reference_standards": reference_standards,
-                "gap_analysis": gap_analysis,
-            },
-            "conversation": [
-                {"role": "user", "content": f"Implement sensor {i}."},
-                {
-                    "role": "assistant",
-                    "content": f"<think>Thinking {i}</think>\n```python\npass\n```",
+        records.append(
+            {
+                "id": f"{et}-{i:03d}",
+                "metadata": {
+                    "example_type": et,
+                    "evol_difficulty": "medium",
+                    "fragment_name": f"fragment_{i}",
+                    "source_file": f"components/sensor/{i}.py",
+                    "gold_injected": True,
+                    "ldi": 0.7 + i * 0.01,
+                    "reference_standards": reference_standards,
+                    "gap_analysis": gap_analysis,
                 },
-            ],
-        })
+                "conversation": [
+                    {"role": "user", "content": f"Implement sensor {i}."},
+                    {
+                        "role": "assistant",
+                        "content": f"<think>Thinking {i}</think>\n```python\npass\n```",
+                    },
+                ],
+            }
+        )
     out.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
     return out
 
@@ -173,7 +176,9 @@ class TestCmdSamplePhase1:
     ) -> None:
         """cmd_sample must inject reference_standards into records that arrive with an
         empty string, persisting fully enriched SampleRecords to disk."""
-        dataset = _make_raw_jsonl(tmp_path, reference_standards="", gap_analysis="existing_gap")
+        dataset = _make_raw_jsonl(
+            tmp_path, reference_standards="", gap_analysis="existing_gap"
+        )
         args = _default_args(
             tmp_path,
             dataset=str(dataset),
@@ -186,7 +191,9 @@ class TestCmdSamplePhase1:
         persisted = load_persisted_sample(args.audit_dir)
         assert len(persisted) == 4
         for record in persisted:
-            assert record.reference_standards, f"reference_standards must be injected for {record.id}"
+            assert record.reference_standards, (
+                f"reference_standards must be injected for {record.id}"
+            )
             assert "MASTER_GUIDE" in record.reference_standards
 
     def test_skips_reference_standards_injection_when_already_present(
@@ -214,9 +221,7 @@ class TestCmdSamplePhase1:
                 f"reference_standards for {record.id} should not be overwritten"
             )
 
-    def test_calls_gap_analysis_generation_when_missing(
-        self, tmp_path: Path
-    ) -> None:
+    def test_calls_gap_analysis_generation_when_missing(self, tmp_path: Path) -> None:
         """When gap_analysis is empty, cmd_sample must call generate_gap_analysis
         and persist the returned value on each record."""
         dataset = _make_raw_jsonl(tmp_path, reference_standards="", gap_analysis="")
@@ -234,12 +239,12 @@ class TestCmdSamplePhase1:
         for record in persisted:
             assert record.gap_analysis == mock_gap
 
-    def test_skips_gap_analysis_when_already_present(
-        self, tmp_path: Path
-    ) -> None:
+    def test_skips_gap_analysis_when_already_present(self, tmp_path: Path) -> None:
         """When gap_analysis is already present, generate_gap_analysis must not
         be called even when reference_standards needs injection."""
-        dataset = _make_raw_jsonl(tmp_path, reference_standards="", gap_analysis="pre-existing")
+        dataset = _make_raw_jsonl(
+            tmp_path, reference_standards="", gap_analysis="pre-existing"
+        )
         args = _default_args(tmp_path, dataset=str(dataset), force=True, sample_size=4)
 
         with patch(
@@ -289,9 +294,11 @@ class TestCmdGenerateExamPhase2:
 
     def _persist_valid_sample(self, audit_dir: str) -> list[SampleRecord]:
         from src.audit.persistence import persist_sample as _ps
+
         samples = [
             make_sample(
-                id=f"s{i:03d}", example_type=t,
+                id=f"s{i:03d}",
+                example_type=t,
                 reference_standards="Use entry.runtime_data.",
                 gap_analysis="Missing coordinator.",
             )
@@ -328,9 +335,7 @@ class TestCmdGenerateExamPhase2:
         exams = [make_exam_record(s) for s in samples]
         persist_exam(exams, args.audit_dir)
 
-        with patch(
-            "src.audit.model_evaluator.generate_exam_question"
-        ) as mock_fn:
+        with patch("src.audit.model_evaluator.generate_exam_question") as mock_fn:
             cmd_generate_exam(args)
 
         mock_fn.assert_not_called()
@@ -341,7 +346,10 @@ class TestCmdGenerateExamPhase2:
         """cmd_generate_exam must abort if the persisted sample has records
         without reference_standards or gap_analysis."""
         from src.audit.persistence import persist_sample as _ps
-        samples = [make_sample(id="incomplete", reference_standards="", gap_analysis="")]
+
+        samples = [
+            make_sample(id="incomplete", reference_standards="", gap_analysis="")
+        ]
         _ps(samples, args := _default_args(tmp_path).audit_dir)
         args_ns = _default_args(tmp_path)
 
@@ -360,9 +368,14 @@ class TestCmdBaselinePhase3:
 
     def _setup_exam(self, audit_dir: str) -> list[ExamRecord]:
         from src.audit.persistence import persist_sample as _ps
+
         samples = [
-            make_sample(id=f"s{i:03d}", example_type=t,
-                        reference_standards="std", gap_analysis="gap")
+            make_sample(
+                id=f"s{i:03d}",
+                example_type=t,
+                reference_standards="std",
+                gap_analysis="gap",
+            )
             for i, t in enumerate(["nominal", "contrast", "error_recovery", "theory"])
         ]
         _ps(samples, audit_dir)
@@ -402,6 +415,7 @@ class TestCmdBaselinePhase3:
         """Without an exam, cmd_baseline falls back to the persisted sample's
         user_prompt, calling run_inference with SampleRecord objects."""
         from src.audit.persistence import persist_sample as _ps
+
         samples = [
             make_sample(id=f"s{i:03d}", reference_standards="std", gap_analysis="gap")
             for i in range(4)
@@ -441,6 +455,7 @@ class TestCmdAdapterPhase4:
 
     def _setup_exam(self, audit_dir: str) -> list[ExamRecord]:
         from src.audit.persistence import persist_sample as _ps
+
         samples = [
             make_sample(id=f"s{i:03d}", reference_standards="std", gap_analysis="gap")
             for i in range(4)
@@ -489,8 +504,11 @@ class TestCmdAdapterPhase4:
 class TestCmdScorePhase5:
     """Phase 5: LLM-as-Judge scoring + report generation."""
 
-    def _setup_full_pipeline(self, audit_dir: str) -> tuple[list[ExamRecord], list[InferenceResult], list[InferenceResult]]:
+    def _setup_full_pipeline(
+        self, audit_dir: str
+    ) -> tuple[list[ExamRecord], list[InferenceResult], list[InferenceResult]]:
         from src.audit.persistence import persist_sample as _ps
+
         samples = [
             make_sample(id=f"s{i:03d}", reference_standards="std", gap_analysis="gap")
             for i in range(4)
@@ -524,7 +542,9 @@ class TestCmdScorePhase5:
         persist_inference(adapter, "adapter", audit_dir)
         return exams, baseline, adapter
 
-    def test_scores_records_and_generates_report(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_scores_records_and_generates_report(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
         """cmd_score must call compute_scorecard once per record and invoke
         generate_report with the final AuditReport."""
         args = _default_args(tmp_path)
@@ -535,32 +555,55 @@ class TestCmdScorePhase5:
         mock_report_path.parent.mkdir(parents=True, exist_ok=True)
         mock_report_path.write_text("# Report", encoding="utf-8")
 
-        with patch(
-            "src.audit.model_evaluator.compute_scorecard",
-            return_value=mock_sc,
-        ) as mock_score, patch(
-            "src.audit.model_evaluator.generate_report",
-            return_value=(mock_report_path, AuditReport()),
-        ) as mock_report:
+        with (
+            patch(
+                "src.audit.model_evaluator.compute_scorecard",
+                return_value=mock_sc,
+            ) as mock_score,
+            patch(
+                "src.audit.model_evaluator.generate_report",
+                return_value=(mock_report_path, AuditReport()),
+            ) as mock_report,
+        ):
             cmd_score(args)
 
         assert mock_score.call_count == 4
         mock_report.assert_called_once()
 
-    def test_falls_back_to_sample_when_no_exam_for_scoring(self, tmp_path: Path) -> None:
+    def test_falls_back_to_sample_when_no_exam_for_scoring(
+        self, tmp_path: Path
+    ) -> None:
         """Phase 5 can score without an exam file — it falls back to the
         persisted sample using user_prompt as the exam_question."""
         from src.audit.persistence import persist_sample as _ps
-        samples = [make_sample(id=f"s{i:03d}", reference_standards="std", gap_analysis="gap") for i in range(4)]
+
+        samples = [
+            make_sample(id=f"s{i:03d}", reference_standards="std", gap_analysis="gap")
+            for i in range(4)
+        ]
         args = _default_args(tmp_path)
         _ps(samples, args.audit_dir)
 
         baseline = [
-            InferenceResult(record_id=s.id, model_name="base", response="r", latency_ms=100.0, token_count=5, timestamp="2026-03-03T00:00:00")
+            InferenceResult(
+                record_id=s.id,
+                model_name="base",
+                response="r",
+                latency_ms=100.0,
+                token_count=5,
+                timestamp="2026-03-03T00:00:00",
+            )
             for s in samples
         ]
         adapter = [
-            InferenceResult(record_id=s.id, model_name="ada", response="r", latency_ms=100.0, token_count=5, timestamp="2026-03-03T00:00:00")
+            InferenceResult(
+                record_id=s.id,
+                model_name="ada",
+                response="r",
+                latency_ms=100.0,
+                token_count=5,
+                timestamp="2026-03-03T00:00:00",
+            )
             for s in samples
         ]
         persist_inference(baseline, "baseline", args.audit_dir)
@@ -570,6 +613,11 @@ class TestCmdScorePhase5:
         mock_report_path = Path(args.audit_dir) / "report.md"
         mock_report_path.write_text("# Report", encoding="utf-8")
 
-        with patch("src.audit.model_evaluator.compute_scorecard", return_value=mock_sc), \
-             patch("src.audit.model_evaluator.generate_report", return_value=(mock_report_path, AuditReport())):
+        with (
+            patch("src.audit.model_evaluator.compute_scorecard", return_value=mock_sc),
+            patch(
+                "src.audit.model_evaluator.generate_report",
+                return_value=(mock_report_path, AuditReport()),
+            ),
+        ):
             cmd_score(args)  # must not raise

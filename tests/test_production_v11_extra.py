@@ -37,7 +37,13 @@ def test_build_system_with_blueprint_appends_context() -> None:
     blueprint = "MODULE BLUEPRINT"
     governance = "RULES: no legacy"
 
-    s = pv11.build_system_with_blueprint(master, changelog, blueprint=blueprint, local_imports="[]", governance=governance)
+    s = pv11.build_system_with_blueprint(
+        master,
+        changelog,
+        blueprint=blueprint,
+        local_imports="[]",
+        governance=governance,
+    )
     assert "MODULE BLUEPRINT" in s
     assert "RULES: no legacy" in s
     # suffix expected to be appended

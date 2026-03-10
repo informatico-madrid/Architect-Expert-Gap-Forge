@@ -17,6 +17,7 @@ Public API
 - ``persist_exam``   / ``load_exam``
 - ``persist_inference`` / ``load_inference``
 """
+
 from __future__ import annotations
 
 import json

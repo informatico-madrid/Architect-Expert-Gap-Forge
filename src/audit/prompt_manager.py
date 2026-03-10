@@ -8,6 +8,7 @@
 Externalizes all pipeline prompts to a YAML file to keep orchestration logic
 free of multiline strings and hardcoded prompts.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,7 +23,9 @@ __all__ = ["PromptManager"]
 logger = logging.getLogger("AEGF.PromptManager")
 
 # Default location of the prompt YAML relative to the project root
-_DEFAULT_PROMPTS_PATH: Final[Path] = Path("configs/stage_5_evaluation/eval_prompts.yaml")
+_DEFAULT_PROMPTS_PATH: Final[Path] = Path(
+    "configs/stage_5_evaluation/eval_prompts.yaml"
+)
 
 
 class PromptManager:
@@ -33,14 +36,16 @@ class PromptManager:
 
     def __init__(self, prompts_path: Path | str | None = None) -> None:
         """Initialise the manager and load templates into memory."""
-        path: Final[Path] = Path(prompts_path) if prompts_path else _DEFAULT_PROMPTS_PATH
-        
+        path: Final[Path] = (
+            Path(prompts_path) if prompts_path else _DEFAULT_PROMPTS_PATH
+        )
+
         if not path.exists():
             raise FileNotFoundError(f"Prompt YAML not found: {path}")
 
         with open(path, "r", encoding="utf-8") as fh:
             loaded: dict[str, dict[str, str]] = yaml.safe_load(fh) or {}
-            
+
         # Protect against runtime mutation using MappingProxyType
         self._templates: Final = MappingProxyType(loaded)
         logger.debug("Loaded %d prompt groups from %s", len(self._templates), path)
@@ -77,9 +82,9 @@ class PromptManager:
             raise KeyError(
                 f"Unknown prompt group '{group}'. Available: {self.groups()}"
             )
-        
+
         section = self._templates[group]
         if key not in section:
             raise KeyError(f"Prompt group '{group}' has no '{key}' template")
-            
+
         return section[key]

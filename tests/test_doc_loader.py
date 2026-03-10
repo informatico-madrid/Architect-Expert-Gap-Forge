@@ -12,6 +12,7 @@ Covers:
 - Loaded content matches what was written
 - Empty files are valid (no error)
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -135,7 +136,9 @@ class TestLoadMasterDocsEdgeCases:
 
 @pytest.mark.unit
 class TestLoadMasterDocsEnvOverrides:
-    def test_prefers_env_over_defaults(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_prefers_env_over_defaults(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         env_mapping = {
             "AEGF_DOC_1": "env_master.md",
             "AEGF_DOC_2": "env_changelog.md",
@@ -145,9 +148,7 @@ class TestLoadMasterDocsEnvOverrides:
         gap_dir.mkdir()
         for env_key, filename in env_mapping.items():
             monkeypatch.setenv(env_key, filename)
-            (gap_dir / filename).write_text(
-                f"content for {filename}", encoding="utf-8"
-            )
+            (gap_dir / filename).write_text(f"content for {filename}", encoding="utf-8")
 
         master, changelog, jinja = load_master_docs(gap_dir)
         assert "env_master" in master
@@ -157,7 +158,9 @@ class TestLoadMasterDocsEnvOverrides:
 
 @pytest.mark.unit
 class TestLoadMasterDocsConfigFallback:
-    def test_reads_filenames_from_config(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_reads_filenames_from_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         for key in ("AEGF_DOC_1", "AEGF_DOC_2", "AEGF_DOC_3"):
             monkeypatch.delenv(key, raising=False)
 
@@ -185,7 +188,9 @@ class TestLoadMasterDocsConfigFallback:
         assert "cfg" in changelog
         assert "cfg" in jinja
 
-    def test_supports_legacy_config_keys(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_supports_legacy_config_keys(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         for key in ("AEGF_DOC_1", "AEGF_DOC_2", "AEGF_DOC_3"):
             monkeypatch.delenv(key, raising=False)
 

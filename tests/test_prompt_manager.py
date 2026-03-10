@@ -13,6 +13,7 @@ Covers:
 - groups() lists all loaded template groups
 - Chained format() with multiple placeholders
 """
+
 from __future__ import annotations
 
 import textwrap
@@ -85,7 +86,9 @@ class TestPromptManagerSystem:
 
 @pytest.mark.unit
 class TestPromptManagerUserTemplate:
-    def test_returns_raw_template_with_placeholders(self, prompts_yaml_path: Path) -> None:
+    def test_returns_raw_template_with_placeholders(
+        self, prompts_yaml_path: Path
+    ) -> None:
         pm = PromptManager(prompts_yaml_path)
         tmpl = pm.user_template("test_group")
         assert "{name}" in tmpl
@@ -112,7 +115,9 @@ class TestPromptManagerFormat:
         assert "{name}" not in result
         assert "{question}" not in result
 
-    def test_raises_key_error_for_missing_placeholder(self, prompts_yaml_path: Path) -> None:
+    def test_raises_key_error_for_missing_placeholder(
+        self, prompts_yaml_path: Path
+    ) -> None:
         pm = PromptManager(prompts_yaml_path)
         with pytest.raises(KeyError):
             pm.format("test_group", name="Alice")  # missing 'question'

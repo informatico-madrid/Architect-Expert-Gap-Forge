@@ -61,7 +61,9 @@ def _prepare_environment(
 
 
 @pytest.mark.unit
-def test_clean_lora_consolidates_shards(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clean_lora_consolidates_shards(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     root = tmp_path
     shards_data = {
         "shard-1.safetensors": {
@@ -87,7 +89,9 @@ def test_clean_lora_consolidates_shards(tmp_path: Path, monkeypatch: pytest.Monk
 
 
 @pytest.mark.unit
-def test_clean_lora_uses_model_index_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_clean_lora_uses_model_index_fallback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     root = tmp_path
     shards_data = {
         "shard-a.safetensors": {
@@ -95,7 +99,9 @@ def test_clean_lora_uses_model_index_fallback(tmp_path: Path, monkeypatch: pytes
         }
     }
 
-    saved = _prepare_environment(root, monkeypatch, shards_data, index_name="model.safetensors.index.json")
+    saved = _prepare_environment(
+        root, monkeypatch, shards_data, index_name="model.safetensors.index.json"
+    )
     monkeypatch.chdir(root)
 
     runpy.run_path(str(_SCRIPT_PATH), run_name="__main__")

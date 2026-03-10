@@ -7,6 +7,7 @@
 
 Verifies RawRecord <-> CurationRecord conversion and minimal properties.
 """
+
 from __future__ import annotations
 
 from src.schemas.converters import curation_raw_to_record, curation_record_to_raw

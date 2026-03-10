@@ -31,6 +31,7 @@ Sacred Constraint
 Content at and after ``</think>`` is NEVER modified.  The code output is
 production gold and must arrive byte-identical in the output dataset.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -95,7 +96,9 @@ _MAX_RETRIES: Final[int] = 3
 #   cp configs/prompts/reconstruction_system.txt.example configs/prompts/reconstruction_system.txt
 _PROMPT_BACKTRACKING_PATH: Final[str] = "configs/prompts/backtracking_system.txt"
 _PROMPT_RECONSTRUCTION_PATH: Final[str] = "configs/prompts/reconstruction_system.txt"
-_DEFAULT_LEGACY_PATTERNS_FILE: Final[str] = "configs/stage_5_evaluation/ha_patterns.yaml"
+_DEFAULT_LEGACY_PATTERNS_FILE: Final[str] = (
+    "configs/stage_5_evaluation/ha_patterns.yaml"
+)
 
 
 class _RejectionSamplingError(Exception):
@@ -145,8 +148,7 @@ def _load_prompt_file(path: str | None, default_path: str) -> str:
     content = resolved.read_text(encoding="utf-8").strip()
     if not content:
         raise ValueError(
-            f"Prompt file is empty: {resolved}\n"
-            f"See the reference template: {example}"
+            f"Prompt file is empty: {resolved}\nSee the reference template: {example}"
         )
     logger.debug("Loaded prompt from %s (%d chars)", resolved, len(content))
     return content
@@ -274,7 +276,7 @@ def extract_think_block(content: str) -> tuple[str, str]:
     idx = content.find(_THINK_CLOSE_TAG)
     if idx < 0:
         return "", content
-    return content[:idx], content[idx + len(_THINK_CLOSE_TAG):]
+    return content[:idx], content[idx + len(_THINK_CLOSE_TAG) :]
 
 
 def replace_think_block(content: str, new_think: str) -> str:
@@ -334,12 +336,12 @@ def _sanitize_generated_reasoning(text: str) -> str:
     """
     if not text:
         return text
-    
+
     # STEP 1: Preserve technical identifiers (single backticks)
     # Save them in a map before sanitization
     identifier_map: dict[str, str] = {}
     preserved_text = text
-    
+
     # Pattern: preserve code-like inline backticked spans. We accept two
     # flavours: (A) short, single-token identifiers with no whitespace
     # (`async_update`, `SensorDeviceClass`), and (B) short code-like
@@ -354,32 +356,33 @@ def _sanitize_generated_reasoning(text: str) -> str:
     for match in preserve_pattern.finditer(text):
         placeholder = f"__PRESERVED_ID_{len(identifier_map)}__"
         identifier_map[placeholder] = match.group(0)
-    
+
     # Replace identifiers with placeholders
     for placeholder, identifier in identifier_map.items():
         preserved_text = preserved_text.replace(identifier, placeholder)
-    
+
     # STEP 2: Remove fenced code blocks ```...``` (multiline)
     preserved_text = re.sub(r"```[\s\S]*?```", "", preserved_text)
-    
+
     # STEP 3: Remove backticks that remain (inline code with spaces/syntax)
     # These are likely code snippets like `def func(x)` or `key: value`
     preserved_text = re.sub(r"`[^`]*`", "", preserved_text)
-    
+
     # STEP 4: Remove explicit <tool_call>...</tool_call> blocks
-    preserved_text = re.sub(r"<tool_call>[\s\S]*?</tool_call>", "", 
-                            preserved_text, flags=re.IGNORECASE)
-    
+    preserved_text = re.sub(
+        r"<tool_call>[\s\S]*?</tool_call>", "", preserved_text, flags=re.IGNORECASE
+    )
+
     # STEP 5: Remove any remaining angle-bracket tags (conservative)
     preserved_text = re.sub(r"<[^>]+>", "", preserved_text)
-    
+
     # STEP 6: Restore technical identifiers
     for placeholder, identifier in identifier_map.items():
         preserved_text = preserved_text.replace(placeholder, identifier)
-    
+
     # STEP 7: Collapse multiple blank lines
     preserved_text = re.sub(r"\n{3,}", "\n\n", preserved_text)
-    
+
     return preserved_text.strip()
 
 
@@ -393,8 +396,23 @@ def _detect_language_hint(text: str) -> str:
     if not text:
         return "English"
     s = text.lower()
-    es_score = sum(s.count(w) for w in [" el ", " la ", " que ", " y ", " para ", " usar ", " será ", " debe ", "vamos"])
-    en_score = sum(s.count(w) for w in [" the ", " and ", " to ", " is ", " will ", " this "])
+    es_score = sum(
+        s.count(w)
+        for w in [
+            " el ",
+            " la ",
+            " que ",
+            " y ",
+            " para ",
+            " usar ",
+            " será ",
+            " debe ",
+            "vamos",
+        ]
+    )
+    en_score = sum(
+        s.count(w) for w in [" the ", " and ", " to ", " is ", " will ", " this "]
+    )
     return "Spanish" if es_score > en_score else "English"
 
 
@@ -613,7 +631,8 @@ def passes_backtracking_filter(record: RawRecord, config: BacktrackingConfig) ->
 
     # Total conversation token estimate
     total_chars = sum(
-        len(msg.get("content", "")) for msg in record.get("conversation", [])
+        len(msg.get("content", ""))
+        for msg in record.get("conversation", [])
         if isinstance(msg, dict)
     )
     if total_chars // _CHARS_PER_TOKEN > config.max_tokens:
@@ -690,9 +709,7 @@ def _load_governance_context(config: BacktrackingConfig) -> str | None:
     if limit and len(content) > limit:
         content = content[:limit]
         logger.debug("Governance context truncated to %d chars", limit)
-    logger.info(
-        "Loaded governance context from %s (%d chars)", path, len(content)
-    )
+    logger.info("Loaded governance context from %s (%d chars)", path, len(content))
     return content
 
 
@@ -738,11 +755,13 @@ def build_rewrite_prompt(
         return "", ""
 
     _sys_bt = (
-        system_bt if system_bt is not None
+        system_bt
+        if system_bt is not None
         else _load_prompt_file(None, _PROMPT_BACKTRACKING_PATH)
     )
     _sys_rc = (
-        system_rc if system_rc is not None
+        system_rc
+        if system_rc is not None
         else _load_prompt_file(None, _PROMPT_RECONSTRUCTION_PATH)
     )
 
@@ -888,8 +907,10 @@ async def apply_backtracking_rewrite(
         return {**record, "metadata": metadata}
 
     system_prompt, user_prompt = build_rewrite_prompt(
-        record, strategy,
-        system_bt=_system_bt, system_rc=_system_rc,
+        record,
+        strategy,
+        system_bt=_system_bt,
+        system_rc=_system_rc,
         governance_context=_governance_context,
         language=config.language,
     )
@@ -917,7 +938,7 @@ async def apply_backtracking_rewrite(
             # For non-thinking models (or when the tag is absent) raw already
             # contains the clean answer and we leave it untouched.
             if _THINK_CLOSE_TAG in raw:
-                raw = raw[raw.find(_THINK_CLOSE_TAG) + len(_THINK_CLOSE_TAG):]
+                raw = raw[raw.find(_THINK_CLOSE_TAG) + len(_THINK_CLOSE_TAG) :]
             raw = raw.strip()
 
             # Sanitize code fences / tool-calls leaked into reasoning
@@ -972,7 +993,9 @@ async def apply_backtracking_rewrite(
     if _legacy_regexes and strategy not in ("pass_through", "skip"):
         _, code_rest = extract_think_block(assistant)
         passed, reject_reason = _validate_resolution_no_legacy(
-            new_think, code_rest, _legacy_regexes,
+            new_think,
+            code_rest,
+            _legacy_regexes,
         )
         if not passed:
             logger.warning(
@@ -1084,7 +1107,9 @@ def _emit_audit_file(result: RawRecord, audit_run_dir: Path) -> None:
         )
         logger.debug("Audit record written to %s", out_file)
     except Exception as exc:  # noqa: BLE001
-        logger.debug("Failed to write audit file for id=%s: %s", result.get("id", "?"), exc)
+        logger.debug(
+            "Failed to write audit file for id=%s: %s", result.get("id", "?"), exc
+        )
 
 
 async def rewrite_pipeline(
@@ -1315,14 +1340,16 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     # Required I/O
     io = parser.add_argument_group("I/O (required)")
     io.add_argument(
-        "--input", "-i",
+        "--input",
+        "-i",
         required=True,
         type=Path,
         metavar="FILE",
         help="Source JSONL dataset.",
     )
     io.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         required=True,
         type=Path,
         metavar="FILE",
@@ -1331,7 +1358,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     # Config
     cfg_grp = parser.add_argument_group("Configuration")
     cfg_grp.add_argument(
-        "--config", "-c",
+        "--config",
+        "-c",
         type=Path,
         default=None,
         metavar="FILE",
@@ -1342,11 +1370,15 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         type=str,
         default=None,
         metavar="LANG",
-        help=("Force output language token (e.g. 'Spanish' or 'English'). "
-              "When provided this overrides per-record detection."),
+        help=(
+            "Force output language token (e.g. 'Spanish' or 'English'). "
+            "When provided this overrides per-record detection."
+        ),
     )
     # Inference overrides
-    inf_grp = parser.add_argument_group("Inference overrides (take priority over --config)")
+    inf_grp = parser.add_argument_group(
+        "Inference overrides (take priority over --config)"
+    )
     inf_grp.add_argument(
         "--model",
         type=str,

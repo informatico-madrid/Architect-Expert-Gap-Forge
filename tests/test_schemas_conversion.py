@@ -8,9 +8,14 @@
 These tests validate the basic conversion contract and guard against
 regressions during the incremental migration.
 """
+
 from __future__ import annotations
 
-from src.schemas.converters import raw_to_sample, sample_to_raw, normalize_judge_response
+from src.schemas.converters import (
+    raw_to_sample,
+    sample_to_raw,
+    normalize_judge_response,
+)
 from src.audit.schema import SampleRecord
 
 

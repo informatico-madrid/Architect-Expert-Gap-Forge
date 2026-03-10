@@ -64,9 +64,11 @@ EVOL_LEVELS = ["easy", "medium", "hard"]
 # PYDANTIC MODEL FOR TOOL_CALL VALIDATION
 # ══════════════════════════════════════════════════════════════════════
 
+
 class ToolCallModel(BaseModel):
     name: str
     arguments: Dict[str, Any]
+
 
 # ══════════════════════════════════════════════════════════════════════
 # TAXONOMY — populated by load_taxonomy()
@@ -109,46 +111,54 @@ def _render(template_str: str, **kwargs) -> str:
 # LEGACY CODE DETECTORS  (regex patterns — kept in Python)
 # ══════════════════════════════════════════════════════════════════════
 LEGACY_CODE_DETECTORS = [
-    (r'hass\.data\[', "hass.data[] dict pattern → entry.runtime_data"),
-    (r'hass\.data\.setdefault', "hass.data.setdefault() → entry.runtime_data"),
-    (r'\bTEMP_CELSIUS\b|\bTEMP_FAHRENHEIT\b|\bTEMP_KELVIN\b',
-     "Legacy TEMP_* constants → UnitOfTemperature enum"),
-    (r'\bUNIT_PERCENTAGE\b|\bPERCENTAGE\b(?=\s*[,\)])',
-     "Legacy UNIT_PERCENTAGE → UnitOfMeasurement enum"),
-    (r'\bLENGTH_METERS\b|\bLENGTH_KILOMETERS\b|\bLENGTH_MILES\b',
-     "Legacy LENGTH_* constants → UnitOfLength enum"),
-    (r'\bMASS_GRAMS\b|\bMASS_KILOGRAMS\b|\bVOLUME_LITERS\b',
-     "Legacy MASS_*/VOLUME_* constants → UnitOf* enums"),
-    (r'\bPRESSURE_BAR\b|\bPRESSURE_PA\b|\bPRESSURE_HPA\b',
-     "Legacy PRESSURE_* constants → UnitOfPressure enum"),
-    (r'\bENERGY_KILO_WATT_HOUR\b|\bENERGY_WATT_HOUR\b|\bPOWER_WATT\b|\bPOWER_KILO_WATT\b',
-     "Legacy ENERGY_*/POWER_* → UnitOfEnergy/UnitOfPower enums"),
-    (r'async_forward_entry_setup\b(?!s)',
-     "Singular async_forward_entry_setup → async_forward_entry_setups"),
-    (r"device_class\s*=\s*[\"'](?:temperature|humidity|pressure|energy|power|battery|voltage|current)",
-     "String literal device_class → SensorDeviceClass enum"),
-    (r"_attr_device_class\s*=\s*[\"']",
-     "String _attr_device_class → Enum"),
-    (r'def update\(self\)',
-     "Synchronous update(self) → CoordinatorEntity + async"),
-    (r'def\s+async_update\(self\)',
-     "Direct async_update → CoordinatorEntity pattern"),
-    (r'PLATFORM_SCHEMA\s*=',
-     "YAML-only PLATFORM_SCHEMA → ConfigFlow required"),
-    (r'requests\.get\(|requests\.post\(|requests\.put\(|requests\.delete\(',
-     "Blocking requests.* → aiohttp/async_add_executor_job"),
-    (r'(?<!await\s)time\.sleep\(',
-     "Blocking time.sleep() → await asyncio.sleep()"),
-    (r'urllib\.request\.urlopen',
-     "Blocking urllib → aiohttp"),
-    (r'\bself\._state\s*=',
-     "Legacy self._state = X → native_value property"),
-    (r'\bself\._attr_state\s*=',
-     "Legacy self._attr_state → native_value property"),
-    (r'@property\s*\n\s*def\s+state\(self\)',
-     "Legacy state property → native_value"),
-    (r'add_entities\(\[.*\]\s*,\s*True\)',
-     "Legacy polling=True → CoordinatorEntity"),
+    (r"hass\.data\[", "hass.data[] dict pattern → entry.runtime_data"),
+    (r"hass\.data\.setdefault", "hass.data.setdefault() → entry.runtime_data"),
+    (
+        r"\bTEMP_CELSIUS\b|\bTEMP_FAHRENHEIT\b|\bTEMP_KELVIN\b",
+        "Legacy TEMP_* constants → UnitOfTemperature enum",
+    ),
+    (
+        r"\bUNIT_PERCENTAGE\b|\bPERCENTAGE\b(?=\s*[,\)])",
+        "Legacy UNIT_PERCENTAGE → UnitOfMeasurement enum",
+    ),
+    (
+        r"\bLENGTH_METERS\b|\bLENGTH_KILOMETERS\b|\bLENGTH_MILES\b",
+        "Legacy LENGTH_* constants → UnitOfLength enum",
+    ),
+    (
+        r"\bMASS_GRAMS\b|\bMASS_KILOGRAMS\b|\bVOLUME_LITERS\b",
+        "Legacy MASS_*/VOLUME_* constants → UnitOf* enums",
+    ),
+    (
+        r"\bPRESSURE_BAR\b|\bPRESSURE_PA\b|\bPRESSURE_HPA\b",
+        "Legacy PRESSURE_* constants → UnitOfPressure enum",
+    ),
+    (
+        r"\bENERGY_KILO_WATT_HOUR\b|\bENERGY_WATT_HOUR\b|\bPOWER_WATT\b|\bPOWER_KILO_WATT\b",
+        "Legacy ENERGY_*/POWER_* → UnitOfEnergy/UnitOfPower enums",
+    ),
+    (
+        r"async_forward_entry_setup\b(?!s)",
+        "Singular async_forward_entry_setup → async_forward_entry_setups",
+    ),
+    (
+        r"device_class\s*=\s*[\"'](?:temperature|humidity|pressure|energy|power|battery|voltage|current)",
+        "String literal device_class → SensorDeviceClass enum",
+    ),
+    (r"_attr_device_class\s*=\s*[\"']", "String _attr_device_class → Enum"),
+    (r"def update\(self\)", "Synchronous update(self) → CoordinatorEntity + async"),
+    (r"def\s+async_update\(self\)", "Direct async_update → CoordinatorEntity pattern"),
+    (r"PLATFORM_SCHEMA\s*=", "YAML-only PLATFORM_SCHEMA → ConfigFlow required"),
+    (
+        r"requests\.get\(|requests\.post\(|requests\.put\(|requests\.delete\(",
+        "Blocking requests.* → aiohttp/async_add_executor_job",
+    ),
+    (r"(?<!await\s)time\.sleep\(", "Blocking time.sleep() → await asyncio.sleep()"),
+    (r"urllib\.request\.urlopen", "Blocking urllib → aiohttp"),
+    (r"\bself\._state\s*=", "Legacy self._state = X → native_value property"),
+    (r"\bself\._attr_state\s*=", "Legacy self._attr_state → native_value property"),
+    (r"@property\s*\n\s*def\s+state\(self\)", "Legacy state property → native_value"),
+    (r"add_entities\(\[.*\]\s*,\s*True\)", "Legacy polling=True → CoordinatorEntity"),
 ]
 
 
@@ -178,6 +188,7 @@ logger.addHandler(_handler)
 # MASTER DOCUMENT LOADING — Fail-Fast
 # ══════════════════════════════════════════════════════════════════════
 
+
 def load_master_docs(gap_dir: Path) -> Tuple[str, str]:
     """Load master documents from gap_dir. Raises FileNotFoundError if missing."""
     master_path = gap_dir / _MASTER_GUIDE_FILENAME
@@ -203,6 +214,7 @@ def load_master_docs(gap_dir: Path) -> Tuple[str, str]:
 # SYSTEM PROMPT BUILDERS — Multi-Turn Diversified
 # ══════════════════════════════════════════════════════════════════════
 
+
 def _base_system_block(master: str, changelog: str) -> str:
     """Shared base block: tools, multi-turn grammar, truth anchors."""
     return _render(
@@ -225,12 +237,15 @@ def build_system_contrast(master: str, changelog: str) -> str:
 
 def build_system_error_recovery(master: str, changelog: str) -> str:
     """System prompt for error recovery trajectories."""
-    return _base_system_block(master, changelog) + _prompt("system.error_recovery_suffix")
+    return _base_system_block(master, changelog) + _prompt(
+        "system.error_recovery_suffix"
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════
 # USER PROMPT BUILDERS BY TYPE
 # ══════════════════════════════════════════════════════════════════════
+
 
 def build_user_nominal(frag: Dict, difficulty: str) -> str:
     """Build user prompt for nominal examples with Evol-Instruct."""
@@ -292,9 +307,10 @@ def build_user_error_recovery(frag: Dict) -> str:
 # CHUNKING & FRAGMENTATION
 # ══════════════════════════════════════════════════════════════════════
 
+
 def get_file_chunks(content: str) -> List[Tuple[str, str]]:
     """Split raw text files by '--- FILE: ... ---' markers."""
-    parts = re.split(r'--- FILE: (.*?) ---\n', content)
+    parts = re.split(r"--- FILE: (.*?) ---\n", content)
     chunks = []
     for i in range(1, len(parts), 2):
         if i + 1 < len(parts):
@@ -308,62 +324,80 @@ def get_fragments(filename: str, code: str) -> List[Dict]:
     is_test = "test_" in filename
 
     # PYTHON: AST Chunking
-    if filename.endswith('.py'):
+    if filename.endswith(".py"):
         try:
             tree = ast.parse(code)
-            imports = [ast.unparse(n) for n in tree.body if isinstance(n, (ast.Import, ast.ImportFrom))]
+            imports = [
+                ast.unparse(n)
+                for n in tree.body
+                if isinstance(n, (ast.Import, ast.ImportFrom))
+            ]
             context_str = "\n".join(imports)
             for node in tree.body:
-                if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                if isinstance(
+                    node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+                ):
                     node_copy = ast.parse(ast.unparse(node)).body[0]
                     placeholder = "... # [Expert HA 2026 Implementation]"
 
                     if isinstance(node_copy, ast.ClassDef):
                         for item in node_copy.body:
-                            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                                item.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+                            if isinstance(
+                                item, (ast.FunctionDef, ast.AsyncFunctionDef)
+                            ):
+                                item.body = [
+                                    ast.Expr(value=ast.Constant(value=placeholder))
+                                ]
                     else:
-                        node_copy.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+                        node_copy.body = [
+                            ast.Expr(value=ast.Constant(value=placeholder))
+                        ]
 
-                    fragments.append({
-                        "name": node.name,
-                        "type": "python",
-                        "subtype": "test" if is_test else "code",
-                        "skeleton": ast.unparse(node_copy),
-                        "original": ast.unparse(node),
-                        "context": context_str,
-                        "virtual_filename": filename,
-                    })
+                    fragments.append(
+                        {
+                            "name": node.name,
+                            "type": "python",
+                            "subtype": "test" if is_test else "code",
+                            "skeleton": ast.unparse(node_copy),
+                            "original": ast.unparse(node),
+                            "context": context_str,
+                            "virtual_filename": filename,
+                        }
+                    )
         except Exception:
             pass
 
     # MARKDOWN: Contextual chunking
-    elif filename.endswith('.md') or filename == 'README':
+    elif filename.endswith(".md") or filename == "README":
         if len(code) > 12000:
-            headers = re.split(r'(^#{1,2} .*)', code, flags=re.MULTILINE)
+            headers = re.split(r"(^#{1,2} .*)", code, flags=re.MULTILINE)
             for i in range(1, len(headers), 2):
                 header = headers[i]
                 body = headers[i + 1] if i + 1 < len(headers) else ""
                 if len(body.strip()) > 100:
-                    fragments.append({
-                        "name": header.strip("# ").strip(),
-                        "type": "readme",
-                        "subtype": "doc",
-                        "skeleton": f"{header}\n[Detailed Technical Documentation]",
-                        "original": f"{header}{body}",
-                        "context": "HA Documentation",
-                        "virtual_filename": filename,
-                    })
+                    fragments.append(
+                        {
+                            "name": header.strip("# ").strip(),
+                            "type": "readme",
+                            "subtype": "doc",
+                            "skeleton": f"{header}\n[Detailed Technical Documentation]",
+                            "original": f"{header}{body}",
+                            "context": "HA Documentation",
+                            "virtual_filename": filename,
+                        }
+                    )
         else:
-            fragments.append({
-                "name": f"Full Documentation: {filename}",
-                "type": "readme",
-                "subtype": "doc",
-                "skeleton": f"# {filename}\n[Generate full technical documentation]",
-                "original": code,
-                "context": "HA Documentation",
-                "virtual_filename": filename,
-            })
+            fragments.append(
+                {
+                    "name": f"Full Documentation: {filename}",
+                    "type": "readme",
+                    "subtype": "doc",
+                    "skeleton": f"# {filename}\n[Generate full technical documentation]",
+                    "original": code,
+                    "context": "HA Documentation",
+                    "virtual_filename": filename,
+                }
+            )
     return fragments
 
 
@@ -371,7 +405,10 @@ def get_fragments(filename: str, code: str) -> List[Dict]:
 # LDI VALIDATION (V17.2 Dynamic — ported from V10)
 # ══════════════════════════════════════════════════════════════════════
 
-def validate_ldi(code_len: int, reasoning_len: int, f_subtype: str) -> Tuple[bool, float, str]:
+
+def validate_ldi(
+    code_len: int, reasoning_len: int, f_subtype: str
+) -> Tuple[bool, float, str]:
     """Validate Length-Density Index: code vs reasoning ratio."""
     if reasoning_len == 0:
         return False, 0.0, "Zero reasoning"
@@ -399,7 +436,10 @@ def validate_ldi(code_len: int, reasoning_len: int, f_subtype: str) -> Tuple[boo
 # EXAMPLE TYPE ASSIGNMENT
 # ══════════════════════════════════════════════════════════════════════
 
-def assign_example_type(frag: Dict, has_legacy: bool = False) -> Tuple[str, Optional[str]]:
+
+def assign_example_type(
+    frag: Dict, has_legacy: bool = False
+) -> Tuple[str, Optional[str]]:
     """Assign type by V10 distribution: 50% nominal, 30% contrast, 20% error_recovery.
 
     ANTI-SCHIZOPHRENIA FILTER:
@@ -425,6 +465,7 @@ def assign_example_type(frag: Dict, has_legacy: bool = False) -> Tuple[str, Opti
 # EXTRACTION & PYDANTIC VALIDATION
 # ══════════════════════════════════════════════════════════════════════
 
+
 def extract_and_validate(text: str) -> Tuple[Optional[ToolCallModel], str]:
     """Extract reasoning and strictly validate <tool_call> JSON."""
     reasoning = ""
@@ -448,7 +489,10 @@ def extract_and_validate(text: str) -> Tuple[Optional[ToolCallModel], str]:
 # CHECKPOINT / RESUME
 # ══════════════════════════════════════════════════════════════════════
 
-def make_checkpoint_key(frag_name: str, virtual_filename: str, rep: Optional[int] = None) -> str:
+
+def make_checkpoint_key(
+    frag_name: str, virtual_filename: str, rep: Optional[int] = None
+) -> str:
     """Deterministic key (does NOT depend on example_type/evol_difficulty)."""
     raw = f"{frag_name}::{virtual_filename}"
     if rep is not None:
@@ -476,7 +520,9 @@ def load_checkpoint(output_path: Path, rejected_path: Path) -> set:
                         if ck:
                             done_keys.add(ck)
                     except json.JSONDecodeError:
-                        logger.warning("Checkpoint: invalid JSON in %s line %d", path, line_num)
+                        logger.warning(
+                            "Checkpoint: invalid JSON in %s line %d", path, line_num
+                        )
         except Exception as e:
             logger.warning("Checkpoint: error reading %s: %s", path, e)
     return done_keys
@@ -486,8 +532,10 @@ def load_checkpoint(output_path: Path, rejected_path: Path) -> set:
 # ASYNC-SAFE FILE WRITERS
 # ══════════════════════════════════════════════════════════════════════
 
+
 class AsyncFileWriter:
     """Async-safe JSONL writer with asyncio lock."""
+
     def __init__(self, path: Path):
         self.path = path
         self._lock = asyncio.Lock()
@@ -503,8 +551,10 @@ class AsyncFileWriter:
 # PROGRESS TRACKER
 # ══════════════════════════════════════════════════════════════════════
 
+
 class ProgressTracker:
     """Async-safe progress tracker with tqdm."""
+
     def __init__(self, total: int):
         self.total = total
         self.accepted = 0
@@ -515,17 +565,30 @@ class ProgressTracker:
         self.gold_injected = 0
         self.gold_skipped = 0
         self._lock = asyncio.Lock()
-        self.pbar = tqdm(total=total, desc="\U0001f680 V10-MT Generating", unit="sample",
-                         ncols=220, dynamic_ncols=False)
+        self.pbar = tqdm(
+            total=total,
+            desc="\U0001f680 V10-MT Generating",
+            unit="sample",
+            ncols=220,
+            dynamic_ncols=False,
+        )
 
-    async def record(self, status: str, example_type: str, difficulty: Optional[str],
-                     gold_injected: bool = True, has_legacy: bool = False):
+    async def record(
+        self,
+        status: str,
+        example_type: str,
+        difficulty: Optional[str],
+        gold_injected: bool = True,
+        has_legacy: bool = False,
+    ):
         async with self._lock:
             if status == "accepted":
                 self.accepted += 1
                 self.by_type[example_type] = self.by_type.get(example_type, 0) + 1
                 if difficulty:
-                    self.by_difficulty[difficulty] = self.by_difficulty.get(difficulty, 0) + 1
+                    self.by_difficulty[difficulty] = (
+                        self.by_difficulty.get(difficulty, 0) + 1
+                    )
                 if has_legacy:
                     self.legacy_detected += 1
                 if gold_injected:
@@ -548,9 +611,9 @@ class ProgressTracker:
 
     def summary(self) -> str:
         lines = [
-            f"\n{'='*60}",
+            f"\n{'=' * 60}",
             f"\U0001f4ca SUMMARY V10-MT (MULTI-TURN DIVERSIFIED)",
-            f"{'='*60}",
+            f"{'=' * 60}",
             f"  Total processed: {self.accepted + self.rejected}",
             f"  \u2705 Accepted:      {self.accepted}",
             f"  \u274c Rejected:      {self.rejected}",
@@ -569,7 +632,7 @@ class ProgressTracker:
             f"    Legacy detected in:  {self.legacy_detected} fragments",
             f"    Gold Injection OK:   {self.gold_injected} (clean 2026 code)",
             f"    Gold Injection SKIP: {self.gold_skipped} (legacy → model generates 2026)",
-            f"{'='*60}",
+            f"{'=' * 60}",
         ]
         return "\n".join(lines)
 
@@ -577,6 +640,7 @@ class ProgressTracker:
 # ══════════════════════════════════════════════════════════════════════
 # ASYNC MULTI-TURN GENERATION  (core engine)
 # ══════════════════════════════════════════════════════════════════════
+
 
 async def generate_multiturn_sample_async(
     client: AsyncOpenAI,
@@ -641,12 +705,16 @@ async def generate_multiturn_sample_async(
                     raise ValueError("JSON Validation Failed in Tool Call (Turn 2)")
 
                 if tool_call.name != "write_to_file":
-                    raise ValueError(f"Expected write_to_file, got {tool_call.name} (Turn 2)")
+                    raise ValueError(
+                        f"Expected write_to_file, got {tool_call.name} (Turn 2)"
+                    )
 
                 # LDI validation
                 code_content = tool_call.arguments.get("content", "")
                 code_len = len(code_content)
-                is_valid, ldi, msg = validate_ldi(code_len, len(reasoning1), frag['subtype'])
+                is_valid, ldi, msg = validate_ldi(
+                    code_len, len(reasoning1), frag["subtype"]
+                )
                 if not is_valid:
                     raise ValueError(f"LDI Fail: {msg}")
 
@@ -654,29 +722,40 @@ async def generate_multiturn_sample_async(
                 gold_injected = False
                 if not has_legacy:
                     # Clean 2026 code → safe Gold Injection
-                    tool_call.arguments["content"] = frag['original']
+                    tool_call.arguments["content"] = frag["original"]
                     gold_injected = True
                 else:
                     # Legacy detected → keep model's 2026 code
                     logger.debug(
                         "⚠️  GOLD SKIP [%s] legacy detected: %s",
-                        frag['name'],
+                        frag["name"],
                         "; ".join(legacy_patterns or [])[:200],
                     )
 
                 # Rebuild Turn 2 (assistant with tool_call post-Gold-Injection)
-                tool_json_injected = {"name": tool_call.name, "arguments": tool_call.arguments}
+                tool_json_injected = {
+                    "name": tool_call.name,
+                    "arguments": tool_call.arguments,
+                }
                 turn2_content = (
                     f"{reasoning1}\n</think>"
                     f"<tool_call>\n{json.dumps(tool_json_injected, ensure_ascii=False)}\n</tool_call>"
                 )
 
                 # Turn 3: Simulated tool response
-                turn3_content = json.dumps({
-                    "status": "success",
-                    "message": f"Archivo {tool_call.arguments.get('path', 'unknown')} escrito correctamente.",
-                    "bytes_written": len(json.dumps(tool_call.arguments.get('content', ''), ensure_ascii=False)),
-                }, ensure_ascii=False)
+                turn3_content = json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Archivo {tool_call.arguments.get('path', 'unknown')} escrito correctamente.",
+                        "bytes_written": len(
+                            json.dumps(
+                                tool_call.arguments.get("content", ""),
+                                ensure_ascii=False,
+                            )
+                        ),
+                    },
+                    ensure_ascii=False,
+                )
 
                 # ══ LLM CALL 2: Closure (attempt_completion) ══
                 response2 = await client.chat.completions.create(
@@ -697,10 +776,15 @@ async def generate_multiturn_sample_async(
                 if not closure_call:
                     raise ValueError("JSON Validation Failed in Closure (Turn 4)")
                 if closure_call.name != "attempt_completion":
-                    raise ValueError(f"Expected attempt_completion, got {closure_call.name} (Turn 4)")
+                    raise ValueError(
+                        f"Expected attempt_completion, got {closure_call.name} (Turn 4)"
+                    )
 
                 # Rebuild Turn 4
-                closure_json = {"name": closure_call.name, "arguments": closure_call.arguments}
+                closure_json = {
+                    "name": closure_call.name,
+                    "arguments": closure_call.arguments,
+                }
                 turn4_content = (
                     f"{reasoning2}\n</think>"
                     f"<tool_call>\n{json.dumps(closure_json, ensure_ascii=False)}\n</tool_call>"
@@ -711,7 +795,7 @@ async def generate_multiturn_sample_async(
                     f"{frag['name']}_{example_type}_{evol_difficulty or ''}".encode()
                 ).hexdigest()[:12]
                 sample_id = f"v10mt_{example_type}_{frag_hash}"
-                ck_key = make_checkpoint_key(frag['name'], frag['virtual_filename'])
+                ck_key = make_checkpoint_key(frag["name"], frag["virtual_filename"])
 
                 # filter_text (for downstream dedup)
                 filter_text = f"{reasoning1}\n\n{turn2_content.split('</think>')[-1]}"
@@ -732,8 +816,8 @@ async def generate_multiturn_sample_async(
                             "example_type": example_type,
                             "evol_difficulty": evol_difficulty,
                             "ldi": ldi,
-                            "fragment_name": frag['name'],
-                            "source_file": frag['virtual_filename'],
+                            "fragment_name": frag["name"],
+                            "source_file": frag["virtual_filename"],
                             "gold_injected": gold_injected,
                             "legacy_detected": has_legacy,
                             "legacy_patterns": legacy_patterns or [],
@@ -753,15 +837,16 @@ async def generate_multiturn_sample_async(
         "status": "rejected",
         "reason": f"Failed after {MAX_RETRIES} tries. Last: {last_error}",
         "raw_full_response": last_response,
-        "fragment_name": frag['name'],
+        "fragment_name": frag["name"],
         "example_type": example_type,
-        "checkpoint_key": make_checkpoint_key(frag['name'], frag['virtual_filename']),
+        "checkpoint_key": make_checkpoint_key(frag["name"], frag["virtual_filename"]),
     }
 
 
 # ══════════════════════════════════════════════════════════════════════
 # MAIN PIPELINE: PROCESS FRAGMENT
 # ══════════════════════════════════════════════════════════════════════
+
 
 async def process_fragment(
     client: AsyncOpenAI,
@@ -776,21 +861,28 @@ async def process_fragment(
 ):
     """Process a fragment: detect legacy, assign type, generate multi-turn, write."""
     # Detect legacy patterns in the fragment's gold code
-    legacy_patterns = detect_legacy_patterns(frag.get('original', ''))
+    legacy_patterns = detect_legacy_patterns(frag.get("original", ""))
     has_legacy = len(legacy_patterns) > 0
 
     if has_legacy:
         logger.debug(
             "\U0001f50d LEGACY detected in '%s': %s",
-            frag['name'], "; ".join(legacy_patterns)[:200],
+            frag["name"],
+            "; ".join(legacy_patterns)[:200],
         )
 
     # Assign type (if legacy → force contrast/error_recovery)
     example_type, evol_difficulty = assign_example_type(frag, has_legacy=has_legacy)
 
     result = await generate_multiturn_sample_async(
-        client, model, frag, example_type, evol_difficulty,
-        master, changelog, semaphore,
+        client,
+        model,
+        frag,
+        example_type,
+        evol_difficulty,
+        master,
+        changelog,
+        semaphore,
         has_legacy=has_legacy,
         legacy_patterns=legacy_patterns,
     )
@@ -799,20 +891,25 @@ async def process_fragment(
         await writer_ok.write(result["sample"])
         gold_injected = result["sample"]["metadata"].get("gold_injected", True)
     else:
-        await writer_bad.write({
-            "frag": result.get("fragment_name", "unknown"),
-            "type": result.get("example_type", "unknown"),
-            "reason": result["reason"],
-            "legacy_detected": has_legacy,
-            "legacy_patterns": legacy_patterns,
-            "checkpoint_key": result.get("checkpoint_key", ""),
-            "full_response": result.get("raw_full_response", "")[:5000],
-        })
+        await writer_bad.write(
+            {
+                "frag": result.get("fragment_name", "unknown"),
+                "type": result.get("example_type", "unknown"),
+                "reason": result["reason"],
+                "legacy_detected": has_legacy,
+                "legacy_patterns": legacy_patterns,
+                "checkpoint_key": result.get("checkpoint_key", ""),
+                "full_response": result.get("raw_full_response", "")[:5000],
+            }
+        )
         gold_injected = False
 
     await tracker.record(
-        result["status"], example_type, evol_difficulty,
-        gold_injected=gold_injected, has_legacy=has_legacy,
+        result["status"],
+        example_type,
+        evol_difficulty,
+        gold_injected=gold_injected,
+        has_legacy=has_legacy,
     )
 
 
@@ -820,11 +917,14 @@ async def process_fragment(
 # MAIN ASYNC
 # ══════════════════════════════════════════════════════════════════════
 
+
 async def main_async(args):
     """Async entry point: load docs, collect fragments, run pipeline."""
     # Load master documents (fail-fast)
     master, changelog = load_master_docs(args._gap_dir)
-    logger.info("Master Guide: %d chars | Changelog: %d chars", len(master), len(changelog))
+    logger.info(
+        "Master Guide: %d chars | Changelog: %d chars", len(master), len(changelog)
+    )
 
     # Configure async client
     client = AsyncOpenAI(base_url=args.base_url, api_key=args.api_key)
@@ -833,14 +933,14 @@ async def main_async(args):
     raw_dir = Path(args.raw_dir)
     all_files = sorted(list(raw_dir.glob("*.txt")))
     if args.limit:
-        all_files = all_files[:args.limit]
+        all_files = all_files[: args.limit]
 
     logger.info("Scanning %d files in %s...", len(all_files), raw_dir)
 
     all_fragments = []
     for file_path in all_files:
         try:
-            chunks = get_file_chunks(file_path.read_text(errors='ignore'))
+            chunks = get_file_chunks(file_path.read_text(errors="ignore"))
             for v_name, code in chunks:
                 all_fragments.extend(get_fragments(v_name, code))
         except Exception as e:
@@ -850,7 +950,7 @@ async def main_async(args):
 
     # Test mode
     if args.test:
-        all_fragments = all_fragments[:args.test]
+        all_fragments = all_fragments[: args.test]
         logger.info("\U0001f9ea TEST MODE: Limited to %d fragments", args.test)
 
     if not all_fragments:
@@ -858,11 +958,14 @@ async def main_async(args):
         return
 
     # Pre-scan: count fragments with legacy
-    legacy_count = sum(1 for f in all_fragments if detect_legacy_patterns(f.get('original', '')))
+    legacy_count = sum(
+        1 for f in all_fragments if detect_legacy_patterns(f.get("original", ""))
+    )
     clean_count = len(all_fragments) - legacy_count
     logger.info(
         "\U0001f6e1\ufe0f  Pre-scan: %d clean fragments (Gold OK) | %d with legacy (Gold SKIP)",
-        clean_count, legacy_count,
+        clean_count,
+        legacy_count,
     )
 
     # Configure output
@@ -878,19 +981,25 @@ async def main_async(args):
     if args.resume:
         output_path = Path(args.resume)
         stem = output_path.stem
-        rejected_path = output_path.parent / f"{stem.replace('diversified', 'rejected')}.jsonl"
+        rejected_path = (
+            output_path.parent / f"{stem.replace('diversified', 'rejected')}.jsonl"
+        )
         if not rejected_path.exists():
             rejected_path = output_path.parent / f"{stem}_rejected.jsonl"
         done_keys = load_checkpoint(output_path, rejected_path)
         if done_keys:
             before = len(all_fragments)
             all_fragments = [
-                f for f in all_fragments
-                if make_checkpoint_key(f['name'], f['virtual_filename']) not in done_keys
+                f
+                for f in all_fragments
+                if make_checkpoint_key(f["name"], f["virtual_filename"])
+                not in done_keys
             ]
             logger.info(
                 "\U0001f504 RESUME: %d already processed, %d pending (of %d total)",
-                before - len(all_fragments), len(all_fragments), before,
+                before - len(all_fragments),
+                len(all_fragments),
+                before,
             )
             if not all_fragments:
                 logger.info("\u2705 All fragments already processed. Nothing to do.")
@@ -903,20 +1012,31 @@ async def main_async(args):
 
     logger.info(
         "\U0001f680 V10-MT MULTI-TURN DIVERSIFIED: %d fragments | %d workers | model: %s",
-        len(all_fragments), args.workers, args.model,
+        len(all_fragments),
+        args.workers,
+        args.model,
     )
     logger.info("\U0001f4c1 Output: %s", output_path)
     logger.info("\U0001f4c1 Rejected: %s", rejected_path)
     logger.info(
         "\U0001f4ca Target distribution: Nominal %.0f%% | Contrast %.0f%% | Error Recovery %.0f%%",
-        DIST_NOMINAL * 100, DIST_CONTRAST * 100, DIST_ERROR_RECOVERY * 100,
+        DIST_NOMINAL * 100,
+        DIST_CONTRAST * 100,
+        DIST_ERROR_RECOVERY * 100,
     )
 
     # Launch all tasks
     tasks = [
         process_fragment(
-            client, args.model, frag, master, changelog,
-            semaphore, writer_ok, writer_bad, tracker,
+            client,
+            args.model,
+            frag,
+            master,
+            changelog,
+            semaphore,
+            writer_ok,
+            writer_bad,
+            tracker,
         )
         for frag in all_fragments
     ]
@@ -930,6 +1050,7 @@ async def main_async(args):
 # ══════════════════════════════════════════════════════════════════════
 # CLI
 # ══════════════════════════════════════════════════════════════════════
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -951,54 +1072,86 @@ Examples:
 
   # Custom model and output
   python agentic_gen.py --model qwen3-32b --output data/my_dataset.jsonl
-        """
+        """,
     )
     parser.add_argument(
-        "--test", type=int, default=None, metavar="N",
+        "--test",
+        type=int,
+        default=None,
+        metavar="N",
         help="\U0001f9ea Test mode: process only N fragments",
     )
     parser.add_argument(
-        "--limit", type=int, default=None, metavar="N",
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
         help="Limit to N raw input files",
     )
     parser.add_argument(
-        "--workers", type=int, default=DEFAULT_WORKERS, metavar="W",
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        metavar="W",
         help=f"Async parallel workers (default: {DEFAULT_WORKERS})",
     )
     parser.add_argument(
-        "--model", type=str, default=DEFAULT_MODEL,
+        "--model",
+        type=str,
+        default=DEFAULT_MODEL,
         help=f"Inference model (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
-        "--base-url", type=str, default=DEFAULT_BASE_URL,
+        "--base-url",
+        type=str,
+        default=DEFAULT_BASE_URL,
         help=f"vLLM server URL (default: {DEFAULT_BASE_URL})",
     )
     parser.add_argument(
-        "--api-key", type=str, default=DEFAULT_API_KEY,
+        "--api-key",
+        type=str,
+        default=DEFAULT_API_KEY,
         help="Server API key",
     )
     parser.add_argument(
-        "--output", type=str, default=None, metavar="PATH",
+        "--output",
+        type=str,
+        default=None,
+        metavar="PATH",
         help="Custom JSONL output path",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Seed for reproducibility (default: 42)",
     )
     parser.add_argument(
-        "--resume", type=str, default=None, metavar="PATH",
+        "--resume",
+        type=str,
+        default=None,
+        metavar="PATH",
         help="\U0001f504 Resume: path to previous output JSONL.",
     )
     parser.add_argument(
-        "--gap-dir", type=str, default=None, metavar="DIR",
+        "--gap-dir",
+        type=str,
+        default=None,
+        metavar="DIR",
         help="Directory containing master documents (default: data/Gap relative to project root)",
     )
     parser.add_argument(
-        "--taxonomy", type=str, default=None, metavar="PATH",
+        "--taxonomy",
+        type=str,
+        default=None,
+        metavar="PATH",
         help="Path to agentic_taxonomy.yaml (default: auto-resolved from project root)",
     )
     parser.add_argument(
-        "--raw-dir", type=str, default="data/raw/homeassistant-main_txt", metavar="DIR",
+        "--raw-dir",
+        type=str,
+        default="data/raw/homeassistant-main_txt",
+        metavar="DIR",
         help="Input directory with packed .txt files (default: data/raw/homeassistant-main_txt)",
     )
     return parser.parse_args()
@@ -1015,7 +1168,14 @@ def main():
     if args.taxonomy:
         taxonomy_path = Path(args.taxonomy)
     else:
-        taxonomy_path = base_dir / "configs" / "taxonomy" / "home_assistant" / "hacs_expert" / "agentic_taxonomy.yaml"
+        taxonomy_path = (
+            base_dir
+            / "configs"
+            / "taxonomy"
+            / "home_assistant"
+            / "hacs_expert"
+            / "agentic_taxonomy.yaml"
+        )
 
     if not taxonomy_path.exists():
         raise FileNotFoundError(
@@ -1024,8 +1184,12 @@ def main():
         )
 
     load_taxonomy(taxonomy_path)
-    logger.info("Taxonomy loaded: %d error templates, %d legacy patterns, %d tools",
-                len(HA_ERROR_TEMPLATES), len(LEGACY_2023_PATTERNS), len(TOOLS_DEFINITION))
+    logger.info(
+        "Taxonomy loaded: %d error templates, %d legacy patterns, %d tools",
+        len(HA_ERROR_TEMPLATES),
+        len(LEGACY_2023_PATTERNS),
+        len(TOOLS_DEFINITION),
+    )
 
     # Resolve gap directory
     if args.gap_dir:

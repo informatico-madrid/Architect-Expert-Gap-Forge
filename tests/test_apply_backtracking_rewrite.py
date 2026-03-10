@@ -13,12 +13,20 @@ from src.curation import backtracking_rewriter as br
 
 def test_apply_backtracking_rewrite_retry_and_success(monkeypatch):
     # mark as legacy_detected so the pipeline applies full_backtracking
-    rec = {"id": "retry", "conversation": [{"role": "assistant", "content": "<think>old</think>code"}], "metadata": {"legacy_detected": True}}
+    rec = {
+        "id": "retry",
+        "conversation": [{"role": "assistant", "content": "<think>old</think>code"}],
+        "metadata": {"legacy_detected": True},
+    }
     cfg = br.BacktrackingConfig()
 
     # Client will raise once, then return a fenced block that sanitizes to empty,
     # then finally return a valid reasoning.
-    responses = [RuntimeError("fail"), "</think>```python\nprint('x')\n```", "</think>Final reasoning"]
+    responses = [
+        RuntimeError("fail"),
+        "</think>```python\nprint('x')\n```",
+        "</think>Final reasoning",
+    ]
 
     class FakeClient:
         def __init__(self, reps):
@@ -52,7 +60,11 @@ def test_apply_backtracking_rewrite_retry_and_success(monkeypatch):
 
 def test_apply_backtracking_rewrite_rejection(monkeypatch):
     # Make a record that triggers full_backtracking (legacy_detected=True)
-    rec = {"id": "rej", "conversation": [{"role": "assistant", "content": "<think>abc</think>rest"}], "metadata": {"legacy_detected": True}}
+    rec = {
+        "id": "rej",
+        "conversation": [{"role": "assistant", "content": "<think>abc</think>rest"}],
+        "metadata": {"legacy_detected": True},
+    }
     cfg = br.BacktrackingConfig()
 
     # Client returns a resolution containing deprecated_api()

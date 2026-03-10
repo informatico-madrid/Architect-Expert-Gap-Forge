@@ -41,19 +41,19 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 
+from src.utils.extractors import get_adapter
+from src.utils.extractors.base import ParseError
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO, format="[Processor] %(levelname)s: %(message)s"
-)
-logger = logging.getLogger("AEGF.Processor")
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Quality / size constants
@@ -64,11 +64,22 @@ MAX_SIZE_FRONTEND = 60_000
 BACKEND_REPOS: Set[str] = {"core", "integration", "alarmo"}
 
 GOLD_PATTERNS: List[str] = [
-    "ConfigFlow", "DataUpdateCoordinator", "SensorEntityDescription",
-    "LitElement", "CoordinatorEntity", "SensorEntity", "BinarySensorEntity",
-    "SwitchEntity", "ClimateEntity", "async_add_entities", "ENTITY_ID_FORMAT",
-    "async_setup_entry", "DOMAIN", "async_setup_platform",
-    "async_add_devices", "async_remove_devices",
+    "ConfigFlow",
+    "DataUpdateCoordinator",
+    "SensorEntityDescription",
+    "LitElement",
+    "CoordinatorEntity",
+    "SensorEntity",
+    "BinarySensorEntity",
+    "SwitchEntity",
+    "ClimateEntity",
+    "async_add_entities",
+    "ENTITY_ID_FORMAT",
+    "async_setup_entry",
+    "DOMAIN",
+    "async_setup_platform",
+    "async_add_devices",
+    "async_remove_devices",
 ]
 
 # Minimum size (chars) for a file to be TIPO 3 (LOGIC_ONLY) instead of TIPO 4
@@ -76,14 +87,21 @@ LOGIC_ONLY_MIN_CHARS = 800
 
 # Architecture / anchor filenames — always captured for TIPO 4 blueprint
 ANCHOR_FILENAMES: Set[str] = {
-    "manifest.json", "const.py", "services.yaml", "strings.json",
-    "icons.json", "hacs.json",
+    "manifest.json",
+    "const.py",
+    "services.yaml",
+    "strings.json",
+    "icons.json",
+    "hacs.json",
 }
 
 # Governance / coding-standards filenames — captured as TIPO 5 at repo root.
 # These files encode per-repository rules that the model must respect.
 GOVERNANCE_FILENAMES: Set[str] = {
-    "CLAUDE.md", "AGENTS.md", ".cursorrules", ".clinerules",
+    "CLAUDE.md",
+    "AGENTS.md",
+    ".cursorrules",
+    ".clinerules",
 }
 
 
@@ -93,8 +111,9 @@ GOVERNANCE_FILENAMES: Set[str] = {
 @dataclass
 class ModuleFile:
     """A single file within a discovered module."""
+
     path: Path
-    role: str = ""        # implementation | test | config | anchor | readme
+    role: str = ""  # implementation | test | config | anchor | readme
     content: str = ""
     size: int = 0
 
@@ -106,9 +125,10 @@ class Module:
     Immutable canonical record for module metadata. Use immutable tuples for
     `files` and `neighbors` to prevent accidental mutation at runtime.
     """
+
     name: str
     path: Path
-    anchor_type: str = ""          # manifest | init | infrastructure
+    anchor_type: str = ""  # manifest | init | infrastructure
     files: Tuple[ModuleFile, ...] = field(default_factory=tuple)
     manifest: dict = field(default_factory=dict)
     neighbors: Tuple[str, ...] = field(default_factory=tuple)
@@ -122,7 +142,9 @@ class ProcessingConfig(BaseModel):
 
     base_dir: Path = Field(default_factory=lambda: Path.cwd())
     raw_subdir: str = Field(..., description="Root directory for raw repository clones")
-    output_subdir: str = Field(..., description="Target directory for packaged .txt files")
+    output_subdir: str = Field(
+        ..., description="Target directory for packaged .txt files"
+    )
     category: str = Field(..., description="Category folder to process")
     output_category: Optional[str] = None
     segment_path: Optional[str] = None
@@ -132,6 +154,26 @@ class ProcessingConfig(BaseModel):
         default={".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
     )
     backend_repos: Set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
+    profile: str = Field(
+        default="homeassistant", description="Profile name for extractor adapter"
+    )
+    on_parse_error: str = Field(
+        default="abort", description="Policy for parse errors: abort, skip, or fallback"
+    )
+
+    # Module discovery configuration
+    module_discovery_strategy: str = Field(
+        default="manifest",
+        description="Strategy for discovering modules: manifest, init, directory, manual_mapping",
+    )
+    anchor_filenames: Set[str] = Field(
+        default_factory=lambda: set(ANCHOR_FILENAMES),
+        description="Filenames that serve as module anchors",
+    )
+    module_overrides: Optional[Dict[str, Dict[str, Any]]] = Field(
+        default=None,
+        description="Manual overrides for module discovery: {module_name: {enabled, path, anchor_type}}",
+    )
 
     @property
     def final_context_prefix(self) -> str:
@@ -153,6 +195,10 @@ class RepoProcessor:
         self.target_root = cfg.base_dir / cfg.output_subdir / target_folder
         self.target_root.mkdir(parents=True, exist_ok=True)
 
+        # Initialize the extractor adapter for the given profile
+        self._adapter = get_adapter(cfg.profile)
+        self._on_parse_error = cfg.on_parse_error
+
         self._stats = {
             "TYPE1_FUNCTIONAL_UNIT": 0,
             "TYPE3_LOGIC_ONLY": 0,
@@ -161,6 +207,8 @@ class RepoProcessor:
             "skipped_size": 0,
             "skipped_gold": 0,
             "modules_found": 0,
+            "parse_errors": 0,
+            "parse_errors_aborted": 0,
         }
 
     # ------------------------------------------------------------------
@@ -168,11 +216,11 @@ class RepoProcessor:
     # ------------------------------------------------------------------
     def run(self) -> None:
         if not self.source_root.exists():
-            logger.error(f"Source root missing: {self.source_root}")
+            logger.error("Source root missing: %s", self.source_root)
             return
 
-        logger.info(f"Processing category: {self.cfg.category}")
-        logger.info(f"Output: {self.target_root}")
+        logger.info("Processing category: %s", self.cfg.category)
+        logger.info("Output: %s", self.target_root)
 
         for owner_dir in sorted(self.source_root.iterdir()):
             if not owner_dir.is_dir():
@@ -182,9 +230,10 @@ class RepoProcessor:
                     continue
                 self._process_repository(owner_dir.name, repo_dir)
 
-        logger.info("Processing complete — " + " | ".join(
-            f"{k}={v}" for k, v in self._stats.items()
-        ))
+        logger.info(
+            "Processing complete — "
+            + " | ".join(f"{k}={v}" for k, v in self._stats.items())
+        )
 
     # ------------------------------------------------------------------
     # Repository dispatch
@@ -192,7 +241,8 @@ class RepoProcessor:
     def _process_repository(self, owner: str, repo_path: Path) -> None:
         repo_name = repo_path.name
         size_limit = (
-            MAX_SIZE_BACKEND if repo_name in self.cfg.backend_repos
+            MAX_SIZE_BACKEND
+            if repo_name in self.cfg.backend_repos
             else MAX_SIZE_FRONTEND
         )
         prefix = f"{owner}_{repo_name}"
@@ -208,8 +258,10 @@ class RepoProcessor:
                 for sub_dir in sorted(split_target.iterdir()):
                     if sub_dir.is_dir():
                         self._process_module_dir(
-                            sub_dir, repo_path,
-                            f"{prefix}_{sub_dir.name}", size_limit,
+                            sub_dir,
+                            repo_path,
+                            f"{prefix}_{sub_dir.name}",
+                            size_limit,
                             repo_prefix=prefix,
                         )
                 return
@@ -218,7 +270,9 @@ class RepoProcessor:
         modules = self._discover_modules(repo_path)
         for mod in modules:
             mod_prefix = f"{prefix}_{mod.name}"
-            self._emit_module(mod, repo_path, mod_prefix, size_limit, repo_prefix=prefix)
+            self._emit_module(
+                mod, repo_path, mod_prefix, size_limit, repo_prefix=prefix
+            )
 
     # ------------------------------------------------------------------
     # Module discovery
@@ -242,7 +296,11 @@ class RepoProcessor:
                 manifest_data = json.loads(manifest_path.read_text(errors="ignore"))
             except Exception:
                 manifest_data = {}
-            modules.append(self._build_module(mod_dir, anchor_type="manifest", manifest=manifest_data))
+            modules.append(
+                self._build_module(
+                    mod_dir, anchor_type="manifest", manifest=manifest_data
+                )
+            )
 
         # 2. __init__.py = package anchor (only if not already covered by manifest)
         for init_path in root.rglob("__init__.py"):
@@ -257,20 +315,26 @@ class RepoProcessor:
         self._stats["modules_found"] += len(modules)
         return modules
 
-    def _build_module(self, mod_dir: Path, anchor_type: str, manifest: Optional[dict] = None) -> Module:
+    def _build_module(
+        self, mod_dir: Path, anchor_type: str, manifest: Optional[dict] = None
+    ) -> Module:
         """Scan the directory of a discovered module and return an immutable Module record."""
         files_list: List[ModuleFile] = []
         all_names: List[str] = []
         for f in sorted(mod_dir.iterdir()):
-            if f.is_file() and f.suffix in (self.cfg.extensions | {".json", ".yaml", ".yml"}):
+            if f.is_file() and f.suffix in (
+                self.cfg.extensions | {".json", ".yaml", ".yml"}
+            ):
                 if self._is_ignored(f):
                     continue
                 all_names.append(f.name)
-                files_list.append(ModuleFile(
-                    path=f,
-                    role=self._classify_role(f),
-                    size=f.stat().st_size,
-                ))
+                files_list.append(
+                    ModuleFile(
+                        path=f,
+                        role=self._classify_role(f),
+                        size=f.stat().st_size,
+                    )
+                )
 
         return Module(
             name=mod_dir.name,
@@ -285,7 +349,11 @@ class RepoProcessor:
     # Segment-path shortcut  (e.g. homeassistant/components/<component>)
     # ------------------------------------------------------------------
     def _process_module_dir(
-        self, mod_dir: Path, repo_root: Path, prefix: str, size_limit: int,
+        self,
+        mod_dir: Path,
+        repo_root: Path,
+        prefix: str,
+        size_limit: int,
         repo_prefix: str = "",
     ) -> None:
         """Process a single segmented component directory as a module."""
@@ -293,7 +361,9 @@ class RepoProcessor:
         manifest_data: dict = {}
         if anchor == "manifest":
             try:
-                manifest_data = json.loads((mod_dir / "manifest.json").read_text(errors="ignore"))
+                manifest_data = json.loads(
+                    (mod_dir / "manifest.json").read_text(errors="ignore")
+                )
             except Exception:
                 manifest_data = {}
 
@@ -304,7 +374,11 @@ class RepoProcessor:
     # Module emission: generates TIPO 1-4 bundles
     # ------------------------------------------------------------------
     def _emit_module(
-        self, mod: Module, repo_root: Path, prefix: str, size_limit: int,
+        self,
+        mod: Module,
+        repo_root: Path,
+        prefix: str,
+        size_limit: int,
         repo_prefix: str = "",
     ) -> None:
         """For one module, emit all applicable fragment types."""
@@ -339,7 +413,7 @@ class RepoProcessor:
                     role="readme",
                     size=inherited.stat().st_size,
                 )
-                logger.debug(f"[{mod.name}] Inherited README: {inherited}")
+                logger.debug("[%s] Inherited README: %s", mod.name, inherited)
 
         # ------- TIPO 4: MODULE_BLUEPRINT (always first) -------
         # README is always folded into the blueprint when available.
@@ -361,13 +435,41 @@ class RepoProcessor:
                 content = mf.path.read_text(encoding="utf-8", errors="ignore")
                 mf.content = content
             except Exception as e:
-                logger.error(f"Read error {mf.path}: {e}")
+                logger.error("Read error %s: %s", mf.path, e)
                 continue
 
             # Detect local imports for header (needed for all bundle types)
-            local_imports = (
-                self._extract_local_imports(content) if mf.path.suffix == ".py" else []
-            )
+            # Use the adapter to extract dependencies from the file
+            local_imports: List[str] = []
+            dependencies: List[str] = []
+            if mf.path.suffix == ".py":
+                try:
+                    # Per plan: call parse_file first to handle parse errors explicitly
+                    # This follows ParseError-first policy where processor decides the policy
+                    parse_result = self._adapter.parse_file(mf.path)
+                    deps = parse_result.dependencies
+                    # Extract local imports (relative imports) as .py files
+                    local_imports = [
+                        d.name + ".py" for d in deps if d.module_type == "relative"
+                    ]
+                    # All dependencies for the header
+                    dependencies = [d.name for d in deps]
+                except ParseError as e:
+                    self._stats["parse_errors"] += 1
+                    if self._on_parse_error == "abort":
+                        logger.warning(
+                            "Parse error in %s, aborting file: %s", mf.path, e
+                        )
+                        self._stats["parse_errors_aborted"] += 1
+                        continue
+                    elif self._on_parse_error == "skip":
+                        logger.warning(
+                            "Parse error in %s, skipping file: %s", mf.path, e
+                        )
+                        continue
+                    else:
+                        # Fallback: use the old method
+                        local_imports = self._extract_local_imports(content)
 
             # Try TIPO 1 first: if there is an exact matching test, always emit
             # as a FUNCTIONAL_UNIT regardless of MIN_SIZE (teaching tests is valuable).
@@ -375,11 +477,21 @@ class RepoProcessor:
             if test_file:
                 entity_id = f"{prefix}_{mf.path.stem}"
                 header = self._make_arch_header(
-                    mod, mf, local_imports, "FUNCTIONAL_UNIT", repo_prefix,
+                    mod,
+                    mf,
+                    local_imports,
+                    "FUNCTIONAL_UNIT",
+                    repo_prefix,
+                    dependencies=dependencies,
                 )
                 self._write_typed_bundle(
-                    entity_id, "FUNCTIONAL_UNIT",
-                    mf, test_file, mod.path, header, module_dir,
+                    entity_id,
+                    "FUNCTIONAL_UNIT",
+                    mf,
+                    test_file,
+                    mod.path,
+                    header,
+                    module_dir,
                 )
                 self._stats["TYPE1_FUNCTIONAL_UNIT"] += 1
                 continue
@@ -395,13 +507,26 @@ class RepoProcessor:
                 continue
 
             # TIPO 3: emit as standalone if long enough
-            if len(content) >= LOGIC_ONLY_MIN_CHARS and mf.path.name not in ANCHOR_FILENAMES:
+            if (
+                len(content) >= LOGIC_ONLY_MIN_CHARS
+                and mf.path.name not in ANCHOR_FILENAMES
+            ):
                 entity_id = f"{prefix}_{mf.path.stem}"
                 header = self._make_arch_header(
-                    mod, mf, local_imports, "LOGIC_ONLY", repo_prefix,
+                    mod,
+                    mf,
+                    local_imports,
+                    "LOGIC_ONLY",
+                    repo_prefix,
+                    dependencies=dependencies,
                 )
                 self._write_standalone_bundle(
-                    entity_id, "LOGIC_ONLY", mf, mod.path, header, module_dir,
+                    entity_id,
+                    "LOGIC_ONLY",
+                    mf,
+                    mod.path,
+                    header,
+                    module_dir,
                 )
                 self._stats["TYPE3_LOGIC_ONLY"] += 1
 
@@ -409,7 +534,10 @@ class RepoProcessor:
     # TIPO 4 — Blueprint emitter
     # ------------------------------------------------------------------
     def _emit_blueprint(
-        self, mod: Module, anchor_files: List[ModuleFile], prefix: str,
+        self,
+        mod: Module,
+        anchor_files: List[ModuleFile],
+        prefix: str,
         module_dir: Path,
     ) -> None:
         """Write the synthetic MODULE_BLUEPRINT .txt for this module."""
@@ -456,9 +584,7 @@ class RepoProcessor:
                 pass
 
         # VOCABULARY (from const.py)
-        const_file = next(
-            (f for f in anchor_files if f.path.name == "const.py"), None
-        )
+        const_file = next((f for f in anchor_files if f.path.name == "const.py"), None)
         if const_file:
             try:
                 content = const_file.path.read_text(encoding="utf-8", errors="ignore")
@@ -477,7 +603,7 @@ class RepoProcessor:
                 buf.append(content.strip())
                 buf.append("")
             except Exception as e:
-                logger.error(f"Read error {readme_af.path}: {e}")
+                logger.error("Read error %s: %s", readme_af.path, e)
 
         # Remaining anchor files (manifest.json, strings.json, __init__.py, etc.)
         for af in anchor_files:
@@ -489,10 +615,10 @@ class RepoProcessor:
                 buf.append(content.strip())
                 buf.append("")
             except Exception as e:
-                logger.error(f"Read error {af.path}: {e}")
+                logger.error("Read error %s: %s", af.path, e)
 
         out.write_text("\n".join(buf), encoding="utf-8")
-        logger.debug(f"Blueprint written: {out.name}")
+        logger.debug("Blueprint written: %s", out.name)
 
     # ------------------------------------------------------------------
     # Bundle writers
@@ -513,7 +639,8 @@ class RepoProcessor:
             f"=== LOGICAL ENTITY: {entity_id} ===",
             f"Context: {self.cfg.final_context_prefix} Knowledge Base",
             f"Type: {ftype}\n",
-            header, "",
+            header,
+            "",
         ]
         # Logic file
         buf.append(f"--- FILE: {logic.path.name} ---")
@@ -534,10 +661,10 @@ class RepoProcessor:
             buf.append(f"--- FILE: {rel} ---")
             buf.append(ctx_content.strip() + "\n")
         except Exception as e:
-            logger.error(f"Read error {context_path}: {e}")
+            logger.error("Read error %s: %s", context_path, e)
 
         out.write_text("\n".join(buf), encoding="utf-8")
-        logger.debug(f"Bundle [{ftype}]: {out.name}")
+        logger.debug("Bundle [%s]: %s", ftype, out.name)
 
     def _write_standalone_bundle(
         self,
@@ -554,7 +681,8 @@ class RepoProcessor:
             f"=== LOGICAL ENTITY: {entity_id} ===",
             f"Context: {self.cfg.final_context_prefix} Knowledge Base",
             f"Type: {ftype}\n",
-            header, "",
+            header,
+            "",
         ]
         buf.append(f"--- FILE: {logic.path.name} ---")
         if not logic.content:
@@ -564,7 +692,7 @@ class RepoProcessor:
                 pass
         buf.append(logic.content.strip() + "\n")
         out.write_text("\n".join(buf), encoding="utf-8")
-        logger.debug(f"Bundle [{ftype}]: {out.name}")
+        logger.debug("Bundle [%s]: %s", ftype, out.name)
 
     # ------------------------------------------------------------------
     # ARCH_HEADER builder
@@ -576,6 +704,7 @@ class RepoProcessor:
         local_imports: List[str],
         ftype: str,
         repo_prefix: str = "",
+        dependencies: Optional[List[str]] = None,
     ) -> str:
         """Build the [ARCH_HEADER] block for a bundle."""
         lines = [
@@ -585,6 +714,7 @@ class RepoProcessor:
             f"FILE_ROLE: {mf.role}",
             f"FRAGMENT_TYPE: {ftype}",
             f"LOCAL_IMPORTS: {local_imports}",
+            f"DEPENDENCIES: {dependencies or []}",
             f"NEIGHBORS: {mod.neighbors}",
         ]
         return "\n".join(lines)
@@ -593,7 +723,10 @@ class RepoProcessor:
     # Test file locator  (namespace-aware)
     # ------------------------------------------------------------------
     def _find_test(
-        self, logic_file: Path, repo_root: Path, size_limit: int,
+        self,
+        logic_file: Path,
+        repo_root: Path,
+        size_limit: int,
     ) -> Optional[Path]:
         """Find the best test file for a logic .py file.
 
@@ -705,11 +838,11 @@ class RepoProcessor:
                 buf.append(content)
                 buf.append("")
             except Exception as e:
-                logger.warning(f"Governance read error {gf}: {e}")
+                logger.warning("Governance read error %s: %s", gf, e)
 
         out.write_text("\n".join(buf), encoding="utf-8")
         self._stats["TYPE5_GOVERNANCE_RULES"] += 1
-        logger.info(f"Governance bundle: {out.name} ({source_names})")
+        logger.info("Governance bundle: %s (%s)", out.name, source_names)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -792,16 +925,14 @@ class RepoProcessor:
 # =========================================================================
 if __name__ == "__main__":
     load_dotenv()
-    parser = argparse.ArgumentParser(
-        description="AEGF Module-Aware Processor V2"
-    )
+    parser = argparse.ArgumentParser(description="AEGF Module-Aware Processor V2")
     parser.add_argument(
         "--config", "-c", required=True, help="Path to YAML configuration"
     )
     args = parser.parse_args()
 
     if not os.path.exists(args.config):
-        logger.error(f"Config not found: {args.config}")
+        logger.error("Config not found: %s", args.config)
         sys.exit(1)
 
     try:
@@ -810,5 +941,5 @@ if __name__ == "__main__":
         config = ProcessingConfig(**config_data)
         RepoProcessor(config).run()
     except Exception as e:
-        logger.critical(f"Processor failed: {e}")
+        logger.critical("Processor failed: %s", e)
         sys.exit(1)

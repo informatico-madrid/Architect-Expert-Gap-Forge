@@ -160,12 +160,16 @@ class TestPromptBuilders:
         assert "MASTER" in build_system_nominal(master, changelog)
         assert "CONTRAST" in build_system_contrast(master, changelog)
         assert "ERROR_SUFFIX" in build_system_error_recovery(master, changelog)
-        assert "BLUEPRINT" in build_system_with_blueprint(master, changelog, blueprint="B", governance="G")
+        assert "BLUEPRINT" in build_system_with_blueprint(
+            master, changelog, blueprint="B", governance="G"
+        )
         assert "JINJA NOMINAL" in build_system_nominal_jinja("guide")
         assert "JINJA CONTRAST" in build_system_contrast_jinja("guide")
         assert "JINJA ERROR" in build_system_error_recovery_jinja("guide")
 
-    def test_user_prompts_render_templates(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_user_prompts_render_templates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         frag = _make_fragment()
         assert "NOMINAL EASY" in build_user_nominal(frag, "easy")
         assert "NOMINAL MEDIUM" in build_user_nominal(frag, "medium")
@@ -223,7 +227,7 @@ class TestParsingUtilities:
         assert reasoning == "reasoning"
 
     def test_parse_raw_response_falls_back_to_tool_call(self) -> None:
-        text = "<think>reason</think><tool_call>{\"name\": \"write\"}</tool_call>"
+        text = '<think>reason</think><tool_call>{"name": "write"}</tool_call>'
         parsed, _ = parse_raw_response(text)
         assert parsed["name"] == "write"
 
@@ -263,7 +267,11 @@ class TestParsingUtilities:
             governance_cache={"repo": "gov"},
         )
         assert fragments
-        logic_only = {**bundle, "type": "LOGIC_ONLY", "files": {"logic.py": "def fn(): pass"}}
+        logic_only = {
+            **bundle,
+            "type": "LOGIC_ONLY",
+            "files": {"logic.py": "def fn(): pass"},
+        }
         fragments = get_v2_fragments(
             logic_only,
             {"module_x": "blueprint"},
@@ -342,7 +350,9 @@ class TestAssignExampleType:
     def test_assigns_nominal_when_clean(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(random, "random", lambda: 0.25)
         monkeypatch.setattr(random, "choice", lambda seq: "medium")
-        example_type, difficulty = assign_example_type(_make_fragment(), has_legacy=False)
+        example_type, difficulty = assign_example_type(
+            _make_fragment(), has_legacy=False
+        )
         assert example_type == "nominal"
         assert difficulty == "medium"
 
@@ -350,4 +360,3 @@ class TestAssignExampleType:
         monkeypatch.setattr(random, "random", lambda: 0.1)
         t, d = assign_example_type(_make_fragment(), has_legacy=True)
         assert t in {"contrast", "error_recovery"}
-

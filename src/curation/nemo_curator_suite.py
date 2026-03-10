@@ -88,22 +88,29 @@ _NEMO_AVAILABLE = False
 _DATASKETCH_AVAILABLE = False
 
 try:
-    from nemo_curator.core.client import RayClient           # type: ignore
-    from nemo_curator.pipeline import Pipeline               # type: ignore
+    from nemo_curator.core.client import RayClient  # type: ignore
+    from nemo_curator.pipeline import Pipeline  # type: ignore
     from nemo_curator.stages.text.io.reader import JsonlReader  # type: ignore
     from nemo_curator.stages.text.io.writer import JsonlWriter  # type: ignore
     from nemo_curator.stages.text.modules import ScoreFilter, Modify  # type: ignore
-    from nemo_curator.stages.text.filters import (           # type: ignore
-        WordCountFilter, RepeatingTopNGramsFilter, SymbolsToWordsFilter,
-        NonAlphaNumericFilter, PunctuationFilter, BoilerPlateStringFilter,
-        UrlsFilter, RepeatedLinesFilter,
+    from nemo_curator.stages.text.filters import (  # type: ignore
+        WordCountFilter,
+        RepeatingTopNGramsFilter,
+        SymbolsToWordsFilter,
+        NonAlphaNumericFilter,
+        PunctuationFilter,
+        BoilerPlateStringFilter,
+        UrlsFilter,
+        RepeatedLinesFilter,
     )
+
     _NEMO_AVAILABLE = True
 except ImportError:
     pass
 
 try:
     from datasketch import MinHash, MinHashLSH  # type: ignore
+
     _DATASKETCH_AVAILABLE = True
 except ImportError:
     pass
@@ -122,7 +129,9 @@ DEFAULT_MAX_NGRAM_RATIO: float = 0.35
 DEFAULT_NGRAM_SIZE: int = 3
 
 DEFAULT_MIN_THINK_CHARS: int = 500
-DEFAULT_LDI_MIN_RATIO: float = 0.15  # Blackwell calibrated — new formula yields [0,1) so 2.5 is invalid
+DEFAULT_LDI_MIN_RATIO: float = (
+    0.15  # Blackwell calibrated — new formula yields [0,1) so 2.5 is invalid
+)
 
 DEFAULT_DEDUP_THRESHOLD: float = 0.85
 DEFAULT_QUALITY_CUTOFF: float = 0.23
@@ -135,6 +144,7 @@ DEFAULT_REPORTS_DIR: str = "data/reports"
 # ===========================================================================
 # CurationStats — tracks all removal reasons across phases
 # ===========================================================================
+
 
 @dataclass
 class CurationStats:
@@ -156,13 +166,19 @@ class CurationStats:
 
     def as_dict(self) -> Dict[str, Any]:
         total_removed = (
-            self.exact_duplicates + self.nemo_filtered + self.invalid_syntax
-            + self.shallow_thinking + self.meta_speech + self.low_ldi
-            + self.low_quality_score + self.semantic_duplicates
+            self.exact_duplicates
+            + self.nemo_filtered
+            + self.invalid_syntax
+            + self.shallow_thinking
+            + self.meta_speech
+            + self.low_ldi
+            + self.low_quality_score
+            + self.semantic_duplicates
         )
         retention = (
             round(100.0 * self.total_output / self.total_input, 2)
-            if self.total_input else 0.0
+            if self.total_input
+            else 0.0
         )
         return {
             "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -198,13 +214,16 @@ class CurationStats:
         print(f"  ─ Low heuristic quality   : {r['low_quality_score']:>6,}")
         print(f"  ─ Semantic duplicates     : {r['semantic_duplicates']:>6,}")
         print(f"  Total removed  : {r['total']:>8,}")
-        print(f"  Output records : {d['total_output']:>8,}  (retention {d['retention_pct']}%)")
+        print(
+            f"  Output records : {d['total_output']:>8,}  (retention {d['retention_pct']}%)"
+        )
         print("=" * 70)
 
 
 # ===========================================================================
 # Phase 0 — Exact deduplication (SHA-256)
 # ===========================================================================
+
 
 def exact_dedup(
     records: List[RawRecord],
@@ -222,13 +241,16 @@ def exact_dedup(
         else:
             seen.add(h)
             kept.append(rec)
-    logger.info("Exact dedup: %d removed, %d remaining", stats.exact_duplicates, len(kept))
+    logger.info(
+        "Exact dedup: %d removed, %d remaining", stats.exact_duplicates, len(kept)
+    )
     return kept
 
 
 # ===========================================================================
 # Phase 1 — NeMo Curator quality filtering (requires container)
 # ===========================================================================
+
 
 class ConversationExtractor:
     """NeMo Modifier: extract assistant turns into a side column ``filter_text``."""
@@ -277,6 +299,7 @@ def run_nemo_filter_pipeline(
     logger.info("Phase 1 — NeMo Curator filter pipeline: %s", input_path)
     client = RayClient()
     client.start()
+
     # Provide a helpful hint about the Ray dashboard addresses so users
     # running the script inside the `aegf_curator` container know how
     # to reach the UI from the host or another machine.
@@ -317,14 +340,50 @@ def run_nemo_filter_pipeline(
             )
         )
         filter_stages = [
-            ScoreFilter(filter_obj=WordCountFilter(min_words=min_words), text_field="filter_text"),
-            ScoreFilter(filter_obj=SymbolsToWordsFilter(max_symbol_to_word_ratio=max_symbol_ratio), text_field="filter_text"),
-            ScoreFilter(filter_obj=NonAlphaNumericFilter(max_non_alpha_numeric_to_text_ratio=max_non_alpha_ratio), text_field="filter_text"),
-            ScoreFilter(filter_obj=UrlsFilter(max_url_to_text_ratio=max_url_ratio), text_field="filter_text"),
-            ScoreFilter(filter_obj=PunctuationFilter(max_num_sentences_without_endmark_ratio=max_no_endmark_ratio), text_field="filter_text"),
-            ScoreFilter(filter_obj=BoilerPlateStringFilter(max_boilerplate_string_ratio=max_boilerplate_ratio), text_field="filter_text"),
-            ScoreFilter(filter_obj=RepeatedLinesFilter(max_repeated_line_fraction=max_repeated_lines), text_field="filter_text"),
-            ScoreFilter(filter_obj=RepeatingTopNGramsFilter(n=ngram_size, max_repeating_ngram_ratio=max_ngram_ratio), text_field="filter_text"),
+            ScoreFilter(
+                filter_obj=WordCountFilter(min_words=min_words),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=SymbolsToWordsFilter(
+                    max_symbol_to_word_ratio=max_symbol_ratio
+                ),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=NonAlphaNumericFilter(
+                    max_non_alpha_numeric_to_text_ratio=max_non_alpha_ratio
+                ),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=UrlsFilter(max_url_to_text_ratio=max_url_ratio),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=PunctuationFilter(
+                    max_num_sentences_without_endmark_ratio=max_no_endmark_ratio
+                ),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=BoilerPlateStringFilter(
+                    max_boilerplate_string_ratio=max_boilerplate_ratio
+                ),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=RepeatedLinesFilter(
+                    max_repeated_line_fraction=max_repeated_lines
+                ),
+                text_field="filter_text",
+            ),
+            ScoreFilter(
+                filter_obj=RepeatingTopNGramsFilter(
+                    n=ngram_size, max_repeating_ngram_ratio=max_ngram_ratio
+                ),
+                text_field="filter_text",
+            ),
         ]
         for stage in filter_stages:
             pipeline.add_stage(stage)
@@ -346,14 +405,55 @@ def run_nemo_filter_pipeline(
 # --- LDI helpers -----------------------------------------------------------
 
 _PROGRAMMING_KEYWORDS: List[str] = [
-    "async", "await", "def", "class", "import", "from", "return",
-    "if", "else", "elif", "for", "while", "try", "except", "finally",
-    "with", "lambda", "yield", "raise", "assert", "pass", "break",
-    "continue", "True", "False", "None", "self", "super", "__init__",
-    "function", "const", "let", "var", "new", "this", "export",
-    "HomeAssistant", "DataUpdateCoordinator", "Entity", "ConfigEntry",
-    "async_setup_entry", "async_added_to_hass", "hass", "entry",
-    "coordinator", "device_info", "state", "attributes", "entity_id",
+    "async",
+    "await",
+    "def",
+    "class",
+    "import",
+    "from",
+    "return",
+    "if",
+    "else",
+    "elif",
+    "for",
+    "while",
+    "try",
+    "except",
+    "finally",
+    "with",
+    "lambda",
+    "yield",
+    "raise",
+    "assert",
+    "pass",
+    "break",
+    "continue",
+    "True",
+    "False",
+    "None",
+    "self",
+    "super",
+    "__init__",
+    "function",
+    "const",
+    "let",
+    "var",
+    "new",
+    "this",
+    "export",
+    "HomeAssistant",
+    "DataUpdateCoordinator",
+    "Entity",
+    "ConfigEntry",
+    "async_setup_entry",
+    "async_added_to_hass",
+    "hass",
+    "entry",
+    "coordinator",
+    "device_info",
+    "state",
+    "attributes",
+    "entity_id",
 ]
 
 _META_PATTERNS: List[str] = [
@@ -392,9 +492,25 @@ def _count_natural_tokens(text: str) -> int:
     t = re.sub(r"<[^>]+>", "", t)
     words = re.findall(r"\b[a-zA-Z]{2,}\b", t)
     stop = {
-        "async", "await", "def", "class", "import", "from", "return",
-        "true", "false", "none", "self", "super", "function", "const",
-        "homeassistant", "coordinator", "entity", "hass", "config",
+        "async",
+        "await",
+        "def",
+        "class",
+        "import",
+        "from",
+        "return",
+        "true",
+        "false",
+        "none",
+        "self",
+        "super",
+        "function",
+        "const",
+        "homeassistant",
+        "coordinator",
+        "entity",
+        "hass",
+        "config",
     }
     return len([w for w in words if w.lower() not in stop])
 
@@ -403,9 +519,10 @@ def _ldi(text: str) -> float:
     # Versión Blackwell Calibrada
     code_tokens = _count_code_tokens(text)
     natural_tokens = _count_natural_tokens(text)
-    if code_tokens == 0: return 0.0
-    
-    K = 800.0 # Factor de estabilidad para registros cortos (calibrado)
+    if code_tokens == 0:
+        return 0.0
+
+    K = 800.0  # Factor de estabilidad para registros cortos (calibrado)
     ldi_score = code_tokens / max(1.0, (natural_tokens + code_tokens))
     ldi_final = ldi_score * (code_tokens / (code_tokens + K))
     return ldi_final  # Now the threshold should be ~0.1 or 0.2, not 2.5
@@ -428,6 +545,7 @@ def _has_meta_speech(think_content: str) -> bool:
 
 
 # --- Structural filter -----------------------------------------------------
+
 
 def structural_quality_filter(
     records: List[RawRecord],
@@ -461,7 +579,8 @@ def structural_quality_filter(
 
         # Collect assistant turns
         assistant_turns = [
-            m for m in conversation
+            m
+            for m in conversation
             if isinstance(m, dict) and m.get("role") == "assistant"
         ]
         if not assistant_turns:
@@ -502,7 +621,9 @@ def structural_quality_filter(
         )
 
         if first_think_turn is not None:
-            think_match = re.search(r"<think>(.*?)</think>", first_think_turn, re.DOTALL)
+            think_match = re.search(
+                r"<think>(.*?)</think>", first_think_turn, re.DOTALL
+            )
             if not think_match:
                 stats.invalid_syntax += 1
                 continue
@@ -541,8 +662,11 @@ def structural_quality_filter(
     logger.info(
         "Structural filter: %d invalid_syntax, %d shallow, %d meta_speech, %d low_ldi — "
         "%d remaining",
-        stats.invalid_syntax, stats.shallow_thinking, stats.meta_speech,
-        stats.low_ldi, len(kept),
+        stats.invalid_syntax,
+        stats.shallow_thinking,
+        stats.meta_speech,
+        stats.low_ldi,
+        len(kept),
     )
     return kept
 
@@ -550,6 +674,7 @@ def structural_quality_filter(
 # ===========================================================================
 # Phase 3 — Semantic deduplication (MinHash-LSH)
 # ===========================================================================
+
 
 def _extract_assistant_text(rec: RawRecord) -> str:
     """Extract concatenated assistant turns from a record."""
@@ -607,7 +732,7 @@ def _char_shingles(text: str, k: int = DEFAULT_SHINGLE_K) -> Set[str]:
         return set()
     if len(normalised) < k:
         return {normalised}
-    return {normalised[i: i + k] for i in range(len(normalised) - k + 1)}
+    return {normalised[i : i + k] for i in range(len(normalised) - k + 1)}
 
 
 def _build_clusters_datasketch(
@@ -618,7 +743,9 @@ def _build_clusters_datasketch(
 ) -> Optional[List[List[int]]]:
     if not _DATASKETCH_AVAILABLE:
         return None
-    logger.info("MinHash-LSH clustering (num_perm=%d, threshold=%.2f)", num_perm, threshold)
+    logger.info(
+        "MinHash-LSH clustering (num_perm=%d, threshold=%.2f)", num_perm, threshold
+    )
     shingles = [_char_shingles(t, k=shingle_k) for t in texts]
     minhashes = []
     for sh in shingles:
@@ -699,14 +826,15 @@ def semantic_dedup(
     stats.low_quality_score += len(low_q)
     logger.info(
         "Quality gate (cutoff=%.2f): %d kept, %d dropped",
-        quality_cutoff, len(candidates), len(low_q),
+        quality_cutoff,
+        len(candidates),
+        len(low_q),
     )
 
     texts = [r["_text"] for r in candidates]
-    clusters = (
-        _build_clusters_datasketch(texts, threshold, num_perm=num_perm, shingle_k=shingle_k)
-        or _build_clusters_naive(texts, threshold, shingle_k=shingle_k)
-    )
+    clusters = _build_clusters_datasketch(
+        texts, threshold, num_perm=num_perm, shingle_k=shingle_k
+    ) or _build_clusters_naive(texts, threshold, shingle_k=shingle_k)
 
     idx_map = {i: rec for i, rec in enumerate(candidates)}
     removed_idx: Set[int] = set()
@@ -718,7 +846,9 @@ def semantic_dedup(
         if len(cluster) == 1:
             kept_records.append(idx_map[cluster[0]])
         else:
-            best = max(cluster, key=lambda i: (idx_map[i]["_qs"], len(idx_map[i]["_text"]), -i))
+            best = max(
+                cluster, key=lambda i: (idx_map[i]["_qs"], len(idx_map[i]["_text"]), -i)
+            )
             for i in cluster:
                 if i == best:
                     kept_records.append(idx_map[i])
@@ -741,7 +871,10 @@ def semantic_dedup(
 
     logger.info(
         "Semantic dedup (threshold=%.2f): %d clusters, %d kept, %d removed",
-        threshold, len(clusters), len(final), len(removed_idx),
+        threshold,
+        len(clusters),
+        len(final),
+        len(removed_idx),
     )
     return final
 
@@ -749,6 +882,7 @@ def semantic_dedup(
 # ===========================================================================
 # I/O helpers
 # ===========================================================================
+
 
 def load_jsonl(path: str, sample: int = 0) -> List[RawRecord]:
     """Load a JSONL file; optionally limit to first ``sample`` records."""
@@ -789,6 +923,7 @@ def save_report(report: Dict[str, Any], reports_dir: str, filename: str) -> str:
 # CLI
 # ===========================================================================
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="nemo_curator_suite",
@@ -809,53 +944,117 @@ def build_parser() -> argparse.ArgumentParser:
     io = parser.add_argument_group("I/O")
     io.add_argument("--input", required=True, help="Source JSONL file.")
     io.add_argument("--output", required=True, help="Output JSONL file.")
-    io.add_argument("--reports-dir", default=DEFAULT_REPORTS_DIR, metavar="DIR",
-                    help=f"Directory for JSON statistics (default: {DEFAULT_REPORTS_DIR}).")
+    io.add_argument(
+        "--reports-dir",
+        default=DEFAULT_REPORTS_DIR,
+        metavar="DIR",
+        help=f"Directory for JSON statistics (default: {DEFAULT_REPORTS_DIR}).",
+    )
 
     phases = parser.add_argument_group("Pipeline phases (at least one required)")
-    phases.add_argument("--exact-dedup", dest="do_exact_dedup", action="store_true",
-                        help="Phase 0: exact SHA-256 deduplication.")
-    phases.add_argument("--filter", dest="do_filter", action="store_true",
-                        help="Phase 1: NeMo Curator quality-filter pipeline (needs container).")
-    phases.add_argument("--structural", dest="do_structural", action="store_true",
-                        help="Phase 2: structural quality gate (syntax, LDI, think-depth).")
-    phases.add_argument("--dedup", dest="do_dedup", action="store_true",
-                        help="Phase 3: MinHash-LSH semantic deduplication.")
+    phases.add_argument(
+        "--exact-dedup",
+        dest="do_exact_dedup",
+        action="store_true",
+        help="Phase 0: exact SHA-256 deduplication.",
+    )
+    phases.add_argument(
+        "--filter",
+        dest="do_filter",
+        action="store_true",
+        help="Phase 1: NeMo Curator quality-filter pipeline (needs container).",
+    )
+    phases.add_argument(
+        "--structural",
+        dest="do_structural",
+        action="store_true",
+        help="Phase 2: structural quality gate (syntax, LDI, think-depth).",
+    )
+    phases.add_argument(
+        "--dedup",
+        dest="do_dedup",
+        action="store_true",
+        help="Phase 3: MinHash-LSH semantic deduplication.",
+    )
 
     ex = parser.add_argument_group("Execution")
-    ex.add_argument("--apply", action="store_true",
-                    help="Write output file. Without this flag runs in dry-run mode.")
-    ex.add_argument("--sample", type=int, default=0, metavar="N",
-                    help="Process only first N records for quick validation (0 = all).")
+    ex.add_argument(
+        "--apply",
+        action="store_true",
+        help="Write output file. Without this flag runs in dry-run mode.",
+    )
+    ex.add_argument(
+        "--sample",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Process only first N records for quick validation (0 = all).",
+    )
 
     ft = parser.add_argument_group("Phase 1 — NeMo filter thresholds")
     ft.add_argument("--min-words", type=int, default=DEFAULT_MIN_WORDS)
     ft.add_argument("--max-symbol-ratio", type=float, default=DEFAULT_MAX_SYMBOL_RATIO)
-    ft.add_argument("--max-non-alpha-ratio", type=float, default=DEFAULT_MAX_NON_ALPHA_RATIO)
+    ft.add_argument(
+        "--max-non-alpha-ratio", type=float, default=DEFAULT_MAX_NON_ALPHA_RATIO
+    )
     ft.add_argument("--max-url-ratio", type=float, default=DEFAULT_MAX_URL_RATIO)
-    ft.add_argument("--max-no-endmark-ratio", type=float, default=DEFAULT_MAX_NO_ENDMARK_RATIO)
-    ft.add_argument("--max-boilerplate-ratio", type=float, default=DEFAULT_MAX_BOILERPLATE_RATIO)
-    ft.add_argument("--max-repeated-lines", type=float, default=DEFAULT_MAX_REPEATED_LINES)
+    ft.add_argument(
+        "--max-no-endmark-ratio", type=float, default=DEFAULT_MAX_NO_ENDMARK_RATIO
+    )
+    ft.add_argument(
+        "--max-boilerplate-ratio", type=float, default=DEFAULT_MAX_BOILERPLATE_RATIO
+    )
+    ft.add_argument(
+        "--max-repeated-lines", type=float, default=DEFAULT_MAX_REPEATED_LINES
+    )
     ft.add_argument("--max-ngram-ratio", type=float, default=DEFAULT_MAX_NGRAM_RATIO)
     ft.add_argument("--ngram-size", type=int, default=DEFAULT_NGRAM_SIZE)
 
     st = parser.add_argument_group("Phase 2 — Structural filter thresholds")
-    st.add_argument("--min-think-chars", type=int, default=DEFAULT_MIN_THINK_CHARS,
-                    help=f"Minimum chars in <think> block (default: {DEFAULT_MIN_THINK_CHARS}).")
-    st.add_argument("--ldi-min-ratio", type=float, default=DEFAULT_LDI_MIN_RATIO,
-                    help=f"Minimum LDI ratio on <tool_call> block (default: {DEFAULT_LDI_MIN_RATIO}).")
-    st.add_argument("--no-attempt-check", dest="no_attempt_check", action="store_true",
-                    help="Disable attempt_completion check (use for single-turn / production_v11 data).")
+    st.add_argument(
+        "--min-think-chars",
+        type=int,
+        default=DEFAULT_MIN_THINK_CHARS,
+        help=f"Minimum chars in <think> block (default: {DEFAULT_MIN_THINK_CHARS}).",
+    )
+    st.add_argument(
+        "--ldi-min-ratio",
+        type=float,
+        default=DEFAULT_LDI_MIN_RATIO,
+        help=f"Minimum LDI ratio on <tool_call> block (default: {DEFAULT_LDI_MIN_RATIO}).",
+    )
+    st.add_argument(
+        "--no-attempt-check",
+        dest="no_attempt_check",
+        action="store_true",
+        help="Disable attempt_completion check (use for single-turn / production_v11 data).",
+    )
 
     dt = parser.add_argument_group("Phase 3 — Dedup thresholds")
-    dt.add_argument("--dedup-threshold", type=float, default=DEFAULT_DEDUP_THRESHOLD,
-                    help=f"MinHash similarity threshold (default: {DEFAULT_DEDUP_THRESHOLD}).")
-    dt.add_argument("--quality-cutoff", type=float, default=DEFAULT_QUALITY_CUTOFF,
-                    help=f"Minimum heuristic quality score (default: {DEFAULT_QUALITY_CUTOFF}).")
-    dt.add_argument("--minhash-perms", type=int, default=DEFAULT_MINHASH_PERMS,
-                    help=f"Number of MinHash permutations (default: {DEFAULT_MINHASH_PERMS}).")
-    dt.add_argument("--shingle-k", type=int, default=DEFAULT_SHINGLE_K,
-                    help=f"Character shingle size (default: {DEFAULT_SHINGLE_K}).")
+    dt.add_argument(
+        "--dedup-threshold",
+        type=float,
+        default=DEFAULT_DEDUP_THRESHOLD,
+        help=f"MinHash similarity threshold (default: {DEFAULT_DEDUP_THRESHOLD}).",
+    )
+    dt.add_argument(
+        "--quality-cutoff",
+        type=float,
+        default=DEFAULT_QUALITY_CUTOFF,
+        help=f"Minimum heuristic quality score (default: {DEFAULT_QUALITY_CUTOFF}).",
+    )
+    dt.add_argument(
+        "--minhash-perms",
+        type=int,
+        default=DEFAULT_MINHASH_PERMS,
+        help=f"Number of MinHash permutations (default: {DEFAULT_MINHASH_PERMS}).",
+    )
+    dt.add_argument(
+        "--shingle-k",
+        type=int,
+        default=DEFAULT_SHINGLE_K,
+        help=f"Character shingle size (default: {DEFAULT_SHINGLE_K}).",
+    )
 
     return parser
 
@@ -864,12 +1063,17 @@ def build_parser() -> argparse.ArgumentParser:
 # Main
 # ===========================================================================
 
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if not any([args.do_exact_dedup, args.do_filter, args.do_structural, args.do_dedup]):
-        parser.error("At least one phase required: --exact-dedup / --filter / --structural / --dedup")
+    if not any(
+        [args.do_exact_dedup, args.do_filter, args.do_structural, args.do_dedup]
+    ):
+        parser.error(
+            "At least one phase required: --exact-dedup / --filter / --structural / --dedup"
+        )
 
     if not os.path.exists(args.input):
         logger.error("Input file not found: %s", args.input)
@@ -877,21 +1081,27 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     dry_run = not args.apply
     phases = "+".join(
-        x for x, f in [
+        x
+        for x, f in [
             ("exact-dedup", args.do_exact_dedup),
             ("filter", args.do_filter),
             ("structural", args.do_structural),
             ("dedup", args.do_dedup),
-        ] if f
+        ]
+        if f
     )
     logger.info(
         "AEGF NeMo Curator Suite | phases=%s | input=%s | dry_run=%s | sample=%d",
-        phases, args.input, dry_run, args.sample,
+        phases,
+        args.input,
+        dry_run,
+        args.sample,
     )
 
     stats = CurationStats()
     current_path = args.input
     import shutil
+
     temp_files: List[str] = []
     temp_dirs: List[str] = []
 
@@ -923,7 +1133,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         shards = sorted(glob.glob(os.path.join(src_dir, "*.jsonl")))
         if not shards:
             # NeMo may nest one level deeper
-            shards = sorted(glob.glob(os.path.join(src_dir, "**", "*.jsonl"), recursive=True))
+            shards = sorted(
+                glob.glob(os.path.join(src_dir, "**", "*.jsonl"), recursive=True)
+            )
         with open(dest_file, "w", encoding="utf-8") as fout:
             for shard in shards:
                 with open(shard, "r", encoding="utf-8") as fin:
@@ -947,7 +1159,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             write_jsonl(tmp, records)
             current_path = tmp
         else:
-            logger.info("[DRY-RUN] Would continue with %d records after exact dedup", len(records))
+            logger.info(
+                "[DRY-RUN] Would continue with %d records after exact dedup",
+                len(records),
+            )
 
     # -----------------------------------------------------------------------
     # Phase 1 — NeMo Curator filter (requires container)
@@ -967,7 +1182,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             logger.info("Phase 1 — NeMo Curator filtering")
             # JsonlWriter requires a DIRECTORY — use mkdtemp, not a .jsonl file
             nemo_dir = _next_temp_dir()
-            pre_nemo_count = sum(1 for line in open(current_path, "r", encoding="utf-8") if line.strip())
+            pre_nemo_count = sum(
+                1 for line in open(current_path, "r", encoding="utf-8") if line.strip()
+            )
             run_nemo_filter_pipeline(
                 input_path=current_path,
                 output_path=nemo_dir,
@@ -987,7 +1204,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             removed_by_nemo = pre_nemo_count - post_nemo_count
             logger.info(
                 "Phase 1 complete: %d → %d records (%d removed by NeMo filters)",
-                pre_nemo_count, post_nemo_count, removed_by_nemo,
+                pre_nemo_count,
+                post_nemo_count,
+                removed_by_nemo,
             )
             current_path = nemo_merged
 
@@ -996,7 +1215,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # -----------------------------------------------------------------------
     if args.do_structural:
         logger.info("Phase 2 — Structural quality gate")
-        records = load_jsonl(current_path, sample=args.sample if not args.do_exact_dedup else 0)
+        records = load_jsonl(
+            current_path, sample=args.sample if not args.do_exact_dedup else 0
+        )
         if not stats.total_input:
             stats.total_input = len(records)
         records = structural_quality_filter(
@@ -1011,14 +1232,19 @@ def main(argv: Optional[List[str]] = None) -> int:
             write_jsonl(tmp, records)
             current_path = tmp
         else:
-            logger.info("[DRY-RUN] Would continue with %d records after structural filter", len(records))
+            logger.info(
+                "[DRY-RUN] Would continue with %d records after structural filter",
+                len(records),
+            )
 
     # -----------------------------------------------------------------------
     # Phase 3 — Semantic deduplication (in-memory)
     # -----------------------------------------------------------------------
     if args.do_dedup:
         logger.info("Phase 3 — Semantic deduplication (MinHash-LSH)")
-        load_sample = args.sample if not any([args.do_exact_dedup, args.do_structural]) else 0
+        load_sample = (
+            args.sample if not any([args.do_exact_dedup, args.do_structural]) else 0
+        )
         records = load_jsonl(current_path, sample=load_sample)
         if not stats.total_input:
             stats.total_input = len(records)
@@ -1033,7 +1259,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         if dry_run:
             logger.info(
                 "[DRY-RUN] Would write %d records → %s (use --apply to persist)",
-                len(records), args.output,
+                len(records),
+                args.output,
             )
         else:
             n = write_jsonl(args.output, records)
@@ -1043,6 +1270,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif not dry_run and current_path != args.input:
         # Filter/structural only: move last temp to final output
         import shutil
+
         shutil.move(current_path, args.output)
         stats.total_output = sum(1 for _ in open(args.output))
         logger.info("Output → %s", args.output)
@@ -1051,7 +1279,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Reports
     # -----------------------------------------------------------------------
     stats.total_input = stats.total_input or 0
-    report_path = save_report(stats.as_dict(), args.reports_dir, "nemo_curator_suite_report.json")
+    report_path = save_report(
+        stats.as_dict(), args.reports_dir, "nemo_curator_suite_report.json"
+    )
     logger.info("Report saved → %s", report_path)
 
     stats.print_report()

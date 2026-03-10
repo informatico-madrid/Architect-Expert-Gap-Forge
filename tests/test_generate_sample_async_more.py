@@ -29,10 +29,25 @@ def stub_templates(monkeypatch: pytest.MonkeyPatch) -> None:
     """
 
     monkeypatch.setattr(pv11, "_prompt", lambda key: f"<{key}>")
-    monkeypatch.setattr(pv11, "_render", lambda template, **subs: template if not subs else template + " " + " ".join(f"{k}={v}" for k, v in subs.items()))
+    monkeypatch.setattr(
+        pv11,
+        "_render",
+        lambda template, **subs: (
+            template
+            if not subs
+            else template + " " + " ".join(f"{k}={v}" for k, v in subs.items())
+        ),
+    )
     monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
-    monkeypatch.setattr(pv11, "LEGACY_2023_PATTERNS", [{"legacy_code": "old_code"}], raising=False)
-    monkeypatch.setattr(pv11, "JINJA_LEGACY_2023_PATTERNS", [{"legacy_code": "old_template", "context_type": "jinja"}], raising=False)
+    monkeypatch.setattr(
+        pv11, "LEGACY_2023_PATTERNS", [{"legacy_code": "old_code"}], raising=False
+    )
+    monkeypatch.setattr(
+        pv11,
+        "JINJA_LEGACY_2023_PATTERNS",
+        [{"legacy_code": "old_template", "context_type": "jinja"}],
+        raising=False,
+    )
 
 
 class FakeCompletions:
@@ -40,7 +55,9 @@ class FakeCompletions:
         self._content = content
 
     async def create(self, *args, **kwargs):
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=self._content))])
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=self._content))]
+        )
 
 
 class FakeClient:
@@ -72,7 +89,19 @@ def test_generate_sample_async_gold_injection():
 
     frag = make_frag(functional=True)
     sem = asyncio.Semaphore(1)
-    res = asyncio.run(pv11.generate_sample_async(client, "m", frag, "nominal", "easy", "master", "changelog", sem, has_legacy=False))
+    res = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "nominal",
+            "easy",
+            "master",
+            "changelog",
+            sem,
+            has_legacy=False,
+        )
+    )
 
     assert res["status"] == "accepted"
     sample = res["sample"]
@@ -82,12 +111,28 @@ def test_generate_sample_async_gold_injection():
 
 def test_generate_sample_async_legacy_skip():
     # When has_legacy=True the gold injection is skipped and model output is preserved
-    tool_json = {"name": "write_to_file", "arguments": {"path": "mod_frag.py", "content": "generated_code"}}
+    tool_json = {
+        "name": "write_to_file",
+        "arguments": {"path": "mod_frag.py", "content": "generated_code"},
+    }
     content = f"<think>r</think><tool_call>{json.dumps(tool_json)}</tool_call>"
     client = FakeClient(content)
     frag = make_frag(functional=False)
     sem = asyncio.Semaphore(1)
-    res = asyncio.run(pv11.generate_sample_async(client, "m", frag, "contrast", None, "master", "changelog", sem, has_legacy=True, legacy_patterns=["pat"]))
+    res = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "contrast",
+            None,
+            "master",
+            "changelog",
+            sem,
+            has_legacy=True,
+            legacy_patterns=["pat"],
+        )
+    )
 
     assert res["status"] == "accepted"
     sample = res["sample"]
@@ -97,12 +142,27 @@ def test_generate_sample_async_legacy_skip():
 
 def test_generate_sample_async_ldi_fail_returns_rejected():
     # No <think> => reasoning length 0 -> LDI fail -> rejected after retries
-    tool_json = {"name": "write_to_file", "arguments": {"path": "x.py", "content": "small"}}
+    tool_json = {
+        "name": "write_to_file",
+        "arguments": {"path": "x.py", "content": "small"},
+    }
     content = f"<tool_call>{json.dumps(tool_json)}</tool_call>"
     client = FakeClient(content)
     frag = make_frag(functional=False)
     sem = asyncio.Semaphore(1)
-    res = asyncio.run(pv11.generate_sample_async(client, "m", frag, "nominal", "easy", "master", "changelog", sem, has_legacy=False))
+    res = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "nominal",
+            "easy",
+            "master",
+            "changelog",
+            sem,
+            has_legacy=False,
+        )
+    )
 
     assert res["status"] == "rejected"
 
@@ -115,9 +175,18 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
             "id": "v11_nominal_abc",
             "conversation": [
                 {"role": "user", "content": "u"},
-                {"role": "assistant", "content": "<think>r</think><tool_call>[]</tool_call>"},
+                {
+                    "role": "assistant",
+                    "content": "<think>r</think><tool_call>[]</tool_call>",
+                },
             ],
-            "metadata": {"curation": {"kept": True}, "checkpoint_key": "abc", "example_type": "nominal", "evol_difficulty": "easy", "gold_injected": True},
+            "metadata": {
+                "curation": {"kept": True},
+                "checkpoint_key": "abc",
+                "example_type": "nominal",
+                "evol_difficulty": "easy",
+                "gold_injected": True,
+            },
             "filter_text": "f",
         },
     }
@@ -126,7 +195,9 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
         return sample
 
     monkeypatch.setattr(pv11, "generate_sample_async", fake_generate)
-    monkeypatch.setattr(pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy"))
+    monkeypatch.setattr(
+        pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy")
+    )
 
     class DummyWriter:
         def __init__(self):
@@ -139,8 +210,12 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
         def __init__(self):
             self.calls = []
 
-        async def record(self, status, example_type, difficulty, gold_injected=True, has_legacy=False):
-            self.calls.append((status, example_type, difficulty, gold_injected, has_legacy))
+        async def record(
+            self, status, example_type, difficulty, gold_injected=True, has_legacy=False
+        ):
+            self.calls.append(
+                (status, example_type, difficulty, gold_injected, has_legacy)
+            )
 
     writer_ok = DummyWriter()
     writer_bad = DummyWriter()
@@ -158,7 +233,20 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
         think_filter_min_chars = 5000
 
     sem = asyncio.Semaphore(1)
-    asyncio.run(pv11.process_fragment(FakeClient(""), "m", frag, "master", "changelog", sem, writer_ok, writer_bad, tracker, Args()))
+    asyncio.run(
+        pv11.process_fragment(
+            FakeClient(""),
+            "m",
+            frag,
+            "master",
+            "changelog",
+            sem,
+            writer_ok,
+            writer_bad,
+            tracker,
+            Args(),
+        )
+    )
 
     assert len(writer_ok.records) == 1
     assert tracker.calls and tracker.calls[0][0] == "accepted"

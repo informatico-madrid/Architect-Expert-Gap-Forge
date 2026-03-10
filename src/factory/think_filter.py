@@ -28,6 +28,7 @@ Sacred Constraint
 NEVER modify anything at or after </think>.
 The code/tool_call output is production gold and must arrive untouched.
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,11 +42,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Tuneable constants (override via think_filter.MIN_THINK_CHARS etc.)
 # ---------------------------------------------------------------------------
-MIN_THINK_CHARS: int = 5000          # Only distil if think block >= this
-PARA_SIM_THRESHOLD: float = 0.82    # Similarity to consider two paragraphs duplicate
-CODE_SIM_THRESHOLD: float = 0.80    # Similarity to consider two code blocks duplicate
-CYCLE_SIM_THRESHOLD: float = 0.70   # Similarity to consider two revision cycles duplicate
-MAX_CONSECUTIVE_LINES: int = 2      # Max allowed consecutive identical lines
+MIN_THINK_CHARS: int = 5000  # Only distil if think block >= this
+PARA_SIM_THRESHOLD: float = 0.82  # Similarity to consider two paragraphs duplicate
+CODE_SIM_THRESHOLD: float = 0.80  # Similarity to consider two code blocks duplicate
+CYCLE_SIM_THRESHOLD: float = (
+    0.70  # Similarity to consider two revision cycles duplicate
+)
+MAX_CONSECUTIVE_LINES: int = 2  # Max allowed consecutive identical lines
 
 CODE_FENCE_RE = re.compile(r"(```[\w]*\n[\s\S]*?```)", re.MULTILINE)
 
@@ -53,6 +56,7 @@ CODE_FENCE_RE = re.compile(r"(```[\w]*\n[\s\S]*?```)", re.MULTILINE)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _norm(text: str, maxlen: int = 500) -> str:
     """Normalise text for comparison: lowercase, collapse whitespace, strip punct."""
@@ -76,6 +80,7 @@ def _sim(a: str, b: str) -> float:
 # Strategy 1: Collapse consecutive identical lines
 # ---------------------------------------------------------------------------
 
+
 def _collapse_consecutive_lines(text: str) -> str:
     lines = text.split("\n")
     result: List[str] = []
@@ -97,6 +102,7 @@ def _collapse_consecutive_lines(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Strategy 2: Deduplicate code blocks (keep last occurrence)
 # ---------------------------------------------------------------------------
+
 
 def _dedup_code_blocks(text: str) -> str:
     blocks = list(CODE_FENCE_RE.finditer(text))
@@ -133,12 +139,15 @@ def _dedup_code_blocks(text: str) -> str:
 # Strategy 3: Deduplicate bullet items within a paragraph
 # ---------------------------------------------------------------------------
 
+
 def _dedup_bullets_in_para(para: str) -> str:
     seen: set = set()
     result: List[str] = []
     for line in para.split("\n"):
         stripped = line.strip()
-        is_item = bool(re.match(r"^\s*[-*•]\s+", line)) or bool(re.match(r"^\s*\d+[\.\)]\s+", line))
+        is_item = bool(re.match(r"^\s*[-*•]\s+", line)) or bool(
+            re.match(r"^\s*\d+[\.\)]\s+", line)
+        )
         if is_item:
             key = _norm(stripped)
             if key in seen:
@@ -152,11 +161,11 @@ def _dedup_bullets_in_para(para: str) -> str:
 # Strategy 4: Prune iterative revision cycles (keep last complete cycle)
 # ---------------------------------------------------------------------------
 
+
 def _prune_revision_cycles(paragraphs: List[str]) -> List[str]:
     # Detect paragraphs that start a new numbering cycle with "1." or similar
     cycle_starts = [
-        i for i, p in enumerate(paragraphs)
-        if re.match(r"^\s*1[\.\)]\s+", p.strip())
+        i for i, p in enumerate(paragraphs) if re.match(r"^\s*1[\.\)]\s+", p.strip())
     ]
     if len(cycle_starts) < 2:
         return paragraphs
@@ -180,6 +189,7 @@ def _prune_revision_cycles(paragraphs: List[str]) -> List[str]:
 # ---------------------------------------------------------------------------
 # Strategy 5: Paragraph-level deduplication (keep last occurrence)
 # ---------------------------------------------------------------------------
+
 
 def _dedup_paragraphs(paragraphs: List[str]) -> List[str]:
     n = len(paragraphs)
@@ -205,6 +215,7 @@ def _dedup_paragraphs(paragraphs: List[str]) -> List[str]:
 # ---------------------------------------------------------------------------
 # Core pipeline
 # ---------------------------------------------------------------------------
+
 
 def _distill(think_text: str) -> Tuple[str, Dict[str, Any]]:
     """Apply all distillation strategies to a raw think block.
@@ -261,6 +272,7 @@ def _distill(think_text: str) -> Tuple[str, Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def filter_think_content(
     content: str,
@@ -338,7 +350,11 @@ def apply_to_record(
             # Extract original think text (before </think> in the filtered content)
             orig_idx = content.lower().find("</think>")
             original_think = content[:orig_idx] if orig_idx >= 0 else ""
-            distilled_think = filtered[:filtered.lower().find("</think>")] if "</think>" in filtered.lower() else ""
+            distilled_think = (
+                filtered[: filtered.lower().find("</think>")]
+                if "</think>" in filtered.lower()
+                else ""
+            )
 
             if "</think>" in ft.lower():
                 # Case B: apply filter directly on filter_text
@@ -346,13 +362,17 @@ def apply_to_record(
                 ft_think = ft[:ft_idx]
                 ft_rest = ft[ft_idx:]
                 if len(ft_think) >= min_chars:
-                    ft_distilled, _ = filter_think_content(ft_think + "</think>", min_chars=min_chars)
+                    ft_distilled, _ = filter_think_content(
+                        ft_think + "</think>", min_chars=min_chars
+                    )
                     if ft_distilled:
-                        new_ft_think = ft_distilled[:ft_distilled.lower().find("</think>")]
+                        new_ft_think = ft_distilled[
+                            : ft_distilled.lower().find("</think>")
+                        ]
                         new_record["filter_text"] = new_ft_think + ft_rest
             elif original_think and ft.startswith(original_think[:200]):
                 # Case A: replace reasoning prefix with distilled version
-                suffix = ft[len(original_think):]
+                suffix = ft[len(original_think) :]
                 new_record["filter_text"] = distilled_think + suffix
 
         rid = record.get("id", "unknown")

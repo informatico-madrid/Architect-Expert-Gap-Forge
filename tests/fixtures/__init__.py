@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """Fixtures for Golden File Testing in model_evaluator integration tests."""
+
 from __future__ import annotations
 
 import json
@@ -97,5 +98,9 @@ def golden_normalized_judge_response() -> NormalizedJudgeResponse:
     """
     data = load_golden_json("judge_scoring_response.json")
     adapter_scores = {k: v["score"] for k, v in data.get("dimensions", {}).items()}
-    raw = {"adapter": adapter_scores, "baseline": {}, "reasoning": data.get("judge_reasoning", "")}
+    raw = {
+        "adapter": adapter_scores,
+        "baseline": {},
+        "reasoning": data.get("judge_reasoning", ""),
+    }
     return normalize_judge_response(raw)

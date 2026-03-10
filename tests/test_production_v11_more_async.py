@@ -29,7 +29,9 @@ class FakeCompletions:
         self._content = content
 
     async def create(self, *args, **kwargs):
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=self._content))])
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=self._content))]
+        )
 
 
 class FakeClient:
@@ -53,32 +55,50 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     monkeypatch.setattr(pv11, "_prompt", lambda key: "prompt")
     # Success: assistant returns <think>reason</think> + long answer (>150 chars)
     answer = "A" * 200
-    content = f"<think>{'reasoning'*30}</think>{answer}"
+    content = f"<think>{'reasoning' * 30}</think>{answer}"
     client = FakeClient(content)
     sem = asyncio.Semaphore(1)
     frag = make_theory_frag("Sec1")
-    res = asyncio.run(pv11.generate_theory_sample_async(client, "m", frag, "master", "changelog", sem))
+    res = asyncio.run(
+        pv11.generate_theory_sample_async(client, "m", frag, "master", "changelog", sem)
+    )
     assert res["status"] == "accepted"
-    assert "theory" in res["sample"]["metadata"]["example_type"] or res["sample"]["metadata"]["example_type"] == "theory"
+    assert (
+        "theory" in res["sample"]["metadata"]["example_type"]
+        or res["sample"]["metadata"]["example_type"] == "theory"
+    )
 
     # Failure: answer too short -> rejected after retries
     short_content = f"<think>r</think>short"
     client2 = FakeClient(short_content)
-    res2 = asyncio.run(pv11.generate_theory_sample_async(client2, "m", frag, "master", "changelog", sem))
+    res2 = asyncio.run(
+        pv11.generate_theory_sample_async(
+            client2, "m", frag, "master", "changelog", sem
+        )
+    )
     assert res2["status"] == "rejected"
 
     # Edge case: </think> without <think> -> should parse reasoning from before </think>
     edge_content = f"reasoning text</think>{answer}"
     client3 = FakeClient(edge_content)
-    res3 = asyncio.run(pv11.generate_theory_sample_async(client3, "m", frag, "master", "changelog", sem))
+    res3 = asyncio.run(
+        pv11.generate_theory_sample_async(
+            client3, "m", frag, "master", "changelog", sem
+        )
+    )
     assert res3["status"] == "accepted"
 
 
 def test_generate_sample_async_poison_and_legacy(monkeypatch):
     monkeypatch.setattr(pv11, "_prompt", lambda key: "prompt")
     # Prepare a clean tool_call with long generated content (passes LDI)
-    tool_json = {"name": "write_to_file", "arguments": {"path": "mod.py", "content": "x" * 300}}
-    content = f"<think>{'r'*200}</think><tool_call>{json.dumps(tool_json)}</tool_call>"
+    tool_json = {
+        "name": "write_to_file",
+        "arguments": {"path": "mod.py", "content": "x" * 300},
+    }
+    content = (
+        f"<think>{'r' * 200}</think><tool_call>{json.dumps(tool_json)}</tool_call>"
+    )
     client = FakeClient(content)
     sem = asyncio.Semaphore(1)
 
@@ -95,13 +115,38 @@ def test_generate_sample_async_poison_and_legacy(monkeypatch):
 
     # Monkeypatch post_validate_output to detect a toxic pattern
     monkeypatch.setattr(pv11, "post_validate_output", lambda code, t, s: ["toxic"])
-    res = asyncio.run(pv11.generate_sample_async(client, "m", frag, "nominal", "easy", "master", "changelog", sem, has_legacy=False))
+    res = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "nominal",
+            "easy",
+            "master",
+            "changelog",
+            sem,
+            has_legacy=False,
+        )
+    )
     assert res["status"] in ("accepted", "rejected")
     if res["status"] == "accepted":
         assert res["sample"]["metadata"]["curation"].get("auto_rejected") is True
 
     # Legacy branch: when has_legacy=True, gold_injected must be False
-    res2 = asyncio.run(pv11.generate_sample_async(client, "m", frag, "contrast", None, "master", "changelog", sem, has_legacy=True, legacy_patterns=["old"]))
+    res2 = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "contrast",
+            None,
+            "master",
+            "changelog",
+            sem,
+            has_legacy=True,
+            legacy_patterns=["old"],
+        )
+    )
     assert res2["status"] in ("accepted", "rejected")
     if res2["status"] == "accepted":
         assert res2["sample"]["metadata"]["gold_injected"] is False
@@ -121,7 +166,7 @@ def test_main_async_theory_mode(tmp_path, monkeypatch):
 
     # Fake AsyncOpenAI to return a long answer
     answer = "Z" * 200
-    fake_resp = f"<think>{'r'*200}</think>{answer}"
+    fake_resp = f"<think>{'r' * 200}</think>{answer}"
 
     class FakeAsyncOpenAI:
         def __init__(self, base_url=None, api_key=None):
@@ -153,8 +198,10 @@ def test_main_async_theory_mode(tmp_path, monkeypatch):
 def test_main_function(monkeypatch):
     """Test main function with mocked dependencies."""
     # Mock sys.argv
-    monkeypatch.setattr("sys.argv", ["production_v11.py", "--test", "1", "--output", "/tmp/test.jsonl"])
-    
+    monkeypatch.setattr(
+        "sys.argv", ["production_v11.py", "--test", "1", "--output", "/tmp/test.jsonl"]
+    )
+
     # Mock Path in the module
     mock_base_dir = MagicMock()
     mock_config_dir = MagicMock()
@@ -162,7 +209,7 @@ def test_main_function(monkeypatch):
     mock_gap_dir = MagicMock()
     mock_taxonomy_path = MagicMock()
     mock_taxonomy_path.exists.return_value = True
-    
+
     def mock_path(path_str):
         if str(path_str) == pv11.__file__:
             return mock_base_dir
@@ -172,40 +219,46 @@ def test_main_function(monkeypatch):
             return mock_gap_dir
         else:
             return MagicMock()
-    
+
     monkeypatch.setattr(pv11, "Path", mock_path)
-    
+
     # Set up path hierarchy
     mock_base_dir.resolve.return_value = mock_base_dir
     mock_base_dir.parent = mock_base_dir
     mock_base_dir.__truediv__.side_effect = lambda x: {
         "configs": mock_config_dir,
-        "data": mock_data_dir
+        "data": mock_data_dir,
     }.get(x, mock_gap_dir)
     mock_config_dir.__truediv__.return_value = mock_taxonomy_path
     mock_data_dir.__truediv__.return_value = mock_gap_dir
-    
+
     # Mock load_taxonomy
     monkeypatch.setattr(pv11, "load_taxonomy", MagicMock())
-    monkeypatch.setattr(pv11, "_TAX", {"prompts": {"system": {"theory": "system"}, "user": {"theory": "user"}}})
-    
+    monkeypatch.setattr(
+        pv11,
+        "_TAX",
+        {"prompts": {"system": {"theory": "system"}, "user": {"theory": "user"}}},
+    )
+
     # Mock random.seed
     monkeypatch.setattr("random.seed", MagicMock())
-    
+
     # Mock main_async to avoid creating coroutine
     mock_main_async = AsyncMock()
     monkeypatch.setattr(pv11, "main_async", mock_main_async)
-    
+
     # Call main - should not raise exceptions
     pv11.main()
-    
+
     # Verify that main_async was called
     mock_main_async.assert_called_once()
 
 
 def test_parse_args_basic(monkeypatch):
     """Test parse_args function with basic arguments."""
-    monkeypatch.setattr("sys.argv", ["production_v11.py", "--test", "5", "--workers", "2"])
+    monkeypatch.setattr(
+        "sys.argv", ["production_v11.py", "--test", "5", "--workers", "2"]
+    )
     args = pv11.parse_args()
     assert args.test == 5
     assert args.workers == 2
@@ -213,12 +266,31 @@ def test_parse_args_basic(monkeypatch):
 
 def test_parse_args_full(monkeypatch):
     """Test parse_args function with all arguments."""
-    monkeypatch.setattr("sys.argv", [
-        "production_v11.py", "--test", "10", "--workers", "4", "--limit", "100",
-        "--resume", "data/test.jsonl", "--output", "output.jsonl", "--theory",
-        "--theory-reps", "3", "--gap-dir", "data/Gap", "--taxonomy", "configs/taxonomy.yaml",
-        "--seed", "123"
-    ])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "production_v11.py",
+            "--test",
+            "10",
+            "--workers",
+            "4",
+            "--limit",
+            "100",
+            "--resume",
+            "data/test.jsonl",
+            "--output",
+            "output.jsonl",
+            "--theory",
+            "--theory-reps",
+            "3",
+            "--gap-dir",
+            "data/Gap",
+            "--taxonomy",
+            "configs/taxonomy.yaml",
+            "--seed",
+            "123",
+        ],
+    )
     args = pv11.parse_args()
     assert args.test == 10
     assert args.workers == 4

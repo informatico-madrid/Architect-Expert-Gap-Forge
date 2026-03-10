@@ -22,9 +22,15 @@ import yaml
 @pytest.fixture
 def gap_dir(tmp_path: Path) -> Generator[Path, None, None]:
     """Create a temporary Gap directory with the three required master docs."""
-    (tmp_path / "HA_MASTER_GUIDE_2026.md").write_text("# Master Guide\n" + "Text\n" * 50)
-    (tmp_path / "technical_changelog_2026.md").write_text("# Changelog\n" + "Entry\n" * 50)
-    (tmp_path / "HA_JINJA_YAML_GUIDE_2026.md").write_text("# Jinja Guide\n" + "Guide\n" * 50)
+    (tmp_path / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# Master Guide\n" + "Text\n" * 50
+    )
+    (tmp_path / "technical_changelog_2026.md").write_text(
+        "# Changelog\n" + "Entry\n" * 50
+    )
+    (tmp_path / "HA_JINJA_YAML_GUIDE_2026.md").write_text(
+        "# Jinja Guide\n" + "Guide\n" * 50
+    )
     yield tmp_path
 
 
@@ -54,13 +60,23 @@ def taxonomy_file(tmp_path: Path) -> Generator[Path, None, None]:
                     "error_recovery": "error-$error_msg",
                     "functional_unit": "functional-$context",
                 }
-            }
+            },
         },
-        "ha_error_templates": [{"context_type": "python", "error": "Error {entity} at {component}"}],
-        "legacy_2023_patterns": [{"legacy_code": "hass.data[]", "context_type": "python"}],
-        "jinja_ha_error_templates": [{"context_type": "jinja", "error": "JinjaErr {entity}"}],
-        "jinja_legacy_2023_patterns": [{"legacy_code": "platform: template", "context_type": "jinja"}],
-        "theory_question_templates": [{"template": "What is {section_title}?", "type": "theory"}],
+        "ha_error_templates": [
+            {"context_type": "python", "error": "Error {entity} at {component}"}
+        ],
+        "legacy_2023_patterns": [
+            {"legacy_code": "hass.data[]", "context_type": "python"}
+        ],
+        "jinja_ha_error_templates": [
+            {"context_type": "jinja", "error": "JinjaErr {entity}"}
+        ],
+        "jinja_legacy_2023_patterns": [
+            {"legacy_code": "platform: template", "context_type": "jinja"}
+        ],
+        "theory_question_templates": [
+            {"template": "What is {section_title}?", "type": "theory"}
+        ],
         "tools_definition": [{"name": "tool"}],
     }
     path = tmp_path / "prompts_taxonomy.yaml"

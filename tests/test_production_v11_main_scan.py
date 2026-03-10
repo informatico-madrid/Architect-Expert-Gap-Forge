@@ -66,12 +66,34 @@ def test_main_async_two_pass_scan(tmp_path, monkeypatch, gap_dir):
     # Monkeypatch process_fragment to a no-op that records calls
     calls = []
 
-    async def fake_process_fragment(client, model, frag, master, changelog, semaphore,
-                                    writer_ok, writer_bad, tracker, args, jinja_guide=""):
+    async def fake_process_fragment(
+        client,
+        model,
+        frag,
+        master,
+        changelog,
+        semaphore,
+        writer_ok,
+        writer_bad,
+        tracker,
+        args,
+        jinja_guide="",
+    ):
         calls.append(frag.get("name"))
         # simulate writing accepted sample
-        await writer_ok.write({"id": f"fake_{frag.get('name')}", "metadata": {"checkpoint_key": pv11.make_checkpoint_key(frag.get('name'), frag.get('virtual_filename'))}})
-        await tracker.record("accepted", "nominal", "easy", gold_injected=True, has_legacy=False)
+        await writer_ok.write(
+            {
+                "id": f"fake_{frag.get('name')}",
+                "metadata": {
+                    "checkpoint_key": pv11.make_checkpoint_key(
+                        frag.get("name"), frag.get("virtual_filename")
+                    )
+                },
+            }
+        )
+        await tracker.record(
+            "accepted", "nominal", "easy", gold_injected=True, has_legacy=False
+        )
 
     monkeypatch.setattr(pv11, "process_fragment", fake_process_fragment, raising=False)
 

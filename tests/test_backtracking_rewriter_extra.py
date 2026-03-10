@@ -60,13 +60,17 @@ def test_build_rewrite_prompt_error_and_contrast() -> None:
     assert "old" in user2.lower() or "approach" in user2.lower()
 
 
-def test_apply_backtracking_rewrite_strips_think_and_preserves_code(tmp_path: Path) -> None:
+def test_apply_backtracking_rewrite_strips_think_and_preserves_code(
+    tmp_path: Path,
+) -> None:
     from src.curation.backtracking_rewriter import (
         BacktrackingConfig,
         apply_backtracking_rewrite,
     )
 
-    rec = _make_record(record_id="striptest", legacy_detected=True, think_text="Old reasoning")
+    rec = _make_record(
+        record_id="striptest", legacy_detected=True, think_text="Old reasoning"
+    )
     # Simulate a thinking model (e.g. qwen3): meta-reasoning lives INSIDE <think>…</think>,
     # the real clean answer comes AFTER the closing tag.
     # Any code blocks accidentally included in the answer part must be sanitised.
@@ -76,7 +80,9 @@ def test_apply_backtracking_rewrite_strips_think_and_preserves_code(tmp_path: Pa
         "New refined reasoning that is clean. ```python\nmalicious\n```"
     )
 
-    out = asyncio.run(apply_backtracking_rewrite(rec, mock_client, BacktrackingConfig()))
+    out = asyncio.run(
+        apply_backtracking_rewrite(rec, mock_client, BacktrackingConfig())
+    )
     assert out is not None
     assistant = out["conversation"][-1]["content"]
     # Meta-reasoning noise (before </think>) must NOT appear
@@ -162,33 +168,56 @@ def test_main_exits_zero_with_required_args(tmp_path: Path) -> None:
 
 def test_main_cli_overrides_are_applied(tmp_path: Path) -> None:
     """CLI flags --model, --temperature, --base-url must override config values."""
-    from src.curation.backtracking_rewriter import BacktrackingConfig, PipelineReport, main
+    from src.curation.backtracking_rewriter import (
+        BacktrackingConfig,
+        PipelineReport,
+        main,
+    )
 
     inp = tmp_path / "in.jsonl"
     out = tmp_path / "out.jsonl"
     _make_jsonl(inp, [_make_record(record_id="cli2")])
 
     fake_report = PipelineReport(
-        total_input=1, filtered_out=0, rewritten=1,
-        pass_through=0, failed=0, rejected=0, total_output=1,
+        total_input=1,
+        filtered_out=0,
+        rewritten=1,
+        pass_through=0,
+        failed=0,
+        rejected=0,
+        total_output=1,
         strategy_counts={},
     )
 
     captured_cfg: list[BacktrackingConfig] = []
 
-    def _capture(inp: Path, out: Path, cfg: BacktrackingConfig, **kw: Any) -> PipelineReport:
+    def _capture(
+        inp: Path, out: Path, cfg: BacktrackingConfig, **kw: Any
+    ) -> PipelineReport:
         captured_cfg.append(cfg)
         return fake_report
 
-    with patch("src.curation.backtracking_rewriter.rewrite_pipeline", new_callable=AsyncMock, side_effect=_capture):
-        exit_code = main([
-            "--input", str(inp),
-            "--output", str(out),
-            "--model", "my-custom-model",
-            "--temperature", "0.3",
-            "--base-url", "http://custom:9000/v1",
-            "--batch-size", "50",
-        ])
+    with patch(
+        "src.curation.backtracking_rewriter.rewrite_pipeline",
+        new_callable=AsyncMock,
+        side_effect=_capture,
+    ):
+        exit_code = main(
+            [
+                "--input",
+                str(inp),
+                "--output",
+                str(out),
+                "--model",
+                "my-custom-model",
+                "--temperature",
+                "0.3",
+                "--base-url",
+                "http://custom:9000/v1",
+                "--batch-size",
+                "50",
+            ]
+        )
 
     assert exit_code == 0
     assert len(captured_cfg) == 1
@@ -202,7 +231,11 @@ def test_main_cli_overrides_are_applied(tmp_path: Path) -> None:
 def test_main_loads_yaml_config(tmp_path: Path) -> None:
     """main() must load config values from a YAML file when --config is provided."""
     import yaml
-    from src.curation.backtracking_rewriter import BacktrackingConfig, PipelineReport, main
+    from src.curation.backtracking_rewriter import (
+        BacktrackingConfig,
+        PipelineReport,
+        main,
+    )
 
     inp = tmp_path / "in.jsonl"
     out = tmp_path / "out.jsonl"
@@ -215,18 +248,31 @@ def test_main_loads_yaml_config(tmp_path: Path) -> None:
     )
 
     fake_report = PipelineReport(
-        total_input=1, filtered_out=0, rewritten=1,
-        pass_through=0, failed=0, rejected=0, total_output=1,
+        total_input=1,
+        filtered_out=0,
+        rewritten=1,
+        pass_through=0,
+        failed=0,
+        rejected=0,
+        total_output=1,
         strategy_counts={},
     )
     captured_cfg: list[BacktrackingConfig] = []
 
-    def _capture(inp: Path, out: Path, cfg: BacktrackingConfig, **kw: Any) -> PipelineReport:
+    def _capture(
+        inp: Path, out: Path, cfg: BacktrackingConfig, **kw: Any
+    ) -> PipelineReport:
         captured_cfg.append(cfg)
         return fake_report
 
-    with patch("src.curation.backtracking_rewriter.rewrite_pipeline", new_callable=AsyncMock, side_effect=_capture):
-        exit_code = main(["--input", str(inp), "--output", str(out), "--config", str(cfg_file)])
+    with patch(
+        "src.curation.backtracking_rewriter.rewrite_pipeline",
+        new_callable=AsyncMock,
+        side_effect=_capture,
+    ):
+        exit_code = main(
+            ["--input", str(inp), "--output", str(out), "--config", str(cfg_file)]
+        )
 
     assert exit_code == 0
     assert captured_cfg[0].temperature == 0.1
@@ -248,10 +294,15 @@ def test_load_legacy_regexes_from_yaml(tmp_path: Path) -> None:
     data = {
         "legacy_patterns": [
             {"pattern": r"\bhass\.data\b", "description": "hass.data"},
-            {"pattern": r"\basync_forward_entry_setup\b(?!s)", "description": "singular setup"},
+            {
+                "pattern": r"\basync_forward_entry_setup\b(?!s)",
+                "description": "singular setup",
+            },
         ]
     }
-    patterns_file.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
+    patterns_file.write_text(
+        yaml.dump(data, default_flow_style=False), encoding="utf-8"
+    )
     regexes = _load_legacy_regexes(str(patterns_file))
     assert len(regexes) == 2
     assert regexes[0].search("hass.data[DOMAIN]")
@@ -278,7 +329,9 @@ def test_load_legacy_regexes_invalid_regex(tmp_path: Path) -> None:
             {"pattern": r"\bvalid_pattern\b", "description": "this one is fine"},
         ]
     }
-    patterns_file.write_text(yaml.dump(data, default_flow_style=False), encoding="utf-8")
+    patterns_file.write_text(
+        yaml.dump(data, default_flow_style=False), encoding="utf-8"
+    )
     regexes = _load_legacy_regexes(str(patterns_file))
     assert len(regexes) == 1
     assert regexes[0].search("valid_pattern")
@@ -343,9 +396,7 @@ def test_validate_resolution_empty_regexes() -> None:
     """No regexes configured — always passes."""
     from src.curation.backtracking_rewriter import _validate_resolution_no_legacy
 
-    passed, reason = _validate_resolution_no_legacy(
-        "anything", "anything", ()
-    )
+    passed, reason = _validate_resolution_no_legacy("anything", "anything", ())
     assert passed
     assert reason == ""
 
@@ -366,7 +417,9 @@ def test_validate_resolution_multiple_patterns() -> None:
         "I will call async_forward_entry_setup(entry, 'sensor') "
         "to register the sensor platform."
     )
-    code_rest = "\nawait hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)"
+    code_rest = (
+        "\nawait hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)"
+    )
     passed, reason = _validate_resolution_no_legacy(think, code_rest, regexes)
     assert not passed
     assert "async_forward_entry_setup" in reason
@@ -402,10 +455,14 @@ def test_apply_rewrite_rejection_sampling_discards_legacy_resolution() -> None:
     legacy_regexes = (re.compile(r"\bhass\.data\b"),)
 
     with pytest.raises(_RejectionSamplingError):
-        asyncio.run(apply_backtracking_rewrite(
-            record, mock_client, BacktrackingConfig(),
-            _legacy_regexes=legacy_regexes,
-        ))
+        asyncio.run(
+            apply_backtracking_rewrite(
+                record,
+                mock_client,
+                BacktrackingConfig(),
+                _legacy_regexes=legacy_regexes,
+            )
+        )
 
 
 def test_apply_rewrite_rejection_sampling_passes_clean_resolution() -> None:
@@ -433,9 +490,13 @@ def test_apply_rewrite_rejection_sampling_passes_clean_resolution() -> None:
 
     legacy_regexes = (re.compile(r"\bhass\.data\b"),)
 
-    result = asyncio.run(apply_backtracking_rewrite(
-        record, mock_client, BacktrackingConfig(),
-        _legacy_regexes=legacy_regexes,
-    ))
+    result = asyncio.run(
+        apply_backtracking_rewrite(
+            record,
+            mock_client,
+            BacktrackingConfig(),
+            _legacy_regexes=legacy_regexes,
+        )
+    )
     assert result is not None
     assert result["metadata"]["backtracking_applied"] is True

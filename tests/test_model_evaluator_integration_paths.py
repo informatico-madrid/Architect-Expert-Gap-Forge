@@ -8,6 +8,7 @@
 Tests that exercise code paths with loops and batch processing,
 triggering coverage of iteration logic and aggregate operations.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -29,7 +30,13 @@ from src.audit.model_evaluator import (
     cmd_adapter,
     cmd_score,
 )
-from src.audit.schema import InferenceResult, ScoreCard, SampleRecord, ExamRecord, AuditReport
+from src.audit.schema import (
+    InferenceResult,
+    ScoreCard,
+    SampleRecord,
+    ExamRecord,
+    AuditReport,
+)
 from tests.fixtures import golden_sample, golden_exam
 
 
@@ -37,23 +44,19 @@ from tests.fixtures import golden_sample, golden_exam
 class TestRunInferenceLoops:
     """Test run_inference with multiple samples to exercise loop coverage."""
 
-    def test_run_inference_processes_multiple_samples(
-        self, golden_sample: Any
-    ) -> None:
+    def test_run_inference_processes_multiple_samples(self, golden_sample: Any) -> None:
         """run_inference must process multiple samples in a loop."""
         # Create 5 samples to force loop iterations
         samples = [
             dataclasses.replace(
-                golden_sample, 
+                golden_sample,
                 id=f"sample_{i:03d}",
                 fragment_name=f"fragment_{i}",
             )
             for i in range(5)
         ]
 
-        with patch(
-            "src.audit.model_evaluator._inference_router"
-        ) as mock_router:
+        with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = (
                 "def test():\n    pass\n    # Response content"
@@ -61,7 +64,7 @@ class TestRunInferenceLoops:
             mock_router.return_value.student.return_value = mock_client
 
             results = run_inference(
-                samples, 
+                samples,
                 model="test-model",
                 inference_backend="gemini",
                 gemini_model="gemini-2.0-flash",
@@ -78,18 +81,14 @@ class TestRunInferenceLoops:
             assert all(r.model_name == "test-model" for r in results)
             assert mock_client.generate_with_retry.call_count == 5
 
-
     def test_run_inference_with_large_batch(self, golden_sample: Any) -> None:
         """run_inference must handle reasonable batch sizes efficiently."""
         # 20 samples - large batch for iteration coverage
         samples = [
-            dataclasses.replace(golden_sample, id=f"batch_{i:02d}")
-            for i in range(20)
+            dataclasses.replace(golden_sample, id=f"batch_{i:02d}") for i in range(20)
         ]
 
-        with patch(
-            "src.audit.model_evaluator._inference_router"
-        ) as mock_router:
+        with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = "response"
             mock_router.return_value.student.return_value = mock_client
@@ -110,14 +109,11 @@ class TestRunInferenceLoops:
             assert len(results) == 20
             assert mock_client.generate_with_retry.call_count == 20
 
-
     def test_run_inference_handles_empty_response(self, golden_sample: Any) -> None:
         """run_inference must handle empty responses gracefully."""
         samples = [golden_sample]
 
-        with patch(
-            "src.audit.model_evaluator._inference_router"
-        ) as mock_router:
+        with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = ""  # Empty response
             mock_router.return_value.student.return_value = mock_client
@@ -144,16 +140,12 @@ class TestRunInferenceLoops:
 class TestComputeScorecardAggregation:
     """Test compute_scorecard with multiple dimension scenarios."""
 
-    def test_compute_scorecard_processes_all_dimensions(
-        self, golden_exam: Any
-    ) -> None:
+    def test_compute_scorecard_processes_all_dimensions(self, golden_exam: Any) -> None:
         """compute_scorecard must evaluate all scoring dimensions."""
         baseline_resp = "baseline implementation"
         adapter_resp = "improved implementation"
 
-        with patch(
-            "src.audit.model_evaluator._inference_router"
-        ) as mock_router:
+        with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             # Valid judge response with all dimensions
             judge_response = {
@@ -194,17 +186,12 @@ class TestComputeScorecardAggregation:
             assert scorecard.record_id == golden_exam.id
             assert scorecard.delta_vs_baseline > 0
 
-
-    def test_compute_scorecard_with_minimal_dimensions(
-        self, golden_exam: Any
-    ) -> None:
+    def test_compute_scorecard_with_minimal_dimensions(self, golden_exam: Any) -> None:
         """compute_scorecard must handle responses with only some dimensions."""
         baseline_resp = "baseline"
         adapter_resp = "adapter"
 
-        with patch(
-            "src.audit.model_evaluator._inference_router"
-        ) as mock_router:
+        with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             # Minimal judge response - only one dimension
             judge_response = {
@@ -268,7 +255,6 @@ class TestCmdSampleProcessing:
             with pytest.raises(SystemExit, match="--dataset is required"):
                 cmd_sample(args)
 
-
     def test_cmd_sample_skips_existing_sample_without_force(
         self, golden_sample: Any
     ) -> None:
@@ -319,13 +305,11 @@ class TestCmdSampleProcessing:
 class TestCmdGenerateExamLoop:
     """Test cmd_generate_exam with loop iterations."""
 
-    def test_cmd_generate_exam_loops_through_samples(
-        self, golden_sample: Any
-    ) -> None:
+    def test_cmd_generate_exam_loops_through_samples(self, golden_sample: Any) -> None:
         """cmd_generate_exam must process each sample in a loop with error handling."""
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
-            
+
             # Create 3 enriched samples
             samples = [
                 dataclasses.replace(
@@ -351,22 +335,26 @@ class TestCmdGenerateExamLoop:
             )
 
             with patch("src.audit.model_evaluator.load_persisted_sample") as mock_load:
-                with patch("src.audit.model_evaluator.generate_exam_question") as mock_gen:
-                    with patch("src.audit.model_evaluator.persist_exam") as mock_persist:
+                with patch(
+                    "src.audit.model_evaluator.generate_exam_question"
+                ) as mock_gen:
+                    with patch(
+                        "src.audit.model_evaluator.persist_exam"
+                    ) as mock_persist:
                         mock_load.return_value = samples
-                        
+
                         # Return exam records using ExamRecord.from_sample
                         def gen_side_effect(sample, **kwargs):
                             return ExamRecord.from_sample(
                                 sample,
                                 exam_question="generated exam question",
                             )
-                        
+
                         mock_gen.side_effect = gen_side_effect
-                        
+
                         # Execute cmd_generate_exam
                         cmd_generate_exam(args)
-                        
+
                         # Verify loop executed 3 times
                         assert mock_gen.call_count == 3
                         # Verify persist was called
@@ -374,8 +362,9 @@ class TestCmdGenerateExamLoop:
                         persisted_records = mock_persist.call_args[0][0]
                         assert len(persisted_records) == 3
 
-
-    def test_cmd_generate_exam_validates_missing_metadata(self, golden_sample: Any) -> None:
+    def test_cmd_generate_exam_validates_missing_metadata(
+        self, golden_sample: Any
+    ) -> None:
         """cmd_generate_exam must validate that samples have required metadata."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create sample WITHOUT reference_standards (missing metadata)
@@ -399,7 +388,7 @@ class TestCmdGenerateExamLoop:
 
             with patch("src.audit.model_evaluator.load_persisted_sample") as mock_load:
                 mock_load.return_value = [bad_sample]
-                
+
                 # Should raise SystemExit due to missing metadata
                 with pytest.raises(SystemExit, match="validation failed"):
                     cmd_generate_exam(args)
@@ -414,14 +403,13 @@ class TestCmdScoreBatchProcessing:
     ) -> None:
         """cmd_score must process multiple exams and match with inference results."""
         from datetime import datetime, timezone
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
-            
+
             # Create 3 exams
             exams = [
-                dataclasses.replace(golden_exam, id=f"exam_{i:02d}")
-                for i in range(3)
+                dataclasses.replace(golden_exam, id=f"exam_{i:02d}") for i in range(3)
             ]
 
             args = argparse.Namespace(
@@ -463,21 +451,28 @@ class TestCmdScoreBatchProcessing:
 
             with patch("src.audit.model_evaluator.load_exam") as mock_load_exam:
                 with patch("src.audit.model_evaluator.load_inference") as mock_load_inf:
-                    with patch("src.audit.model_evaluator.compute_scorecard") as mock_score:
-                        with patch("src.audit.model_evaluator.generate_report") as mock_report:
+                    with patch(
+                        "src.audit.model_evaluator.compute_scorecard"
+                    ) as mock_score:
+                        with patch(
+                            "src.audit.model_evaluator.generate_report"
+                        ) as mock_report:
                             mock_load_exam.return_value = exams
                             # Make generate_report return the new (Path, AuditReport) tuple
-                            mock_report.return_value = (Path(args.audit_dir) / "audit_report_v11.md", AuditReport())
-                            
+                            mock_report.return_value = (
+                                Path(args.audit_dir) / "audit_report_v11.md",
+                                AuditReport(),
+                            )
+
                             # Set up load_inference side effect
                             def load_inference_side_effect(backend, audit_dir_arg):
                                 if backend == "baseline":
                                     return baseline_results
                                 elif backend == "adapter":
                                     return adapter_results
-                            
+
                             mock_load_inf.side_effect = load_inference_side_effect
-                            
+
                             # Mock scorecard creation
                             mock_score.return_value = ScoreCard(
                                 record_id="exam_00",
@@ -486,15 +481,14 @@ class TestCmdScoreBatchProcessing:
                                 ha_modernity=0.8,
                                 delta_vs_baseline=0.2,
                             )
-                            
+
                             # Execute cmd_score
                             cmd_score(args)
-                            
+
                             # Verify loop processed all 3 exams
                             assert mock_score.call_count == 3
                             # Verify report was generated
                             mock_report.assert_called_once()
-
 
     def test_cmd_score_handles_missing_inference_results(
         self, golden_exam: Any
@@ -502,7 +496,7 @@ class TestCmdScoreBatchProcessing:
         """cmd_score must log warning when inference results are missing for an exam."""
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
-            
+
             # Create an exam
             exams = [golden_exam]
 
@@ -520,26 +514,33 @@ class TestCmdScoreBatchProcessing:
 
             # Provide incomplete inference results (missing the exam)
             baseline_results = []  # Empty!
-            adapter_results = []   # Empty!
+            adapter_results = []  # Empty!
 
             with patch("src.audit.model_evaluator.load_exam") as mock_load_exam:
                 with patch("src.audit.model_evaluator.load_inference") as mock_load_inf:
-                    with patch("src.audit.model_evaluator.compute_scorecard") as mock_score:
-                        with patch("src.audit.model_evaluator.generate_report") as mock_report:
+                    with patch(
+                        "src.audit.model_evaluator.compute_scorecard"
+                    ) as mock_score:
+                        with patch(
+                            "src.audit.model_evaluator.generate_report"
+                        ) as mock_report:
                             mock_load_exam.return_value = exams
-                            mock_report.return_value = (Path(args.audit_dir) / "audit_report_v11.md", AuditReport())
+                            mock_report.return_value = (
+                                Path(args.audit_dir) / "audit_report_v11.md",
+                                AuditReport(),
+                            )
 
                             def load_inference_side_effect(backend, audit_dir_arg):
                                 if backend == "baseline":
                                     return baseline_results
                                 elif backend == "adapter":
                                     return adapter_results
-                            
+
                             mock_load_inf.side_effect = load_inference_side_effect
-                            
+
                             # Execute cmd_score
                             cmd_score(args)
-                            
+
                             # Verify compute_scorecard was NOT called (missing results)
                             mock_score.assert_not_called()
                             # Report should still be generated with empty scorecards
@@ -553,11 +554,11 @@ class TestCmdInferencePaths:
     def test_cmd_baseline_uses_exam_when_available(self, golden_exam: Any) -> None:
         """cmd_baseline should load exam when available."""
         from datetime import datetime, timezone
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
             now = datetime.now(timezone.utc).isoformat()
-            
+
             args = argparse.Namespace(
                 audit_dir=str(audit_dir),
                 model=None,
@@ -573,7 +574,9 @@ class TestCmdInferencePaths:
 
             with patch("src.audit.model_evaluator.load_exam") as mock_load_exam:
                 with patch("src.audit.model_evaluator.run_inference") as mock_infer:
-                    with patch("src.audit.model_evaluator.persist_inference") as mock_persist:
+                    with patch(
+                        "src.audit.model_evaluator.persist_inference"
+                    ) as mock_persist:
                         # Exam is available
                         mock_load_exam.return_value = [golden_exam]
                         mock_infer.return_value = [
@@ -586,10 +589,10 @@ class TestCmdInferencePaths:
                                 timestamp=now,
                             )
                         ]
-                        
+
                         # Execute cmd_baseline
                         cmd_baseline(args)
-                        
+
                         # Verify exam was loaded
                         mock_load_exam.assert_called_once()
                         # Verify inference ran with exam
@@ -597,17 +600,16 @@ class TestCmdInferencePaths:
                         # Verify results persisted
                         mock_persist.assert_called_once()
 
-
     def test_cmd_baseline_falls_back_to_samples_when_exam_missing(
         self, golden_sample: Any
     ) -> None:
         """cmd_baseline should fallback to sample when exam not found."""
         from datetime import datetime, timezone
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
             now = datetime.now(timezone.utc).isoformat()
-            
+
             args = argparse.Namespace(
                 audit_dir=str(audit_dir),
                 model=None,
@@ -622,9 +624,13 @@ class TestCmdInferencePaths:
             )
 
             with patch("src.audit.model_evaluator.load_exam") as mock_load_exam:
-                with patch("src.audit.model_evaluator.load_persisted_sample") as mock_load_sample:
+                with patch(
+                    "src.audit.model_evaluator.load_persisted_sample"
+                ) as mock_load_sample:
                     with patch("src.audit.model_evaluator.run_inference") as mock_infer:
-                        with patch("src.audit.model_evaluator.persist_inference") as mock_persist:
+                        with patch(
+                            "src.audit.model_evaluator.persist_inference"
+                        ) as mock_persist:
                             # Exam not found
                             mock_load_exam.side_effect = FileNotFoundError()
                             # Fall back to sample
@@ -639,24 +645,23 @@ class TestCmdInferencePaths:
                                     timestamp=now,
                                 )
                             ]
-                            
+
                             # Execute cmd_baseline
                             cmd_baseline(args)
-                            
+
                             # Verify fallback occurred
                             mock_load_sample.assert_called_once()
                             # Verify inference still ran
                             mock_infer.assert_called_once()
 
-
     def test_cmd_adapter_uses_exam_when_available(self, golden_exam: Any) -> None:
         """cmd_adapter should load exam when available."""
         from datetime import datetime, timezone
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
             now = datetime.now(timezone.utc).isoformat()
-            
+
             args = argparse.Namespace(
                 audit_dir=str(audit_dir),
                 model=None,
@@ -672,7 +677,9 @@ class TestCmdInferencePaths:
 
             with patch("src.audit.model_evaluator.load_exam") as mock_load_exam:
                 with patch("src.audit.model_evaluator.run_inference") as mock_infer:
-                    with patch("src.audit.model_evaluator.persist_inference") as mock_persist:
+                    with patch(
+                        "src.audit.model_evaluator.persist_inference"
+                    ) as mock_persist:
                         # Exam is available
                         mock_load_exam.return_value = [golden_exam]
                         mock_infer.return_value = [
@@ -685,10 +692,10 @@ class TestCmdInferencePaths:
                                 timestamp=now,
                             )
                         ]
-                        
+
                         # Execute cmd_adapter
                         cmd_adapter(args)
-                        
+
                         # Verify exam was loaded
                         mock_load_exam.assert_called_once()
                         # Verify inference ran
@@ -696,7 +703,9 @@ class TestCmdInferencePaths:
                         # Verify results persisted with "adapter" tag
                         mock_persist.assert_called_once()
                         call_args = mock_persist.call_args
-                        assert call_args[0][1] == "adapter"  # Backend type should be "adapter"
+                        assert (
+                            call_args[0][1] == "adapter"
+                        )  # Backend type should be "adapter"
 
     """Test report creation path."""
 
@@ -711,7 +720,7 @@ class TestCmdInferencePaths:
         assert "CONDITIONAL" in _verdict(70.0)
         assert "WARN" in _verdict(50.0)
         assert "FAIL" in _verdict(20.0)
-        
+
         # All verdicts should be non-empty and provide guidance
         for grade in [0.0, 25.0, 50.0, 75.0, 90.0, 100.0]:
             v = _verdict(grade)
@@ -728,50 +737,48 @@ class TestFormatAndBuildSections:
     def test_format_reference_standards_with_content(self, golden_sample: Any) -> None:
         """_format_reference_standards must format standards section."""
         from src.audit.model_evaluator import _format_reference_standards
-        
+
         # Create mock master docs
         master = "Master documentation with details about the system architecture"
         changelog = "Version 2.0: Added feature X and fixed bug Y"
         jinja_guide = "Jinja template syntax and best practices"
-        
+
         # Call format function
         formatted = _format_reference_standards(master, changelog, jinja_guide)
-        
+
         # Verify it returns a non-empty string
         assert isinstance(formatted, str)
         assert len(formatted) > 0
-
 
     def test_build_domain_standards_section_with_gap_analysis(
         self, golden_sample: Any
     ) -> None:
         """_build_domain_standards_section must prioritize gap_analysis."""
         from src.audit.model_evaluator import _build_domain_standards_section
-        
+
         reference_standards = "Some standards"
         gap_analysis = "Migration requirements and gaps"
-        
+
         # Call format function with gap_analysis
         section = _build_domain_standards_section(reference_standards, gap_analysis)
-        
+
         # Verify formatted section prioritizes gap_analysis
         assert isinstance(section, str)
         assert len(section) > 0
         assert "gap_analysis" in section.lower() or "migration" in section.lower()
-
 
     def test_build_domain_standards_section_with_standards_only(
         self, golden_sample: Any
     ) -> None:
         """_build_domain_standards_section must use reference_standards when no gap_analysis."""
         from src.audit.model_evaluator import _build_domain_standards_section
-        
+
         reference_standards = "Architectural standards and best practices"
         gap_analysis = ""
-        
+
         # Call format function without gap_analysis
         section = _build_domain_standards_section(reference_standards, gap_analysis)
-        
+
         # Verify formatted section uses reference_standards
         assert isinstance(section, str)
         assert len(section) > 0
@@ -787,8 +794,7 @@ class TestInferenceWithEdgeCases:
     ) -> None:
         """run_inference must calculate latency for each sample."""
         samples = [
-            dataclasses.replace(golden_sample, id=f"lat_{i:02d}")
-            for i in range(3)
+            dataclasses.replace(golden_sample, id=f"lat_{i:02d}") for i in range(3)
         ]
 
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
@@ -812,7 +818,6 @@ class TestInferenceWithEdgeCases:
             assert len(results) == 3
             for result in results:
                 assert result.latency_ms >= 0
-
 
     def test_run_inference_with_fallback_to_user_prompt(
         self, golden_sample: Any
@@ -907,10 +912,10 @@ class TestCmdGenerateExamErrorPropagation:
     ) -> None:
         """cmd_generate_exam must propagate PromptGenerationError."""
         from src.audit.schema import PromptGenerationError
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
-            
+
             samples = [
                 dataclasses.replace(
                     golden_sample,
@@ -953,9 +958,9 @@ class TestPatternLoading:
     def test_load_domain_patterns_returns_valid_dict(self) -> None:
         """_load_domain_patterns must return dict with expected keys."""
         from src.audit.model_evaluator import _load_domain_patterns
-        
+
         patterns = _load_domain_patterns()
-        
+
         # Verify it's a dict
         assert isinstance(patterns, dict)
         # Should have default_standards at minimum
@@ -1003,11 +1008,11 @@ class TestExamLoadingFallback:
     def test_load_exam_with_fallback_path(self, golden_sample: Any) -> None:
         """Code paths that fall back from exam to sample must work correctly."""
         from datetime import datetime, timezone
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             audit_dir = Path(tmpdir)
             now = datetime.now(timezone.utc).isoformat()
-            
+
             args = argparse.Namespace(
                 audit_dir=str(audit_dir),
                 model=None,
@@ -1022,7 +1027,9 @@ class TestExamLoadingFallback:
             )
 
             with patch("src.audit.model_evaluator.load_exam") as mock_load_exam:
-                with patch("src.audit.model_evaluator.load_persisted_sample") as mock_load_sample:
+                with patch(
+                    "src.audit.model_evaluator.load_persisted_sample"
+                ) as mock_load_sample:
                     with patch("src.audit.model_evaluator.run_inference") as mock_infer:
                         with patch("src.audit.model_evaluator.persist_inference"):
                             # Exam file doesn't exist - test FileNotFoundError handling
@@ -1056,7 +1063,7 @@ class TestConfigurationAndEnvironment:
     ) -> None:
         """_format_reference_standards with missing config must use fallback."""
         from src.audit.model_evaluator import _format_reference_standards
-        
+
         # Mock CFG to return empty/invalid config
         with patch.dict(
             "src.audit.model_evaluator.CFG",
@@ -1067,21 +1074,20 @@ class TestConfigurationAndEnvironment:
             master = "Master content " * 100
             changelog = "Changelog " * 100
             guide = "Guide " * 50
-            
+
             result = _format_reference_standards(master, changelog, guide)
-            
+
             # Should return concatenation with truncation
             assert isinstance(result, str)
             assert len(result) > 0
             assert "Reference Documents" in result  # Fallback format
-
 
     def test_format_reference_standards_with_valid_config(
         self, golden_sample: Any
     ) -> None:
         """_format_reference_standards with valid config must use it."""
         from src.audit.model_evaluator import _format_reference_standards
-        
+
         # Mock CFG with valid format config
         format_config = {
             "master_docs_formatting": {
@@ -1090,7 +1096,7 @@ class TestConfigurationAndEnvironment:
                 "jinja_yaml_guide": {"label": "GUIDE", "truncate_at": 300},
             }
         }
-        
+
         with patch.dict(
             "src.audit.model_evaluator.CFG",
             format_config,
@@ -1099,9 +1105,9 @@ class TestConfigurationAndEnvironment:
             master = "Master " * 200
             changelog = "Changelog " * 200
             guide = "Guide " * 100
-            
+
             result = _format_reference_standards(master, changelog, guide)
-            
+
             # Should use config labels
             assert isinstance(result, str)
             # Should contain config-driven labels
@@ -1112,9 +1118,7 @@ class TestConfigurationAndEnvironment:
 class TestInferenceResponseVariations:
     """Test run_inference with various response content types."""
 
-    def test_run_inference_with_very_long_response(
-        self, golden_sample: Any
-    ) -> None:
+    def test_run_inference_with_very_long_response(self, golden_sample: Any) -> None:
         """run_inference must handle very long model responses."""
         sample = dataclasses.replace(
             golden_sample,
@@ -1140,14 +1144,11 @@ class TestInferenceResponseVariations:
                 temperature=0.7,
             )
 
-            # Should handle long response 
+            # Should handle long response
             assert len(results) == 1
             assert len(results[0].response) > 1000
 
-
-    def test_run_inference_with_json_response(
-        self, golden_sample: Any
-    ) -> None:
+    def test_run_inference_with_json_response(self, golden_sample: Any) -> None:
         """run_inference must handle JSON-formatted responses."""
         sample = dataclasses.replace(
             golden_sample,
@@ -1157,11 +1158,13 @@ class TestInferenceResponseVariations:
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             # Simulate JSON response
-            json_response = json.dumps({
-                "implementation": "def foo(): pass",
-                "explanation": "Simple function",
-                "metrics": {"complexity": 1}
-            })
+            json_response = json.dumps(
+                {
+                    "implementation": "def foo(): pass",
+                    "explanation": "Simple function",
+                    "metrics": {"complexity": 1},
+                }
+            )
             mock_client.generate_with_retry.return_value = json_response
             mock_router.return_value.student.return_value = mock_client
 
@@ -1233,10 +1236,7 @@ class TestScoringAndDimensionCalculation:
             assert isinstance(scorecard, ScoreCard)
             assert scorecard.delta_vs_baseline > 0.3
 
-
-    def test_compute_scorecard_preserves_reasoning(
-        self, golden_exam: Any
-    ) -> None:
+    def test_compute_scorecard_preserves_reasoning(self, golden_exam: Any) -> None:
         """compute_scorecard must preserve judge's reasoning."""
         baseline_resp = "baseline"
         adapter_resp = "adapter"
@@ -1334,10 +1334,9 @@ class TestInferenceCoreLoopCoverage:
     ) -> None:
         """run_inference token counting and timing calculation."""
         from datetime import datetime, timezone
-        
+
         samples = [
-            dataclasses.replace(golden_sample, id=f"tc_{i:02d}")
-            for i in range(2)
+            dataclasses.replace(golden_sample, id=f"tc_{i:02d}") for i in range(2)
         ]
 
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
@@ -1365,18 +1364,15 @@ class TestInferenceCoreLoopCoverage:
             assert len(results) == 2
             assert results[0].token_count < results[1].token_count
 
-
-    def test_generate_gap_analysis_integration(
-        self, golden_sample: Any
-    ) -> None:
+    def test_generate_gap_analysis_integration(self, golden_sample: Any) -> None:
         """Test gap_analysis generation path."""
         from src.audit.model_evaluator import generate_gap_analysis
-        
+
         # Create mock docs
         master = "Master doc content"
         changelog = "Changelog content"
         jinja_guide = "Jinja guide content"
-        
+
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = (
@@ -1412,7 +1408,7 @@ class TestFormatSectionsWithValidConfig:
     ) -> None:
         """_format_reference_standards must apply labels from config."""
         from src.audit.model_evaluator import _format_reference_standards
-        
+
         # Create config with specific labels
         config_labels = {
             "master_docs_formatting": {
@@ -1421,7 +1417,7 @@ class TestFormatSectionsWithValidConfig:
                 "jinja_yaml_guide": {"label": "TEMPLATES", "truncate_at": 600},
             }
         }
-        
+
         with patch.dict(
             "src.audit.model_evaluator.CFG",
             config_labels,
@@ -1430,43 +1426,31 @@ class TestFormatSectionsWithValidConfig:
             master = "Master doc " * 50
             changelog = "Changelog " * 50
             guide = "Guide " * 50
-            
+
             result = _format_reference_standards(master, changelog, guide)
-            
+
             # Should contain config-applied labels
             assert isinstance(result, str)
             assert len(result) > 0
             # At least some label or content should appear
             assert "Master" in result or "Changelog" in result or len(result) > 10
 
-
     def test_build_domain_standards_section_priority_logic(
         self, golden_sample: Any
     ) -> None:
         """_build_domain_standards_section must follow priority: gap > standards > defaults."""
         from src.audit.model_evaluator import _build_domain_standards_section
-        
+
         # Test 1: gap_analysis takes priority
         result1 = _build_domain_standards_section(
             reference_standards="Standard",
             gap_analysis="Gap is priority",
         )
         assert "Gap" in result1
-        
+
         # Test 2: reference_standards when no gap
         result2 = _build_domain_standards_section(
             reference_standards="Standard content",
             gap_analysis="",
         )
         assert "Standard" in result2
-
-
-
-
-
-
-
-
-
-
-

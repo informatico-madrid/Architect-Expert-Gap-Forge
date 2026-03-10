@@ -22,7 +22,7 @@ KEY FEATURES:
 4. GOLD INJECTION: Original source code is ALWAYS injected as correct output.
 5. OUTPUT FORMAT:
    {"id": "...", "conversation": [...], "metadata": {...}, "filter_text": "..."}
-6. PROMPT TAXONOMY: All  prompt text loaded from external YAML taxonomy example in 
+6. PROMPT TAXONOMY: All  prompt text loaded from external YAML taxonomy example in
    (configs/stage_2_factory/taxonomy/generic_domain/taxonomy.yaml.example).
 """
 
@@ -51,6 +51,7 @@ try:
 except ImportError:
     try:
         import importlib.util as _ilu, os as _os
+
         _tf_path = _os.path.join(_os.path.dirname(__file__), "think_filter.py")
         _tf_spec = _ilu.spec_from_file_location("think_filter", _tf_path)
         _tf_mod = _ilu.module_from_spec(_tf_spec)
@@ -147,54 +148,62 @@ def _prompt(key: str) -> str:
 
 LEGACY_CODE_DETECTORS = [
     # --- Storage / Runtime Data ---
-    (r'hass\.data\[', "hass.data[] dict pattern -> entry.runtime_data"),
-    (r'hass\.data\.setdefault', "hass.data.setdefault() -> entry.runtime_data"),
+    (r"hass\.data\[", "hass.data[] dict pattern -> entry.runtime_data"),
+    (r"hass\.data\.setdefault", "hass.data.setdefault() -> entry.runtime_data"),
     # --- Unit Constants Legacy ---
-    (r'\bTEMP_CELSIUS\b|\bTEMP_FAHRENHEIT\b|\bTEMP_KELVIN\b',
-     "Legacy TEMP_* constants -> UnitOfTemperature enum"),
-    (r'\bUNIT_PERCENTAGE\b|\bPERCENTAGE\b(?=\s*[,\)])',
-     "Legacy UNIT_PERCENTAGE -> UnitOfMeasurement enum"),
-    (r'\bLENGTH_METERS\b|\bLENGTH_KILOMETERS\b|\bLENGTH_MILES\b',
-     "Legacy LENGTH_* constants -> UnitOfLength enum"),
-    (r'\bMASS_GRAMS\b|\bMASS_KILOGRAMS\b|\bVOLUME_LITERS\b',
-     "Legacy MASS_*/VOLUME_* constants -> UnitOf* enums"),
-    (r'\bPRESSURE_BAR\b|\bPRESSURE_PA\b|\bPRESSURE_HPA\b',
-     "Legacy PRESSURE_* constants -> UnitOfPressure enum"),
-    (r'\bENERGY_KILO_WATT_HOUR\b|\bENERGY_WATT_HOUR\b|\bPOWER_WATT\b|\bPOWER_KILO_WATT\b',
-     "Legacy ENERGY_*/POWER_* -> UnitOfEnergy/UnitOfPower enums"),
+    (
+        r"\bTEMP_CELSIUS\b|\bTEMP_FAHRENHEIT\b|\bTEMP_KELVIN\b",
+        "Legacy TEMP_* constants -> UnitOfTemperature enum",
+    ),
+    (
+        r"\bUNIT_PERCENTAGE\b|\bPERCENTAGE\b(?=\s*[,\)])",
+        "Legacy UNIT_PERCENTAGE -> UnitOfMeasurement enum",
+    ),
+    (
+        r"\bLENGTH_METERS\b|\bLENGTH_KILOMETERS\b|\bLENGTH_MILES\b",
+        "Legacy LENGTH_* constants -> UnitOfLength enum",
+    ),
+    (
+        r"\bMASS_GRAMS\b|\bMASS_KILOGRAMS\b|\bVOLUME_LITERS\b",
+        "Legacy MASS_*/VOLUME_* constants -> UnitOf* enums",
+    ),
+    (
+        r"\bPRESSURE_BAR\b|\bPRESSURE_PA\b|\bPRESSURE_HPA\b",
+        "Legacy PRESSURE_* constants -> UnitOfPressure enum",
+    ),
+    (
+        r"\bENERGY_KILO_WATT_HOUR\b|\bENERGY_WATT_HOUR\b|\bPOWER_WATT\b|\bPOWER_KILO_WATT\b",
+        "Legacy ENERGY_*/POWER_* -> UnitOfEnergy/UnitOfPower enums",
+    ),
     # --- Setup singular ---
-    (r'async_forward_entry_setup\b(?!s)',
-     "Singular async_forward_entry_setup -> async_forward_entry_setups"),
+    (
+        r"async_forward_entry_setup\b(?!s)",
+        "Singular async_forward_entry_setup -> async_forward_entry_setups",
+    ),
     # --- String device_class ---
-    (r'device_class\s*=\s*["\'](?:temperature|humidity|pressure|energy|power|battery|voltage|current)',
-     "String literal device_class -> SensorDeviceClass/BinarySensorDeviceClass enum"),
-    (r'_attr_device_class\s*=\s*["\']',
-     "String _attr_device_class -> Enum"),
+    (
+        r'device_class\s*=\s*["\'](?:temperature|humidity|pressure|energy|power|battery|voltage|current)',
+        "String literal device_class -> SensorDeviceClass/BinarySensorDeviceClass enum",
+    ),
+    (r'_attr_device_class\s*=\s*["\']', "String _attr_device_class -> Enum"),
     # --- Synchronous Entity pattern ---
-    (r'def update\(self\)',
-     "Synchronous update(self) -> CoordinatorEntity + async"),
-    (r'def\s+async_update\(self\)',
-     "Direct async_update -> CoordinatorEntity pattern"),
+    (r"def update\(self\)", "Synchronous update(self) -> CoordinatorEntity + async"),
+    (r"def\s+async_update\(self\)", "Direct async_update -> CoordinatorEntity pattern"),
     # --- YAML-only ---
-    (r'PLATFORM_SCHEMA\s*=',
-     "YAML-only PLATFORM_SCHEMA -> ConfigFlow required"),
+    (r"PLATFORM_SCHEMA\s*=", "YAML-only PLATFORM_SCHEMA -> ConfigFlow required"),
     # --- Blocking I/O in async ---
-    (r'requests\.get\(|requests\.post\(|requests\.put\(|requests\.delete\(',
-     "Blocking requests.* in code -> aiohttp/async_add_executor_job"),
-    (r'(?<!await\s)time\.sleep\(',
-     "Blocking time.sleep() -> await asyncio.sleep()"),
-    (r'urllib\.request\.urlopen',
-     "Blocking urllib -> aiohttp"),
+    (
+        r"requests\.get\(|requests\.post\(|requests\.put\(|requests\.delete\(",
+        "Blocking requests.* in code -> aiohttp/async_add_executor_job",
+    ),
+    (r"(?<!await\s)time\.sleep\(", "Blocking time.sleep() -> await asyncio.sleep()"),
+    (r"urllib\.request\.urlopen", "Blocking urllib -> aiohttp"),
     # --- Deprecated state/entity attributes ---
-    (r'\bself\._state\s*=',
-     "Legacy self._state = X -> native_value property"),
-    (r'\bself\._attr_state\s*=',
-     "Legacy self._attr_state -> native_value property"),
-    (r'@property\s*\n\s*def\s+state\(self\)',
-     "Legacy state property -> native_value"),
+    (r"\bself\._state\s*=", "Legacy self._state = X -> native_value property"),
+    (r"\bself\._attr_state\s*=", "Legacy self._attr_state -> native_value property"),
+    (r"@property\s*\n\s*def\s+state\(self\)", "Legacy state property -> native_value"),
     # --- Old-style entity registration ---
-    (r'add_entities\(\[.*\]\s*,\s*True\)',
-     "Legacy polling=True -> CoordinatorEntity"),
+    (r"add_entities\(\[.*\]\s*,\s*True\)", "Legacy polling=True -> CoordinatorEntity"),
 ]
 
 
@@ -205,33 +214,61 @@ LEGACY_CODE_DETECTORS = [
 
 JINJA_LEGACY_CODE_DETECTORS = [
     # --- 2024.10: Singular syntax in automations ---
-    (r'^\s*trigger:\s*$', "Singular 'trigger:' -> 'triggers:' (2024.10)"),
-    (r'^\s*condition:\s*$', "Singular 'condition:' -> 'conditions:' (2024.10)"),
-    (r'^\s*action:\s*$', "Singular 'action:' -> 'actions:' (2024.10)"),
-    (r'^\s*-\s*platform:\s*(?:state|numeric_state|time|event|mqtt|webhook|sun|zone|tag)\b',
-     "Legacy 'platform:' in trigger -> 'trigger:' (2024.10)"),
+    (r"^\s*trigger:\s*$", "Singular 'trigger:' -> 'triggers:' (2024.10)"),
+    (r"^\s*condition:\s*$", "Singular 'condition:' -> 'conditions:' (2024.10)"),
+    (r"^\s*action:\s*$", "Singular 'action:' -> 'actions:' (2024.10)"),
+    (
+        r"^\s*-\s*platform:\s*(?:state|numeric_state|time|event|mqtt|webhook|sun|zone|tag)\b",
+        "Legacy 'platform:' in trigger -> 'trigger:' (2024.10)",
+    ),
     # --- 2024.12: Variable this vs value ---
-    (r'\bthis\.state\b', "Legacy this.state -> use 'value' variable (2024.12)"),
-    (r'\bthis\.attributes\b', "Legacy this.attributes -> use 'value' or new 'this' semantics (2024.12)"),
+    (r"\bthis\.state\b", "Legacy this.state -> use 'value' variable (2024.12)"),
+    (
+        r"\bthis\.attributes\b",
+        "Legacy this.attributes -> use 'value' or new 'this' semantics (2024.12)",
+    ),
     # --- 2024.12: Non-snake_case states ---
-    (r"==\s*['\"](?:[A-Z][a-z]+\s+[A-Z]|[A-Z]{2,}[a-z])",
-     "Non-snake_case state format -> migrate to snake_case (2024.12)"),
+    (
+        r"==\s*['\"](?:[A-Z][a-z]+\s+[A-Z]|[A-Z]{2,}[a-z])",
+        "Non-snake_case state format -> migrate to snake_case (2024.12)",
+    ),
     # --- 2025.8: None -> unknown in binary_sensor ---
-    (r'or\s+None\s*[%}]', "Implicit None in binary_sensor -> use explicit 'false' (2025.8)"),
-    (r"is_state\([^)]*['\"]standby['\"]",
-     "State 'standby' removed -> use 'off' (2025.8)"),
-    (r"state_attr\([^)]*['\"]battery_level['\"]",
-     "Attribute 'battery_level' removed -> use dedicated sensor (2025.8)"),
-    (r"state_attr\([^)]*['\"]battery['\"]",
-     "Attribute 'battery' removed -> use dedicated sensor (2025.8)"),
+    (
+        r"or\s+None\s*[%}]",
+        "Implicit None in binary_sensor -> use explicit 'false' (2025.8)",
+    ),
+    (
+        r"is_state\([^)]*['\"]standby['\"]",
+        "State 'standby' removed -> use 'off' (2025.8)",
+    ),
+    (
+        r"state_attr\([^)]*['\"]battery_level['\"]",
+        "Attribute 'battery_level' removed -> use dedicated sensor (2025.8)",
+    ),
+    (
+        r"state_attr\([^)]*['\"]battery['\"]",
+        "Attribute 'battery' removed -> use dedicated sensor (2025.8)",
+    ),
     # --- 2025.12: Legacy template entities ---
-    (r'platform:\s*template', "Legacy 'platform: template' -> root 'template:' syntax (2025.12, dies 2026.6)"),
-    (r'value_template:', "Legacy 'value_template:' -> use 'state:' in modern syntax (2025.12)"),
+    (
+        r"platform:\s*template",
+        "Legacy 'platform: template' -> root 'template:' syntax (2025.12, dies 2026.6)",
+    ),
+    (
+        r"value_template:",
+        "Legacy 'value_template:' -> use 'state:' in modern syntax (2025.12)",
+    ),
     # --- Best practices: filters without default ---
-    (r'\|\s*float\s*[^(]', "float without default -> use '| float(0)' with default value"),
-    (r'\|\s*int\s*[^(]', "int without default -> use '| int(0)' with default value"),
+    (
+        r"\|\s*float\s*[^(]",
+        "float without default -> use '| float(0)' with default value",
+    ),
+    (r"\|\s*int\s*[^(]", "int without default -> use '| int(0)' with default value"),
     # --- as_timestamp legacy ---
-    (r'\bas_timestamp\b', "as_timestamp (epoch float) -> prefer as_datetime (timezone-aware)"),
+    (
+        r"\bas_timestamp\b",
+        "as_timestamp (epoch float) -> prefer as_datetime (timezone-aware)",
+    ),
 ]
 
 
@@ -260,25 +297,73 @@ def detect_legacy_patterns(code: str, subtype: str = "code") -> List[str]:
 # ======================================================================
 # Logger
 # ======================================================================
-logger = logging.getLogger("FactoryV11")
-logger.setLevel(logging.INFO)
-_handler = logging.StreamHandler(sys.stdout)
-_handler.setFormatter(logging.Formatter("[V11 %(levelname)s] %(message)s"))
-logger.addHandler(_handler)
+logger = logging.getLogger(__name__)
+
+
+def configure_logger() -> None:
+    """Configure logger for CLI execution.
+
+    This function should be called from the main block or CLI entrypoint.
+    It sets up a custom formatter and enables INFO level logging.
+    """
+    logger.setLevel(logging.INFO)
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("[V11 %(levelname)s] %(message)s"))
+    logger.addHandler(_handler)
 
 
 # ======================================================================
 # MASTER DOCUMENT LOADING  (fail-fast on missing files)
 # ======================================================================
 
-def load_master_docs(gap_dir: Path) -> Tuple[str, str, str]:
-    """Load master documents from the gap directory.
+# Default master document filenames (can be overridden by profile)
+_DEFAULT_MASTER_DOCS = {
+    "master_guide": "HA_MASTER_GUIDE_2026.md",
+    "changelog": "technical_changelog_2026.md",
+    "jinja_guide": "HA_JINJA_YAML_GUIDE_2026.md",
+}
 
-    Raises FileNotFoundError immediately if any required document is missing.
+# Config file for profile-to-master-docs mapping
+_MASTER_DOCS_MAP_FILE = "master_docs_map.yaml"
+
+
+def load_master_docs(
+    gap_dir: Path, profile: str = "homeassistant"
+) -> Tuple[str, str, str]:
+    """Load master documents from the gap directory based on profile.
+
+    Reads the master_docs_map.yaml to determine which master documents to load
+    for the given profile. Falls back to default HA documents if no mapping exists.
+
+    Args:
+        gap_dir: Path to the gap directory containing master documents.
+        profile: Profile name (e.g., "homeassistant", "php_hexagonal").
+                 Defaults to "homeassistant".
+
+    Returns:
+        Tuple of (master_guide, changelog, jinja_guide) content strings.
+
+    Raises:
+        FileNotFoundError: If any required document is missing.
     """
-    master_path = gap_dir / _MASTER_GUIDE_FILENAME
-    changelog_path = gap_dir / _TECHNICAL_CHANGELOG_FILENAME
-    jinja_path = gap_dir / _JINJA_YAML_GUIDE_FILENAME
+    # Try to load profile-specific mapping from master_docs_map.yaml
+    config_path = Path("configs/stage_1_discovery") / _MASTER_DOCS_MAP_FILE
+
+    master_docs_config = _DEFAULT_MASTER_DOCS.copy()
+    if config_path.exists():
+        try:
+            config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            if config_data and profile in config_data.get("profiles", {}):
+                profile_docs = config_data["profiles"][profile]
+                master_docs_config.update(profile_docs)
+        except Exception:
+            # If config loading fails, fall back to defaults
+            pass
+
+    # Build paths based on configuration
+    master_path = gap_dir / master_docs_config["master_guide"]
+    changelog_path = gap_dir / master_docs_config["changelog"]
+    jinja_path = gap_dir / master_docs_config["jinja_guide"]
 
     for path, label in [
         (master_path, "Master Guide"),
@@ -301,65 +386,85 @@ def load_master_docs(gap_dir: Path) -> Tuple[str, str, str]:
 # SYSTEM PROMPT BUILDERS
 # ======================================================================
 
+
 def _base_system_block(master: str, changelog: str) -> str:
     """Shared base block for all Python integration system prompts."""
     tools_json = json.dumps(TOOLS_DEFINITION, indent=2, ensure_ascii=False)
-    return _render(_prompt("system.python.base"),
-                   tools_json=tools_json, master=master, changelog=changelog)
+    return _render(
+        _prompt("system.python.base"),
+        tools_json=tools_json,
+        master=master,
+        changelog=changelog,
+    )
 
 
 def build_system_nominal(master: str, changelog: str) -> str:
     """System prompt for nominal examples (Evol-Instruct)."""
-    return _base_system_block(master, changelog) + _prompt("system.python.nominal_suffix")
+    return _base_system_block(master, changelog) + _prompt(
+        "system.python.nominal_suffix"
+    )
 
 
 def build_system_contrast(master: str, changelog: str) -> str:
     """System prompt for contrast examples (2023 vs 2026)."""
-    return _base_system_block(master, changelog) + _prompt("system.python.contrast_suffix")
+    return _base_system_block(master, changelog) + _prompt(
+        "system.python.contrast_suffix"
+    )
 
 
 def build_system_error_recovery(master: str, changelog: str) -> str:
     """System prompt for error recovery examples."""
-    return _base_system_block(master, changelog) + _prompt("system.python.error_recovery_suffix")
+    return _base_system_block(master, changelog) + _prompt(
+        "system.python.error_recovery_suffix"
+    )
 
 
 # ======================================================================
 # SYSTEM PROMPT BUILDERS — Jinja / YAML templates
 # ======================================================================
 
+
 def _base_system_block_jinja(jinja_guide: str) -> str:
     """Shared base block for Jinja/YAML template system prompts."""
     tools_json = json.dumps(TOOLS_DEFINITION, indent=2, ensure_ascii=False)
-    return _render(_prompt("system.jinja.base"),
-                   tools_json=tools_json, jinja_guide=jinja_guide)
+    return _render(
+        _prompt("system.jinja.base"), tools_json=tools_json, jinja_guide=jinja_guide
+    )
 
 
 def build_system_nominal_jinja(jinja_guide: str) -> str:
     """System prompt for nominal Jinja/YAML template examples."""
-    return _base_system_block_jinja(jinja_guide) + _prompt("system.jinja.nominal_suffix")
+    return _base_system_block_jinja(jinja_guide) + _prompt(
+        "system.jinja.nominal_suffix"
+    )
 
 
 def build_system_contrast_jinja(jinja_guide: str) -> str:
     """System prompt for Jinja/YAML contrast examples."""
-    return _base_system_block_jinja(jinja_guide) + _prompt("system.jinja.contrast_suffix")
+    return _base_system_block_jinja(jinja_guide) + _prompt(
+        "system.jinja.contrast_suffix"
+    )
 
 
 def build_system_error_recovery_jinja(jinja_guide: str) -> str:
     """System prompt for Jinja/YAML error recovery examples."""
-    return _base_system_block_jinja(jinja_guide) + _prompt("system.jinja.error_recovery_suffix")
+    return _base_system_block_jinja(jinja_guide) + _prompt(
+        "system.jinja.error_recovery_suffix"
+    )
 
 
 # ======================================================================
 # USER PROMPT BUILDERS — Python integrations
 # ======================================================================
 
+
 def build_user_nominal(frag: FragmentTypedDict, difficulty: str) -> str:
     """Build user prompt for nominal examples with Evol-Instruct difficulty."""
     subs = dict(
-        context=frag['context'],
-        virtual_filename=frag['virtual_filename'],
-        name=frag['name'],
-        skeleton=frag['skeleton'],
+        context=frag["context"],
+        virtual_filename=frag["virtual_filename"],
+        name=frag["name"],
+        skeleton=frag["skeleton"],
     )
 
     if difficulty == "easy":
@@ -383,11 +488,11 @@ def build_user_contrast(frag: FragmentTypedDict) -> str:
     pattern = random.choice(LEGACY_2023_PATTERNS)
     return _render(
         _prompt("user.python.contrast"),
-        context=frag['context'],
-        virtual_filename=frag['virtual_filename'],
-        name=frag['name'],
-        skeleton=frag['skeleton'],
-        legacy_code=pattern['legacy_code'],
+        context=frag["context"],
+        virtual_filename=frag["virtual_filename"],
+        name=frag["name"],
+        skeleton=frag["skeleton"],
+        legacy_code=pattern["legacy_code"],
     )
 
 
@@ -397,7 +502,7 @@ def build_user_error_recovery(frag: FragmentTypedDict) -> str:
     # Customize error with fragment data
     error_msg = err_template["error"].format(
         entity=f"sensor.{frag['name'].lower()}",
-        component=frag['virtual_filename'].replace('.py', '').replace('/', '.'),
+        component=frag["virtual_filename"].replace(".py", "").replace("/", "."),
         entry_id="abc123def456",
         seconds="12",
         literal="temperature",
@@ -405,10 +510,10 @@ def build_user_error_recovery(frag: FragmentTypedDict) -> str:
     )
     return _render(
         _prompt("user.python.error_recovery"),
-        context=frag['context'],
-        virtual_filename=frag['virtual_filename'],
-        name=frag['name'],
-        skeleton=frag['skeleton'],
+        context=frag["context"],
+        virtual_filename=frag["virtual_filename"],
+        name=frag["name"],
+        skeleton=frag["skeleton"],
         error_msg=error_msg,
     )
 
@@ -417,13 +522,14 @@ def build_user_error_recovery(frag: FragmentTypedDict) -> str:
 # USER PROMPT BUILDERS — Jinja / YAML templates
 # ======================================================================
 
+
 def build_user_nominal_jinja(frag: Dict, difficulty: str) -> str:
     """Build nominal user prompt for Jinja/YAML templates."""
     subs = dict(
-        context=frag['context'],
-        virtual_filename=frag['virtual_filename'],
-        name=frag['name'],
-        skeleton=frag['skeleton'],
+        context=frag["context"],
+        virtual_filename=frag["virtual_filename"],
+        name=frag["name"],
+        skeleton=frag["skeleton"],
     )
 
     if difficulty == "easy":
@@ -441,21 +547,23 @@ def build_user_nominal_jinja(frag: Dict, difficulty: str) -> str:
 def build_user_contrast_jinja(frag: Dict) -> str:
     """Build contrast user prompt for Jinja/YAML (legacy -> modern)."""
     # Select legacy pattern coherent with fragment file type
-    vfn = frag.get('virtual_filename', '')
-    is_yaml_frag = vfn.endswith(('.yaml', '.yml')) or frag.get('subtype', '') == 'yaml'
+    vfn = frag.get("virtual_filename", "")
+    is_yaml_frag = vfn.endswith((".yaml", ".yml")) or frag.get("subtype", "") == "yaml"
     target_ctx = "yaml" if is_yaml_frag else "jinja"
-    pool = [p for p in JINJA_LEGACY_2023_PATTERNS if p.get('context_type') == target_ctx]
+    pool = [
+        p for p in JINJA_LEGACY_2023_PATTERNS if p.get("context_type") == target_ctx
+    ]
     if not pool:  # defensive fallback
         pool = JINJA_LEGACY_2023_PATTERNS
     pattern = random.choice(pool)
     lang = "yaml" if target_ctx == "yaml" else "jinja"
     return _render(
         _prompt("user.jinja.contrast"),
-        context=frag['context'],
-        virtual_filename=frag['virtual_filename'],
-        name=frag['name'],
-        skeleton=frag['skeleton'],
-        legacy_code=pattern['legacy_code'],
+        context=frag["context"],
+        virtual_filename=frag["virtual_filename"],
+        name=frag["name"],
+        skeleton=frag["skeleton"],
+        legacy_code=pattern["legacy_code"],
         lang=lang,
     )
 
@@ -463,28 +571,28 @@ def build_user_contrast_jinja(frag: Dict) -> str:
 def build_user_error_recovery_jinja(frag: Dict) -> str:
     """Build error recovery user prompt for Jinja/YAML templates."""
     # Select error coherent with fragment file type
-    vfn = frag.get('virtual_filename', '')
-    is_yaml_frag = vfn.endswith(('.yaml', '.yml')) or frag.get('subtype', '') == 'yaml'
+    vfn = frag.get("virtual_filename", "")
+    is_yaml_frag = vfn.endswith((".yaml", ".yml")) or frag.get("subtype", "") == "yaml"
     target_ctx = "yaml" if is_yaml_frag else "jinja"
-    pool = [t for t in JINJA_HA_ERROR_TEMPLATES if t.get('context_type') == target_ctx]
+    pool = [t for t in JINJA_HA_ERROR_TEMPLATES if t.get("context_type") == target_ctx]
     if not pool:  # defensive fallback
         pool = JINJA_HA_ERROR_TEMPLATES
     err_template = random.choice(pool)
     # Customize error with fragment data
     error_msg = err_template["error"].format(
-        entity=frag['name'].lower().replace(' ', '_'),
+        entity=frag["name"].lower().replace(" ", "_"),
         domain="sensor",
-        template_source=frag['virtual_filename'],
-        automation=frag['name'].lower().replace(' ', '_'),
-        script=frag['name'].lower().replace(' ', '_'),
+        template_source=frag["virtual_filename"],
+        automation=frag["name"].lower().replace(" ", "_"),
+        script=frag["name"].lower().replace(" ", "_"),
         variable="result",
     )
     return _render(
         _prompt("user.jinja.error_recovery"),
-        context=frag['context'],
-        virtual_filename=frag['virtual_filename'],
-        name=frag['name'],
-        skeleton=frag['skeleton'],
+        context=frag["context"],
+        virtual_filename=frag["virtual_filename"],
+        name=frag["name"],
+        skeleton=frag["skeleton"],
         error_msg=error_msg,
     )
 
@@ -492,6 +600,7 @@ def build_user_error_recovery_jinja(frag: Dict) -> str:
 # ======================================================================
 # V11: FUNCTIONAL UNIT (TIPO 1) PROMPT BUILDERS
 # ======================================================================
+
 
 def build_system_with_blueprint(
     master: str,
@@ -541,6 +650,7 @@ def build_user_functional_unit(frag: Dict, difficulty: Optional[str] = None) -> 
 # THEORY: System prompt and user prompt builders
 # ======================================================================
 
+
 def build_system_theory(master: str, changelog: str) -> str:
     """System prompt for theory / doctrine HA 2026 examples."""
     return _render(_prompt("system.theory"), master=master, changelog=changelog)
@@ -549,27 +659,32 @@ def build_system_theory(master: str, changelog: str) -> str:
 def get_theory_fragments(master: str, changelog: str) -> List[Dict]:
     """Extract theory fragments (sections) from master documents."""
     fragments = []
-    for doc_name, doc_content in [("MASTER_GUIDE", master), ("TECHNICAL_CHANGELOG", changelog)]:
+    for doc_name, doc_content in [
+        ("MASTER_GUIDE", master),
+        ("TECHNICAL_CHANGELOG", changelog),
+    ]:
         if not doc_content:
             continue
         # Split by level 1 and 2 headers
-        sections = re.split(r'(^#{1,2} .+)', doc_content, flags=re.MULTILINE)
+        sections = re.split(r"(^#{1,2} .+)", doc_content, flags=re.MULTILINE)
         for i in range(1, len(sections), 2):
             header = sections[i].strip()
             body = sections[i + 1] if i + 1 < len(sections) else ""
-            title = header.lstrip('#').strip()
+            title = header.lstrip("#").strip()
             if len(body.strip()) < 100:  # skip minimal sections
                 continue
-            fragments.append({
-                "name": title,
-                "type": "theory",
-                "subtype": "doc",
-                "section_content": f"{header}\n{body}",
-                "original": f"{header}\n{body}",
-                "source_doc": doc_name,
-                "context": f"Section from {doc_name}",
-                "virtual_filename": f"theory/{doc_name.lower()}.md"
-            })
+            fragments.append(
+                {
+                    "name": title,
+                    "type": "theory",
+                    "subtype": "doc",
+                    "section_content": f"{header}\n{body}",
+                    "original": f"{header}\n{body}",
+                    "source_doc": doc_name,
+                    "context": f"Section from {doc_name}",
+                    "virtual_filename": f"theory/{doc_name.lower()}.md",
+                }
+            )
     return fragments
 
 
@@ -602,11 +717,11 @@ async def generate_theory_sample_async(
                     model=model,
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_msg}
+                        {"role": "user", "content": user_msg},
                     ],
                     temperature=0.4 if attempt == 1 else 0.2,
                     max_tokens=8192,
-                    stop=["<|im_end|>"]
+                    stop=["<|im_end|>"],
                 )
                 raw = response.choices[0].message.content
                 last_response = raw
@@ -630,7 +745,7 @@ async def generate_theory_sample_async(
 
                 rep = theory_frag.get("_rep")
                 ck_key = make_checkpoint_key(
-                    theory_frag['name'], theory_frag['virtual_filename'], rep=rep
+                    theory_frag["name"], theory_frag["virtual_filename"], rep=rep
                 )
 
                 # Use checkpoint_key as canonical id base for theory samples
@@ -641,7 +756,7 @@ async def generate_theory_sample_async(
                         "id": f"v11_theory_{ck_key}",
                         "conversation": [
                             {"role": "user", "content": user_msg},
-                            {"role": "assistant", "content": final_assistant}
+                            {"role": "assistant", "content": final_assistant},
                         ],
                         "metadata": {
                             "curation": {"kept": True, "quality_score": 0.0},
@@ -661,8 +776,8 @@ async def generate_theory_sample_async(
                             "legacy_patterns": [],
                             "checkpoint_key": ck_key,
                         },
-                        "filter_text": final_assistant
-                    }
+                        "filter_text": final_assistant,
+                    },
                 }
 
             except Exception as e:
@@ -678,8 +793,9 @@ async def generate_theory_sample_async(
         "fragment_name": theory_frag["name"],
         "example_type": "theory",
         "checkpoint_key": make_checkpoint_key(
-            theory_frag["name"], theory_frag["virtual_filename"],
-            rep=theory_frag.get("_rep")
+            theory_frag["name"],
+            theory_frag["virtual_filename"],
+            rep=theory_frag.get("_rep"),
         ),
     }
 
@@ -693,23 +809,31 @@ async def generate_theory_sample_async(
 # in its output, the example is toxic for training.
 OUTPUT_POISON_DETECTORS = [
     # Returning None where it should be false (HA 2025.8)
-    (r'\{\{-?\s*None\s*-?\}\}', "Output returns None (must be false, HA 2025.8)"),
+    (r"\{\{-?\s*None\s*-?\}\}", "Output returns None (must be false, HA 2025.8)"),
     # as_timestamp in generated code (deprecated)
-    (r'\bas_timestamp\s*\(', "Output uses as_timestamp() (deprecated, use as_datetime)"),
+    (
+        r"\bas_timestamp\s*\(",
+        "Output uses as_timestamp() (deprecated, use as_datetime)",
+    ),
     # platform: template in generated code (deprecated 2025.12)
-    (r'platform:\s*template', "Output uses 'platform: template' (deprecated 2025.12)"),
+    (r"platform:\s*template", "Output uses 'platform: template' (deprecated 2025.12)"),
     # Singular syntax in generated code
-    (r'^\s*trigger:\s*\n\s*-', "Output uses singular 'trigger:' (deprecated 2024.10)"),
-    (r'^\s*condition:\s*\n\s*-', "Output uses singular 'condition:' (deprecated 2024.10)"),
-    (r'^\s*action:\s*\n\s*-', "Output uses singular 'action:' (deprecated 2024.10)"),
+    (r"^\s*trigger:\s*\n\s*-", "Output uses singular 'trigger:' (deprecated 2024.10)"),
+    (
+        r"^\s*condition:\s*\n\s*-",
+        "Output uses singular 'condition:' (deprecated 2024.10)",
+    ),
+    (r"^\s*action:\s*\n\s*-", "Output uses singular 'action:' (deprecated 2024.10)"),
     # func() callable in Jinja (impossible — macro params are not callable)
-    (r'\{\{-?\s*func\s*\(', "Output invokes func() as callable (impossible in Jinja2)"),
+    (r"\{\{-?\s*func\s*\(", "Output invokes func() as callable (impossible in Jinja2)"),
     # Hallucinated private helper: _private_macro() not defined in fragment
-    (r'\{\{-?\s*_\w+\s*\(', "Output calls undefined private helper (_helper())"),
+    (r"\{\{-?\s*_\w+\s*\(", "Output calls undefined private helper (_helper())"),
 ]
 
 
-def post_validate_output(generated_code: str, example_type: str, subtype: str = "code") -> List[str]:
+def post_validate_output(
+    generated_code: str, example_type: str, subtype: str = "code"
+) -> List[str]:
     """Validate model-generated code for toxic patterns.
 
     For CONTRAST/ERROR_RECOVERY examples, the model should produce modern code.
@@ -731,6 +855,7 @@ def post_validate_output(generated_code: str, example_type: str, subtype: str = 
 # ======================================================================
 # RAW -> JSON PARSER (inherited from V9, improved)
 # ======================================================================
+
 
 def parse_raw_response(text: str) -> Tuple[Dict, str]:
     """Surgical parser: extracts RAW content and packages it as valid JSON.
@@ -760,7 +885,7 @@ def parse_raw_response(text: str) -> Tuple[Dict, str]:
     action_block = text.split("<write_action>")[1].split("</write_action>")[0]
 
     # 3. Extract Path
-    path_match = re.search(r'<path>(.*?)</path>', action_block, re.DOTALL)
+    path_match = re.search(r"<path>(.*?)</path>", action_block, re.DOTALL)
     if not path_match:
         raise ValueError("Missing <path> tag")
     file_path = path_match.group(1).strip()
@@ -771,13 +896,13 @@ def parse_raw_response(text: str) -> Tuple[Dict, str]:
         end_tag = "</content>"
         start_idx = action_block.index(start_tag) + len(start_tag)
         end_idx = action_block.rindex(end_tag)
-        file_content = action_block[start_idx:end_idx].strip('\n')
+        file_content = action_block[start_idx:end_idx].strip("\n")
     except ValueError:
         raise ValueError("Malformed <content> block")
 
     return {
         "name": "write_to_file",
-        "arguments": {"path": file_path, "content": file_content}
+        "arguments": {"path": file_path, "content": file_content},
     }, reasoning
 
 
@@ -785,9 +910,10 @@ def parse_raw_response(text: str) -> Tuple[Dict, str]:
 # CHUNKING AND FRAGMENTATION (inherited from V9)
 # ======================================================================
 
+
 def get_file_chunks(content: str) -> List[Tuple[str, str]]:
     """Split packed .txt file into (filename, code) tuples (V10 backward compat)."""
-    parts = re.split(r'--- FILE: (.*?) ---\n', content)
+    parts = re.split(r"--- FILE: (.*?) ---\n", content)
     chunks = []
     for i in range(1, len(parts), 2):
         if i + 1 < len(parts):
@@ -798,6 +924,7 @@ def get_file_chunks(content: str) -> List[Tuple[str, str]]:
 # ======================================================================
 # V11: MODULE-AWARE BUNDLE PARSER
 # ======================================================================
+
 
 def parse_bundle(txt_content: str) -> Dict:
     """Parse a V2 .txt bundle produced by processor.py V2.
@@ -848,7 +975,9 @@ def parse_bundle(txt_content: str) -> Dict:
 
     # GOVERNANCE_HEADER (GOVERNANCE_RULES) — fallback when neither present
     if not result["arch"]:
-        m = re.search(r"\[GOVERNANCE_HEADER\](.*?)(?=\n\[|\n---|$)", txt_content, re.DOTALL)
+        m = re.search(
+            r"\[GOVERNANCE_HEADER\](.*?)(?=\n\[|\n---|$)", txt_content, re.DOTALL
+        )
         if m:
             for line in m.group(1).strip().splitlines():
                 if ":" in line:
@@ -891,28 +1020,34 @@ def _ast_fragment_list(
                 if isinstance(node_copy, ast.ClassDef):
                     for item in node_copy.body:
                         if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            item.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+                            item.body = [
+                                ast.Expr(value=ast.Constant(value=placeholder))
+                            ]
                 else:
                     node_copy.body = [ast.Expr(value=ast.Constant(value=placeholder))]
-                frags.append({
-                    **extra_fields,
-                    "name": node.name,
-                    "skeleton": ast.unparse(node_copy),
-                    "original": ast.unparse(node),
-                    "context": ctx,
-                })
+                frags.append(
+                    {
+                        **extra_fields,
+                        "name": node.name,
+                        "skeleton": ast.unparse(node_copy),
+                        "original": ast.unparse(node),
+                        "context": ctx,
+                    }
+                )
     except Exception:
         pass
 
     if not frags:
         # Whole-file fallback
-        frags.append({
-            **extra_fields,
-            "name": f"Module: {Path(logic_fname).stem}",
-            "skeleton": "# [Expert HA 2026 Implementation]",
-            "original": logic_code,
-            "context": context_str,
-        })
+        frags.append(
+            {
+                **extra_fields,
+                "name": f"Module: {Path(logic_fname).stem}",
+                "skeleton": "# [Expert HA 2026 Implementation]",
+                "original": logic_code,
+                "context": context_str,
+            }
+        )
     return frags
 
 
@@ -954,7 +1089,8 @@ def get_v2_fragments(
         if not logic_fname or not test_fname:
             logger.debug(
                 "FUNCTIONAL_UNIT without both files (%s): %s",
-                bundle["entity_id"], filenames,
+                bundle["entity_id"],
+                filenames,
             )
             return []
 
@@ -1003,7 +1139,9 @@ def get_v2_fragments(
     return []
 
 
-def get_fragments(filename: str, code: str, allowed_extensions: Optional[set] = None) -> List[Dict]:
+def get_fragments(
+    filename: str, code: str, allowed_extensions: Optional[set] = None
+) -> List[Dict]:
     """Extract fragments from a file for synthesis.
 
     If allowed_extensions is provided, only generates fragments for files
@@ -1020,113 +1158,136 @@ def get_fragments(filename: str, code: str, allowed_extensions: Optional[set] = 
     is_test = "test_" in filename
 
     # PYTHON: AST Chunking
-    if filename.endswith('.py'):
+    if filename.endswith(".py"):
         try:
             tree = ast.parse(code)
-            imports = [ast.unparse(n) for n in tree.body if isinstance(n, (ast.Import, ast.ImportFrom))]
+            imports = [
+                ast.unparse(n)
+                for n in tree.body
+                if isinstance(n, (ast.Import, ast.ImportFrom))
+            ]
             context_str = "\n".join(imports)
             for node in tree.body:
-                if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                if isinstance(
+                    node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+                ):
                     node_copy = ast.parse(ast.unparse(node)).body[0]
                     placeholder = "... # [Expert HA 2026 Implementation]"
 
                     if isinstance(node_copy, ast.ClassDef):
                         for item in node_copy.body:
-                            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                                item.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+                            if isinstance(
+                                item, (ast.FunctionDef, ast.AsyncFunctionDef)
+                            ):
+                                item.body = [
+                                    ast.Expr(value=ast.Constant(value=placeholder))
+                                ]
                     else:
-                        node_copy.body = [ast.Expr(value=ast.Constant(value=placeholder))]
+                        node_copy.body = [
+                            ast.Expr(value=ast.Constant(value=placeholder))
+                        ]
 
-                    fragments.append({
-                        "name": node.name,
-                        "type": "python",
-                        "subtype": "test" if is_test else "code",
-                        "skeleton": ast.unparse(node_copy),
-                        "original": ast.unparse(node),
-                        "context": context_str,
-                        "virtual_filename": filename
-                    })
+                    fragments.append(
+                        {
+                            "name": node.name,
+                            "type": "python",
+                            "subtype": "test" if is_test else "code",
+                            "skeleton": ast.unparse(node_copy),
+                            "original": ast.unparse(node),
+                            "context": context_str,
+                            "virtual_filename": filename,
+                        }
+                    )
         except Exception:
             pass
 
     # MARKDOWN: Contextual chunking
-    elif filename.endswith('.md') or filename == 'README':
+    elif filename.endswith(".md") or filename == "README":
         if len(code) > 12000:
-            headers = re.split(r'(^#{1,2} .*)', code, flags=re.MULTILINE)
+            headers = re.split(r"(^#{1,2} .*)", code, flags=re.MULTILINE)
             for i in range(1, len(headers), 2):
                 header = headers[i]
                 body = headers[i + 1] if i + 1 < len(headers) else ""
                 if len(body.strip()) > 100:
-                    fragments.append({
-                        "name": header.strip("# ").strip(),
-                        "type": "readme",
-                        "subtype": "doc",
-                        "skeleton": f"{header}\n[Detailed Technical Documentation]",
-                        "original": f"{header}{body}",
-                        "context": "HA Documentation",
-                        "virtual_filename": filename
-                    })
+                    fragments.append(
+                        {
+                            "name": header.strip("# ").strip(),
+                            "type": "readme",
+                            "subtype": "doc",
+                            "skeleton": f"{header}\n[Detailed Technical Documentation]",
+                            "original": f"{header}{body}",
+                            "context": "HA Documentation",
+                            "virtual_filename": filename,
+                        }
+                    )
         else:
-            fragments.append({
-                "name": f"Full Documentation: {filename}",
-                "type": "readme",
-                "subtype": "doc",
-                "skeleton": f"# {filename}\n[Generate complete technical documentation]",
-                "original": code,
-                "context": "HA Documentation",
-                "virtual_filename": filename
-            })
+            fragments.append(
+                {
+                    "name": f"Full Documentation: {filename}",
+                    "type": "readme",
+                    "subtype": "doc",
+                    "skeleton": f"# {filename}\n[Generate complete technical documentation]",
+                    "original": code,
+                    "context": "HA Documentation",
+                    "virtual_filename": filename,
+                }
+            )
 
     # JINJA2 TEMPLATES: Home Assistant logic templates (.jinja, .jinja2, .j2)
-    elif filename.endswith(('.jinja', '.jinja2', '.j2')):
+    elif filename.endswith((".jinja", ".jinja2", ".j2")):
         jinja_blocks = re.split(
-            r'(\{%-?\s*(?:macro|block)\s+\w+[^%]*%\})',
-            code, flags=re.DOTALL
+            r"(\{%-?\s*(?:macro|block)\s+\w+[^%]*%\})", code, flags=re.DOTALL
         )
         if len(jinja_blocks) > 2:
             # Has macros/blocks -> one fragment per block
             for i in range(1, len(jinja_blocks), 2):
                 block_header = jinja_blocks[i].strip()
                 block_body = jinja_blocks[i + 1] if i + 1 < len(jinja_blocks) else ""
-                name_match = re.search(r'(?:macro|block)\s+(\w+)', block_header)
-                block_name = name_match.group(1) if name_match else f"block_{i//2}"
+                name_match = re.search(r"(?:macro|block)\s+(\w+)", block_header)
+                block_name = name_match.group(1) if name_match else f"block_{i // 2}"
                 full_block = f"{block_header}\n{block_body}"
                 if len(full_block.strip()) < 30:
                     continue
-                fragments.append({
-                    "name": block_name,
-                    "type": "template",
-                    "subtype": "jinja",
-                    "skeleton": f"{block_header}\n  {{# [Expert HA 2026 Implementation] #}}",
-                    "original": full_block.strip(),
-                    "context": f"Jinja2 template: {filename}",
-                    "virtual_filename": filename
-                })
+                fragments.append(
+                    {
+                        "name": block_name,
+                        "type": "template",
+                        "subtype": "jinja",
+                        "skeleton": f"{block_header}\n  {{# [Expert HA 2026 Implementation] #}}",
+                        "original": full_block.strip(),
+                        "context": f"Jinja2 template: {filename}",
+                        "virtual_filename": filename,
+                    }
+                )
         else:
             # Template without macros/blocks -> single fragment
             if len(code.strip()) > 30:
-                fragments.append({
-                    "name": f"Template: {Path(filename).stem}",
-                    "type": "template",
-                    "subtype": "jinja",
-                    "skeleton": f"{{# Template: {filename} #}}\n{{# [Expert HA 2026 Implementation] #}}",
-                    "original": code,
-                    "context": f"Jinja2 template: {filename}",
-                    "virtual_filename": filename
-                })
+                fragments.append(
+                    {
+                        "name": f"Template: {Path(filename).stem}",
+                        "type": "template",
+                        "subtype": "jinja",
+                        "skeleton": f"{{# Template: {filename} #}}\n{{# [Expert HA 2026 Implementation] #}}",
+                        "original": code,
+                        "context": f"Jinja2 template: {filename}",
+                        "virtual_filename": filename,
+                    }
+                )
 
     # YAML CONFIG: Home Assistant configuration files (.yaml, .yml)
-    elif filename.endswith(('.yaml', '.yml')):
+    elif filename.endswith((".yaml", ".yml")):
         if len(code.strip()) > 50:
-            fragments.append({
-                "name": f"Config: {Path(filename).stem}",
-                "type": "config",
-                "subtype": "yaml",
-                "skeleton": f"# {filename}\n# [Complete HA 2026 configuration]",
-                "original": code,
-                "context": f"YAML config: {filename}",
-                "virtual_filename": filename
-            })
+            fragments.append(
+                {
+                    "name": f"Config: {Path(filename).stem}",
+                    "type": "config",
+                    "subtype": "yaml",
+                    "skeleton": f"# {filename}\n# [Complete HA 2026 configuration]",
+                    "original": code,
+                    "context": f"YAML config: {filename}",
+                    "virtual_filename": filename,
+                }
+            )
 
     return fragments
 
@@ -1135,7 +1296,10 @@ def get_fragments(filename: str, code: str, allowed_extensions: Optional[set] = 
 # LDI VALIDATION (V17.2 Dynamic)
 # ======================================================================
 
-def validate_ldi(code_len: int, reasoning_len: int, f_subtype: str) -> Tuple[bool, float, str]:
+
+def validate_ldi(
+    code_len: int, reasoning_len: int, f_subtype: str
+) -> Tuple[bool, float, str]:
     """Validate code-to-reasoning Length Density Index."""
     if reasoning_len == 0:
         return False, 0.0, "Zero reasoning"
@@ -1163,7 +1327,10 @@ def validate_ldi(code_len: int, reasoning_len: int, f_subtype: str) -> Tuple[boo
 # EXAMPLE TYPE ASSIGNMENT
 # ======================================================================
 
-def assign_example_type(frag: Dict, has_legacy: bool = False) -> Tuple[str, Optional[str]]:
+
+def assign_example_type(
+    frag: Dict, has_legacy: bool = False
+) -> Tuple[str, Optional[str]]:
     """Assign an example type to the fragment based on distribution:
       50% nominal (easy/medium/hard), 30% contrast, 20% error_recovery
     Returns: (type, evol_difficulty | None)
@@ -1197,6 +1364,7 @@ def assign_example_type(frag: Dict, has_legacy: bool = False) -> Tuple[str, Opti
 # ASYNC SAMPLE GENERATION
 # ======================================================================
 
+
 async def generate_sample_async(
     client: AsyncOpenAI,
     model: str,
@@ -1220,21 +1388,22 @@ async def generate_sample_async(
     """
 
     # === BIFURCATION: Functional Unit / Jinja·YAML / Python ===
-    is_functional_unit = frag.get('subtype') == 'functional_unit'
-    is_template = frag.get('subtype') in ('jinja', 'yaml')
+    is_functional_unit = frag.get("subtype") == "functional_unit"
+    is_template = frag.get("subtype") in ("jinja", "yaml")
 
     if is_functional_unit:
         # TIPO 1 (v11): Diversified prompts (nominal/contrast/error_recovery)
         # Model learns to evolution both logic and test, or modernize legacy tests.
-        _governance = frag.get('governance', '')
-        _blueprint = frag.get('blueprint', '')
-        _local_imports = frag.get('local_imports', '[]')
+        _governance = frag.get("governance", "")
+        _blueprint = frag.get("blueprint", "")
+        _local_imports = frag.get("local_imports", "[]")
         _has_context = bool(_governance or _blueprint)
-        
+
         if example_type == "nominal":
             if _has_context:
                 system_prompt = build_system_with_blueprint(
-                    master, changelog,
+                    master,
+                    changelog,
                     blueprint=_blueprint,
                     local_imports=_local_imports,
                     governance=_governance,
@@ -1275,15 +1444,16 @@ async def generate_sample_async(
             user_msg = build_user_error_recovery_jinja(frag)
     else:
         # Python prompt builders — inject blueprint/governance context when available
-        _governance = frag.get('governance', '')
-        _blueprint = frag.get('blueprint', '')
-        _local_imports = frag.get('local_imports', '[]')
+        _governance = frag.get("governance", "")
+        _blueprint = frag.get("blueprint", "")
+        _local_imports = frag.get("local_imports", "[]")
         _has_context = bool(_governance or _blueprint)
         if example_type == "nominal":
             if _has_context:
                 # Use blueprint+governance-aware system prompt for richer context
                 system_prompt = build_system_with_blueprint(
-                    master, changelog,
+                    master,
+                    changelog,
                     blueprint=_blueprint,
                     local_imports=_local_imports,
                     governance=_governance,
@@ -1320,11 +1490,11 @@ async def generate_sample_async(
                     model=model,
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_msg}
+                        {"role": "user", "content": user_msg},
                     ],
                     temperature=temp,
                     max_tokens=16384,
-                    stop=["<|im_end|>"]
+                    stop=["<|im_end|>"],
                 )
                 raw_content = response.choices[0].message.content
                 last_response = raw_content
@@ -1334,7 +1504,9 @@ async def generate_sample_async(
 
                 # LDI Validation
                 code_len = len(tool_json["arguments"]["content"])
-                is_valid, ldi, msg = validate_ldi(code_len, len(reasoning), frag['subtype'])
+                is_valid, ldi, msg = validate_ldi(
+                    code_len, len(reasoning), frag["subtype"]
+                )
 
                 if not is_valid:
                     raise ValueError(f"LDI Fail: {msg}")
@@ -1342,7 +1514,7 @@ async def generate_sample_async(
                 # === POST-VALIDATION OF MODEL OUTPUT ===
                 generated_code = tool_json["arguments"]["content"]
                 poison_patterns = post_validate_output(
-                    generated_code, example_type, frag.get('subtype', 'code')
+                    generated_code, example_type, frag.get("subtype", "code")
                 )
 
                 # === CONDITIONAL GOLD INJECTION ===
@@ -1357,9 +1529,10 @@ async def generate_sample_async(
                         logger.warning(
                             "CoT SCHIZOPHRENIA [%s] (%s): output has %d "
                             "toxic patterns before gold injection: %s",
-                            frag['name'], example_type,
+                            frag["name"],
+                            example_type,
                             len(poison_patterns),
-                            "; ".join(poison_patterns)[:200]
+                            "; ".join(poison_patterns)[:200],
                         )
                     else:
                         # Clean output -> safe gold injection
@@ -1383,15 +1556,18 @@ async def generate_sample_async(
                                     {
                                         "name": "write_to_file",
                                         "arguments": {
-                                            "path": frag['virtual_filename'],
-                                            "content": frag['original'],
+                                            "path": frag["virtual_filename"],
+                                            "content": frag["original"],
                                         },
                                     },
                                     {
                                         "name": "write_to_file",
                                         "arguments": {
-                                            "path": frag.get('test_filename', f"tests/{frag['virtual_filename']}"),
-                                            "content": frag.get('test_original', ''),
+                                            "path": frag.get(
+                                                "test_filename",
+                                                f"tests/{frag['virtual_filename']}",
+                                            ),
+                                            "content": frag.get("test_original", ""),
                                         },
                                     },
                                 ]
@@ -1401,7 +1577,7 @@ async def generate_sample_async(
                                 )
                             else:
                                 # TIPO 3 / jinja / yaml — single write_to_file
-                                tool_json["arguments"]["content"] = frag['original']
+                                tool_json["arguments"]["content"] = frag["original"]
                                 final_assistant_msg = (
                                     f"{reasoning}\n</think>"
                                     f"<tool_call>\n{json.dumps(tool_json)}\n</tool_call>"
@@ -1411,8 +1587,8 @@ async def generate_sample_async(
                     # Legacy detected -> keep model code (2026)
                     logger.debug(
                         "GOLD SKIP [%s] legacy detected: %s",
-                        frag['name'],
-                        "; ".join(legacy_patterns or [])[:200]
+                        frag["name"],
+                        "; ".join(legacy_patterns or [])[:200],
                     )
                     final_assistant_msg = (
                         f"{reasoning}\n</think>"
@@ -1420,7 +1596,9 @@ async def generate_sample_async(
                     )
 
                 # filter_text = full reasoning (for posterior dedup)
-                filter_text = f"{reasoning}\n\n{final_assistant_msg.split('</think>')[-1]}"
+                filter_text = (
+                    f"{reasoning}\n\n{final_assistant_msg.split('</think>')[-1]}"
+                )
 
                 # === AUTO CURATION: flag toxic samples ===
                 is_kept = True
@@ -1430,29 +1608,38 @@ async def generate_sample_async(
                     poison_reasons = poison_patterns
                     logger.warning(
                         "POISON [%s] (%s) %d toxic patterns in output: %s",
-                        frag['name'], example_type,
+                        frag["name"],
+                        example_type,
                         len(poison_patterns),
-                        "; ".join(poison_patterns)[:200]
+                        "; ".join(poison_patterns)[:200],
                     )
 
                 # Build metadata first so we can compute canonical sample_id
-                ck_key = make_checkpoint_key(frag['name'], frag['virtual_filename'])
+                ck_key = make_checkpoint_key(frag["name"], frag["virtual_filename"])
                 metadata: Dict[str, Any] = {
                     "curation": {
                         "kept": is_kept,
                         "quality_score": 0.0,
-                        **({
-                            "poison_patterns": poison_reasons,
-                            "auto_rejected": True,
-                            **({"cot_schizophrenia": True} if cot_schizophrenia else {}),
-                        } if poison_reasons else {}),
+                        **(
+                            {
+                                "poison_patterns": poison_reasons,
+                                "auto_rejected": True,
+                                **(
+                                    {"cot_schizophrenia": True}
+                                    if cot_schizophrenia
+                                    else {}
+                                ),
+                            }
+                            if poison_reasons
+                            else {}
+                        ),
                     },
                     "factory_version": "v11.0",
                     "example_type": example_type,
                     "evol_difficulty": evol_difficulty,
                     "ldi": ldi,
-                    "fragment_name": frag['name'],
-                    "source_file": frag['virtual_filename'],
+                    "fragment_name": frag["name"],
+                    "source_file": frag["virtual_filename"],
                     "gold_injected": gold_injected,
                     "legacy_detected": has_legacy,
                     "legacy_patterns": legacy_patterns or [],
@@ -1477,11 +1664,11 @@ async def generate_sample_async(
                         "id": sample_id,
                         "conversation": [
                             {"role": "user", "content": user_msg},
-                            {"role": "assistant", "content": final_assistant_msg}
+                            {"role": "assistant", "content": final_assistant_msg},
                         ],
                         "metadata": metadata,
                         "filter_text": filter_text,
-                    }
+                    },
                 }
 
             except Exception as e:
@@ -1494,9 +1681,9 @@ async def generate_sample_async(
         "status": "rejected",
         "reason": f"Failed after {MAX_RETRIES} tries. Last: {last_error}",
         "raw_full_response": last_response,
-        "fragment_name": frag['name'],
+        "fragment_name": frag["name"],
         "example_type": example_type,
-        "checkpoint_key": make_checkpoint_key(frag['name'], frag['virtual_filename']),
+        "checkpoint_key": make_checkpoint_key(frag["name"], frag["virtual_filename"]),
     }
 
 
@@ -1504,7 +1691,10 @@ async def generate_sample_async(
 # CHECKPOINT / RESUME
 # ======================================================================
 
-def make_checkpoint_key(frag_name: str, virtual_filename: str, rep: Optional[int] = None) -> str:
+
+def make_checkpoint_key(
+    frag_name: str, virtual_filename: str, rep: Optional[int] = None
+) -> str:
     """Generate deterministic checkpoint key for a fragment.
 
     Does NOT depend on example_type or evol_difficulty (which are random).
@@ -1546,7 +1736,9 @@ def load_checkpoint(output_path: Path, rejected_path: Path) -> set:
                         if ck:
                             done_keys.add(ck)
                     except json.JSONDecodeError:
-                        logger.warning("Checkpoint: invalid JSON at %s line %d", path, line_num)
+                        logger.warning(
+                            "Checkpoint: invalid JSON at %s line %d", path, line_num
+                        )
         except Exception as e:
             logger.warning("Checkpoint: error reading %s: %s", path, e)
     return done_keys
@@ -1555,6 +1747,7 @@ def load_checkpoint(output_path: Path, rejected_path: Path) -> set:
 # ======================================================================
 # ASYNC-SAFE FILE WRITERS
 # ======================================================================
+
 
 class AsyncFileWriter:
     """Thread-safe JSONL writer with asyncio lock."""
@@ -1574,6 +1767,7 @@ class AsyncFileWriter:
 # PROGRESS TRACKER
 # ======================================================================
 
+
 class ProgressTracker:
     """Async-safe progress tracker with tqdm."""
 
@@ -1589,16 +1783,26 @@ class ProgressTracker:
         self.gold_skipped = 0
         self._lock = asyncio.Lock()
         desc = "V11 Theory" if mode == "theory" else "V11 Generating"
-        self.pbar = tqdm(total=total, desc=desc, unit="sample", ncols=220, dynamic_ncols=False)
+        self.pbar = tqdm(
+            total=total, desc=desc, unit="sample", ncols=220, dynamic_ncols=False
+        )
 
-    async def record(self, status: str, example_type: str, difficulty: Optional[str],
-                     gold_injected: bool = True, has_legacy: bool = False):
+    async def record(
+        self,
+        status: str,
+        example_type: str,
+        difficulty: Optional[str],
+        gold_injected: bool = True,
+        has_legacy: bool = False,
+    ):
         async with self._lock:
             if status == "accepted":
                 self.accepted += 1
                 self.by_type[example_type] = self.by_type.get(example_type, 0) + 1
                 if difficulty:
-                    self.by_difficulty[difficulty] = self.by_difficulty.get(difficulty, 0) + 1
+                    self.by_difficulty[difficulty] = (
+                        self.by_difficulty.get(difficulty, 0) + 1
+                    )
                 if has_legacy:
                     self.legacy_detected += 1
                 if gold_injected:
@@ -1622,9 +1826,9 @@ class ProgressTracker:
 
     def summary(self) -> str:
         lines = [
-            f"\n{'='*60}",
+            f"\n{'=' * 60}",
             f"SUMMARY V10.0 {'THEORY' if self.mode == 'theory' else 'ASYNC DIVERSIFIED'}",
-            f"{'='*60}",
+            f"{'=' * 60}",
             f"  Total processed: {self.accepted + self.rejected}",
             f"  Accepted:        {self.accepted}",
             f"  Rejected:        {self.rejected}",
@@ -1648,13 +1852,14 @@ class ProgressTracker:
                 f"    Gold Injection OK:  {self.gold_injected} (clean 2026 code)",
                 f"    Gold Injection SKIP:{self.gold_skipped} (legacy -> model generates 2026)",
             ]
-        lines.append(f"{'='*60}")
+        lines.append(f"{'=' * 60}")
         return "\n".join(lines)
 
 
 # ======================================================================
 # MAIN ASYNC PIPELINE
 # ======================================================================
+
 
 async def process_fragment(
     client: AsyncOpenAI,
@@ -1679,14 +1884,18 @@ async def process_fragment(
     """
     # Detect legacy patterns in the fragment's gold code
     # Uses Jinja detectors if fragment is a template, Python otherwise
-    frag_subtype = frag.get('subtype', 'code')
-    legacy_patterns = detect_legacy_patterns(frag.get('original', ''), subtype=frag_subtype)
+    frag_subtype = frag.get("subtype", "code")
+    legacy_patterns = detect_legacy_patterns(
+        frag.get("original", ""), subtype=frag_subtype
+    )
     has_legacy = len(legacy_patterns) > 0
 
     if has_legacy:
         logger.debug(
             "LEGACY detected in '%s' [%s]: %s",
-            frag['name'], frag_subtype, "; ".join(legacy_patterns)[:200]
+            frag["name"],
+            frag_subtype,
+            "; ".join(legacy_patterns)[:200],
         )
 
     # Assign type (if legacy -> force contrast/error_recovery)
@@ -1700,8 +1909,14 @@ async def process_fragment(
         evol_difficulty = "hard"
 
     result = await generate_sample_async(
-        client, model, frag, example_type, evol_difficulty,
-        master, changelog, semaphore,
+        client,
+        model,
+        frag,
+        example_type,
+        evol_difficulty,
+        master,
+        changelog,
+        semaphore,
         has_legacy=has_legacy,
         legacy_patterns=legacy_patterns,
         jinja_guide=jinja_guide,
@@ -1717,75 +1932,88 @@ async def process_fragment(
         if actual_type != example_type:
             logger.info(
                 "TYPE SYNC [%s]: assigned=%s → actual=%s (fallback)",
-                frag['name'], example_type, actual_type
+                frag["name"],
+                example_type,
+                actual_type,
             )
         # Ensure sample ID matches the actual example type (recompute if needed)
         try:
             # Ensure canonical id uses checkpoint_key (unique per fragment+file)
-            ck = sample.get('metadata', {}).get('checkpoint_key')
+            ck = sample.get("metadata", {}).get("checkpoint_key")
             if not ck:
                 # Fallback to deterministic checkpoint generation
-                ck = make_checkpoint_key(frag['name'], frag['virtual_filename'])
+                ck = make_checkpoint_key(frag["name"], frag["virtual_filename"])
             new_sample_id = f"v11_{actual_type}_{ck}"
-            if sample.get('id') != new_sample_id:
-                sample['id'] = new_sample_id
+            if sample.get("id") != new_sample_id:
+                sample["id"] = new_sample_id
         except Exception as _e:
-            logger.debug("Could not ensure sample id for %s: %s", frag['name'], _e)
+            logger.debug("Could not ensure sample id for %s: %s", frag["name"], _e)
 
         is_kept = sample["metadata"].get("curation", {}).get("kept", True)
         if is_kept:
             # ── THINK FILTER: strip redundant reasoning before writing ──
-            if _think_filter_apply is not None and getattr(args, 'think_filter', True):
+            if _think_filter_apply is not None and getattr(args, "think_filter", True):
                 sample, _tf_stats = _think_filter_apply(
-                    sample, min_chars=getattr(args, 'think_filter_min_chars', 5000)
+                    sample, min_chars=getattr(args, "think_filter_min_chars", 5000)
                 )
                 if _tf_stats:
                     logger.debug(
                         "think_filter [%s]: %.1f%% reduction (%d→%d chars)",
-                        sample.get('id', '?'),
-                        _tf_stats['reduction_pct'],
-                        _tf_stats['original_chars'],
-                        _tf_stats['distilled_chars'],
+                        sample.get("id", "?"),
+                        _tf_stats["reduction_pct"],
+                        _tf_stats["original_chars"],
+                        _tf_stats["distilled_chars"],
                     )
             await writer_ok.write(sample)
         else:
             # Auto-rejected by post-validation (poison patterns)
-            await writer_bad.write({
-                "frag": sample["metadata"].get("fragment_name", "unknown"),
-                "type": actual_type,
-                "reason": "auto_rejected_poison",
-                "poison_patterns": sample["metadata"]["curation"].get("poison_patterns", []),
-                "legacy_detected": has_legacy,
-                "legacy_patterns": legacy_patterns,
-                "checkpoint_key": sample["metadata"].get("checkpoint_key", ""),
-                "sample": sample,
-            })
+            await writer_bad.write(
+                {
+                    "frag": sample["metadata"].get("fragment_name", "unknown"),
+                    "type": actual_type,
+                    "reason": "auto_rejected_poison",
+                    "poison_patterns": sample["metadata"]["curation"].get(
+                        "poison_patterns", []
+                    ),
+                    "legacy_detected": has_legacy,
+                    "legacy_patterns": legacy_patterns,
+                    "checkpoint_key": sample["metadata"].get("checkpoint_key", ""),
+                    "sample": sample,
+                }
+            )
             logger.info(
                 "SEPARATED -> rejected [%s] (%s): %s",
                 sample["metadata"].get("fragment_name", "?"),
                 actual_type,
-                "; ".join(sample["metadata"]["curation"].get("poison_patterns", []))[:150]
+                "; ".join(sample["metadata"]["curation"].get("poison_patterns", []))[
+                    :150
+                ],
             )
         gold_injected = sample["metadata"].get("gold_injected", True)
     else:
         # Rejected (all retries failed): use type from result if present
         actual_type = result.get("example_type", example_type)
         actual_difficulty = evol_difficulty
-        await writer_bad.write({
-            "frag": result.get("fragment_name", "unknown"),
-            "type": actual_type,
-            "reason": result["reason"],
-            "legacy_detected": has_legacy,
-            "legacy_patterns": legacy_patterns,
-            "checkpoint_key": result.get("checkpoint_key", ""),
-            "full_response": result.get("raw_full_response", "")[:5000]
-        })
+        await writer_bad.write(
+            {
+                "frag": result.get("fragment_name", "unknown"),
+                "type": actual_type,
+                "reason": result["reason"],
+                "legacy_detected": has_legacy,
+                "legacy_patterns": legacy_patterns,
+                "checkpoint_key": result.get("checkpoint_key", ""),
+                "full_response": result.get("raw_full_response", "")[:5000],
+            }
+        )
         gold_injected = False
 
     # ── COUNTERS OF REALITY: tracker sees the actual type, not the planned type ──
     await tracker.record(
-        result["status"], actual_type, actual_difficulty,
-        gold_injected=gold_injected, has_legacy=has_legacy
+        result["status"],
+        actual_type,
+        actual_difficulty,
+        gold_injected=gold_injected,
+        has_legacy=has_legacy,
     )
 
 
@@ -1795,7 +2023,9 @@ async def main_async(args):
     master, changelog, jinja_guide = load_master_docs(args._gap_dir)
     logger.info(
         "Master Guide: %d chars | Changelog: %d chars | Jinja Guide: %d chars",
-        len(master), len(changelog), len(jinja_guide)
+        len(master),
+        len(changelog),
+        len(jinja_guide),
     )
 
     # Configure async client
@@ -1821,12 +2051,15 @@ async def main_async(args):
                 expanded_frags.append({**frag, "_rep": rep})
 
         if args.test:
-            expanded_frags = expanded_frags[:args.test]
+            expanded_frags = expanded_frags[: args.test]
             logger.info("TEST MODE THEORY: Limited to %d fragments", args.test)
 
         logger.info(
             "Theory: %d sections x %d reps = %d examples | %d workers",
-            len(theory_frags), theory_reps, len(expanded_frags), args.workers
+            len(theory_frags),
+            theory_reps,
+            len(expanded_frags),
+            args.workers,
         )
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -1853,14 +2086,19 @@ async def main_async(args):
             done_keys = load_checkpoint(resume_path, resume_rejected)
             before = len(expanded_frags)
             expanded_frags = [
-                tf for tf in expanded_frags
+                tf
+                for tf in expanded_frags
                 if make_checkpoint_key(
-                    tf['name'], tf['virtual_filename'], rep=tf.get('_rep')
-                ) not in done_keys
+                    tf["name"], tf["virtual_filename"], rep=tf.get("_rep")
+                )
+                not in done_keys
             ]
             logger.info(
                 "RESUME: %d already processed, %d pending (of %d total) [%d checkpoint keys loaded]",
-                before - len(expanded_frags), len(expanded_frags), before, len(done_keys)
+                before - len(expanded_frags),
+                len(expanded_frags),
+                before,
+                len(done_keys),
             )
             if not expanded_frags:
                 logger.info("All fragments already processed. Nothing to do.")
@@ -1880,22 +2118,26 @@ async def main_async(args):
             if result["status"] == "accepted":
                 # ── THINK FILTER (theory mode) ──
                 _tsample = result["sample"]
-                if _think_filter_apply is not None and getattr(args, 'think_filter', True):
+                if _think_filter_apply is not None and getattr(
+                    args, "think_filter", True
+                ):
                     _tsample, _tf_stats = _think_filter_apply(
-                        _tsample, min_chars=getattr(args, 'think_filter_min_chars', 5000)
+                        _tsample,
+                        min_chars=getattr(args, "think_filter_min_chars", 5000),
                     )
                 await writer_ok.write(_tsample)
             else:
-                await writer_bad.write({
-                    "frag": result.get("fragment_name", "unknown"),
-                    "type": "theory",
-                    "reason": result["reason"],
-                    "checkpoint_key": result.get("checkpoint_key", ""),
-                    "full_response": result.get("raw_full_response", "")[:5000]
-                })
+                await writer_bad.write(
+                    {
+                        "frag": result.get("fragment_name", "unknown"),
+                        "type": "theory",
+                        "reason": result["reason"],
+                        "checkpoint_key": result.get("checkpoint_key", ""),
+                        "full_response": result.get("raw_full_response", "")[:5000],
+                    }
+                )
             await tracker.record(
-                result["status"], "theory", None,
-                gold_injected=False, has_legacy=False
+                result["status"], "theory", None, gold_injected=False, has_legacy=False
             )
 
         tasks = [process_theory(tf) for tf in expanded_frags]
@@ -1915,7 +2157,7 @@ async def main_async(args):
     raw_dir = Path(args.raw_dir)
     all_txt_files = sorted(raw_dir.rglob("*.txt"))
     if args.limit:
-        all_txt_files = all_txt_files[:args.limit]
+        all_txt_files = all_txt_files[: args.limit]
 
     # Parse extension filter (if provided)
     allowed_ext = None
@@ -1923,12 +2165,14 @@ async def main_async(args):
         allowed_ext = set()
         for ext in args.extensions:
             e = ext.strip().lower()
-            if not e.startswith('.'):
-                e = '.' + e
+            if not e.startswith("."):
+                e = "." + e
             allowed_ext.add(e)
         logger.info("Extension filter active: %s", allowed_ext)
 
-    logger.info("V11 two-pass scan: %d .txt files found in %s", len(all_txt_files), raw_dir)
+    logger.info(
+        "V11 two-pass scan: %d .txt files found in %s", len(all_txt_files), raw_dir
+    )
 
     # ── PASS 1: build blueprint cache and governance cache ──────────
     blueprint_cache: Dict[str, str] = {}
@@ -1963,7 +2207,11 @@ async def main_async(args):
                         for fname, content in bundle["files"].items()
                     )
                     governance_cache[repo_prefix] = gov_content
-                    logger.info("Governance cached: %s (%d chars)", repo_prefix, len(gov_content))
+                    logger.info(
+                        "Governance cached: %s (%d chars)",
+                        repo_prefix,
+                        len(gov_content),
+                    )
             elif btype == "FUNCTIONAL_UNIT":
                 functional_bundles.append(bundle)
             elif btype == "LOGIC_ONLY":
@@ -1974,8 +2222,10 @@ async def main_async(args):
 
     logger.info(
         "Pass 1 complete: %d blueprints | %d governance | %d FUNCTIONAL_UNIT | %d LOGIC_ONLY",
-        len(blueprint_cache), len(governance_cache),
-        len(functional_bundles), len(logic_only_bundles),
+        len(blueprint_cache),
+        len(governance_cache),
+        len(functional_bundles),
+        len(logic_only_bundles),
     )
 
     # ── PASS 2: generate fragment dicts ─────────────────────────────
@@ -1984,34 +2234,44 @@ async def main_async(args):
         try:
             all_fragments.extend(
                 get_v2_fragments(
-                    bundle, blueprint_cache,
+                    bundle,
+                    blueprint_cache,
                     allowed_extensions=allowed_ext,
                     governance_cache=governance_cache,
                 )
             )
         except Exception as e:
-            logger.warning("Fragment extraction error [%s]: %s", bundle.get("entity_id", "?"), e)
+            logger.warning(
+                "Fragment extraction error [%s]: %s", bundle.get("entity_id", "?"), e
+            )
 
     logger.info("Total fragments discovered: %d", len(all_fragments))
 
     # Test mode: limit fragments
     if args.test:
-        all_fragments = all_fragments[:args.test]
+        all_fragments = all_fragments[: args.test]
         logger.info("TEST MODE: Limited to %d fragments", args.test)
 
     if not all_fragments:
-        logger.error("No fragments found. Check %s sub-directories for TIPO 1/3 bundles.", raw_dir)
+        logger.error(
+            "No fragments found. Check %s sub-directories for TIPO 1/3 bundles.",
+            raw_dir,
+        )
         return
 
     # Pre-scan: count fragments with legacy for info
     legacy_count = sum(
-        1 for f in all_fragments
-        if detect_legacy_patterns(f.get('original', ''), subtype=f.get('subtype', 'code'))
+        1
+        for f in all_fragments
+        if detect_legacy_patterns(
+            f.get("original", ""), subtype=f.get("subtype", "code")
+        )
     )
     clean_count = len(all_fragments) - legacy_count
     logger.info(
         "Pre-scan: %d clean fragments (Gold OK) | %d with legacy (Gold SKIP)",
-        clean_count, legacy_count
+        clean_count,
+        legacy_count,
     )
 
     # Configure output
@@ -2039,12 +2299,16 @@ async def main_async(args):
         done_keys = load_checkpoint(resume_path, resume_rejected)
         before = len(all_fragments)
         all_fragments = [
-            f for f in all_fragments
-            if make_checkpoint_key(f['name'], f['virtual_filename']) not in done_keys
+            f
+            for f in all_fragments
+            if make_checkpoint_key(f["name"], f["virtual_filename"]) not in done_keys
         ]
         logger.info(
             "RESUME: %d already processed, %d pending (of %d total) [%d checkpoint keys loaded]",
-            before - len(all_fragments), len(all_fragments), before, len(done_keys)
+            before - len(all_fragments),
+            len(all_fragments),
+            before,
+            len(done_keys),
         )
         if not all_fragments:
             logger.info("All fragments already processed. Nothing to do.")
@@ -2057,20 +2321,31 @@ async def main_async(args):
 
     logger.info(
         "V10 ASYNC DIVERSIFIED: %d fragments | %d workers | model: %s",
-        len(all_fragments), args.workers, args.model
+        len(all_fragments),
+        args.workers,
+        args.model,
     )
     logger.info("Output: %s", output_path)
     logger.info("Rejected: %s", rejected_path)
     logger.info(
         "Target distribution: Nominal %.0f%% | Contrast %.0f%% | Error Recovery %.0f%%",
-        DIST_NOMINAL * 100, DIST_CONTRAST * 100, DIST_ERROR_RECOVERY * 100
+        DIST_NOMINAL * 100,
+        DIST_CONTRAST * 100,
+        DIST_ERROR_RECOVERY * 100,
     )
 
     # Launch all tasks with concurrency semaphore
     tasks = [
         process_fragment(
-            client, args.model, frag, master, changelog,
-            semaphore, writer_ok, writer_bad, tracker,
+            client,
+            args.model,
+            frag,
+            master,
+            changelog,
+            semaphore,
+            writer_ok,
+            writer_bad,
+            tracker,
             args,
             jinja_guide=jinja_guide,
         )
@@ -2087,6 +2362,7 @@ async def main_async(args):
 # ======================================================================
 # CLI
 # ======================================================================
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -2129,86 +2405,130 @@ Usage examples:
 
   # Custom gap directory for master documents
   python production_v11.py --gap-dir /path/to/gap/docs --workers 16
-        """
+        """,
     )
     parser.add_argument(
-        "--test", type=int, default=None, metavar="N",
-        help="Test mode: process only N total fragments for quick validation"
+        "--test",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Test mode: process only N total fragments for quick validation",
     )
     parser.add_argument(
-        "--limit", type=int, default=None, metavar="N",
-        help="Limit to N raw input files"
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Limit to N raw input files",
     )
     parser.add_argument(
-        "--workers", type=int, default=DEFAULT_WORKERS, metavar="W",
-        help=f"Number of parallel async workers (default: {DEFAULT_WORKERS})"
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        metavar="W",
+        help=f"Number of parallel async workers (default: {DEFAULT_WORKERS})",
     )
     parser.add_argument(
-        "--model", type=str, default=DEFAULT_MODEL,
-        help=f"Inference model (default: {DEFAULT_MODEL})"
+        "--model",
+        type=str,
+        default=DEFAULT_MODEL,
+        help=f"Inference model (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
-        "--base-url", type=str, default=DEFAULT_BASE_URL,
-        help=f"vLLM server URL (default: {DEFAULT_BASE_URL})"
+        "--base-url",
+        type=str,
+        default=DEFAULT_BASE_URL,
+        help=f"vLLM server URL (default: {DEFAULT_BASE_URL})",
     )
     parser.add_argument(
-        "--api-key", type=str, default=DEFAULT_API_KEY,
-        help="Server API key"
+        "--api-key", type=str, default=DEFAULT_API_KEY, help="Server API key"
     )
     parser.add_argument(
-        "--output", type=str, default=None, metavar="PATH",
-        help="Custom JSONL output path"
+        "--output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Custom JSONL output path",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
-        help="Seed for reproducibility (default: 42)"
+        "--seed", type=int, default=42, help="Seed for reproducibility (default: 42)"
     )
     parser.add_argument(
-        "--think-filter", dest="think_filter", action="store_true", default=True,
-        help="Apply inline think-block distillation before writing (default: enabled)"
+        "--think-filter",
+        dest="think_filter",
+        action="store_true",
+        default=True,
+        help="Apply inline think-block distillation before writing (default: enabled)",
     )
     parser.add_argument(
-        "--no-think-filter", dest="think_filter", action="store_false",
-        help="Disable inline think-block distillation"
+        "--no-think-filter",
+        dest="think_filter",
+        action="store_false",
+        help="Disable inline think-block distillation",
     )
     parser.add_argument(
-        "--think-filter-min-chars", type=int, default=5000, metavar="N",
-        help="Only distil think blocks >= N chars (default: 5000)"
+        "--think-filter-min-chars",
+        type=int,
+        default=5000,
+        metavar="N",
+        help="Only distil think blocks >= N chars (default: 5000)",
     )
     parser.add_argument(
-        "--resume", type=str, default=None, metavar="PATH",
+        "--resume",
+        type=str,
+        default=None,
+        metavar="PATH",
         help="Resume run: path to previous output JSONL. "
-             "Reads already-processed checkpoint_keys and skips those fragments."
+        "Reads already-processed checkpoint_keys and skips those fragments.",
     )
     parser.add_argument(
-        "--raw-dir", type=str, default="data/raw/homeassistant-main_txt", metavar="DIR",
-        help="Input directory with packed .txt files (default: data/raw/homeassistant-main_txt)"
+        "--raw-dir",
+        type=str,
+        default="data/raw/homeassistant-main_txt",
+        metavar="DIR",
+        help="Input directory with packed .txt files (default: data/raw/homeassistant-main_txt)",
     )
     parser.add_argument(
-        "--extensions", type=str, nargs="+", default=None, metavar="EXT",
+        "--extensions",
+        type=str,
+        nargs="+",
+        default=None,
+        metavar="EXT",
         help="Filter only files with these extensions inside .txt packs "
-             "(e.g. --extensions .jinja .jinja2 .yaml .yml). Processes all if not specified."
+        "(e.g. --extensions .jinja .jinja2 .yaml .yml). Processes all if not specified.",
     )
     parser.add_argument(
-        "--theory", action="store_true", default=False,
-        help="Theory mode: generate pure doctrine dataset from MASTER_GUIDE and CHANGELOG"
+        "--theory",
+        action="store_true",
+        default=False,
+        help="Theory mode: generate pure doctrine dataset from MASTER_GUIDE and CHANGELOG",
     )
     parser.add_argument(
-        "--theory-reps", type=int, default=3, metavar="R",
-        help="Repetitions per section in --theory mode (default: 3, generates diverse questions)"
+        "--theory-reps",
+        type=int,
+        default=3,
+        metavar="R",
+        help="Repetitions per section in --theory mode (default: 3, generates diverse questions)",
     )
     parser.add_argument(
-        "--gap-dir", type=str, default=None, metavar="DIR",
-        help="Directory containing master documents (default: data/Gap relative to project root)"
+        "--gap-dir",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help="Directory containing master documents (default: data/Gap relative to project root)",
     )
     parser.add_argument(
-        "--taxonomy", type=str, default=None, metavar="PATH",
-        help="Path to prompts_taxonomy.yaml (default: auto-resolved from project root)"
+        "--taxonomy",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Path to prompts_taxonomy.yaml (default: auto-resolved from project root)",
     )
     return parser.parse_args()
 
 
 def main():
+    configure_logger()
     args = parse_args()
     random.seed(args.seed)
 
@@ -2219,7 +2539,14 @@ def main():
     if args.taxonomy:
         taxonomy_path = Path(args.taxonomy)
     else:
-        taxonomy_path = base_dir / "configs" / "taxonomy" / "home_assistant" / "hacs_expert" / "prompts_taxonomy.yaml"
+        taxonomy_path = (
+            base_dir
+            / "configs"
+            / "taxonomy"
+            / "home_assistant"
+            / "hacs_expert"
+            / "prompts_taxonomy.yaml"
+        )
     if not taxonomy_path.exists():
         raise FileNotFoundError(f"Taxonomy file not found: {taxonomy_path}")
     load_taxonomy(taxonomy_path)

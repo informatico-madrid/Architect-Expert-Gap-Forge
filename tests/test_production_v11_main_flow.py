@@ -29,14 +29,17 @@ def test_sensor(): pass
 
 
 def _accepted_sample_for_frag(frag: dict) -> dict:
-    ck = pv.make_checkpoint_key(frag['name'], frag.get('virtual_filename', ''))
+    ck = pv.make_checkpoint_key(frag["name"], frag.get("virtual_filename", ""))
     return {
         "status": "accepted",
         "sample": {
             "id": f"v11_nominal_{ck}",
             "conversation": [
                 {"role": "user", "content": "u"},
-                {"role": "assistant", "content": "<think>r</think><tool_call>[]</tool_call>"},
+                {
+                    "role": "assistant",
+                    "content": "<think>r</think><tool_call>[]</tool_call>",
+                },
             ],
             "metadata": {
                 "curation": {"kept": True},
@@ -50,7 +53,9 @@ def _accepted_sample_for_frag(frag: dict) -> dict:
     }
 
 
-def test_main_async_processes_fragments_writes_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_async_processes_fragments_writes_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Create a tiny raw_dir with one FUNCTIONAL_UNIT bundle
     raw_dir = tmp_path / "raw"
     raw_dir.mkdir()
@@ -58,19 +63,42 @@ def test_main_async_processes_fragments_writes_output(tmp_path: Path, monkeypatc
     # Create a local Gap dir with the three required master docs
     gap = tmp_path / "Gap"
     gap.mkdir()
-    (gap / "HA_MASTER_GUIDE_2026.md").write_text("# HA Guide\nsome content", encoding="utf-8")
-    (gap / "technical_changelog_2026.md").write_text("## Changelog\nbreaking change info", encoding="utf-8")
-    (gap / "HA_JINJA_YAML_GUIDE_2026.md").write_text("## Jinja Guide\ntriggers:", encoding="utf-8")
+    (gap / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# HA Guide\nsome content", encoding="utf-8"
+    )
+    (gap / "technical_changelog_2026.md").write_text(
+        "## Changelog\nbreaking change info", encoding="utf-8"
+    )
+    (gap / "HA_JINJA_YAML_GUIDE_2026.md").write_text(
+        "## Jinja Guide\ntriggers:", encoding="utf-8"
+    )
 
     # Stub prompt helpers to avoid loading taxonomy
     monkeypatch.setattr(pv, "_prompt", lambda key: f"<{key}>", raising=False)
     monkeypatch.setattr(pv, "_render", lambda template, **subs: template, raising=False)
 
     # Deterministic assignment to avoid randomness
-    monkeypatch.setattr(pv, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy"), raising=False)
+    monkeypatch.setattr(
+        pv,
+        "assign_example_type",
+        lambda frag, has_legacy=False: ("nominal", "easy"),
+        raising=False,
+    )
 
     # Replace generate_sample_async with a fast accepted-response stub
-    async def fake_generate(client, model, frag, example_type, evol_difficulty, master, changelog, semaphore, has_legacy=False, legacy_patterns=None, jinja_guide=""):
+    async def fake_generate(
+        client,
+        model,
+        frag,
+        example_type,
+        evol_difficulty,
+        master,
+        changelog,
+        semaphore,
+        has_legacy=False,
+        legacy_patterns=None,
+        jinja_guide="",
+    ):
         return _accepted_sample_for_frag(frag)
 
     monkeypatch.setattr(pv, "generate_sample_async", fake_generate, raising=False)
@@ -117,10 +145,15 @@ def test_main_async_processes_fragments_writes_output(tmp_path: Path, monkeypatc
     lines = [l for l in out_path.read_text(encoding="utf-8").splitlines() if l.strip()]
     assert len(lines) >= 1
     rec = json.loads(lines[0])
-    assert rec.get("id", "").startswith("v11_nominal_") or rec.get("metadata", {}).get("example_type") == "nominal"
+    assert (
+        rec.get("id", "").startswith("v11_nominal_")
+        or rec.get("metadata", {}).get("example_type") == "nominal"
+    )
 
 
-def test_main_async_blueprint_and_governance_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_main_async_blueprint_and_governance_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Build raw_dir containing a MODULE_BLUEPRINT, GOVERNANCE_RULES and a FUNCTIONAL_UNIT
     raw_dir = tmp_path / "raw2"
     raw_dir.mkdir()
@@ -156,20 +189,45 @@ rule: value
     # Minimal Gap files
     gap = tmp_path / "Gap"
     gap.mkdir()
-    (gap / "HA_MASTER_GUIDE_2026.md").write_text("# HA Guide\ncontent", encoding="utf-8")
-    (gap / "technical_changelog_2026.md").write_text("## Changelog\ninfo", encoding="utf-8")
-    (gap / "HA_JINJA_YAML_GUIDE_2026.md").write_text("## Jinja\ntriggers:", encoding="utf-8")
+    (gap / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# HA Guide\ncontent", encoding="utf-8"
+    )
+    (gap / "technical_changelog_2026.md").write_text(
+        "## Changelog\ninfo", encoding="utf-8"
+    )
+    (gap / "HA_JINJA_YAML_GUIDE_2026.md").write_text(
+        "## Jinja\ntriggers:", encoding="utf-8"
+    )
 
     # Stubs
     monkeypatch.setattr(pv, "_prompt", lambda key: f"<{key}>", raising=False)
     monkeypatch.setattr(pv, "_render", lambda template, **subs: template, raising=False)
-    monkeypatch.setattr(pv, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy"), raising=False)
+    monkeypatch.setattr(
+        pv,
+        "assign_example_type",
+        lambda frag, has_legacy=False: ("nominal", "easy"),
+        raising=False,
+    )
 
-    async def fake_generate(client, model, frag, example_type, evol_difficulty, master, changelog, semaphore, has_legacy=False, legacy_patterns=None, jinja_guide=""):
+    async def fake_generate(
+        client,
+        model,
+        frag,
+        example_type,
+        evol_difficulty,
+        master,
+        changelog,
+        semaphore,
+        has_legacy=False,
+        legacy_patterns=None,
+        jinja_guide="",
+    ):
         return _accepted_sample_for_frag(frag)
 
     monkeypatch.setattr(pv, "generate_sample_async", fake_generate, raising=False)
-    monkeypatch.setattr(pv, "AsyncOpenAI", lambda *a, **k: SimpleNamespace(), raising=False)
+    monkeypatch.setattr(
+        pv, "AsyncOpenAI", lambda *a, **k: SimpleNamespace(), raising=False
+    )
 
     # Args
     class Args:

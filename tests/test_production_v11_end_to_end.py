@@ -28,7 +28,9 @@ class FakeCompletions:
         self._content = content
 
     async def create(self, *args, **kwargs):
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=self._content))])
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=self._content))]
+        )
 
 
 def make_fake_client_factory(content: str):
@@ -43,8 +45,12 @@ def test_main_async_minimal(tmp_path, monkeypatch):
     # Prepare minimal gap docs
     gap = tmp_path / "gap"
     gap.mkdir()
-    (gap / pv11._MASTER_GUIDE_FILENAME).write_text("# Master guide\nSome master content")
-    (gap / pv11._TECHNICAL_CHANGELOG_FILENAME).write_text("# Changelog\nLots of changes")
+    (gap / pv11._MASTER_GUIDE_FILENAME).write_text(
+        "# Master guide\nSome master content"
+    )
+    (gap / pv11._TECHNICAL_CHANGELOG_FILENAME).write_text(
+        "# Changelog\nLots of changes"
+    )
     (gap / pv11._JINJA_YAML_GUIDE_FILENAME).write_text("# Jinja Guide\nTemplate rules")
 
     # Prepare a raw .txt bundle (FUNCTIONAL_UNIT)
@@ -71,11 +77,21 @@ def test_main_async_minimal(tmp_path, monkeypatch):
 
     # Stub prompt/template functions to avoid taxonomy dependency
     monkeypatch.setattr(pv11, "_prompt", lambda key: f"<{key}>")
-    monkeypatch.setattr(pv11, "_render", lambda template, **subs: template if not subs else template + " " + " ".join(f"{k}={v}" for k, v in subs.items()))
+    monkeypatch.setattr(
+        pv11,
+        "_render",
+        lambda template, **subs: (
+            template
+            if not subs
+            else template + " " + " ".join(f"{k}={v}" for k, v in subs.items())
+        ),
+    )
     monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
 
     # Deterministic assignment of example type
-    monkeypatch.setattr(pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy"))
+    monkeypatch.setattr(
+        pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy")
+    )
 
     # Fake client returns a long reasoning and write_action with content
     reasoning = "R" * 300

@@ -17,6 +17,7 @@ Covers:
 - Edge: sample_size == 1 → exactly one record returned
 - SampleRecord fields are correctly populated from raw dict
 """
+
 from __future__ import annotations
 
 import json
@@ -74,7 +75,9 @@ def _make_raw(
 
 @pytest.mark.unit
 class TestStratifiedSampleBasic:
-    def test_returns_list_of_sample_records(self, raw_records: List[Dict[str, Any]]) -> None:
+    def test_returns_list_of_sample_records(
+        self, raw_records: List[Dict[str, Any]]
+    ) -> None:
         samples = stratified_sample(raw_records, sample_size=4)
         assert isinstance(samples, list)
         assert all(isinstance(s, SampleRecord) for s in samples)
@@ -135,8 +138,11 @@ class TestStratifiedSampleDeterminism:
         # Different seeds are very unlikely to produce identical ordering on 16-record pool
         assert [s.id for s in a] != [s.id for s in b]
 
-    def test_result_does_not_mutate_input(self, raw_records: List[Dict[str, Any]]) -> None:
+    def test_result_does_not_mutate_input(
+        self, raw_records: List[Dict[str, Any]]
+    ) -> None:
         import copy
+
         original = copy.deepcopy(raw_records)
         stratified_sample(raw_records, sample_size=8)
         assert [r["id"] for r in raw_records] == [r["id"] for r in original]
@@ -175,7 +181,9 @@ class TestStratifiedSampleEdgeCases:
 
     def test_unbalanced_pool_fills_from_large_buckets(self) -> None:
         """When some types have few records, surplus quota fills from larger buckets."""
-        records = _make_raw({"nominal": 10, "contrast": 1, "error_recovery": 1, "theory": 1})
+        records = _make_raw(
+            {"nominal": 10, "contrast": 1, "error_recovery": 1, "theory": 1}
+        )
         samples = stratified_sample(records, sample_size=8, seed=42)
         assert len(samples) == 8
 
@@ -302,7 +310,7 @@ class TestConvParsing:
                 "id": "edge-empty-content",
                 "metadata": {"example_type": "nominal"},
                 "conversation": [
-                    {"role": "user", "content": ""},          # empty — skipped
+                    {"role": "user", "content": ""},  # empty — skipped
                     {"role": "user", "content": "Real question"},
                     {"role": "assistant", "content": "Real answer"},
                 ],

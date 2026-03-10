@@ -45,7 +45,10 @@ trigger:
 
 def test_parse_raw_response_tool_call_and_write_action():
     # tool_call JSON branch with reasoning
-    tool_json = {"name": "write_to_file", "arguments": {"path": "/tmp/x", "content": "hi"}}
+    tool_json = {
+        "name": "write_to_file",
+        "arguments": {"path": "/tmp/x", "content": "hi"},
+    }
     raw = f"<think>reasoning text</think><tool_call>{json.dumps(tool_json)}</tool_call>"
     parsed, reasoning = pv11.parse_raw_response(raw)
     assert reasoning == "reasoning text"
@@ -92,7 +95,12 @@ def test_get_file_chunks_and_parse_bundle_and_fragments(tmp_path: Path):
     assert bundle["type"] == "FUNCTIONAL_UNIT"
     assert "logic.py" in bundle["files"]
 
-    frags = pv11.get_v2_fragments(bundle, blueprint_cache={"mod1": ""}, allowed_extensions=None, governance_cache={})
+    frags = pv11.get_v2_fragments(
+        bundle,
+        blueprint_cache={"mod1": ""},
+        allowed_extensions=None,
+        governance_cache={},
+    )
     # Should return at least one fragment for the simple function
     assert isinstance(frags, list)
     assert any(f.get("subtype") == "functional_unit" for f in frags)
@@ -162,11 +170,10 @@ def test_async_file_writer_write(tmp_path: Path):
     assert obj["x"] == 1
 
 
-
 def test_get_file_chunks_splits_content() -> None:
     content = "--- FILE: a.py ---\nprint('a')\n--- FILE: b.py ---\nprint('b')"
     chunks = factory_v11.get_file_chunks(content)
-    assert chunks == [("a.py", "print('a')"), ("b.py", "print('b')")] 
+    assert chunks == [("a.py", "print('a')"), ("b.py", "print('b')")]
 
 
 def test_parse_bundle_extracts_metadata() -> None:
@@ -177,7 +184,7 @@ def test_parse_bundle_extracts_metadata() -> None:
         "[ARCH_HEADER]\n"
         "MODULE: foo\n"
         "REPO_PREFIX: rp\n"
-        "LOCAL_IMPORTS: [\"a\"]\n"
+        'LOCAL_IMPORTS: ["a"]\n'
         "--- FILE: main.py ---\nprint('ok')\n"
         "--- FILE: other.py ---\nprint('bye')\n"
     )
@@ -190,8 +197,12 @@ def test_parse_bundle_extracts_metadata() -> None:
 
 
 def test_ast_fragment_list_generates_fragments() -> None:
-    code = "def foo():\n    return 1\n\nclass Bar:\n    def baz(self):\n        return 2\n"
-    fragments = factory_v11._ast_fragment_list("module.py", code, "ctx", {"extra": True})
+    code = (
+        "def foo():\n    return 1\n\nclass Bar:\n    def baz(self):\n        return 2\n"
+    )
+    fragments = factory_v11._ast_fragment_list(
+        "module.py", code, "ctx", {"extra": True}
+    )
     assert len(fragments) >= 2
     assert fragments[0]["context"] == "ctx"
 
@@ -229,7 +240,9 @@ def test_get_v2_fragments_functional_unit() -> None:
     bundle = _functional_bundle()
     blueprint_cache = {"mod": "blueprint"}
     governance_cache = {"root": "governance"}
-    fragments = factory_v11.get_v2_fragments(bundle, blueprint_cache, governance_cache=governance_cache)
+    fragments = factory_v11.get_v2_fragments(
+        bundle, blueprint_cache, governance_cache=governance_cache
+    )
     assert fragments
     assert fragments[0]["blueprint"] == "blueprint"
 
@@ -246,7 +259,9 @@ def test_get_fragments_handles_various_types() -> None:
     assert any(f["type"] == "python" for f in py_frags)
     markdown = factory_v11.get_fragments("README", "Short doc")
     assert markdown and markdown[0]["type"] == "readme"
-    jinja = factory_v11.get_fragments("template.jinja", "{%- macro m() %}print('ok'){%- endmacro %}")
+    jinja = factory_v11.get_fragments(
+        "template.jinja", "{%- macro m() %}print('ok'){%- endmacro %}"
+    )
     assert jinja and jinja[0]["type"] == "template"
     yaml_code = (
         "automation:\n"

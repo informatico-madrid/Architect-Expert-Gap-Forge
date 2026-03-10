@@ -16,6 +16,7 @@ Public API
 - ``load_dataset`` — parse a JSONL file into raw records.
 - ``stratified_sample`` — draw a balanced sample from raw records.
 """
+
 from __future__ import annotations
 
 import json
@@ -122,8 +123,14 @@ def stratified_sample(
             sample = raw_to_sample(rec)
             samples.append(sample)
 
-    missing_standards = [s.id for s in samples if not (s.reference_standards and s.reference_standards.strip())]
-    missing_gaps = [s.id for s in samples if not (s.gap_analysis and s.gap_analysis.strip())]
+    missing_standards = [
+        s.id
+        for s in samples
+        if not (s.reference_standards and s.reference_standards.strip())
+    ]
+    missing_gaps = [
+        s.id for s in samples if not (s.gap_analysis and s.gap_analysis.strip())
+    ]
     if missing_standards or missing_gaps:
         logger.info(
             "Sample contains records missing domain metadata; will inject later: "

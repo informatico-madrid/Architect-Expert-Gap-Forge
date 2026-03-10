@@ -8,6 +8,7 @@
 Defines immutable, typed data structures to guarantee the integrity of the
 flow: sampling -> exam -> inference -> score.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -42,16 +43,20 @@ SCORING_WEIGHTS: Final[dict[str, float]] = {
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class PromptGenerationError(Exception):
     """Raised when synthesis of an exam or evaluation fails."""
+
 
 # ---------------------------------------------------------------------------
 # Dataclasses (Immutable and optimized)
 # ---------------------------------------------------------------------------
 
+
 @dataclass(slots=True, frozen=True)
 class SampleRecord:
     """Evaluation record extracted from the original dataset."""
+
     id: str
     example_type: str
     evol_difficulty: str
@@ -64,9 +69,11 @@ class SampleRecord:
     reference_standards: str = ""
     gap_analysis: str = ""
 
+
 @dataclass(slots=True, frozen=True)
 class ExamRecord(SampleRecord):
     """Extension of SampleRecord that includes the generated exam."""
+
     exam_question: str = ""
     eval_criteria: list[str] = field(default_factory=list)
     target_patterns: list[str] = field(default_factory=list)
@@ -76,9 +83,11 @@ class ExamRecord(SampleRecord):
         """Factory method to elevate a SampleRecord to an ExamRecord."""
         return cls(**{**asdict(sample), **kwargs})
 
+
 @dataclass(slots=True, frozen=True)
 class InferenceResult:
     """Inference result from a model for an exam question."""
+
     record_id: str
     model_name: str
     response: str
@@ -86,9 +95,11 @@ class InferenceResult:
     token_count: int
     timestamp: str
 
+
 @dataclass(slots=True, frozen=True)
 class ScoreCard:
     """Multi-dimensional evaluation of a response produced by the judge."""
+
     record_id: str
     example_type: str
     fragment_name: str
@@ -102,9 +113,11 @@ class ScoreCard:
     judge_reasoning: str = ""
     notes: str = ""
 
+
 @dataclass(slots=True, frozen=True)
 class AuditReport:
     """Aggregated final report for an audit session."""
+
     timestamp: str = ""
     dataset_path: str = ""
     base_model: str = ""

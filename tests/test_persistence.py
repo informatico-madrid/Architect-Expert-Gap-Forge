@@ -12,6 +12,7 @@ Covers all six persistence functions via round-trip and error-path scenarios:
 - FileNotFoundError on missing artifact
 - Output JSON is valid and contains expected metadata
 """
+
 from __future__ import annotations
 
 import json

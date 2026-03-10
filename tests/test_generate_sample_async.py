@@ -3,6 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 """Tests for generate_sample_async in src/factory/production_v11.py using a mocked client."""
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,9 @@ class FakeCompletions:
         self._response = response_text
 
     async def create(self, *args, **kwargs):
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=self._response))])
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=self._response))]
+        )
 
 
 class FakeClient:
@@ -39,7 +42,10 @@ def test_generate_sample_async_accepts_and_injects_gold(tmp_path) -> None:
     }
     # Reasoning long enough and tool JSON with small code content (micro-snippet)
     reasoning = "R" * 200
-    tool_json = {"name": "write_to_file", "arguments": {"content": "C" * 20, "path": "mod.py"}}
+    tool_json = {
+        "name": "write_to_file",
+        "arguments": {"content": "C" * 20, "path": "mod.py"},
+    }
     raw = f"<think>{reasoning}</think><tool_call>{json.dumps(tool_json)}</tool_call>"
 
     # Populate minimal taxonomy prompts used by build_system_nominal
@@ -56,9 +62,11 @@ def test_generate_sample_async_accepts_and_injects_gold(tmp_path) -> None:
                     "nominal_easy": "easy:$context|$virtual_filename|$name|$skeleton",
                     "nominal_medium": "medium:$context|$virtual_filename|$name|$skeleton",
                     "nominal_hard_anchor": "hard_anchor:$context|$virtual_filename|$name|$skeleton",
-                    "nominal_hard_anchor_free": ["hard_free:$context|$virtual_filename|$name|$skeleton"],
+                    "nominal_hard_anchor_free": [
+                        "hard_free:$context|$virtual_filename|$name|$skeleton"
+                    ],
                 }
-            }
+            },
         }
     }
     pv11.TOOLS_DEFINITION = []
@@ -85,4 +93,7 @@ def test_generate_sample_async_accepts_and_injects_gold(tmp_path) -> None:
     assert res["status"] == "accepted"
     sample = res["sample"]
     assert "conversation" in sample
-    assert sample["metadata"].get("gold_injected") in (True, False, None) or sample["metadata"].get("gold_injected") is not None
+    assert (
+        sample["metadata"].get("gold_injected") in (True, False, None)
+        or sample["metadata"].get("gold_injected") is not None
+    )

@@ -22,7 +22,7 @@ def test_extract_replace_think_block():
 def test_sanitize_generated_reasoning_removes_code_and_tool_calls():
     text = (
         "Explanation\n```python\nprint('x')\n```\n"
-        "More <tool_call>{\"arguments\": {\"content\": \"file content\"}}</tool_call>`inline`<tag>bad</tag>\n"
+        'More <tool_call>{"arguments": {"content": "file content"}}</tool_call>`inline`<tag>bad</tag>\n'
     )
     cleaned = br._sanitize_generated_reasoning(text)
     assert "print(" not in cleaned
@@ -41,7 +41,7 @@ def test_detect_language_hint():
 def test_extract_executable_code_from_fenced_and_tool_call():
     mixed = (
         "Some text\n```python\nx=1\n```\n"
-        "<tool_call>{\"arguments\": {\"content\": \"filecontent\"}}</tool_call>"
+        '<tool_call>{"arguments": {"content": "filecontent"}}</tool_call>'
     )
     extracted = br._extract_executable_code(mixed)
     assert "x=1" in extracted

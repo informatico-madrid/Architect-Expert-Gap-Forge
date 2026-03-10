@@ -30,7 +30,9 @@ def test_main_exact_dedup_dry_run(tmp_path: Path) -> None:
     make_jsonl(inp, [rec, rec])
 
     # Dry-run (no --apply): should return 0 and not write output file
-    rc = ncs.main(["--input", str(inp), "--output", str(out), "--exact-dedup"])  # no --apply -> dry-run
+    rc = ncs.main(
+        ["--input", str(inp), "--output", str(out), "--exact-dedup"]
+    )  # no --apply -> dry-run
     assert rc == 0
     assert not out.exists()
 

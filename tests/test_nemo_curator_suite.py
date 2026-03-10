@@ -52,6 +52,7 @@ from src.curation.nemo_curator_suite import (
 # Helpers
 # ===========================================================================
 
+
 def _make_agentic_record(
     rec_id: str,
     think: str = "",
@@ -81,14 +82,16 @@ def _long_think(n: int = 200) -> str:
         "Inject entry.runtime_data instead of hass.data. "
         "Use async_added_to_hass and native_value property. "
     )
-    return (base * (n // len(base) + 2))[:max(n, 600)]
+    return (base * (n // len(base) + 2))[: max(n, 600)]
 
 
 def _code_tool_call(size: str = "large") -> str:
     """Return a tool_call JSON string with code content for LDI >= default."""
     if size == "small":
         # minimal — likely fails LDI
-        return json.dumps({"name": "write_to_file", "arguments": {"path": "a.py", "content": "pass"}})
+        return json.dumps(
+            {"name": "write_to_file", "arguments": {"path": "a.py", "content": "pass"}}
+        )
     # large — enough code tokens to pass default LDI threshold
     code = (
         "class MySensor(CoordinatorEntity):\\n"
@@ -110,15 +113,18 @@ def _code_tool_call(size: str = "large") -> str:
         "    await coordinator.async_config_entry_first_refresh()\\n"
         "    async_add_entities([MySensor(coordinator)], True)\\n"
     )
-    return json.dumps({
-        "name": "write_to_file",
-        "arguments": {"path": "sensor/sensor.py", "content": code},
-    })
+    return json.dumps(
+        {
+            "name": "write_to_file",
+            "arguments": {"path": "sensor/sensor.py", "content": code},
+        }
+    )
 
 
 # ===========================================================================
 # CurationStats
 # ===========================================================================
+
 
 class TestCurationStats:
     def test_defaults_all_zero(self) -> None:
@@ -168,6 +174,7 @@ class TestCurationStats:
 # ConversationExtractor
 # ===========================================================================
 
+
 class TestConversationExtractor:
     def setup_method(self) -> None:
         self.extractor = ConversationExtractor()
@@ -215,6 +222,7 @@ class TestConversationExtractor:
 # Phase 0 — exact_dedup
 # ===========================================================================
 
+
 class TestExactDedup:
     def test_keeps_unique_records(self) -> None:
         stats = CurationStats()
@@ -256,18 +264,24 @@ class TestExactDedup:
 # Phase 1 — run_nemo_filter_pipeline (error paths)
 # ===========================================================================
 
+
 class TestRunNemoFilterPipeline:
     def test_raises_runtime_error_when_not_installed(self, tmp_path: Path) -> None:
         """When nemo-curator is not installed, raises RuntimeError immediately."""
         if ncs._NEMO_AVAILABLE:
-            pytest.skip("nemo-curator is installed; this test covers the missing-dep path")
+            pytest.skip(
+                "nemo-curator is installed; this test covers the missing-dep path"
+            )
         with pytest.raises(RuntimeError, match="nemo-curator is not installed"):
-            run_nemo_filter_pipeline(str(tmp_path / "in.jsonl"), str(tmp_path / "out.jsonl"))
+            run_nemo_filter_pipeline(
+                str(tmp_path / "in.jsonl"), str(tmp_path / "out.jsonl")
+            )
 
 
 # ===========================================================================
 # Helpers for Phase 2
 # ===========================================================================
+
 
 class TestLdi:
     def test_zero_code_tokens_returns_zero(self) -> None:
@@ -291,13 +305,15 @@ class MySensor(CoordinatorEntity):
         assert _ldi("") == 0.0
 
     def test_json_with_code_content(self) -> None:
-        payload = json.dumps({
-            "name": "write_to_file",
-            "arguments": {
-                "path": "sensor.py",
-                "content": "async def async_setup_entry(hass, entry):\n    coordinator = DataUpdateCoordinator(hass)\n    await coordinator.async_config_entry_first_refresh()\n"
+        payload = json.dumps(
+            {
+                "name": "write_to_file",
+                "arguments": {
+                    "path": "sensor.py",
+                    "content": "async def async_setup_entry(hass, entry):\n    coordinator = DataUpdateCoordinator(hass)\n    await coordinator.async_config_entry_first_refresh()\n",
+                },
             }
-        })
+        )
         score = _ldi(payload)
         assert isinstance(score, float)
         assert score >= 0.0
@@ -313,13 +329,15 @@ class TestHasMetaSpeech:
         assert not _has_meta_speech(content)
 
     def test_meta_speech_dominated_content_is_true(self) -> None:
-        content = "\n".join([
-            "The user is asking me about sensor implementation.",
-            "I need to think about the coordinator approach.",
-            "Let me analyze the requirements carefully.",
-            "I should implement using the modern pattern.",
-            "I will now proceed with writing the code.",
-        ])
+        content = "\n".join(
+            [
+                "The user is asking me about sensor implementation.",
+                "I need to think about the coordinator approach.",
+                "Let me analyze the requirements carefully.",
+                "I should implement using the modern pattern.",
+                "I will now proceed with writing the code.",
+            ]
+        )
         assert _has_meta_speech(content)
 
     def test_empty_string_is_false(self) -> None:
@@ -331,7 +349,7 @@ class TestTokenCounting:
     def test_count_code_tokens_detects_code_and_json(self) -> None:
         text = (
             "```python\nasync def foo(hass):\n    return hass.data[]\n```\n"
-            "{\"name\": \"foo\", \"arguments\": {\"content\": \"pass\"}}"
+            '{"name": "foo", "arguments": {"content": "pass"}}'
         )
         tokens = _count_code_tokens(text)
         assert tokens > 5
@@ -360,9 +378,11 @@ class TestNaiveClustering:
         clusters = _build_clusters_naive(texts, threshold=0.9, shingle_k=3)
         assert all(len(cluster) == 1 for cluster in clusters)
 
+
 # ===========================================================================
 # Phase 2 — structural_quality_filter
 # ===========================================================================
+
 
 class TestStructuralQualityFilter:
     def test_passes_clean_record(self) -> None:
@@ -386,7 +406,10 @@ class TestStructuralQualityFilter:
             "id": "bad_syntax",
             "conversation": [
                 {"role": "user", "content": "q"},
-                {"role": "assistant", "content": f"<think>reasoning</think> <tool_call>{tc}</tool_call>"},
+                {
+                    "role": "assistant",
+                    "content": f"<think>reasoning</think> <tool_call>{tc}</tool_call>",
+                },
             ],
         }
         kept = structural_quality_filter([record], stats)
@@ -406,13 +429,18 @@ class TestStructuralQualityFilter:
     def test_filters_meta_speech(self) -> None:
         """A think block dominated by meta-speech phrases is rejected."""
         stats = CurationStats()
-        meta = "\n".join([
-            "The user is asking about a sensor.",
-            "I need to implement this feature.",
-            "Let me think about the approach to use.",
-            "I should follow the modern pattern.",
-            "I will now write the code for this task.",
-        ]) * 4  # enough for > 500 chars when repeated
+        meta = (
+            "\n".join(
+                [
+                    "The user is asking about a sensor.",
+                    "I need to implement this feature.",
+                    "Let me think about the approach to use.",
+                    "I should follow the modern pattern.",
+                    "I will now write the code for this task.",
+                ]
+            )
+            * 4
+        )  # enough for > 500 chars when repeated
         tc = _code_tool_call("large")
         record = _make_agentic_record("meta", think=meta * 2, tool_call_code=tc)
         kept = structural_quality_filter([record], stats, min_think_chars=500)
@@ -426,7 +454,10 @@ class TestStructuralQualityFilter:
             "id": "no_close",
             "conversation": [
                 {"role": "user", "content": "q"},
-                {"role": "assistant", "content": "<think>unclosed think block without closing tag"},
+                {
+                    "role": "assistant",
+                    "content": "<think>unclosed think block without closing tag",
+                },
             ],
         }
         kept = structural_quality_filter([record], stats)
@@ -467,6 +498,7 @@ class TestStructuralQualityFilter:
 # _heuristic_quality_score
 # ===========================================================================
 
+
 class TestHeuristicQualityScore:
     def test_empty_string_returns_zero(self) -> None:
         assert _heuristic_quality_score("") == 0.0
@@ -478,8 +510,10 @@ class TestHeuristicQualityScore:
 
     def test_repeated_sentences_get_low_score(self) -> None:
         sentence = "This is bad content. "
-        repeated = (sentence * 20)
-        normal_score = _heuristic_quality_score("The coordinator pattern provides clean API. Modern approach works well.")
+        repeated = sentence * 20
+        normal_score = _heuristic_quality_score(
+            "The coordinator pattern provides clean API. Modern approach works well."
+        )
         repeated_score = _heuristic_quality_score(repeated)
         assert repeated_score < normal_score
 
@@ -490,6 +524,7 @@ class TestHeuristicQualityScore:
 # ===========================================================================
 # _char_shingles
 # ===========================================================================
+
 
 class TestCharShingles:
     def test_returns_set(self) -> None:
@@ -519,6 +554,7 @@ class TestCharShingles:
 # ===========================================================================
 # _extract_assistant_text
 # ===========================================================================
+
 
 class TestExtractAssistantText:
     def test_extracts_from_conversation_role(self) -> None:
@@ -557,6 +593,7 @@ class TestExtractAssistantText:
 # Phase 3 — semantic_dedup
 # ===========================================================================
 
+
 class TestSemanticDedup:
     def _make_record(self, rec_id: str, content: str) -> Dict[str, Any]:
         return {
@@ -568,8 +605,13 @@ class TestSemanticDedup:
     def test_keeps_unique_records(self) -> None:
         stats = CurationStats()
         records = [
-            self._make_record("a", "The coordinator handles data updates via async refresh pattern."),
-            self._make_record("b", "Triggers in 2026 use the plural triggers: key for all automations."),
+            self._make_record(
+                "a", "The coordinator handles data updates via async refresh pattern."
+            ),
+            self._make_record(
+                "b",
+                "Triggers in 2026 use the plural triggers: key for all automations.",
+            ),
         ]
         kept = semantic_dedup(records, stats, quality_cutoff=0.0)
         assert len(kept) == 2
@@ -587,7 +629,10 @@ class TestSemanticDedup:
     def test_removes_near_duplicates(self) -> None:
         stats = CurationStats()
         # Identical content → same shingles → Jaccard = 1.0 > any threshold
-        text = "The coordinator entity pattern uses DataUpdateCoordinator and entry runtime data. " * 20
+        text = (
+            "The coordinator entity pattern uses DataUpdateCoordinator and entry runtime data. "
+            * 20
+        )
         records = [
             self._make_record("r1", text),
             self._make_record("r2", text),
@@ -599,7 +644,9 @@ class TestSemanticDedup:
     def test_output_records_have_quality_score_in_metadata(self) -> None:
         stats = CurationStats()
         records = [
-            self._make_record("x", "Some reasonable sensor implementation content for test."),
+            self._make_record(
+                "x", "Some reasonable sensor implementation content for test."
+            ),
         ]
         kept = semantic_dedup(records, stats, quality_cutoff=0.0)
         if kept:
@@ -614,6 +661,7 @@ class TestSemanticDedup:
 # ===========================================================================
 # I/O helpers
 # ===========================================================================
+
 
 class TestLoadWriteJsonl:
     def test_write_and_load_round_trip(self, tmp_path: Path) -> None:
@@ -736,7 +784,9 @@ class TestRunNemoFilterPipelineMocked:
             "RepeatingTopNGramsFilter",
         ):
             monkeypatch.setattr(ncs, attr, _DummyStage, raising=False)
-        monkeypatch.setattr(ncs.socket, "socket", lambda *args, **kwargs: _DummySocket())
+        monkeypatch.setattr(
+            ncs.socket, "socket", lambda *args, **kwargs: _DummySocket()
+        )
 
         input_path = tmp_path / "in.jsonl"
         input_path.write_text("{}", encoding="utf-8")

@@ -15,7 +15,9 @@ from src.curation import nemo_curator_suite as nc
 def test_run_nemo_filter_pipeline_mock_success(tmp_path, monkeypatch):
     # Prepare a minimal input file
     in_path = tmp_path / "in.jsonl"
-    in_path.write_text(json.dumps({"conversation": [{"role": "assistant", "content": "hello"}]}) + "\n")
+    in_path.write_text(
+        json.dumps({"conversation": [{"role": "assistant", "content": "hello"}]}) + "\n"
+    )
     out_dir = tmp_path / "outdir"
 
     # Track created client instance
@@ -67,19 +69,24 @@ def test_run_nemo_filter_pipeline_mock_success(tmp_path, monkeypatch):
             self.text_field = text_field
 
     # Patch NeMo names into module
-    monkeypatch.setattr(nc, '_NEMO_AVAILABLE', True)
-    monkeypatch.setattr(nc, 'RayClient', FakeRayClient, raising=False)
-    monkeypatch.setattr(nc, 'Pipeline', FakePipeline, raising=False)
-    monkeypatch.setattr(nc, 'JsonlReader', FakeJsonlReader, raising=False)
-    monkeypatch.setattr(nc, 'JsonlWriter', FakeJsonlWriter, raising=False)
-    monkeypatch.setattr(nc, 'Modify', FakeModify, raising=False)
-    monkeypatch.setattr(nc, 'ScoreFilter', FakeScoreFilter, raising=False)
+    monkeypatch.setattr(nc, "_NEMO_AVAILABLE", True)
+    monkeypatch.setattr(nc, "RayClient", FakeRayClient, raising=False)
+    monkeypatch.setattr(nc, "Pipeline", FakePipeline, raising=False)
+    monkeypatch.setattr(nc, "JsonlReader", FakeJsonlReader, raising=False)
+    monkeypatch.setattr(nc, "JsonlWriter", FakeJsonlWriter, raising=False)
+    monkeypatch.setattr(nc, "Modify", FakeModify, raising=False)
+    monkeypatch.setattr(nc, "ScoreFilter", FakeScoreFilter, raising=False)
 
     # Patch the various filter classes used by the pipeline to simple dummies
     for name in [
-        'WordCountFilter', 'SymbolsToWordsFilter', 'NonAlphaNumericFilter',
-        'PunctuationFilter', 'BoilerPlateStringFilter', 'UrlsFilter',
-        'RepeatedLinesFilter', 'RepeatingTopNGramsFilter',
+        "WordCountFilter",
+        "SymbolsToWordsFilter",
+        "NonAlphaNumericFilter",
+        "PunctuationFilter",
+        "BoilerPlateStringFilter",
+        "UrlsFilter",
+        "RepeatedLinesFilter",
+        "RepeatingTopNGramsFilter",
     ]:
         monkeypatch.setattr(nc, name, DummyFilter, raising=False)
 
@@ -89,13 +96,15 @@ def test_run_nemo_filter_pipeline_mock_success(tmp_path, monkeypatch):
     # Ensure client started and stopped
     assert client_holder, "RayClient was not instantiated"
     client = client_holder[0]
-    assert getattr(client, 'started', True) is True
-    assert getattr(client, 'stopped', True) is True
+    assert getattr(client, "started", True) is True
+    assert getattr(client, "stopped", True) is True
 
 
 def test_run_nemo_filter_pipeline_mock_exception(tmp_path, monkeypatch):
     in_path = tmp_path / "in.jsonl"
-    in_path.write_text(json.dumps({"conversation": [{"role": "assistant", "content": "hello"}]}) + "\n")
+    in_path.write_text(
+        json.dumps({"conversation": [{"role": "assistant", "content": "hello"}]}) + "\n"
+    )
     out_dir = tmp_path / "outdir"
 
     client_holder = []
@@ -126,18 +135,23 @@ def test_run_nemo_filter_pipeline_mock_exception(tmp_path, monkeypatch):
         def __init__(self, *a, **kw):
             pass
 
-    monkeypatch.setattr(nc, '_NEMO_AVAILABLE', True)
-    monkeypatch.setattr(nc, 'RayClient', FakeRayClient, raising=False)
-    monkeypatch.setattr(nc, 'Pipeline', ExplodingPipeline, raising=False)
-    monkeypatch.setattr(nc, 'JsonlReader', lambda file_paths: None, raising=False)
-    monkeypatch.setattr(nc, 'JsonlWriter', lambda path: None, raising=False)
-    monkeypatch.setattr(nc, 'Modify', lambda *a, **k: None, raising=False)
-    monkeypatch.setattr(nc, 'ScoreFilter', DummyFilter, raising=False)
+    monkeypatch.setattr(nc, "_NEMO_AVAILABLE", True)
+    monkeypatch.setattr(nc, "RayClient", FakeRayClient, raising=False)
+    monkeypatch.setattr(nc, "Pipeline", ExplodingPipeline, raising=False)
+    monkeypatch.setattr(nc, "JsonlReader", lambda file_paths: None, raising=False)
+    monkeypatch.setattr(nc, "JsonlWriter", lambda path: None, raising=False)
+    monkeypatch.setattr(nc, "Modify", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(nc, "ScoreFilter", DummyFilter, raising=False)
 
     for name in [
-        'WordCountFilter', 'SymbolsToWordsFilter', 'NonAlphaNumericFilter',
-        'PunctuationFilter', 'BoilerPlateStringFilter', 'UrlsFilter',
-        'RepeatedLinesFilter', 'RepeatingTopNGramsFilter',
+        "WordCountFilter",
+        "SymbolsToWordsFilter",
+        "NonAlphaNumericFilter",
+        "PunctuationFilter",
+        "BoilerPlateStringFilter",
+        "UrlsFilter",
+        "RepeatedLinesFilter",
+        "RepeatingTopNGramsFilter",
     ]:
         monkeypatch.setattr(nc, name, DummyFilter, raising=False)
 
@@ -146,4 +160,4 @@ def test_run_nemo_filter_pipeline_mock_exception(tmp_path, monkeypatch):
 
     # Ensure client was stopped in finally block
     assert client_holder, "RayClient was not instantiated"
-    assert getattr(client_holder[0], 'stopped', False) is True
+    assert getattr(client_holder[0], "stopped", False) is True

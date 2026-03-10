@@ -9,6 +9,7 @@ The code base removed the legacy `ha_standards` coupling; the loader now
 strictly constructs `SampleRecord` and will raise a `TypeError` when an
 unexpected key is present. This test asserts that behavior.
 """
+
 from __future__ import annotations
 
 import json

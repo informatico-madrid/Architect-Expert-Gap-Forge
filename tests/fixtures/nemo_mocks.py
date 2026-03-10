@@ -56,10 +56,10 @@ def enable_fake_nemo() -> None:
 
     datasketch.MinHash = MinHash
     datasketch.MinHashLSH = MinHashLSH
-    mods['datasketch'] = datasketch
+    mods["datasketch"] = datasketch
 
     # ---- nemo_curator core.client ----
-    core_client = types.ModuleType('nemo_curator.core.client')
+    core_client = types.ModuleType("nemo_curator.core.client")
 
     class RayClient:
         def start(self) -> None:
@@ -69,10 +69,10 @@ def enable_fake_nemo() -> None:
             return None
 
     core_client.RayClient = RayClient
-    mods['nemo_curator.core.client'] = core_client
+    mods["nemo_curator.core.client"] = core_client
 
     # ---- nemo_curator.pipeline ----
-    pipeline = types.ModuleType('nemo_curator.pipeline')
+    pipeline = types.ModuleType("nemo_curator.pipeline")
 
     class Pipeline:
         def __init__(self, name: str = "fake_pipeline") -> None:
@@ -87,11 +87,11 @@ def enable_fake_nemo() -> None:
             return None
 
     pipeline.Pipeline = Pipeline
-    mods['nemo_curator.pipeline'] = pipeline
+    mods["nemo_curator.pipeline"] = pipeline
 
     # ---- nemo_curator.stages.text.io.reader/writer ----
-    reader = types.ModuleType('nemo_curator.stages.text.io.reader')
-    writer = types.ModuleType('nemo_curator.stages.text.io.writer')
+    reader = types.ModuleType("nemo_curator.stages.text.io.reader")
+    writer = types.ModuleType("nemo_curator.stages.text.io.writer")
 
     class JsonlReader:
         def __init__(self, file_paths: str) -> None:
@@ -103,11 +103,11 @@ def enable_fake_nemo() -> None:
 
     reader.JsonlReader = JsonlReader
     writer.JsonlWriter = JsonlWriter
-    mods['nemo_curator.stages.text.io.reader'] = reader
-    mods['nemo_curator.stages.text.io.writer'] = writer
+    mods["nemo_curator.stages.text.io.reader"] = reader
+    mods["nemo_curator.stages.text.io.writer"] = writer
 
     # ---- nemo_curator.stages.text.modules ----
-    modules = types.ModuleType('nemo_curator.stages.text.modules')
+    modules = types.ModuleType("nemo_curator.stages.text.modules")
 
     class ScoreFilter:
         def __init__(self, filter_obj: object, text_field: str = "filter_text") -> None:
@@ -115,17 +115,19 @@ def enable_fake_nemo() -> None:
             self.text_field = text_field
 
     class Modify:
-        def __init__(self, modifier_fn: object, input_fields: List[str], output_fields: List[str]) -> None:
+        def __init__(
+            self, modifier_fn: object, input_fields: List[str], output_fields: List[str]
+        ) -> None:
             self.modifier_fn = modifier_fn
             self.input_fields = input_fields
             self.output_fields = output_fields
 
     modules.ScoreFilter = ScoreFilter
     modules.Modify = Modify
-    mods['nemo_curator.stages.text.modules'] = modules
+    mods["nemo_curator.stages.text.modules"] = modules
 
     # ---- nemo_curator.stages.text.filters (stubs) ----
-    filters = types.ModuleType('nemo_curator.stages.text.filters')
+    filters = types.ModuleType("nemo_curator.stages.text.filters")
 
     class _StubFilter:
         def __init__(self, *args, **kwargs) -> None:
@@ -133,13 +135,18 @@ def enable_fake_nemo() -> None:
 
     # Create named stubs used by the suite
     for name in [
-        'WordCountFilter', 'RepeatingTopNGramsFilter', 'SymbolsToWordsFilter',
-        'NonAlphaNumericFilter', 'PunctuationFilter', 'BoilerPlateStringFilter',
-        'UrlsFilter', 'RepeatedLinesFilter'
+        "WordCountFilter",
+        "RepeatingTopNGramsFilter",
+        "SymbolsToWordsFilter",
+        "NonAlphaNumericFilter",
+        "PunctuationFilter",
+        "BoilerPlateStringFilter",
+        "UrlsFilter",
+        "RepeatedLinesFilter",
     ]:
         setattr(filters, name, _StubFilter)
 
-    mods['nemo_curator.stages.text.filters'] = filters
+    mods["nemo_curator.stages.text.filters"] = filters
 
     # Register all created modules in sys.modules so normal imports work
     for fullname, module in mods.items():

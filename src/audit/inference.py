@@ -10,6 +10,7 @@ implementations (``GeminiClient`` and ``VLLMClient``) that encapsulate call
 logic to different backends. The ``InferenceRouter`` automatically resolves
 which client to use based on configuration.
 """
+
 from __future__ import annotations
 
 import abc
@@ -36,11 +37,12 @@ logger = logging.getLogger("AEGF.Inference")
 
 _GEMINI_AVAILABLE = False
 try:
-    from google import genai as _genai              # type: ignore[import]
+    from google import genai as _genai  # type: ignore[import]
     from google.genai import types as _genai_types  # type: ignore[import]
+
     _GEMINI_AVAILABLE = True
 except ImportError:
-    _genai = None        # type: ignore[assignment]
+    _genai = None  # type: ignore[assignment]
     _genai_types = None  # type: ignore[assignment]
 
 
@@ -120,7 +122,11 @@ class BaseInferenceClient(abc.ABC):
                 wait = retry_delay * (2 ** (attempt - 1))
                 logger.warning(
                     "%s attempt %d/%d failed: %s — retrying in %.1fs",
-                    self._backend_name, attempt, retries, exc, wait,
+                    self._backend_name,
+                    attempt,
+                    retries,
+                    exc,
+                    wait,
                 )
                 time.sleep(wait)
         raise RuntimeError(

@@ -39,10 +39,11 @@ RECORD_BASE = {
     "conversation": [
         {
             "role": "assistant",
-            "content": "<think>Detailed reasoning about the problem.</think><tool_call>{\"name\": \"alpha\"}</tool_call>",
+            "content": '<think>Detailed reasoning about the problem.</think><tool_call>{"name": "alpha"}</tool_call>',
         }
     ]
 }
+
 
 def test_exact_dedup_tracks_duplicates() -> None:
     stats = CurationStats()
@@ -54,18 +55,26 @@ def test_exact_dedup_tracks_duplicates() -> None:
 
 def test_structural_quality_filter_detects_meta_speech() -> None:
     stats = CurationStats()
-    content = "<think>Let me explain it first. I need to check carefully.</think><tool_call>{\"name\": \"beta\"}</tool_call>"
+    content = '<think>Let me explain it first. I need to check carefully.</think><tool_call>{"name": "beta"}</tool_call>'
     record = {"conversation": [{"role": "assistant", "content": content}]}
-    kept = structural_quality_filter([record], stats, min_think_chars=1, ldi_min_ratio=0)
+    kept = structural_quality_filter(
+        [record], stats, min_think_chars=1, ldi_min_ratio=0
+    )
     assert not kept
     assert stats.meta_speech == 1
 
 
 def test_structural_quality_filter_allows_valid_records() -> None:
     stats = CurationStats()
-    content = "<think>" + "Reasonable reasoning. " * 10 + "</think><tool_call>{\"name\": \"gamma\"}</tool_call>"
+    content = (
+        "<think>"
+        + "Reasonable reasoning. " * 10
+        + '</think><tool_call>{"name": "gamma"}</tool_call>'
+    )
     record = {"conversation": [{"role": "assistant", "content": content}]}
-    kept = structural_quality_filter([record], stats, min_think_chars=5, ldi_min_ratio=0)
+    kept = structural_quality_filter(
+        [record], stats, min_think_chars=5, ldi_min_ratio=0
+    )
     assert kept
     assert stats.invalid_syntax == 0
 
@@ -85,7 +94,7 @@ def test_natural_token_counter_ignores_stop_words() -> None:
 
 def test_ldi_returns_zero_without_code_and_positive_with_code() -> None:
     assert _ldi("just text without braces") == 0.0
-    assert _ldi("{\"key\": 1} def func()") > 0.0
+    assert _ldi('{"key": 1} def func()') > 0.0
 
 
 def test_has_meta_speech_flagged_and_cleared() -> None:
@@ -95,7 +104,12 @@ def test_has_meta_speech_flagged_and_cleared() -> None:
 
 def test_extract_assistant_text_variations() -> None:
     assert _extract_assistant_text({"assistant": "direct"}) == "direct"
-    assert _extract_assistant_text({"conversation": [{"role": "assistant", "content": "dialog"}]}) == "dialog"
+    assert (
+        _extract_assistant_text(
+            {"conversation": [{"role": "assistant", "content": "dialog"}]}
+        )
+        == "dialog"
+    )
     assert _extract_assistant_text({"thought_extracted": "thought"}) == "thought"
     assert _extract_assistant_text({}) == ""
 
@@ -123,7 +137,14 @@ def test_semantic_dedup_drops_similar_records(monkeypatch) -> None:
     base = {"assistant": "Unique high quality reasoning."}
     dupe = {"assistant": "Unique high quality reasoning."}
     other = {"assistant": "Different text."}
-    result = semantic_dedup([base, dupe, other], stats, threshold=0.3, quality_cutoff=0.0, num_perm=2, shingle_k=2)
+    result = semantic_dedup(
+        [base, dupe, other],
+        stats,
+        threshold=0.3,
+        quality_cutoff=0.0,
+        num_perm=2,
+        shingle_k=2,
+    )
     assert len(result) == 2
     assert stats.semantic_duplicates == 1
     assert all(r.get("metadata", {}).get("curation", {}).get("kept") for r in result)

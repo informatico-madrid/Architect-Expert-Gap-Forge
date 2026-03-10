@@ -8,6 +8,7 @@
 Lightweight, tolerant conversion helpers for incremental migration.
 Do not raise errors for missing fields; use sensible default values.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -40,7 +41,7 @@ def raw_to_sample(record: RawRecord) -> SampleRecord:
         if not isinstance(t, dict):
             continue
         role = (t.get("role") or t.get("from") or "").lower()
-        content = (t.get("content") or t.get("value") or "")
+        content = t.get("content") or t.get("value") or ""
         content = content.strip() if isinstance(content, str) else ""
         if not content:
             continue
@@ -144,7 +145,10 @@ def curation_raw_to_record(raw: RawRecord) -> CurationRecord:
     # Try multiple locations for a cached quality score
     qs = 0.5
     try:
-        qs = float((meta.get("curation") or {}).get("quality_score", meta.get("_qs", 0.5)) or 0.5)
+        qs = float(
+            (meta.get("curation") or {}).get("quality_score", meta.get("_qs", 0.5))
+            or 0.5
+        )
     except Exception:
         qs = 0.5
 

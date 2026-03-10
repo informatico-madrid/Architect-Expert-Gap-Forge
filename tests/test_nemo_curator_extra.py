@@ -39,7 +39,9 @@ def test_build_clusters_naive_and_semantic_dedup(tmp_path):
     records = [r1, r2, r3]
 
     # Run semantic_dedup with low quality cutoff so all are candidates
-    out = nc.semantic_dedup(records, stats, threshold=0.5, quality_cutoff=0.0, num_perm=1, shingle_k=3)
+    out = nc.semantic_dedup(
+        records, stats, threshold=0.5, quality_cutoff=0.0, num_perm=1, shingle_k=3
+    )
     # Expect at least two outputs (cluster keeps one of similar pair)
     assert isinstance(out, list)
     assert len(out) >= 2
@@ -72,13 +74,21 @@ def test_structural_quality_filter_various_cases():
     think = "<think>short</think><tool_call>code()</tool_call>"
     rec2 = {"conversation": [{"role": "assistant", "content": think}]}
     stats2 = nc.CurationStats()
-    out2 = nc.structural_quality_filter([rec2], stats2, min_think_chars=10, ldi_min_ratio=0.01)
+    out2 = nc.structural_quality_filter(
+        [rec2], stats2, min_think_chars=10, ldi_min_ratio=0.01
+    )
     assert out2 == []
     assert stats2.shallow_thinking >= 1
 
     # Case: passing record
-    long_think = "<think>" + ("explain " * 50) + "</think><tool_call>def x():\n    return 1\n</tool_call>"
+    long_think = (
+        "<think>"
+        + ("explain " * 50)
+        + "</think><tool_call>def x():\n    return 1\n</tool_call>"
+    )
     rec3 = {"conversation": [{"role": "assistant", "content": long_think}]}
     stats3 = nc.CurationStats()
-    out3 = nc.structural_quality_filter([rec3], stats3, min_think_chars=10, ldi_min_ratio=0.0)
+    out3 = nc.structural_quality_filter(
+        [rec3], stats3, min_think_chars=10, ldi_min_ratio=0.0
+    )
     assert len(out3) == 1

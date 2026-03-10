@@ -11,7 +11,7 @@ from src.curation import nemo_curator_suite as nc
 
 
 def test_count_tokens_and_ldi():
-    text = "```python\nx = 1\nprint(x)\n``` some natural text and {\"k\": 1}"
+    text = '```python\nx = 1\nprint(x)\n``` some natural text and {"k": 1}'
     code_tokens = nc._count_code_tokens(text)
     natural_tokens = nc._count_natural_tokens(text)
     assert code_tokens > 0
@@ -38,14 +38,28 @@ def test_structural_quality_filter_various_cases(tmp_path):
 
     # Space between </think> and <tool_call> -> invalid_syntax
     stats2 = nc.CurationStats()
-    rec_bad_space = {"conversation": [{"role": "assistant", "content": "<think>abc</think> <tool_call>{}\</tool_call>"}]}
+    rec_bad_space = {
+        "conversation": [
+            {
+                "role": "assistant",
+                "content": "<think>abc</think> <tool_call>{}\</tool_call>",
+            }
+        ]
+    }
     out2 = nc.structural_quality_filter([rec_bad_space], stats2, min_think_chars=1)
     assert out2 == []
     assert stats2.invalid_syntax >= 1
 
     # Short think -> shallow_thinking
     stats3 = nc.CurationStats()
-    rec_short = {"conversation": [{"role": "assistant", "content": "<think>short</think><tool_call>{\"content\": \"x\"}</tool_call>"}]}
+    rec_short = {
+        "conversation": [
+            {
+                "role": "assistant",
+                "content": '<think>short</think><tool_call>{"content": "x"}</tool_call>',
+            }
+        ]
+    }
     out3 = nc.structural_quality_filter([rec_short], stats3, min_think_chars=100)
     assert out3 == []
     assert stats3.shallow_thinking >= 1
@@ -53,15 +67,31 @@ def test_structural_quality_filter_various_cases(tmp_path):
     # Meta speech -> meta_speech increment
     stats4 = nc.CurationStats()
     think_meta = "I need to\nI should\nNow actual code"
-    rec_meta = {"conversation": [{"role": "assistant", "content": f"<think>{think_meta}</think><tool_call>{{\"content\": \"code\"}}</tool_call>"}]}
+    rec_meta = {
+        "conversation": [
+            {
+                "role": "assistant",
+                "content": f'<think>{think_meta}</think><tool_call>{{"content": "code"}}</tool_call>',
+            }
+        ]
+    }
     out4 = nc.structural_quality_filter([rec_meta], stats4, min_think_chars=1)
     assert out4 == []
     assert stats4.meta_speech >= 1
 
     # Low LDI -> low_ldi increment
     stats5 = nc.CurationStats()
-    rec_low_ldi = {"conversation": [{"role": "assistant", "content": "<think>long enough text here</think><tool_call>some natural language only</tool_call>"}]}
-    out5 = nc.structural_quality_filter([rec_low_ldi], stats5, min_think_chars=1, ldi_min_ratio=0.01)
+    rec_low_ldi = {
+        "conversation": [
+            {
+                "role": "assistant",
+                "content": "<think>long enough text here</think><tool_call>some natural language only</tool_call>",
+            }
+        ]
+    }
+    out5 = nc.structural_quality_filter(
+        [rec_low_ldi], stats5, min_think_chars=1, ldi_min_ratio=0.01
+    )
     # With a tiny ldi_min_ratio it may pass; check that function runs and returns list or empty without crash
     assert isinstance(out5, list)
 
@@ -70,7 +100,10 @@ def test_extract_assistant_text_and_quality_and_shingles():
     rec1 = {"assistant": "direct assistant text"}
     assert nc._extract_assistant_text(rec1) == "direct assistant text"
 
-    rec2 = {"conversation": [{"role": "assistant", "content": "answer here"}], "metadata": {}}
+    rec2 = {
+        "conversation": [{"role": "assistant", "content": "answer here"}],
+        "metadata": {},
+    }
     assert "answer here" in nc._extract_assistant_text(rec2)
 
     assert nc._heuristic_quality_score("") == 0.0
@@ -89,10 +122,20 @@ def test_build_clusters_naive_and_semantic_dedup(tmp_path):
     # semantic_dedup should drop low-quality records according to quality_cutoff
     stats = nc.CurationStats()
     records = [
-        {"id": "1", "conversation": [{"role": "assistant", "content": "Good varied text with many words."}]},
-        {"id": "2", "conversation": [{"role": "assistant", "content": "spam spam spam spam"}]},
+        {
+            "id": "1",
+            "conversation": [
+                {"role": "assistant", "content": "Good varied text with many words."}
+            ],
+        },
+        {
+            "id": "2",
+            "conversation": [{"role": "assistant", "content": "spam spam spam spam"}],
+        },
     ]
-    out = nc.semantic_dedup(records, stats, threshold=0.1, quality_cutoff=0.2, num_perm=4, shingle_k=3)
+    out = nc.semantic_dedup(
+        records, stats, threshold=0.1, quality_cutoff=0.2, num_perm=4, shingle_k=3
+    )
     assert isinstance(out, list)
     # one record may be removed due to low quality
     assert stats.low_quality_score >= 0
@@ -116,7 +159,9 @@ def test_run_nemo_filter_pipeline_not_installed(tmp_path):
         # Skip this assertion if environment actually has nemo installed
         return
     with pytest.raises(RuntimeError):
-        nc.run_nemo_filter_pipeline(str(tmp_path / "in.jsonl"), str(tmp_path / "outdir"))
+        nc.run_nemo_filter_pipeline(
+            str(tmp_path / "in.jsonl"), str(tmp_path / "outdir")
+        )
 
 
 def test_build_clusters_datasketch_not_available():
@@ -124,7 +169,9 @@ def test_build_clusters_datasketch_not_available():
     if nc._DATASKETCH_AVAILABLE:
         return  # Skip if available
     records = [{"conversation": [{"role": "assistant", "content": "test"}]}]
-    result = nc._build_clusters_datasketch(records, threshold=0.8, num_perm=4, shingle_k=3)
+    result = nc._build_clusters_datasketch(
+        records, threshold=0.8, num_perm=4, shingle_k=3
+    )
     assert result is None
 
 

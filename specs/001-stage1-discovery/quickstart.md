@@ -17,7 +17,7 @@ python src/discovery/processor.py --config configs/stage_1_discovery/examples/ho
 To override the `on_parse_error` at runtime, edit the profile example yaml under `configs/stage_1_discovery/examples/` and set:
 
 ```yaml
-on_parse_error: mark_and_continue  # or 'skip'
+on_parse_error: skip  # or 'abort' or 'fallback'
 ```
 
 ## Developer flow (run tests and checks)

@@ -132,10 +132,18 @@ def test_generate_sample_async_functional_unit_gold_injection(monkeypatch):
         "governance": "",
     }
 
-    result = asyncio.run(pv11.generate_sample_async(
-        client, "m", frag, "nominal", "easy",
-        master="M", changelog="C", semaphore=semaphore
-    ))
+    result = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "nominal",
+            "easy",
+            master="M",
+            changelog="C",
+            semaphore=semaphore,
+        )
+    )
 
     assert result["status"] == "accepted"
     sample = result["sample"]
@@ -157,10 +165,18 @@ def test_generate_sample_async_detects_poison_and_marks_auto_rejected(monkeypatc
         "subtype": "code",
     }
 
-    result = asyncio.run(pv11.generate_sample_async(
-        client, "m", frag, "nominal", "easy",
-        master="M", changelog="C", semaphore=semaphore
-    ))
+    result = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "nominal",
+            "easy",
+            master="M",
+            changelog="C",
+            semaphore=semaphore,
+        )
+    )
 
     # Current implementation returns rejected when poisoned (exception path),
     # assert rejected to match observed behaviour.
@@ -181,9 +197,17 @@ def test_generate_sample_async_fails_on_zero_reasoning(monkeypatch):
         "subtype": "code",
     }
 
-    result = asyncio.run(pv11.generate_sample_async(
-        client, "m", frag, "nominal", "easy",
-        master="M", changelog="C", semaphore=semaphore
-    ))
+    result = asyncio.run(
+        pv11.generate_sample_async(
+            client,
+            "m",
+            frag,
+            "nominal",
+            "easy",
+            master="M",
+            changelog="C",
+            semaphore=semaphore,
+        )
+    )
 
     assert result["status"] == "rejected"

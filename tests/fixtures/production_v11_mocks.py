@@ -46,7 +46,9 @@ def raw_tool_call(obj: Any, reasoning: str = "") -> str:
 class _FakeResponse:
     def __init__(self, text: str) -> None:
         # Keep the minimal shape expected by production_v11
-        self.choices = [types.SimpleNamespace(message=types.SimpleNamespace(content=text))]
+        self.choices = [
+            types.SimpleNamespace(message=types.SimpleNamespace(content=text))
+        ]
 
 
 class _FakeCompletions:
@@ -78,7 +80,9 @@ class FakeClient:
         self.chat = _FakeChat(responses)
 
 
-def make_client_with_write_action(path: str, content: str, reasoning: str = "") -> FakeClient:
+def make_client_with_write_action(
+    path: str, content: str, reasoning: str = ""
+) -> FakeClient:
     return FakeClient([raw_write_action(path, content, reasoning)])
 
 

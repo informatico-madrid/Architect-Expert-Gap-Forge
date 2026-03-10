@@ -13,6 +13,7 @@ Covers:
 - AuditReport.to_dict() round-trip serialisation
 - EXAMPLE_TYPES and SCORING_WEIGHTS constants invariants
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -45,7 +46,13 @@ class TestScoringWeights:
         assert abs(total - 1.0) < 1e-9, f"Weights must sum to 1.0, got {total}"
 
     def test_expected_dimensions_present(self) -> None:
-        expected = {"ha_modernity", "reasoning_depth", "functionality", "completeness", "style"}
+        expected = {
+            "ha_modernity",
+            "reasoning_depth",
+            "functionality",
+            "completeness",
+            "style",
+        }
         assert set(SCORING_WEIGHTS.keys()) == expected
 
     def test_all_weights_positive(self) -> None:
@@ -106,9 +113,17 @@ class TestSampleRecord:
         """Ensure no accidental field removal breaks downstream code."""
         field_names = {f.name for f in dataclasses.fields(SampleRecord)}
         required = {
-            "id", "example_type", "evol_difficulty", "fragment_name",
-            "source_file", "user_prompt", "reference_response",
-            "gold_injected", "ldi", "reference_standards", "gap_analysis",
+            "id",
+            "example_type",
+            "evol_difficulty",
+            "fragment_name",
+            "source_file",
+            "user_prompt",
+            "reference_response",
+            "gold_injected",
+            "ldi",
+            "reference_standards",
+            "gap_analysis",
         }
         assert required.issubset(field_names)
 
@@ -202,7 +217,9 @@ class TestAuditReport:
         assert d["verdict"] == audit_report.verdict
         assert d["sample_size"] == audit_report.sample_size
 
-    def test_to_dict_serialises_nested_scorecards(self, audit_report: AuditReport) -> None:
+    def test_to_dict_serialises_nested_scorecards(
+        self, audit_report: AuditReport
+    ) -> None:
         d = audit_report.to_dict()
         assert isinstance(d["scorecards"], list)
         assert len(d["scorecards"]) == 1

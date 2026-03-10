@@ -7,6 +7,7 @@
 
 Covers error propagation, fallback logic, and all command dispatch paths.
 """
+
 from __future__ import annotations
 
 import sys
@@ -45,11 +46,13 @@ class TestCommandErrorPropagation:
             try:
                 cmd_baseline(args)
                 # If it completes, check logs for warning
-                assert mock_logger.warning.called or not (audit_dir / "exam.jsonl").exists()
+                assert (
+                    mock_logger.warning.called
+                    or not (audit_dir / "exam.jsonl").exists()
+                )
             except (FileNotFoundError, SystemExit):
                 # Expected if exam data is missing
                 pass
-
 
     def test_cmd_score_with_missing_baseline_results(self, tmp_path) -> None:
         """cmd_score must handle missing baseline inference results."""
@@ -81,9 +84,9 @@ class TestCmdFullIfExists:
     def test_cmd_full_exists_and_is_callable(self) -> None:
         """Verify cmd_full exists in the module."""
         from src.audit.model_evaluator import cmd_full
-        
+
         assert callable(cmd_full)
-        
+
         # Test with minimal mock args
         args = MagicMock()
         args.dataset = "test.json"
@@ -112,124 +115,130 @@ class TestMainExitCodes:
         with patch("sys.argv", ["prog"]):
             with pytest.raises(SystemExit) as exc_info:
                 main()
-            
+
             # Should exit with error code
             assert exc_info.value.code == 1
-
 
     def test_main_sample_command_dispatch_occurs(self, tmp_path) -> None:
         """main() must dispatch to cmd_sample for 'sample' subcommand."""
         audit_dir = tmp_path / "audit"
         audit_dir.mkdir()
-        
+
         test_args = [
             "prog",
             "sample",
-            "--dataset", str(tmp_path / "data.json"),
-            "--audit-dir", str(audit_dir),
-            "--sample-size", "5",
+            "--dataset",
+            str(tmp_path / "data.json"),
+            "--audit-dir",
+            str(audit_dir),
+            "--sample-size",
+            "5",
         ]
-        
+
         mock_cmd = MagicMock()
-        
+
         with patch("sys.argv", test_args):
             with patch("src.audit.model_evaluator.cmd_sample", mock_cmd):
                 try:
                     main()
                 except SystemExit:
                     pass
-                
+
                 # Verify cmd_sample was called
                 mock_cmd.assert_called_once()
-
 
     def test_main_baseline_command_dispatch_occurs(self, tmp_path) -> None:
         """main() must dispatch to cmd_baseline for 'baseline' subcommand."""
         audit_dir = tmp_path / "audit"
         audit_dir.mkdir()
-        
+
         test_args = [
             "prog",
             "baseline",
-            "--base-model", "test-model",
-            "--audit-dir", str(audit_dir),
+            "--base-model",
+            "test-model",
+            "--audit-dir",
+            str(audit_dir),
         ]
-        
+
         mock_cmd = MagicMock()
-        
+
         with patch("sys.argv", test_args):
             with patch("src.audit.model_evaluator.cmd_baseline", mock_cmd):
                 try:
                     main()
                 except SystemExit:
                     pass
-                
-                mock_cmd.assert_called_once()
 
+                mock_cmd.assert_called_once()
 
     def test_main_adapter_command_dispatch_occurs(self, tmp_path) -> None:
         """main() must dispatch to cmd_adapter for 'adapter' subcommand."""
         audit_dir = tmp_path / "audit"
         audit_dir.mkdir()
-        
+
         test_args = [
             "prog",
             "adapter",
-            "--adapter-model", "test-adapter",
-            "--audit-dir", str(audit_dir),
+            "--adapter-model",
+            "test-adapter",
+            "--audit-dir",
+            str(audit_dir),
         ]
-        
+
         mock_cmd = MagicMock()
-        
+
         with patch("sys.argv", test_args):
             with patch("src.audit.model_evaluator.cmd_adapter", mock_cmd):
                 try:
                     main()
                 except SystemExit:
                     pass
-                
-                mock_cmd.assert_called_once()
 
+                mock_cmd.assert_called_once()
 
     def test_main_score_command_dispatch_occurs(self, tmp_path) -> None:
         """main() must dispatch to cmd_score for 'score' subcommand."""
         audit_dir = tmp_path / "audit"
         audit_dir.mkdir()
-        
+
         test_args = [
             "prog",
             "score",
-            "--judge-model", "judge-model",
-            "--audit-dir", str(audit_dir),
+            "--judge-model",
+            "judge-model",
+            "--audit-dir",
+            str(audit_dir),
         ]
-        
+
         mock_cmd = MagicMock()
-        
+
         with patch("sys.argv", test_args):
             with patch("src.audit.model_evaluator.cmd_score", mock_cmd):
                 try:
                     main()
                 except SystemExit:
                     pass
-                
-                mock_cmd.assert_called_once()
 
+                mock_cmd.assert_called_once()
 
     def test_main_verbose_flag_sets_debug_log(self, tmp_path, capsys) -> None:
         """main() must set DEBUG logging when --verbose is provided."""
         audit_dir = tmp_path / "audit"
         audit_dir.mkdir()
-        
+
         test_args = [
             "prog",
             "--verbose",
             "sample",
-            "--dataset", str(tmp_path / "data.json"),
-            "--audit-dir", str(audit_dir),
+            "--dataset",
+            str(tmp_path / "data.json"),
+            "--audit-dir",
+            str(audit_dir),
         ]
-        
+
         mock_cmd = MagicMock()
-        
+
         with patch("sys.argv", test_args):
             with patch("src.audit.model_evaluator.cmd_sample", mock_cmd):
                 with patch("logging.basicConfig") as mock_logging:
@@ -237,12 +246,13 @@ class TestMainExitCodes:
                         main()
                     except SystemExit:
                         pass
-                    
+
                     # Verify logging.basicConfig was called with appropriate level
                     mock_logging.assert_called_once()
                     call_kwargs = mock_logging.call_args[1]
                     # When --verbose, level should be DEBUG (10)
                     import logging
+
                     # The verbose flag should result in DEBUG level
                     assert call_kwargs.get("level") in (logging.DEBUG, logging.INFO)
 
@@ -254,47 +264,42 @@ class TestBuildDomainStandardsSection:
     def test_build_domain_standards_with_gap_analysis_priority(self) -> None:
         """_build_domain_standards_section must prioritize gap_analysis."""
         from src.audit.model_evaluator import _build_domain_standards_section
-        
+
         gap_text = "Must implement lazy loading"
         ref_text = "Use async iterators"
-        
+
         result = _build_domain_standards_section(ref_text, gap_text)
-        
+
         # Gap analysis has highest priority
         assert "Gap Analysis" in result
         assert gap_text in result
 
-
     def test_build_domain_standards_with_reference_only(self) -> None:
         """_build_domain_standards_section must use reference when gap empty."""
         from src.audit.model_evaluator import _build_domain_standards_section
-        
+
         ref_text = "Use immutable datastructures"
-        
+
         result = _build_domain_standards_section(ref_text, "")
-        
+
         # Reference standards is secondary priority
         assert "Domain Architectural Standards" in result
         assert ref_text in result
 
-
     def test_build_domain_standards_uses_default_patterns(self) -> None:
         """_build_domain_standards_section must fall back to default patterns."""
         from src.audit.model_evaluator import _build_domain_standards_section
-        
+
         with patch("src.audit.model_evaluator._load_domain_patterns") as mock_patterns:
             mock_patterns.return_value = {
                 "default_standards": "AEGF Gold Standard applies"
             }
-            
+
             result = _build_domain_standards_section("", "")
-            
+
             # Should use default_standards from patterns
             assert "AEGF Gold Standard" in result
             mock_patterns.assert_called_once()
-
-
-
 
 
 @pytest.mark.integration
@@ -305,7 +310,7 @@ class TestGapAnalysisGeneration:
         """generate_gap_analysis must truncate large references."""
         from src.audit.model_evaluator import generate_gap_analysis
         from src.audit.schema import SampleRecord
-        
+
         large_ref = "x" * 5000
         sample = SampleRecord(
             id="large-ref",
@@ -320,31 +325,30 @@ class TestGapAnalysisGeneration:
             reference_standards="",
             gap_analysis="",
         )
-        
+
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             mock_router.return_value.professor.return_value = mock_client
             mock_client.generate_with_retry.return_value = "Gap analysis text"
-            
+
             result = generate_gap_analysis(
                 sample,
                 master="Master",
                 changelog="Changes",
                 jinja_guide="Guide",
             )
-            
+
             # Should return gap analysis
             assert result == "Gap analysis text"
             # Reference should have been truncated in the call
             call_args = mock_client.generate_with_retry.call_args
             assert call_args is not None
 
-
     def test_generate_gap_analysis_with_validate_mode(self) -> None:
         """generate_gap_analysis with validate=True should skip inference."""
         from src.audit.model_evaluator import generate_gap_analysis
         from src.audit.schema import SampleRecord
-        
+
         sample = SampleRecord(
             id="validate-gap",
             example_type="test",
@@ -358,7 +362,7 @@ class TestGapAnalysisGeneration:
             reference_standards="",
             gap_analysis="",
         )
-        
+
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
             result = generate_gap_analysis(
                 sample,
@@ -367,18 +371,20 @@ class TestGapAnalysisGeneration:
                 jinja_guide="Guide",
                 validate=True,
             )
-            
+
             # Should return placeholder in validate mode
             assert "[validate]" in result
             # Should NOT call professor
             mock_router.return_value.professor.assert_not_called()
 
-
     def test_generate_gap_analysis_empty_response_raises_error(self) -> None:
         """generate_gap_analysis must raise error on empty professor response."""
-        from src.audit.model_evaluator import generate_gap_analysis, PromptGenerationError
+        from src.audit.model_evaluator import (
+            generate_gap_analysis,
+            PromptGenerationError,
+        )
         from src.audit.schema import SampleRecord
-        
+
         sample = SampleRecord(
             id="empty-resp",
             example_type="test",
@@ -392,13 +398,13 @@ class TestGapAnalysisGeneration:
             reference_standards="",
             gap_analysis="",
         )
-        
+
         with patch("src.audit.model_evaluator._inference_router") as mock_router:
             mock_client = MagicMock()
             mock_router.return_value.professor.return_value = mock_client
             # Simulate empty response from professor
             mock_client.generate_with_retry.return_value = ""
-            
+
             # Should raise PromptGenerationError
             with pytest.raises(PromptGenerationError):
                 generate_gap_analysis(

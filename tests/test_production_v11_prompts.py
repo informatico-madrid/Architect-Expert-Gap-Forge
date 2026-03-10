@@ -53,20 +53,31 @@ def minimal_taxonomy(monkeypatch: pytest.MonkeyPatch) -> None:
                     "error_recovery": "error-$error_msg",
                     "functional_unit": "functional-$context",
                 }
-            }
+            },
         }
     }
     monkeypatch.setattr(factory_v11, "_TAX", taxonomy, raising=False)
-    monkeypatch.setattr(factory_v11, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
-    monkeypatch.setattr(factory_v11, "LEGACY_2023_PATTERNS", [
-        {"legacy_code": "hass.data[]", "context_type": "python"}
-    ], raising=False)
-    monkeypatch.setattr(factory_v11, "HA_ERROR_TEMPLATES", [
-        {"context_type": "python", "error": "Error {entity} at {component}"}
-    ], raising=False)
-    monkeypatch.setattr(factory_v11, "THEORY_QUESTION_TEMPLATES", [
-        {"template": "What is the essence of {section_title}?", "type": "theory"}
-    ], raising=False)
+    monkeypatch.setattr(
+        factory_v11, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False
+    )
+    monkeypatch.setattr(
+        factory_v11,
+        "LEGACY_2023_PATTERNS",
+        [{"legacy_code": "hass.data[]", "context_type": "python"}],
+        raising=False,
+    )
+    monkeypatch.setattr(
+        factory_v11,
+        "HA_ERROR_TEMPLATES",
+        [{"context_type": "python", "error": "Error {entity} at {component}"}],
+        raising=False,
+    )
+    monkeypatch.setattr(
+        factory_v11,
+        "THEORY_QUESTION_TEMPLATES",
+        [{"template": "What is the essence of {section_title}?", "type": "theory"}],
+        raising=False,
+    )
 
 
 def _restore_globals(originals: Dict[str, object]) -> None:
@@ -87,7 +98,9 @@ def test_load_taxonomy_updates_globals(tmp_path: Path) -> None:
         "legacy_2023_patterns": [{"legacy_code": "legacy"}],
         "jinja_ha_error_templates": [{"error": "jinja error"}],
         "jinja_legacy_2023_patterns": [{"legacy_code": "jinja legacy"}],
-        "theory_question_templates": [{"template": "Q {section_title}", "type": "doctrine"}],
+        "theory_question_templates": [
+            {"template": "Q {section_title}", "type": "doctrine"}
+        ],
         "tools_definition": [{"name": "tool"}],
     }
     path = tmp_path / "taxonomy.yaml"
@@ -141,7 +154,7 @@ def test_build_system_with_blueprint_appends_context(minimal_taxonomy: None) -> 
         master="guide",
         changelog="changelog",
         blueprint="blueprint",
-        local_imports="[\"dep\"]",
+        local_imports='["dep"]',
         governance="rules",
     )
     assert "[BLUEPRINT" in prompt
@@ -149,7 +162,9 @@ def test_build_system_with_blueprint_appends_context(minimal_taxonomy: None) -> 
     assert prompt.endswith("[NOMINAL]")
 
 
-def test_build_user_nominal_hard_anchor_free(minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_user_nominal_hard_anchor_free(
+    minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     frag = _sample_frag()
     monkeypatch.setattr(factory_v11.random, "random", lambda: 0.1)
     monkeypatch.setattr(factory_v11.random, "choice", lambda choices: choices[0])
@@ -157,21 +172,29 @@ def test_build_user_nominal_hard_anchor_free(minimal_taxonomy: None, monkeypatch
     assert "hard-free" in prompt
 
 
-def test_build_user_contrast_uses_legacy_pattern(minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_user_contrast_uses_legacy_pattern(
+    minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     frag = _sample_frag()
-    monkeypatch.setattr(factory_v11.random, "choice", lambda seq: {"legacy_code": "legacy code"})
+    monkeypatch.setattr(
+        factory_v11.random, "choice", lambda seq: {"legacy_code": "legacy code"}
+    )
     prompt = factory_v11.build_user_contrast(frag)
     assert "legacy code" in prompt
 
 
-def test_build_user_error_recovery_formats_message(minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_user_error_recovery_formats_message(
+    minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     frag = _sample_frag()
     monkeypatch.setattr(factory_v11.random, "choice", lambda seq: seq[0])
     prompt = factory_v11.build_user_error_recovery(frag)
     assert "error" in prompt
 
 
-def test_get_theory_fragments_and_build(minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_theory_fragments_and_build(
+    minimal_taxonomy: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
     master = "# Section One\n" + "Long paragraph " * 20
     changelog = "## Change Log\n" + "Long paragraph " * 20
     fragments = factory_v11.get_theory_fragments(master, changelog)

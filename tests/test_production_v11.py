@@ -33,6 +33,7 @@ import src.factory.production_v11 as v11
 # Fixtures
 # ===========================================================================
 
+
 @pytest.fixture()
 def minimal_taxonomy_yaml(tmp_path: Path) -> Path:
     """Write a minimal but structurally valid taxonomy YAML."""
@@ -130,7 +131,9 @@ def gap_dir_with_docs(tmp_path: Path) -> Path:
     """Create a fake gap_dir with the three required master documents."""
     gap = tmp_path / "Gap"
     gap.mkdir()
-    (gap / "HA_MASTER_GUIDE_2026.md").write_text("# HA Guide\nsome content", encoding="utf-8")
+    (gap / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# HA Guide\nsome content", encoding="utf-8"
+    )
     (gap / "technical_changelog_2026.md").write_text(
         "## Changelog\nbreaking change info", encoding="utf-8"
     )
@@ -143,6 +146,7 @@ def gap_dir_with_docs(tmp_path: Path) -> Path:
 # ===========================================================================
 # _render
 # ===========================================================================
+
 
 class TestRender:
     def test_substitutes_simple_variable(self) -> None:
@@ -167,6 +171,7 @@ class TestRender:
 # ===========================================================================
 # detect_legacy_patterns
 # ===========================================================================
+
 
 class TestDetectLegacyPatterns:
     def test_clean_code_returns_empty(self) -> None:
@@ -225,6 +230,7 @@ class TestDetectLegacyPatterns:
 # post_validate_output
 # ===========================================================================
 
+
 class TestPostValidateOutput:
     def test_clean_output_returns_empty(self) -> None:
         code = "{% if value %} {{ value }} {% endif %}"
@@ -254,6 +260,7 @@ class TestPostValidateOutput:
 # ===========================================================================
 # make_checkpoint_key
 # ===========================================================================
+
 
 class TestMakeCheckpointKey:
     def test_deterministic(self) -> None:
@@ -290,6 +297,7 @@ class TestMakeCheckpointKey:
 # ===========================================================================
 # load_checkpoint
 # ===========================================================================
+
 
 class TestLoadCheckpoint:
     def test_returns_empty_when_no_files(self, tmp_path: Path) -> None:
@@ -346,6 +354,7 @@ class TestLoadCheckpoint:
 # parse_raw_response
 # ===========================================================================
 
+
 class TestParseRawResponse:
     def test_parses_write_action_block(self) -> None:
         text = textwrap.dedent("""\
@@ -364,7 +373,10 @@ class TestParseRawResponse:
         assert reasoning == "my reasoning"
 
     def test_parses_tool_call_fallback(self) -> None:
-        payload = {"name": "write_to_file", "arguments": {"path": "a.py", "content": "x"}}
+        payload = {
+            "name": "write_to_file",
+            "arguments": {"path": "a.py", "content": "x"},
+        }
         text = f"<tool_call>{json.dumps(payload)}</tool_call>"
         result, reasoning = v11.parse_raw_response(text)
         assert result["name"] == "write_to_file"
@@ -400,6 +412,7 @@ class TestParseRawResponse:
 # get_file_chunks
 # ===========================================================================
 
+
 class TestGetFileChunks:
     def test_splits_two_files(self) -> None:
         content = (
@@ -424,6 +437,7 @@ class TestGetFileChunks:
 # ===========================================================================
 # parse_bundle
 # ===========================================================================
+
 
 class TestParseBundle:
     MODULE_BLUEPRINT_TXT = textwrap.dedent("""\
@@ -497,6 +511,7 @@ class TestParseBundle:
 # _ast_fragment_list
 # ===========================================================================
 
+
 class TestAstFragmentList:
     def test_extracts_class_fragment(self) -> None:
         code = textwrap.dedent("""\
@@ -506,13 +521,17 @@ class TestAstFragmentList:
                 def __init__(self): pass
                 def native_value(self): return 42
         """)
-        frags = v11._ast_fragment_list("sensor.py", code, "test_ctx", {"virtual_filename": "sensor.py"})
+        frags = v11._ast_fragment_list(
+            "sensor.py", code, "test_ctx", {"virtual_filename": "sensor.py"}
+        )
         names = [f["name"] for f in frags]
         assert "MySensor" in names
 
     def test_extracts_function_fragment(self) -> None:
         code = "def async_setup_entry(hass, entry): pass"
-        frags = v11._ast_fragment_list("sensor.py", code, "ctx", {"virtual_filename": "sensor.py"})
+        frags = v11._ast_fragment_list(
+            "sensor.py", code, "ctx", {"virtual_filename": "sensor.py"}
+        )
         assert any(f["name"] == "async_setup_entry" for f in frags)
 
     def test_skeleton_contains_placeholder(self) -> None:
@@ -527,7 +546,9 @@ class TestAstFragmentList:
         assert "42" in frags[0]["original"] or "return 42" in frags[0]["original"]
 
     def test_invalid_python_fallback_to_whole_file(self) -> None:
-        frags = v11._ast_fragment_list("bad.py", "def broken(::", "ctx", {"virtual_filename": "bad.py"})
+        frags = v11._ast_fragment_list(
+            "bad.py", "def broken(::", "ctx", {"virtual_filename": "bad.py"}
+        )
         assert len(frags) == 1
         assert "Module:" in frags[0]["name"] or frags[0]["name"] == "Module: bad"
 
@@ -541,6 +562,7 @@ class TestAstFragmentList:
 # ===========================================================================
 # get_theory_fragments
 # ===========================================================================
+
 
 class TestGetTheoryFragments:
     def test_extracts_sections_from_master(self) -> None:
@@ -566,7 +588,15 @@ class TestGetTheoryFragments:
         frags = v11.get_theory_fragments(master, "")
         assert len(frags) >= 1
         frag = frags[0]
-        for key in ("name", "type", "section_content", "original", "source_doc", "context", "virtual_filename"):
+        for key in (
+            "name",
+            "type",
+            "section_content",
+            "original",
+            "source_doc",
+            "context",
+            "virtual_filename",
+        ):
             assert key in frag
 
     def test_processes_both_docs(self) -> None:
@@ -581,6 +611,7 @@ class TestGetTheoryFragments:
 # ===========================================================================
 # load_master_docs
 # ===========================================================================
+
 
 class TestLoadMasterDocs:
     def test_loads_three_files(self, gap_dir_with_docs: Path) -> None:
@@ -615,6 +646,7 @@ class TestLoadMasterDocs:
 # load_taxonomy
 # ===========================================================================
 
+
 class TestLoadTaxonomy:
     def test_loads_module_globals(self, minimal_taxonomy_yaml: Path) -> None:
         v11.load_taxonomy(minimal_taxonomy_yaml)
@@ -629,7 +661,9 @@ class TestLoadTaxonomy:
         v11.load_taxonomy(minimal_taxonomy_yaml)
         assert "prompts" in v11._TAX
 
-    def test_prompt_key_accessor_works_after_load(self, minimal_taxonomy_yaml: Path) -> None:
+    def test_prompt_key_accessor_works_after_load(
+        self, minimal_taxonomy_yaml: Path
+    ) -> None:
         v11.load_taxonomy(minimal_taxonomy_yaml)
         result = v11._prompt("system.python.base")
         assert "$master" in result
@@ -639,14 +673,27 @@ class TestLoadTaxonomy:
 # get_v2_fragments
 # ===========================================================================
 
+
 class TestGetV2Fragments:
     def test_module_blueprint_returns_empty(self) -> None:
-        bundle = {"type": "MODULE_BLUEPRINT", "arch": {}, "files": {}, "entity_id": "", "context": ""}
+        bundle = {
+            "type": "MODULE_BLUEPRINT",
+            "arch": {},
+            "files": {},
+            "entity_id": "",
+            "context": "",
+        }
         frags = v11.get_v2_fragments(bundle, blueprint_cache={})
         assert frags == []
 
     def test_governance_rules_returns_empty(self) -> None:
-        bundle = {"type": "GOVERNANCE_RULES", "arch": {}, "files": {}, "entity_id": "", "context": ""}
+        bundle = {
+            "type": "GOVERNANCE_RULES",
+            "arch": {},
+            "files": {},
+            "entity_id": "",
+            "context": "",
+        }
         frags = v11.get_v2_fragments(bundle, blueprint_cache={})
         assert frags == []
 
@@ -655,10 +702,12 @@ class TestGetV2Fragments:
             "type": "LOGIC_ONLY",
             "entity_id": "test",
             "context": "HA sensor",
-            "arch": {"MODULE": "ha_sensor", "REPO_PREFIX": "repo", "LOCAL_IMPORTS": "[]"},
-            "files": {
-                "sensor.py": "def async_setup_entry(hass, entry): pass\n"
+            "arch": {
+                "MODULE": "ha_sensor",
+                "REPO_PREFIX": "repo",
+                "LOCAL_IMPORTS": "[]",
             },
+            "files": {"sensor.py": "def async_setup_entry(hass, entry): pass\n"},
         }
         frags = v11.get_v2_fragments(bundle, blueprint_cache={})
         assert len(frags) >= 1
@@ -668,7 +717,11 @@ class TestGetV2Fragments:
             "type": "FUNCTIONAL_UNIT",
             "entity_id": "test",
             "context": "HA sensor",
-            "arch": {"MODULE": "ha_sensor", "REPO_PREFIX": "repo", "LOCAL_IMPORTS": "[]"},
+            "arch": {
+                "MODULE": "ha_sensor",
+                "REPO_PREFIX": "repo",
+                "LOCAL_IMPORTS": "[]",
+            },
             "files": {
                 "sensor.py": "class MySensor: pass",
                 "test_sensor.py": "def test_sensor(): pass",

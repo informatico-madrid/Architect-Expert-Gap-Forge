@@ -74,13 +74,23 @@ def test_generate_sample_async_nominal_accepts_and_injects(monkeypatch):
         }
 
         result = await pv11.generate_sample_async(
-            client, "model-x", frag, "nominal", "easy",
-            master="M", changelog="C", semaphore=semaphore
+            client,
+            "model-x",
+            frag,
+            "nominal",
+            "easy",
+            master="M",
+            changelog="C",
+            semaphore=semaphore,
         )
 
         assert result["status"] == "accepted"
         sample = result["sample"]
-        assert sample["metadata"]["example_type"] in ("nominal", "contrast", "error_recovery")
+        assert sample["metadata"]["example_type"] in (
+            "nominal",
+            "contrast",
+            "error_recovery",
+        )
         # For nominal non-functional fragments we expect gold_injected True when output is clean
         assert "gold_injected" in sample["metadata"]
 
@@ -129,12 +139,20 @@ def test_generate_sample_async_rejects_on_parse_failure(monkeypatch):
         }
 
         result = await pv11.generate_sample_async(
-            client, "model-x", frag, "nominal", "easy",
-            master="M", changelog="C", semaphore=semaphore
+            client,
+            "model-x",
+            frag,
+            "nominal",
+            "easy",
+            master="M",
+            changelog="C",
+            semaphore=semaphore,
         )
 
         assert result["status"] == "rejected"
-        assert "No <write_action> or <tool_call> found" in result.get("reason", "") or "Failed after" in result.get("reason", "")
+        assert "No <write_action> or <tool_call> found" in result.get(
+            "reason", ""
+        ) or "Failed after" in result.get("reason", "")
 
     asyncio.run(_run())
 
@@ -142,8 +160,17 @@ def test_generate_sample_async_rejects_on_parse_failure(monkeypatch):
 def test_process_fragment_writes_to_ok_when_sample_kept(monkeypatch):
     async def _run():
         # Monkeypatch generate_sample_async to return an accepted sample
-        async def fake_generate(client, model, frag, example_type, evol_difficulty,
-                                master, changelog, semaphore, **kwargs):
+        async def fake_generate(
+            client,
+            model,
+            frag,
+            example_type,
+            evol_difficulty,
+            master,
+            changelog,
+            semaphore,
+            **kwargs,
+        ):
             return {
                 "status": "accepted",
                 "sample": {

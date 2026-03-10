@@ -13,6 +13,7 @@ Covers:
 - generate_report: markdown formatting, JSON serialization, filtering/sorting
 - Regex pattern detection from ha_patterns.yaml
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -87,6 +88,7 @@ class TestComputeScorecardGoldenFile:
 
         # Verify composite score calculation
         from src.audit.schema import SCORING_WEIGHTS
+
         expected_composite = sum(
             adapter_scores.get(dim, 0.0) * weight
             for dim, weight in SCORING_WEIGHTS.items()
@@ -438,7 +440,9 @@ class TestFullPipelineGoldenFile:
         # Verify scorecard from realistic judge data
         assert scorecard.composite_score > 0.85
         assert scorecard.delta_vs_baseline > 0.15
-        assert golden_judge_response["judge_reasoning"][:50] in scorecard.judge_reasoning
+        assert (
+            golden_judge_response["judge_reasoning"][:50] in scorecard.judge_reasoning
+        )
 
         # Generate report with the scorecard
         report = AuditReport(

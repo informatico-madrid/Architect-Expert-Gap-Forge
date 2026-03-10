@@ -19,6 +19,7 @@ Covers:
 - apply_to_record(): filters assistant message and returns stats
 - apply_to_record(): non-conversation records pass through unchanged
 """
+
 from __future__ import annotations
 
 import copy
@@ -76,15 +77,19 @@ class TestSacredConstraint:
     """Code at or after </think> must NEVER be modified — this is the sacred constraint."""
 
     def test_post_think_content_is_unchanged(self) -> None:
-        think = _large_think("Thinking about sensors. I need to use entry.runtime_data pattern.")
+        think = _large_think(
+            "Thinking about sensors. I need to use entry.runtime_data pattern."
+        )
         content = _make_content(think)
         filtered, stats = filter_think_content(content)
         idx = filtered.lower().find("</think>")
         assert idx != -1, "The </think> tag must be preserved in output"
-        assert filtered[idx:] == content[content.lower().find("</think>"):]
+        assert filtered[idx:] == content[content.lower().find("</think>") :]
 
     def test_post_think_code_is_byte_identical(self) -> None:
-        post = "</think>\n\n```python\nclass MyEntity(CoordinatorEntity):\n    pass\n```"
+        post = (
+            "</think>\n\n```python\nclass MyEntity(CoordinatorEntity):\n    pass\n```"
+        )
         think = _large_think("A. " * 300)
         content = think + post
         filtered, _ = filter_think_content(content)
@@ -155,7 +160,12 @@ class TestFilterThinkStats:
         content = self._content_with_duplicates()
         _, stats = filter_think_content(content)
         if stats is not None:
-            required = {"original_chars", "distilled_chars", "reduction_pct", "strategies"}
+            required = {
+                "original_chars",
+                "distilled_chars",
+                "reduction_pct",
+                "strategies",
+            }
             assert required.issubset(set(stats.keys()))
 
     def test_original_chars_matches_think_block_length(self) -> None:
@@ -299,7 +309,9 @@ class TestDedupParagraphs:
 @pytest.mark.unit
 class TestFilterThinkStrategies:
     def test_stats_cover_all_strategies(self) -> None:
-        bullet_paragraph = "- repeated bullet long text\n- repeated bullet long text\n- unique bullet"
+        bullet_paragraph = (
+            "- repeated bullet long text\n- repeated bullet long text\n- unique bullet"
+        )
         repeated_para = "Paragraph " + "A" * 120
         cycle_paragraphs = [
             "1. cycle start " + "Y" * 80,
@@ -307,7 +319,12 @@ class TestFilterThinkStrategies:
             "1. cycle start " + "Y" * 80,
             "2. cycle flow " + "Z" * 80,
         ]
-        think_parts = [bullet_paragraph, repeated_para, repeated_para, *cycle_paragraphs]
+        think_parts = [
+            bullet_paragraph,
+            repeated_para,
+            repeated_para,
+            *cycle_paragraphs,
+        ]
         think = "\n\n".join(think_parts)
         content = think + "\n\n" + think + _POST_THINK
         _, stats = filter_think_content(content, min_chars=0)
