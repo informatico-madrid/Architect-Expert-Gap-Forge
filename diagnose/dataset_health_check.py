@@ -14,6 +14,7 @@ Usage:
 
 This script checks every record and emits a JSON report with "red flags".
 """
+
 from __future__ import annotations
 import argparse
 import json
@@ -33,7 +34,13 @@ def normalize_text(s: str) -> str:
 
 
 def find_think_length(rec: Dict[str, Any]) -> int:
-    for k in ("think_length", "thought_length", "thought_original_length", "think_len", "think_chars"):
+    for k in (
+        "think_length",
+        "thought_length",
+        "thought_original_length",
+        "think_len",
+        "think_chars",
+    ):
         v = rec.get(k)
         if isinstance(v, (int, float)):
             return int(v)
@@ -49,7 +56,13 @@ def find_think_length(rec: Dict[str, Any]) -> int:
 
 def extract_thought_text(rec: Dict[str, Any]) -> str:
     # direct candidates
-    for k in ("thought_extracted", "thought", "thought_text", "think_text", "thought_original"):
+    for k in (
+        "thought_extracted",
+        "thought",
+        "thought_text",
+        "think_text",
+        "thought_original",
+    ):
         v = rec.get(k)
         if isinstance(v, str) and v.strip():
             return v.strip()
@@ -58,7 +71,12 @@ def extract_thought_text(rec: Dict[str, Any]) -> str:
         sub = rec.get(c)
         if isinstance(sub, dict):
             for k, v in sub.items():
-                if isinstance(k, str) and ("thought" in k or "think" in k) and isinstance(v, str) and v.strip():
+                if (
+                    isinstance(k, str)
+                    and ("thought" in k or "think" in k)
+                    and isinstance(v, str)
+                    and v.strip()
+                ):
                     return v.strip()
     # conversation: prefer assistant <think>
     conv = rec.get("conversation")
@@ -68,7 +86,9 @@ def extract_thought_text(rec: Dict[str, Any]) -> str:
                 content = m.get("content", "")
                 if not isinstance(content, str):
                     continue
-                m1 = re.search(r"<think>([\s\S]*?)</think>", content, flags=re.IGNORECASE)
+                m1 = re.search(
+                    r"<think>([\s\S]*?)</think>", content, flags=re.IGNORECASE
+                )
                 if m1:
                     return m1.group(1).strip()
                 if "<think>" in content.lower():
@@ -100,7 +120,12 @@ def extract_user_prompt(rec: Dict[str, Any]) -> str:
 
 def count_tag_occurrences_in_assistant(rec: Dict[str, Any]) -> Dict[str, int]:
     conv = rec.get("conversation")
-    results = {"think_pairs": 0, "tool_pairs": 0, "stray_tags_outside": 0, "valid_structure": True}
+    results = {
+        "think_pairs": 0,
+        "tool_pairs": 0,
+        "stray_tags_outside": 0,
+        "valid_structure": True,
+    }
     if not isinstance(conv, list):
         return results
 
@@ -114,9 +139,13 @@ def count_tag_occurrences_in_assistant(rec: Dict[str, Any]) -> Dict[str, int]:
         # V11.2: Detección flexible de pensamiento (acepta texto antes de </think>)
         has_closing_think = "</think>" in content.lower()
         has_opening_think = "<think>" in content.lower()
-        
+
         # Detección de bloques de código (tool_call o write_action)
-        tool_matches = list(re.finditer(r"<(tool_call|write_action)>[\s\S]*?</\1>", content, flags=re.IGNORECASE))
+        tool_matches = list(
+            re.finditer(
+                r"<(tool_call|write_action)>[\s\S]*?</\1>", content, flags=re.IGNORECASE
+            )
+        )
         results["tool_pairs"] += len(tool_matches)
 
         # Lógica de Validación de Estructura Blackwell
@@ -127,20 +156,20 @@ def count_tag_occurrences_in_assistant(rec: Dict[str, Any]) -> Dict[str, int]:
             # Validamos que el pensamiento termine antes de que empiece la acción
             idx_think_end = content.lower().find("</think>")
             if idx_think_end < tool_matches[0].start():
-                continue # Estructura OK
-        
+                continue  # Estructura OK
+
         # Caso B: Estructura de Teoría (Think + Texto Markdown)
         elif has_closing_think and len(tool_matches) == 0:
             results["think_pairs"] = 1
             # Si hay texto significativo después de </think>, es una muestra de teoría válida
             idx_think_end = content.lower().find("</think>")
             if len(content[idx_think_end:].strip()) > 20:
-                continue # Teoría OK
-        
+                continue  # Teoría OK
+
         # Caso C: Sin etiquetas (Muestras legacy o simples)
         elif not has_closing_think and len(tool_matches) == 0:
-            continue # Sin tags es válido si no se requiere razonamiento
-            
+            continue  # Sin tags es válido si no se requiere razonamiento
+
         # Si llega aquí, algo está mal (etiquetas mal cerradas, orden inverso, etc.)
         results["valid_structure"] = False
 
@@ -156,7 +185,9 @@ def extract_tool_call_code(rec: Dict[str, Any]) -> str:
                 c = m.get("content", "")
                 if not isinstance(c, str):
                     continue
-                m1 = re.search(r"<tool_call>([\s\S]*?)</tool_call>", c, flags=re.IGNORECASE)
+                m1 = re.search(
+                    r"<tool_call>([\s\S]*?)</tool_call>", c, flags=re.IGNORECASE
+                )
                 if m1:
                     inner = m1.group(1).strip()
                     # try parse JSON
@@ -164,9 +195,13 @@ def extract_tool_call_code(rec: Dict[str, Any]) -> str:
                         obj = json.loads(inner)
                         # common pattern: {"name":..., "arguments": {"content": "..."}}
                         if isinstance(obj, dict):
-                            if "arguments" in obj and isinstance(obj["arguments"], dict):
+                            if "arguments" in obj and isinstance(
+                                obj["arguments"], dict
+                            ):
                                 # common 'content' field
-                                if "content" in obj["arguments"] and isinstance(obj["arguments"]["content"], str):
+                                if "content" in obj["arguments"] and isinstance(
+                                    obj["arguments"]["content"], str
+                                ):
                                     return obj["arguments"]["content"].strip()
                             if "content" in obj and isinstance(obj["content"], str):
                                 return obj["content"].strip()
@@ -183,21 +218,21 @@ def _remove_docstrings_and_comments(code: str) -> str:
     if not code:
         return ""
     # remove triple-quoted strings (naive)
-    code_no_doc = re.sub(r'("""|\'\'\')[\s\S]*?\1', '', code)
+    code_no_doc = re.sub(r'("""|\'\'\')[\s\S]*?\1', "", code)
     # remove single-line comments
-    code_no_comments = re.sub(r"#.*", '', code_no_doc)
+    code_no_comments = re.sub(r"#.*", "", code_no_doc)
     return code_no_comments
 
 
 def _ellipsis_in_function_body(code: str) -> bool:
     """Return True if '...' appears in function bodies (not in comments/docstrings)."""
     cleaned = _remove_docstrings_and_comments(code)
-    if '...' not in cleaned:
+    if "..." not in cleaned:
         return False
     lines = cleaned.splitlines()
     # find lines with ellipsis
     for idx, line in enumerate(lines):
-        if '...' in line:
+        if "..." in line:
             # find a def above within 20 lines
             for k in range(max(0, idx - 20), idx + 1):
                 if re.match(r"\s*def\s+\w+\s*\(.*\)\s*:", lines[k]):
@@ -228,8 +263,8 @@ def _empty_function_or_pass_detected(code: str) -> bool:
             # if body_lines contain only 'pass' or 'return None' or are empty -> flag
             if not body_lines:
                 return True
-            stripped = [bl for bl in body_lines if bl and not bl.startswith('#')]
-            if all(re.match(r'^(pass|return\s+None)($|\s+#)', bl) for bl in stripped):
+            stripped = [bl for bl in body_lines if bl and not bl.startswith("#")]
+            if all(re.match(r"^(pass|return\s+None)($|\s+#)", bl) for bl in stripped):
                 return True
     return False
 
@@ -276,8 +311,12 @@ def split_sentences(text: str) -> List[str]:
 
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", "-i", default="data/synthetic/PLATINUM_FINAL_SFT_DATASET.jsonl")
-    parser.add_argument("--report", "-r", default="data/reports/health_audit_report.json")
+    parser.add_argument(
+        "--input", "-i", default="data/synthetic/PLATINUM_FINAL_SFT_DATASET.jsonl"
+    )
+    parser.add_argument(
+        "--report", "-r", default="data/reports/health_audit_report.json"
+    )
     parser.add_argument("--plot", "-p", default="data/reports/length_distribution.png")
     args = parser.parse_args(argv)
 
@@ -372,7 +411,11 @@ def main(argv: List[str] | None = None) -> int:
                 except Exception:
                     pass
                 # evasive comments
-                if re.search(r"#.*(resto del codigo igual|resto del código igual|implementar aqui|\[implementación\]|implementacion|implement here|to be implemented)", code_text, flags=re.IGNORECASE):
+                if re.search(
+                    r"#.*(resto del codigo igual|resto del código igual|implementar aqui|\[implementación\]|implementacion|implement here|to be implemented)",
+                    code_text,
+                    flags=re.IGNORECASE,
+                ):
                     lazy_reasons.append("COMMENTS_EVASIVE")
                 # functions empty / pass detection (refined)
                 try:
@@ -431,7 +474,12 @@ def main(argv: List[str] | None = None) -> int:
                         # ignore short list-like repetitions as before
                         if len(s_text) < 80:
                             lines = thought.splitlines()
-                            list_like = sum(1 for line in lines if line.strip().startswith(('-', '*')) and s_text in normalize_text(line))
+                            list_like = sum(
+                                1
+                                for line in lines
+                                if line.strip().startswith(("-", "*"))
+                                and s_text in normalize_text(line)
+                            )
                             if list_like >= 3:
                                 continue
 
@@ -446,14 +494,16 @@ def main(argv: List[str] | None = None) -> int:
                     flags.append("REPEATED_SENTENCE_LOOP")
 
             if flags:
-                suspects.append({
-                    "id": rid,
-                    "line": i,
-                    "think_length": think_len,
-                    "ldi_final": ldi_val,
-                    "ldi_source": ldi_source,
-                    "flags": flags,
-                })
+                suspects.append(
+                    {
+                        "id": rid,
+                        "line": i,
+                        "think_length": think_len,
+                        "ldi_final": ldi_val,
+                        "ldi_source": ldi_source,
+                        "flags": flags,
+                    }
+                )
 
     # distribution summary
     total_tokens_est = int(total_chars / 4)
@@ -505,7 +555,9 @@ def main(argv: List[str] | None = None) -> int:
 
     print(f"Report written: {args.report}")
     print(f"Estimated tokens (approx): {total_tokens_est}")
-    print(f"Bucket counts: {report['buckets']}")  # updated labels reflect finer granularity
+    print(
+        f"Bucket counts: {report['buckets']}"
+    )  # updated labels reflect finer granularity
     print(f"Suspect_count: {len(suspects)}")
     return 0
 

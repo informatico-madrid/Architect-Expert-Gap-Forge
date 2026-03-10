@@ -1,0 +1,16 @@
+done
+
+T025 + T026 completed successfully.
+
+Summary:
+- Created unit tests (tests/unit/test_ingestor_git_fallback.py): 9 tests
+- Created integration tests (tests/integration/test_ingestor_git_recovery.py): 10 tests
+- Implemented Git resilience in src/discovery/ingestor.py with:
+  - Retry policy: up to 3 attempts with exponential backoff
+  - Safety: verify commit exists in remote history before reset
+  - Ancestry check: use merge-base --is-ancestor
+  - Post-reset verification: confirm HEAD matches expected
+
+All tests pass (114 passed, 1 skipped).
+Code passes ruff format and header checks.
+Commit: eb89989

@@ -109,6 +109,7 @@ from typing import Dict, FrozenSet, Iterator, List, Optional, Set, Tuple
 # 1.  CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclasses.dataclass
 class AuditConfig:
     """All tunable parameters in one place."""
@@ -170,7 +171,7 @@ class AuditConfig:
     gold_placeholder_marker: str = "Expert HA 2026 Implementation"
 
     # ── Health-score sample ────────────────────────────────────────────────
-    health_sample_size: int = 0          # 0 = disabled
+    health_sample_size: int = 0  # 0 = disabled
     health_sample_seed: int = 42
     health_target_types: Tuple[str, ...] = ("nominal", "contrast", "error_recovery")
 
@@ -179,15 +180,16 @@ class AuditConfig:
 # 2.  COMPILED PATTERN CACHE  (module-level, built once)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class _PatternCache:
     """Lazily compile regex patterns and cache them against a config instance."""
 
     def __init__(self, cfg: AuditConfig) -> None:
-        self.legacy_re   = [re.compile(p)                      for p in cfg.legacy_patterns]
-        self.blocking_re = [re.compile(p)                      for p in cfg.blocking_patterns]
-        self.async_re    = re.compile("|".join(cfg.async_reasoning_patterns), re.I)
-        self.poison_re   = [re.compile(p, re.MULTILINE)        for p in cfg.poison_patterns]
-        self.ha_kw_re    = [re.compile(re.escape(k), re.I)     for k in cfg.ha_keywords]
+        self.legacy_re = [re.compile(p) for p in cfg.legacy_patterns]
+        self.blocking_re = [re.compile(p) for p in cfg.blocking_patterns]
+        self.async_re = re.compile("|".join(cfg.async_reasoning_patterns), re.I)
+        self.poison_re = [re.compile(p, re.MULTILINE) for p in cfg.poison_patterns]
+        self.ha_kw_re = [re.compile(re.escape(k), re.I) for k in cfg.ha_keywords]
 
     def has_legacy(self, text: str) -> bool:
         return any(r.search(text) for r in self.legacy_re)
@@ -209,10 +211,10 @@ class _PatternCache:
 # 3.  TEXT EXTRACTION HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
 
-_RE_TOOL_CALL    = re.compile(r"<tool_call>(.*?)</tool_call>",     re.DOTALL)
+_RE_TOOL_CALL = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
 _RE_WRITE_ACTION = re.compile(r"<write_action>(.*?)</write_action>", re.DOTALL)
-_RE_CONTENT      = re.compile(r"<content>(.*?)</content>",           re.DOTALL)
-_RE_WRITE_FILE   = re.compile(
+_RE_CONTENT = re.compile(r"<content>(.*?)</content>", re.DOTALL)
+_RE_WRITE_FILE = re.compile(
     r'"name"\s*:\s*"write_to_file".*?"content"\s*:\s*"(.*?)"(?=\s*[,}])',
     re.DOTALL,
 )
@@ -222,8 +224,8 @@ def _extract_conversation_parts(rec: dict) -> Tuple[str, str]:
     """Return (user_text, assistant_raw) from the conversation list."""
     user_parts: List[str] = []
     assistant_raw = ""
-    for msg in (rec.get("conversation") or []):
-        role    = msg.get("role", "")
+    for msg in rec.get("conversation") or []:
+        role = msg.get("role", "")
         content = msg.get("content", "") or ""
         if role == "user":
             user_parts.append(content)
@@ -283,42 +285,43 @@ def _extract_action_text(assistant_raw: str, filter_text: str) -> str:
 # 4.  PER-RECORD ANALYSIS  (frozen dataclass)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclasses.dataclass(frozen=True)
 class RecordAnalysis:
     """Complete audit result for a single JSONL record."""
 
     # Identity
-    record_id:    str
+    record_id: str
     example_type: str
     fragment_name: str
-    source_file:   str
+    source_file: str
     checkpoint_key: str
 
     # Gold-injection origin
     gold_injected: bool
 
     # Problem flags
-    flag_legacy:        bool
-    flag_blocking:      bool
+    flag_legacy: bool
+    flag_blocking: bool
     flag_contradiction: bool
-    flag_poison:        bool
-    flag_gold_problem:  bool
+    flag_poison: bool
+    flag_gold_problem: bool
 
     # Location details for legacy (where was the pattern found?)
-    legacy_in_user:     bool     # pattern found in user message
-    legacy_in_response: bool     # pattern found in assistant response / action
+    legacy_in_user: bool  # pattern found in user message
+    legacy_in_response: bool  # pattern found in assistant response / action
 
     # Gold-injection classification label
     gold_label: str  # "gold injection" | "gold skiping" | "unknown"
 
     # Health-score sub-metrics (used for sampled health report)
-    reasoning_len:   int
-    ha_kw_hits:      int
+    reasoning_len: int
+    ha_kw_hits: int
     filter_text_len: int
-    alignment:       bool
-    over_distilled:  bool
-    poison_count:    int
-    legacy_count:    int
+    alignment: bool
+    over_distilled: bool
+    poison_count: int
+    legacy_count: int
 
     @property
     def is_flagged(self) -> bool:
@@ -333,17 +336,23 @@ class RecordAnalysis:
     @property
     def active_flags(self) -> List[str]:
         flags: List[str] = []
-        if self.flag_legacy:        flags.append("legacy")
-        if self.flag_blocking:      flags.append("blocking_io")
-        if self.flag_contradiction: flags.append("contradiction")
-        if self.flag_poison:        flags.append("poison")
-        if self.flag_gold_problem:  flags.append("gold_problem")
+        if self.flag_legacy:
+            flags.append("legacy")
+        if self.flag_blocking:
+            flags.append("blocking_io")
+        if self.flag_contradiction:
+            flags.append("contradiction")
+        if self.flag_poison:
+            flags.append("poison")
+        if self.flag_gold_problem:
+            flags.append("gold_problem")
         return flags
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 5.  DATASET AUDITOR  (orchestrator)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class DatasetAuditor:
     """
@@ -376,29 +385,29 @@ class DatasetAuditor:
     # ── internal analysis ──────────────────────────────────────────────────
 
     def _analyze(self, rec: dict) -> RecordAnalysis:
-        meta          = rec.get("metadata") or {}
-        record_id     = rec.get("id") or "<no-id>"
-        example_type  = (meta.get("example_type") or "unknown").lower()
+        meta = rec.get("metadata") or {}
+        record_id = rec.get("id") or "<no-id>"
+        example_type = (meta.get("example_type") or "unknown").lower()
         fragment_name = meta.get("fragment_name") or meta.get("section_name") or ""
-        source_file   = meta.get("source_file") or ""
-        ck_key        = meta.get("checkpoint_key") or ""
+        source_file = meta.get("source_file") or ""
+        ck_key = meta.get("checkpoint_key") or ""
         gold_injected = bool(meta.get("gold_injected"))
-        filter_text   = rec.get("filter_text") or ""
+        filter_text = rec.get("filter_text") or ""
 
         user_text, assistant_raw = _extract_conversation_parts(rec)
-        reasoning   = _extract_reasoning(assistant_raw)
+        reasoning = _extract_reasoning(assistant_raw)
         action_text = _extract_action_text(assistant_raw, filter_text)
 
         # ── detectors ─────────────────────────────────────────────────────
         flag_legacy_user = self._pc.has_legacy(user_text)
         flag_legacy_resp = self._pc.has_legacy(action_text)
-        flag_legacy      = flag_legacy_resp  # only response-side matters for training
+        flag_legacy = flag_legacy_resp  # only response-side matters for training
 
-        flag_blocking      = self._pc.has_blocking(action_text)
+        flag_blocking = self._pc.has_blocking(action_text)
         flag_contradiction = flag_blocking and self._pc.has_async_signal(reasoning)
 
         poison_count = self._pc.count_poison(action_text)
-        flag_poison  = poison_count > 0
+        flag_poison = poison_count > 0
 
         flag_gold_problem = False
         if gold_injected:
@@ -425,44 +434,45 @@ class DatasetAuditor:
                 gold_label = "unknown"
 
         # ── health-score sub-metrics ───────────────────────────────────────
-        reasoning_len   = len(reasoning)
-        ha_kw_hits      = self._pc.count_ha_kw(reasoning)
+        reasoning_len = len(reasoning)
+        ha_kw_hits = self._pc.count_ha_kw(reasoning)
         filter_text_len = len(filter_text)
-        alignment       = bool(
+        alignment = bool(
             (fragment_name and fragment_name.lower() in user_text.lower())
             or (source_file and source_file.lower() in user_text.lower())
         )
-        over_distilled  = reasoning_len > 300 and filter_text_len < 80
-        legacy_count    = sum(1 for r in self._pc.legacy_re if r.search(action_text))
+        over_distilled = reasoning_len > 300 and filter_text_len < 80
+        legacy_count = sum(1 for r in self._pc.legacy_re if r.search(action_text))
 
         return RecordAnalysis(
-            record_id    = record_id,
-            example_type = example_type,
-            fragment_name = fragment_name,
-            source_file   = source_file,
-            checkpoint_key = ck_key,
-            gold_injected  = gold_injected,
-            flag_legacy        = flag_legacy,
-            flag_blocking      = flag_blocking,
-            flag_contradiction = flag_contradiction,
-            flag_poison        = flag_poison,
-            flag_gold_problem  = flag_gold_problem,
-            legacy_in_user     = flag_legacy_user,
-            legacy_in_response = flag_legacy_resp,
-            gold_label = gold_label,
-            reasoning_len   = reasoning_len,
-            ha_kw_hits      = ha_kw_hits,
-            filter_text_len = filter_text_len,
-            alignment       = alignment,
-            over_distilled  = over_distilled,
-            poison_count    = poison_count,
-            legacy_count    = legacy_count,
+            record_id=record_id,
+            example_type=example_type,
+            fragment_name=fragment_name,
+            source_file=source_file,
+            checkpoint_key=ck_key,
+            gold_injected=gold_injected,
+            flag_legacy=flag_legacy,
+            flag_blocking=flag_blocking,
+            flag_contradiction=flag_contradiction,
+            flag_poison=flag_poison,
+            flag_gold_problem=flag_gold_problem,
+            legacy_in_user=flag_legacy_user,
+            legacy_in_response=flag_legacy_resp,
+            gold_label=gold_label,
+            reasoning_len=reasoning_len,
+            ha_kw_hits=ha_kw_hits,
+            filter_text_len=filter_text_len,
+            alignment=alignment,
+            over_distilled=over_distilled,
+            poison_count=poison_count,
+            legacy_count=legacy_count,
         )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 6.  HEALTH SCORE  (AEGF Five-Pillar)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _compute_health_score(
     analyses: List[RecordAnalysis],
@@ -481,8 +491,9 @@ def _compute_health_score(
     # Pillar 2 — Reasoning Quality
     def _r_score(a: RecordAnalysis) -> float:
         length_score = min(a.reasoning_len, 500) / 500
-        kw_score     = min(a.ha_kw_hits / 3, 1.0)
+        kw_score = min(a.ha_kw_hits / 3, 1.0)
         return 0.6 * length_score + 0.4 * kw_score
+
     p2 = round(mean(_r_score(a) for a in analyses) * 20, 2)
 
     # Pillar 3 — Gold Injection Integrity
@@ -490,6 +501,7 @@ def _compute_health_score(
         if not a.gold_injected:
             return 1.0 if a.reasoning_len > 100 else 0.8
         return 0.0 if a.flag_gold_problem else 1.0
+
     p3 = round(mean(_g_score(a) for a in analyses) * 20, 2)
 
     # Pillar 4 — Distillation Efficacy
@@ -499,30 +511,33 @@ def _compute_health_score(
         ratio = min(a.filter_text_len / max(1, a.reasoning_len), 1.0)
         overlap = 1.0 if a.ha_kw_hits > 0 and a.filter_text_len > 0 else 0.0
         return 0.6 * ratio + 0.4 * overlap
+
     p4 = round(mean(_d_score(a) for a in analyses) * 20, 2)
 
     # Pillar 5 — 2026 Law Compliance
     def _l_score(a: RecordAnalysis) -> float:
         violations = a.poison_count + a.legacy_count
         return max(0.0, 1.0 - min(violations, 3) / 3.0)
+
     p5 = round(mean(_l_score(a) for a in analyses) * 20, 2)
 
     return {
         "pillars": {
-            "contextual_alignment":     p1,
-            "reasoning_quality":        p2,
+            "contextual_alignment": p1,
+            "reasoning_quality": p2,
             "gold_injection_integrity": p3,
-            "distillation_efficacy":    p4,
-            "law_2026_compliance":      p5,
+            "distillation_efficacy": p4,
+            "law_2026_compliance": p5,
         },
         "health_score": round(p1 + p2 + p3 + p4 + p5, 2),
-        "sample_size":  n,
+        "sample_size": n,
     }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 7.  AUDIT REPORT  (serialization)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class AuditReport:
     """
@@ -534,11 +549,11 @@ class AuditReport:
     """
 
     CATEGORY_FLAGS = {
-        "legacy":        "flag_legacy",
-        "blocking_io":   "flag_blocking",
+        "legacy": "flag_legacy",
+        "blocking_io": "flag_blocking",
         "contradiction": "flag_contradiction",
-        "poison":        "flag_poison",
-        "gold_problem":  "flag_gold_problem",
+        "poison": "flag_poison",
+        "gold_problem": "flag_gold_problem",
     }
 
     def __init__(
@@ -548,15 +563,15 @@ class AuditReport:
         input_path: Path,
         report_dir: Path,
         health_sample_size: int = 0,
-        health_sample_seed:  int = 42,
+        health_sample_seed: int = 42,
     ) -> None:
-        self.analyses       = analyses
-        self.cfg            = cfg
-        self.input_path     = input_path
-        self.report_dir     = report_dir
-        self.health_sample  = health_sample_size
-        self.health_seed    = health_sample_seed
-        self._ts            = datetime.datetime.now(datetime.timezone.utc).strftime(
+        self.analyses = analyses
+        self.cfg = cfg
+        self.input_path = input_path
+        self.report_dir = report_dir
+        self.health_sample = health_sample_size
+        self.health_seed = health_sample_seed
+        self._ts = datetime.datetime.now(datetime.timezone.utc).strftime(
             "%Y%m%d_%H%M%S"
         )
 
@@ -567,9 +582,7 @@ class AuditReport:
         self.report_dir.mkdir(parents=True, exist_ok=True)
 
         by_cat = self._build_category_index()
-        all_flagged = {
-            a.record_id for a in self.analyses if a.is_flagged
-        }
+        all_flagged = {a.record_id for a in self.analyses if a.is_flagged}
 
         # 1. Per-category txt + labeled txt
         for cat, ids in by_cat.items():
@@ -591,12 +604,16 @@ class AuditReport:
         )
 
         # 5. Plain-text summary
-        summary_txt = self._build_summary_text(by_cat, all_flagged, health, legacy_breakdown)
+        summary_txt = self._build_summary_text(
+            by_cat, all_flagged, health, legacy_breakdown
+        )
         summary_path = self.report_dir / "aegf_audit_summary.txt"
         summary_path.write_text(summary_txt, encoding="utf-8")
 
         # 6. Master summary update
-        self._update_master_summary(by_cat, all_flagged, report_path, summary_path, health)
+        self._update_master_summary(
+            by_cat, all_flagged, report_path, summary_path, health
+        )
 
         # Print to stdout
         print(summary_txt)
@@ -634,21 +651,21 @@ class AuditReport:
         id_set = set(legacy_ids)
         buckets: Dict[str, Dict[str, List[str]]] = {
             "contrast": {
-                "legacy_in_response":  [],
-                "legacy_in_both":      [],
+                "legacy_in_response": [],
+                "legacy_in_both": [],
                 "legacy_in_user_only": [],
             },
             "error_recovery": {
-                "legacy_in_response":  [],
-                "legacy_in_both":      [],
+                "legacy_in_response": [],
+                "legacy_in_both": [],
                 "legacy_in_user_only": [],
             },
             "nominal": {
                 "should_report": [],
-                "user_only":     [],
+                "user_only": [],
             },
             "other": {
-                "legacy_in_response":  [],
+                "legacy_in_response": [],
                 "legacy_in_user_only": [],
             },
         }
@@ -656,7 +673,9 @@ class AuditReport:
             if a.record_id not in id_set:
                 continue
             et = a.example_type
-            bucket_key = et if et in ("contrast", "error_recovery", "nominal") else "other"
+            bucket_key = (
+                et if et in ("contrast", "error_recovery", "nominal") else "other"
+            )
             b = buckets[bucket_key]
             if et == "nominal":
                 if a.legacy_in_response:
@@ -665,7 +684,9 @@ class AuditReport:
                     b["user_only"].append(a.record_id)
             else:
                 if a.legacy_in_user and a.legacy_in_response:
-                    b.get("legacy_in_both", b.get("legacy_in_response", [])).append(a.record_id)
+                    b.get("legacy_in_both", b.get("legacy_in_response", [])).append(
+                        a.record_id
+                    )
                     if "legacy_in_both" in b:
                         pass  # already appended above
                     else:
@@ -673,7 +694,9 @@ class AuditReport:
                 elif a.legacy_in_response:
                     b["legacy_in_response"].append(a.record_id)
                 else:
-                    b.get("legacy_in_user_only", b["legacy_in_user_only"]).append(a.record_id)
+                    b.get("legacy_in_user_only", b["legacy_in_user_only"]).append(
+                        a.record_id
+                    )
 
         real_problems = (
             len(buckets["nominal"]["should_report"])
@@ -691,7 +714,9 @@ class AuditReport:
                 + len(buckets["error_recovery"]["legacy_in_user_only"])
                 + len(buckets["other"]["legacy_in_user_only"])
             ),
-            "by_example_type": {k: {kk: len(vv) for kk, vv in v.items()} for k, v in buckets.items()},
+            "by_example_type": {
+                k: {kk: len(vv) for kk, vv in v.items()} for k, v in buckets.items()
+            },
         }
 
     def _compute_sampled_health(self) -> Dict:
@@ -745,8 +770,8 @@ class AuditReport:
                 "contradictions, poison patterns, and gold-injection issues."
             ),
             "input_dataset": str(self.input_path),
-            "total_records_checked":  len(self.analyses),
-            "total_flagged_records":  len(all_flagged),
+            "total_records_checked": len(self.analyses),
+            "total_flagged_records": len(all_flagged),
             "category_counts": {cat: len(ids) for cat, ids in by_cat.items()},
             "category_gold_label_breakdown": gold_label_map,
             "legacy_breakdown_by_example_type": legacy_breakdown,
@@ -785,8 +810,10 @@ class AuditReport:
                 a.gold_label for a in self.analyses if a.record_id in set(ids)
             )
             gi = label_ctr.get("gold injection", 0)
-            gs = label_ctr.get("gold skiping",   0)
-            lines.append(f"  {cat:<18} {n:>6,}   (gold injection: {gi:>5,} | gold skiping: {gs:>5,})")
+            gs = label_ctr.get("gold skiping", 0)
+            lines.append(
+                f"  {cat:<18} {n:>6,}   (gold injection: {gi:>5,} | gold skiping: {gs:>5,})"
+            )
 
         lines += [
             "",
@@ -842,25 +869,29 @@ class AuditReport:
         else:
             master = {}
 
-        master["__last_audit_utc"]       = self._ts
-        master["__audit_tool"]           = "aegf_dataset_audit.py"
-        master["input"]                  = str(self.input_path)
-        master["total_records_checked"]  = len(self.analyses)
-        master["total_flagged"]          = len(all_flagged)
-        master["audit_report_file"]      = str(report_path.relative_to(self.report_dir.parent))
-        master["audit_summary_file"]     = str(summary_path.relative_to(self.report_dir.parent))
+        master["__last_audit_utc"] = self._ts
+        master["__audit_tool"] = "aegf_dataset_audit.py"
+        master["input"] = str(self.input_path)
+        master["total_records_checked"] = len(self.analyses)
+        master["total_flagged"] = len(all_flagged)
+        master["audit_report_file"] = str(
+            report_path.relative_to(self.report_dir.parent)
+        )
+        master["audit_summary_file"] = str(
+            summary_path.relative_to(self.report_dir.parent)
+        )
 
         for cat, ids in by_cat.items():
             master[f"{cat}_count"] = len(ids)
-            master[f"{cat}_file"]  = f"data/reports/{cat}_ids.txt"
+            master[f"{cat}_file"] = f"data/reports/{cat}_ids.txt"
             label_ctr = Counter(
                 a.gold_label for a in self.analyses if a.record_id in set(ids)
             )
             master[f"{cat}_gold_injection_count"] = label_ctr.get("gold injection", 0)
-            master[f"{cat}_gold_skiping_count"]   = label_ctr.get("gold skiping",   0)
+            master[f"{cat}_gold_skiping_count"] = label_ctr.get("gold skiping", 0)
 
         if health:
-            master["health_score"]            = health.get("health_score")
+            master["health_score"] = health.get("health_score")
             master["health_score_sample_size"] = health.get("sample_size")
 
         master_path.write_text(
@@ -871,6 +902,7 @@ class AuditReport:
 # ─────────────────────────────────────────────────────────────────────────────
 # 8.  DATASET CLEANER  (clean mode)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class DatasetCleaner:
     """
@@ -885,7 +917,7 @@ class DatasetCleaner:
 
     def __init__(self, report_path: Path, input_path: Path, output_path: Path) -> None:
         self.report_path = report_path
-        self.input_path  = input_path
+        self.input_path = input_path
         self.output_path = output_path
 
     def run(self) -> None:
@@ -906,8 +938,10 @@ class DatasetCleaner:
         kept = skipped = 0
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.output_path.with_suffix(".tmp")
-        with self.input_path.open("r", encoding="utf-8") as fin, \
-             tmp.open("w", encoding="utf-8") as fout:
+        with (
+            self.input_path.open("r", encoding="utf-8") as fin,
+            tmp.open("w", encoding="utf-8") as fout,
+        ):
             for raw in fin:
                 raw_stripped = raw.strip()
                 if not raw_stripped:
@@ -938,6 +972,7 @@ class DatasetCleaner:
 # 9.  CLI  (entry point)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="aegf_dataset_audit.py",
@@ -947,7 +982,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Core I/O
     p.add_argument(
-        "--input", required=True,
+        "--input",
+        required=True,
         help="Path to the JSONL dataset to audit.",
     )
     p.add_argument(
@@ -1010,32 +1046,32 @@ class AEGFAuditCLI:
     def run(self, argv: Optional[List[str]] = None) -> int:  # noqa: C901
         args = self.parser.parse_args(argv)
 
-        input_path  = Path(args.input)
-        report_dir  = Path(args.report_dir)
+        input_path = Path(args.input)
+        report_dir = Path(args.report_dir)
 
         if not input_path.exists():
             print(f"[error] Input file not found: {input_path}", file=sys.stderr)
             return 2
 
         cfg = AuditConfig(
-            health_sample_size = args.health_sample,
-            health_sample_seed = args.health_seed,
+            health_sample_size=args.health_sample,
+            health_sample_seed=args.health_seed,
         )
 
         # ── REPORT mode ───────────────────────────────────────────────────
         if args.mode == "report":
             print(f"[audit] Scanning dataset: {input_path}")
-            auditor  = DatasetAuditor(cfg)
+            auditor = DatasetAuditor(cfg)
             analyses = auditor.run(input_path)
             print(f"[audit] Records read: {len(analyses):,}")
 
             report = AuditReport(
-                analyses           = analyses,
-                cfg                = cfg,
-                input_path         = input_path,
-                report_dir         = report_dir,
-                health_sample_size = args.health_sample,
-                health_sample_seed = args.health_seed,
+                analyses=analyses,
+                cfg=cfg,
+                input_path=input_path,
+                report_dir=report_dir,
+                health_sample_size=args.health_sample,
+                health_sample_seed=args.health_seed,
             )
             report.write()
             return 0
@@ -1046,8 +1082,10 @@ class AEGFAuditCLI:
                 print("[error] --output is required for --mode clean", file=sys.stderr)
                 return 2
 
-            audit_report_path = Path(args.audit_report) if args.audit_report else (
-                report_dir / "aegf_audit_report.json"
+            audit_report_path = (
+                Path(args.audit_report)
+                if args.audit_report
+                else (report_dir / "aegf_audit_report.json")
             )
             if not audit_report_path.exists():
                 print(
@@ -1058,9 +1096,9 @@ class AEGFAuditCLI:
                 return 2
 
             cleaner = DatasetCleaner(
-                report_path = audit_report_path,
-                input_path  = input_path,
-                output_path = Path(args.output),
+                report_path=audit_report_path,
+                input_path=input_path,
+                output_path=Path(args.output),
             )
             cleaner.run()
             return 0

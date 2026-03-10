@@ -74,3 +74,13 @@ exclude_lines = [
     "raise NotImplementedError",
     "@abc.abstractmethod",
 ]
+
+# ----------------------------------------------------------------
+# Ruff — formatter and linter configuration.
+# ----------------------------------------------------------------
+
+[tool.ruff]
+# Exclude test fixtures with intentional syntax errors
+exclude = [
+    "tests/fixtures/python_samples/syntax_error.py",
+]

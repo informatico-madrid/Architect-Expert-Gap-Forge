@@ -57,7 +57,7 @@
 ### 4. API keys hardcodeadas en código fuente
 - **Archivos:** `src/factory/production_v11.py` (L65), `src/factory/agentic_gen.py` (L43), `src/research/generate_batch_distilabel.py` (L160), `blackwell-trainer/scripts/synthesize.py`, `blackwell-trainer/src/data/debug_synth.py`
 - **Violación:** §5.1 — Secretos y Configuración.
-- **Detalle:** `"sk-master-bunker-2026"` hardcoded en 19 ubicaciones del workspace.
+- **Detalle:** `"sk-master-bunker-2026"` fake no real api key. but must be renamed en 19 ubicaciones del workspace.
 - **Path a la excelencia:** Reemplazar con `os.getenv("AEGF_API_KEY", "")`. Crear `.env.example` con las keys necesarias. Adicionar chequeo al arranque si la key está vacía.
 
 ### 5. `production_v11.py` es un monolito de 2237 LOC con 8+ responsabilidades

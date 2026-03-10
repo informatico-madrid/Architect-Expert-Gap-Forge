@@ -12,11 +12,33 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-## Format: `[ID] [P?] [Story] Description`
+## Task Format
+
+```markdown
+- [ ] T001 [P] [US1] Task description
+  - **Do**: Step-by-step implementation instructions
+  - **Files**: src/module.py, tests/test_module.py
+  - **Done when**: Machine-checkable success criteria
+  - **Verify**: `pytest tests/test_module.py -v` (must exit 0)
+  - **Commit**: `feat(scope): description`
+```
+
+### Tags
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
+- **[US#]**: User story this task belongs to (e.g., US1, US2)
+- **[VERIFY]**: Quality checkpoint — delegated to QA review, not normal execution
+- **(depends on T###)**: Dependency on another task
+
+### Task Body Fields (REQUIRED for Ralph Loop)
+
+| Field | Purpose | Required |
+|-------|---------|----------|
+| **Do** | Step-by-step instructions for the agent | Yes |
+| **Files** | Exact list of files to create/modify | Yes |
+| **Done when** | Machine-checkable success criteria | Yes |
+| **Verify** | Command that must exit 0 to prove completion | Yes |
+| **Commit** | Exact git commit message | Yes |
 
 ## Path Conventions
 
@@ -49,8 +71,23 @@ description: "Task list template for feature implementation"
 **Purpose**: Project initialization and basic structure
 
 - [ ] T001 Create project structure per implementation plan
+  - **Do**: 1. Create directory structure 2. Add __init__.py files
+  - **Files**: src/__init__.py
+  - **Done when**: Directory structure exists and is importable
+  - **Verify**: `python -c "import src"`
+  - **Commit**: `chore: initialize project structure`
 - [ ] T002 Initialize [language] project with [framework] dependencies
+  - **Do**: 1. Update pyproject.toml with dependencies 2. Install
+  - **Files**: pyproject.toml, requirements.txt
+  - **Done when**: Dependencies resolve without errors
+  - **Verify**: `pip install -e . --dry-run`
+  - **Commit**: `chore: add project dependencies`
 - [ ] T003 [P] Configure linting and formatting tools
+  - **Do**: 1. Configure ruff in pyproject.toml 2. Run initial format
+  - **Files**: pyproject.toml
+  - **Done when**: ruff check passes with no errors
+  - **Verify**: `ruff check src/ && ruff format --check src/`
+  - **Commit**: `chore: configure linting and formatting`
 
 ---
 
@@ -70,6 +107,12 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T009 Setup environment configuration management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+
+- [ ] V001 [VERIFY] Foundation quality gate
+  - **Do**: Run full test suite and lint
+  - **Verify**: `pytest tests/ -x --tb=short && ruff check src/`
+  - **Done when**: All checks pass with exit code 0
+  - **Commit**: `chore: pass foundation quality checkpoint`
 
 ---
 
@@ -97,6 +140,12 @@ Examples of foundational tasks (adjust based on your project):
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
+- [ ] V002 [VERIFY] User Story 1 quality gate
+  - **Do**: Verify US1 implementation
+  - **Verify**: `pytest tests/ -x --tb=short && ruff check src/`
+  - **Done when**: All US1 tests pass, lint clean
+  - **Commit**: `chore(us1): pass user story 1 quality checkpoint`
+
 ---
 
 ## Phase 4: User Story 2 - [Title] (Priority: P2)
@@ -118,6 +167,12 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T023 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
+
+- [ ] V003 [VERIFY] User Story 2 quality gate
+  - **Do**: Verify US1 + US2 implementation
+  - **Verify**: `pytest tests/ -x --tb=short && ruff check src/`
+  - **Done when**: All tests pass, no regressions
+  - **Commit**: `chore(us2): pass user story 2 quality checkpoint`
 
 ---
 

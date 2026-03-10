@@ -3,13 +3,9 @@ services:
   x-axolotl-base: &axolotl-base
     image: ${AXOLOTL_IMAGE}
     user: "${USER_ID}:${GROUP_ID}"
-    privileged: true
     ipc: host
     shm_size: ${AEGF_SHM_SIZE}
     cpuset: ${CPU_SET}
-    ulimits:
-      memlock: -1
-      stack: 67108864
     volumes:
       - ${AEGF_PROJECT_ROOT}:/workspace/data_factory
       - ${AEGF_MODELS_DIR}:/models_dir
@@ -21,6 +17,9 @@ services:
       - WANDB_API_KEY=${AEGF_WANDB_API_KEY}
     deploy:
       resources:
+        limits:
+            cpus: '42'      # Limita el uso total a 10 núcleos lógicos
+            memory: 500G
         reservations:
           devices:
             - driver: nvidia
@@ -34,17 +33,23 @@ services:
   trainer:
     <<: *axolotl-base
     container_name: aegf_trainer
+    privileged: true
+    ulimits:
+      memlock: -1
+      stack: 67108864
     command: >
       bash -c "
       apt-get update && 
       export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True" &&
+      export OMP_NUM_THREADS=20 &&
+      export MKL_NUM_THREADS=20 &&
       accelerate launch 
       --num_processes=2 
       --num_machines=1 
       --mixed_precision=bf16 
       -m axolotl.cli.train /workspace/data_factory/configs/stage_4_training/axolotl/config.yaml &&
       sleep infinity
-      "services:
+      "
 
   # --- PREPROCESSING SERVICE ---
   preprocessor:
@@ -95,10 +100,7 @@ services:
       - AEGF_MERGE_CHECKPOINT=${AEGF_MERGE_CHECKPOINT:-final}
     command: >
       bash -c "
-      python3 -m axolotl.cli.merge_lora \
-      /workspace/data_factory/configs/stage_4_training/axolotl/config.yaml \
-      --lora_model_dir=/workspace/data_factory/data/outputs/checkpoint-$$AEGF_MERGE_CHECKPOINT \
-      --output_dir=/workspace/data_factory/data/merged_model_platinum \
-      --save_safetensors=True &&
-      echo '--- MERGE COMPLETO: Modelo guardado en data/merged_model_platinum ---'
+      CUDA_VISIBLE_DEVICES="" python3 -m axolotl.cli.merge_lora \
+      /workspace/data_factory/${AEGF_CONFIG_PATH} \
+      --lora_model_dir=${AEGF_CHECKPOINT_PATH}
       "

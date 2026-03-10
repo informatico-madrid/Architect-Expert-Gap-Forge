@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "nemo-curator": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "ada6f7ba88598ccdb873e66d729d2f2dea5b5f0ee05b97285dba394c3541eb04"
+    },
+    "qdrant-vector-search": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "7d759309b0c22b2d6097562d6d349fdac38cfc661fcfbe658f158444403310da"
+    },
+    "ralph-wiggum": {
+      "source": "fstandhartinger/ralph-wiggum",
+      "sourceType": "github",
+      "computedHash": "69e5dcb55497cc5f1ecfa1ec31c9cd9b110f528c1c721a5e1480f44638779a7d"
+    },
+    "vllm-deploy-docker": {
+      "source": "vllm-project/vllm-skills",
+      "sourceType": "github",
+      "computedHash": "6d59cfedeb3c8b861bb51a11cb56c417474fb75f6bc97fe2366a943af60aaf57"
+    }
+  }
+}

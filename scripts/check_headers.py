@@ -55,6 +55,7 @@ def git_py_files() -> List[str]:
         files = out.stdout.splitlines()
     except Exception:
         files = [str(p) for p in Path(".").rglob("*.py") if p.is_file()]
+
     def in_scope(p: str) -> bool:
         return any(p.startswith(pref) for pref in INCLUDE_PREFIXES) or ("/" not in p)
 
@@ -74,7 +75,9 @@ def check_file(path: str) -> Tuple[bool, List[str]]:
 
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--check", action="store_true", help="Comprobar y fallar si hay problemas")
+    parser.add_argument(
+        "--check", action="store_true", help="Comprobar y fallar si hay problemas"
+    )
     args = parser.parse_args(argv)
 
     files = git_py_files()
@@ -96,7 +99,9 @@ def main(argv: List[str] | None = None) -> int:
 # Copyright (c) 2026 Your Name <you@example.com>
 # SPDX-License-Identifier: Apache-2.0
 """)
-        print("Para corregir: añadir la cabecera a los ficheros afectados y volver a intentar.")
+        print(
+            "Para corregir: añadir la cabecera a los ficheros afectados y volver a intentar."
+        )
         return 1
 
     print("OK: Todas las cabeceras críticas están presentes.")

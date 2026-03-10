@@ -24,7 +24,9 @@ try:
         print("Dataset settings available")
         try:
             for f in settings.fields:
-                print(" - field:", getattr(f, 'name', str(f)), "type:", type(f).__name__)
+                print(
+                    " - field:", getattr(f, "name", str(f)), "type:", type(f).__name__
+                )
                 try:
                     print("    repr:", repr(f))
                 except Exception:
@@ -42,12 +44,17 @@ try:
     print("client.datasets returned:", type(ds2))
     try:
         # ds2 may be a Dataset object or a list/dict
-        if hasattr(ds2, 'settings'):
+        if hasattr(ds2, "settings"):
             for f in ds2.settings.fields:
-                print("client.datasets - field:", getattr(f, 'name', str(f)), "type:", type(f).__name__)
+                print(
+                    "client.datasets - field:",
+                    getattr(f, "name", str(f)),
+                    "type:",
+                    type(f).__name__,
+                )
         else:
-            print('client.datasets did not return settings')
+            print("client.datasets did not return settings")
     except Exception as e:
-        print('Error reading settings from client.datasets():', e)
+        print("Error reading settings from client.datasets():", e)
 except Exception as e:
-    print('client.datasets() error:', e)
+    print("client.datasets() error:", e)

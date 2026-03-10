@@ -26,6 +26,7 @@ Full dataset mode:
     --output data/synthetic/v11_distilled.jsonl \
     --min-think-chars 5000
 """
+
 from __future__ import annotations
 
 import argparse
@@ -65,6 +66,7 @@ BULLET_RE = re.compile(r"^\s*[-*•]\s+", re.MULTILINE)
 # Similarity helpers
 # ---------------------------------------------------------------------------
 
+
 def _normalize_for_compare(text: str) -> str:
     """Lowercase, collapse whitespace, strip punctuation for comparison."""
     t = text.strip().lower()
@@ -88,16 +90,30 @@ def _similarity(a: str, b: str) -> float:
 def _is_code_block(paragraph: str) -> bool:
     """Check if paragraph is predominantly a code block."""
     stripped = paragraph.strip()
-    return stripped.startswith("```") or stripped.startswith("def ") or stripped.startswith("class ")
+    return (
+        stripped.startswith("```")
+        or stripped.startswith("def ")
+        or stripped.startswith("class ")
+    )
 
 
 def _contains_hardware_or_file_analysis(paragraph: str) -> bool:
     """Detect paragraphs that specifically analyze hardware deps or filenames."""
     keywords = [
-        r"\.py\b", r"\.yaml\b", r"\.json\b", r"manifest\.json",
-        r"device_class", r"hardware", r"firmware", r"sensor\.",
-        r"platform_schema", r"config_entry", r"runtime_data",
-        r"webhook_id", r"entry\.data\[", r"hass\.data\[",
+        r"\.py\b",
+        r"\.yaml\b",
+        r"\.json\b",
+        r"manifest\.json",
+        r"device_class",
+        r"hardware",
+        r"firmware",
+        r"sensor\.",
+        r"platform_schema",
+        r"config_entry",
+        r"runtime_data",
+        r"webhook_id",
+        r"entry\.data\[",
+        r"hass\.data\[",
     ]
     text_lower = paragraph.lower()
     matches = sum(1 for kw in keywords if re.search(kw, text_lower))
@@ -108,24 +124,27 @@ def _contains_hardware_or_file_analysis(paragraph: str) -> bool:
 # Core distillation strategies
 # ---------------------------------------------------------------------------
 
-def _deduplicate_paragraphs(paragraphs: List[str], sim_threshold: float = 0.85) -> List[str]:
+
+def _deduplicate_paragraphs(
+    paragraphs: List[str], sim_threshold: float = 0.85
+) -> List[str]:
     """Remove near-duplicate paragraphs, keeping the LAST (most refined) occurrence.
-    
+
     Strategy: For each paragraph, if a later paragraph is ≥sim_threshold similar,
     the earlier one is marked as redundant. This preserves the final refined version.
     """
     n = len(paragraphs)
     keep = [True] * n
-    
+
     # Build normalized keys for fast comparison
     norm_keys = [_normalize_for_compare(p[:300]) for p in paragraphs]
-    
+
     for i in range(n):
         if not keep[i]:
             continue
         if len(paragraphs[i].strip()) < 30:
             continue  # skip tiny paragraphs
-            
+
         for j in range(i + 1, n):
             if not keep[j]:
                 continue
@@ -138,7 +157,7 @@ def _deduplicate_paragraphs(paragraphs: List[str], sim_threshold: float = 0.85) 
                 if sim >= sim_threshold:
                     keep[i] = False  # drop earlier
                     break
-    
+
     return [p for p, k in zip(paragraphs, keep) if k]
 
 
@@ -147,7 +166,7 @@ def _deduplicate_code_blocks(think_text: str) -> str:
     code_blocks = list(CODE_FENCE_RE.finditer(think_text))
     if len(code_blocks) < 2:
         return think_text
-    
+
     # Group by normalized content
     block_groups: Dict[str, List[re.Match]] = {}
     for m in code_blocks:
@@ -155,7 +174,7 @@ def _deduplicate_code_blocks(think_text: str) -> str:
         if len(key) < 20:
             continue  # Skip tiny code blocks
         block_groups.setdefault(key, []).append(m)
-    
+
     # Find blocks to remove (all but last in each group)
     remove_spans = []
     for key, matches in block_groups.items():
@@ -165,17 +184,17 @@ def _deduplicate_code_blocks(think_text: str) -> str:
                 sim = _similarity(earlier.group(1), matches[-1].group(1))
                 if sim >= 0.80:
                     remove_spans.append((earlier.start(), earlier.end()))
-    
+
     if not remove_spans:
         return think_text
-    
+
     # Sort by position descending to remove from end first
     remove_spans.sort(key=lambda x: x[0], reverse=True)
     result = think_text
     for start, end in remove_spans:
         # Remove the code block and any trailing whitespace
         result = result[:start].rstrip() + "\n\n" + result[end:].lstrip()
-    
+
     return result
 
 
@@ -184,20 +203,22 @@ def _deduplicate_bullet_items(paragraph: str) -> str:
     lines = paragraph.split("\n")
     seen_items = set()
     result_lines = []
-    
+
     for line in lines:
         stripped = line.strip()
         # Check if it's a bullet/numbered item
-        is_bullet = bool(re.match(r"^\s*[-*•]\s+", line)) or bool(re.match(r"^\s*\d+[\.\)]\s+", line))
-        
+        is_bullet = bool(re.match(r"^\s*[-*•]\s+", line)) or bool(
+            re.match(r"^\s*\d+[\.\)]\s+", line)
+        )
+
         if is_bullet:
             normalized = _normalize_for_compare(stripped)
             if normalized in seen_items:
                 continue  # skip duplicate bullet
             seen_items.add(normalized)
-        
+
         result_lines.append(line)
-    
+
     return "\n".join(result_lines)
 
 
@@ -207,7 +228,7 @@ def _collapse_consecutive_similar_lines(text: str, max_consecutive: int = 2) -> 
     result = []
     prev_norm = None
     consecutive_count = 0
-    
+
     for line in lines:
         norm = _normalize_for_compare(line)
         if norm == prev_norm and len(norm) > 15:
@@ -219,13 +240,15 @@ def _collapse_consecutive_similar_lines(text: str, max_consecutive: int = 2) -> 
             consecutive_count = 1
             prev_norm = norm
             result.append(line)
-    
+
     return "\n".join(result)
 
 
-def _prune_iterative_revision_cycles(paragraphs: List[str], sim_threshold: float = 0.75) -> List[str]:
+def _prune_iterative_revision_cycles(
+    paragraphs: List[str], sim_threshold: float = 0.75
+) -> List[str]:
     """Detect and collapse iterative 'revision cycles' where the model restarts analysis.
-    
+
     Pattern: numbered items that revisit the same analysis topics. We keep the last
     complete cycle and remove earlier ones.
     """
@@ -236,10 +259,10 @@ def _prune_iterative_revision_cycles(paragraphs: List[str], sim_threshold: float
         # A cycle might restart with "1." or similar low numbers after high ones
         if re.match(r"^\s*1[\.\)]\s+", stripped):
             cycle_starts.append(i)
-    
+
     if len(cycle_starts) < 2:
         return paragraphs  # no cycles detected
-    
+
     # Check if cycles are similar (compare content of first cycle with subsequent)
     # If cycles are similar enough, keep only the last one
     cycles = []
@@ -247,28 +270,28 @@ def _prune_iterative_revision_cycles(paragraphs: List[str], sim_threshold: float
         end = cycle_starts[ci + 1] if ci + 1 < len(cycle_starts) else len(paragraphs)
         cycle_text = "\n".join(paragraphs[start:end])
         cycles.append((start, end, cycle_text))
-    
+
     if len(cycles) < 2:
         return paragraphs
-    
+
     # Compare each cycle with the last one
     last_cycle_text = cycles[-1][2]
     redundant_ranges = []
-    
+
     for cycle_start, cycle_end, cycle_text in cycles[:-1]:
         sim = _similarity(cycle_text, last_cycle_text)
         if sim >= sim_threshold:
             redundant_ranges.append((cycle_start, cycle_end))
-    
+
     if not redundant_ranges:
         return paragraphs
-    
+
     # Remove redundant cycles
     keep = [True] * len(paragraphs)
     for start, end in redundant_ranges:
         for i in range(start, end):
             keep[i] = False
-    
+
     return [p for p, k in zip(paragraphs, keep) if k]
 
 
@@ -276,9 +299,10 @@ def _prune_iterative_revision_cycles(paragraphs: List[str], sim_threshold: float
 # Main distillation pipeline
 # ---------------------------------------------------------------------------
 
+
 def distill_think_block(think_text: str) -> Tuple[str, Dict[str, Any]]:
     """Apply all distillation strategies to a think block.
-    
+
     Returns:
         (distilled_text, stats_dict) where stats_dict contains metrics about what was done.
     """
@@ -287,58 +311,68 @@ def distill_think_block(think_text: str) -> Tuple[str, Dict[str, Any]]:
         "original_chars": original_len,
         "strategies_applied": [],
     }
-    
+
     working = think_text
-    
+
     # Strategy 1: Collapse consecutive duplicate lines
     before = len(working)
     working = _collapse_consecutive_similar_lines(working, max_consecutive=2)
     if len(working) < before:
-        stats["strategies_applied"].append(f"consecutive_line_collapse: -{before - len(working)} chars")
-    
+        stats["strategies_applied"].append(
+            f"consecutive_line_collapse: -{before - len(working)} chars"
+        )
+
     # Strategy 2: Deduplicate code blocks (keep last)
     before = len(working)
     working = _deduplicate_code_blocks(working)
     if len(working) < before:
-        stats["strategies_applied"].append(f"code_block_dedup: -{before - len(working)} chars")
-    
+        stats["strategies_applied"].append(
+            f"code_block_dedup: -{before - len(working)} chars"
+        )
+
     # Strategy 3: Split into paragraphs and deduplicate
     paragraphs = [p for p in working.split("\n\n") if p.strip()]
-    
+
     # Strategy 3a: Deduplicate bullet items within each paragraph
     before_total = sum(len(p) for p in paragraphs)
     paragraphs = [_deduplicate_bullet_items(p) for p in paragraphs]
     after_total = sum(len(p) for p in paragraphs)
     if after_total < before_total:
-        stats["strategies_applied"].append(f"bullet_dedup: -{before_total - after_total} chars")
-    
+        stats["strategies_applied"].append(
+            f"bullet_dedup: -{before_total - after_total} chars"
+        )
+
     # Strategy 3b: Prune iterative revision cycles
     before_count = len(paragraphs)
     paragraphs = _prune_iterative_revision_cycles(paragraphs, sim_threshold=0.70)
     if len(paragraphs) < before_count:
-        stats["strategies_applied"].append(f"revision_cycle_prune: -{before_count - len(paragraphs)} paragraphs")
-    
+        stats["strategies_applied"].append(
+            f"revision_cycle_prune: -{before_count - len(paragraphs)} paragraphs"
+        )
+
     # Strategy 3c: Paragraph-level deduplication (keep last)
     before_count = len(paragraphs)
     paragraphs = _deduplicate_paragraphs(paragraphs, sim_threshold=0.82)
     if len(paragraphs) < before_count:
-        stats["strategies_applied"].append(f"paragraph_dedup: -{before_count - len(paragraphs)} paragraphs")
-    
+        stats["strategies_applied"].append(
+            f"paragraph_dedup: -{before_count - len(paragraphs)} paragraphs"
+        )
+
     # Reassemble
     working = "\n\n".join(paragraphs)
-    
+
     # Final cleanup: remove excessive blank lines
     working = re.sub(r"\n{3,}", "\n\n", working)
-    
+
     stats["distilled_chars"] = len(working)
     stats["reduction_pct"] = round((1 - len(working) / max(1, original_len)) * 100, 1)
-    
+
     return working, stats
 
 
 def extract_think_and_rest(content: str) -> Tuple[Optional[str], Optional[str]]:
     """Split assistant content into (think_text, rest_after_close_tag).
-    
+
     The think block has NO opening <think> tag, but has a closing </think>.
     """
     idx = content.lower().find("</think>")
@@ -349,33 +383,35 @@ def extract_think_and_rest(content: str) -> Tuple[Optional[str], Optional[str]]:
     return think_text, rest
 
 
-def distill_record(rec: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+def distill_record(
+    rec: Dict[str, Any],
+) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
     """Distill a single record's think block.
-    
+
     Returns:
         (modified_record, distillation_info) or (original_record, None) if not applicable.
     """
     conv = rec.get("conversation")
     if not isinstance(conv, list):
         return rec, None
-    
+
     modified = False
     info = None
-    
+
     for mi, m in enumerate(conv):
         if not (isinstance(m, dict) and m.get("role") == "assistant"):
             continue
         content = m.get("content", "")
         if not isinstance(content, str):
             continue
-        
+
         think_text, rest = extract_think_and_rest(content)
         if think_text is None or len(think_text) < 100:
             continue
-        
+
         # SACRED CONSTRAINT: rest (after </think>) is never modified
         distilled, stats = distill_think_block(think_text)
-        
+
         if stats["reduction_pct"] > 0:
             # Rebuild content: distilled think + original rest (untouched)
             new_content = distilled + rest
@@ -400,7 +436,7 @@ def distill_record(rec: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict[s
                         rec["filter_text"] = ft_distilled + ft_rest
                 elif ft.startswith(think_text[:200]):
                     # Case A: replace the reasoning prefix with the distilled version
-                    suffix = ft[len(think_text):]
+                    suffix = ft[len(think_text) :]
                     rec["filter_text"] = distilled + suffix
 
             info = {
@@ -411,7 +447,7 @@ def distill_record(rec: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict[s
                 "strategies": stats["strategies_applied"],
             }
         break  # only process first assistant message
-    
+
     return rec, info
 
 
@@ -419,20 +455,38 @@ def distill_record(rec: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Dict[s
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Thought Distillation for SFT dataset")
-    parser.add_argument("--input", "-i", required=True,
-                        help="Input JSONL dataset")
-    parser.add_argument("--output", "-o", default=None,
-                        help="Output distilled JSONL (full mode). If omitted, no full output.")
-    parser.add_argument("--health-report", default=None,
-                        help="Health audit report JSON (to prioritise long samples)")
-    parser.add_argument("--test-report", default="data/reports/distillation_test_report.json",
-                        help="Output test report for dev samples")
-    parser.add_argument("--min-think-chars", type=int, default=5000,
-                        help="Only distill samples with think_length >= this value")
-    parser.add_argument("--dev-samples", type=int, default=5,
-                        help="Number of development samples to process in test mode")
+    parser.add_argument("--input", "-i", required=True, help="Input JSONL dataset")
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Output distilled JSONL (full mode). If omitted, no full output.",
+    )
+    parser.add_argument(
+        "--health-report",
+        default=None,
+        help="Health audit report JSON (to prioritise long samples)",
+    )
+    parser.add_argument(
+        "--test-report",
+        default="data/reports/distillation_test_report.json",
+        help="Output test report for dev samples",
+    )
+    parser.add_argument(
+        "--min-think-chars",
+        type=int,
+        default=5000,
+        help="Only distill samples with think_length >= this value",
+    )
+    parser.add_argument(
+        "--dev-samples",
+        type=int,
+        default=5,
+        help="Number of development samples to process in test mode",
+    )
     args = parser.parse_args(argv)
 
     # ---- Phase 1: Load health report to identify targets ----
@@ -443,7 +497,9 @@ def main(argv: List[str] | None = None) -> int:
         for s in hr.get("suspects", []):
             if s.get("think_length", 0) >= args.min_think_chars:
                 target_lines.add(s["line"])
-        print(f"[INFO] Health report loaded: {len(target_lines)} suspects with think >= {args.min_think_chars}")
+        print(
+            f"[INFO] Health report loaded: {len(target_lines)} suspects with think >= {args.min_think_chars}"
+        )
 
     # ---- Phase 2: Scan dataset, collect all records with long think blocks ----
     print("[INFO] Scanning dataset for long think blocks...")
@@ -457,10 +513,10 @@ def main(argv: List[str] | None = None) -> int:
                 rec = json.loads(line)
             except Exception:
                 continue
-            
+
             rid = rec.get("id", f"line_{i}")
             conv = rec.get("conversation", [])
-            
+
             for m in conv:
                 if isinstance(m, dict) and m.get("role") == "assistant":
                     content = m.get("content", "")
@@ -470,13 +526,15 @@ def main(argv: List[str] | None = None) -> int:
                             candidates.append((i, rid, idx, line))
                     break
 
-    print(f"[INFO] Found {len(candidates)} records with think >= {args.min_think_chars} chars")
+    print(
+        f"[INFO] Found {len(candidates)} records with think >= {args.min_think_chars} chars"
+    )
 
     # Sort by think_length descending
     candidates.sort(key=lambda x: x[2], reverse=True)
 
     # ---- Phase 3: Select dev samples (top N by length) ----
-    dev_candidates = candidates[:args.dev_samples]
+    dev_candidates = candidates[: args.dev_samples]
 
     print(f"\n[INFO] Processing {len(dev_candidates)} development samples:")
     for line_num, rid, tlen, _ in dev_candidates:
@@ -492,12 +550,20 @@ def main(argv: List[str] | None = None) -> int:
         if info:
             # Extract think text for comparison
             original_think, _ = extract_think_and_rest(
-                next(m["content"] for m in rec["conversation"] if m.get("role") == "assistant")
+                next(
+                    m["content"]
+                    for m in rec["conversation"]
+                    if m.get("role") == "assistant"
+                )
             )
             distilled_think, _ = extract_think_and_rest(
-                next(m["content"] for m in distilled_rec["conversation"] if m.get("role") == "assistant")
+                next(
+                    m["content"]
+                    for m in distilled_rec["conversation"]
+                    if m.get("role") == "assistant"
+                )
             )
-            
+
             result = {
                 "sample_id": rid,
                 "line": line_num,
@@ -511,25 +577,29 @@ def main(argv: List[str] | None = None) -> int:
                 },
             }
             test_results.append(result)
-            print(f"  [OK] {rid}: {info['original_think_length']} -> {info['distilled_think_length']} "
-                  f"({info['reduction_pct']}% reduction)")
+            print(
+                f"  [OK] {rid}: {info['original_think_length']} -> {info['distilled_think_length']} "
+                f"({info['reduction_pct']}% reduction)"
+            )
             for s in info["strategies"]:
                 print(f"       - {s}")
         else:
-            test_results.append({
-                "sample_id": rid,
-                "line": line_num,
-                "original_think_length": tlen,
-                "distilled_think_length": tlen,
-                "reduction_pct": 0.0,
-                "strategies_applied": [],
-                "comparison": {},
-            })
+            test_results.append(
+                {
+                    "sample_id": rid,
+                    "line": line_num,
+                    "original_think_length": tlen,
+                    "distilled_think_length": tlen,
+                    "reduction_pct": 0.0,
+                    "strategies_applied": [],
+                    "comparison": {},
+                }
+            )
             print(f"  [SKIP] {rid}: no reduction applicable")
 
     # ---- Phase 5: Write test report ----
     os.makedirs(os.path.dirname(args.test_report), exist_ok=True)
-    
+
     report = {
         "mode": "development_test",
         "input_file": args.input,
@@ -539,10 +609,16 @@ def main(argv: List[str] | None = None) -> int:
         "total_candidates_in_dataset": len(candidates),
         "summary": {
             "avg_reduction_pct": round(
-                sum(r["reduction_pct"] for r in test_results) / max(1, len(test_results)), 1
+                sum(r["reduction_pct"] for r in test_results)
+                / max(1, len(test_results)),
+                1,
             ),
-            "max_reduction_pct": max((r["reduction_pct"] for r in test_results), default=0),
-            "min_reduction_pct": min((r["reduction_pct"] for r in test_results), default=0),
+            "max_reduction_pct": max(
+                (r["reduction_pct"] for r in test_results), default=0
+            ),
+            "min_reduction_pct": min(
+                (r["reduction_pct"] for r in test_results), default=0
+            ),
         },
         "samples": test_results,
     }
@@ -556,13 +632,18 @@ def main(argv: List[str] | None = None) -> int:
     # ---- Phase 6 (optional): Full dataset distillation ----
     if args.output:
         print(f"\n[INFO] Full distillation mode -> {args.output}")
-        os.makedirs(os.path.dirname(args.output) if os.path.dirname(args.output) else ".", exist_ok=True)
-        
+        os.makedirs(
+            os.path.dirname(args.output) if os.path.dirname(args.output) else ".",
+            exist_ok=True,
+        )
+
         total = 0
         distilled_count = 0
-        
-        with open(args.input, "r", encoding="utf-8") as fin, \
-             open(args.output, "w", encoding="utf-8") as fout:
+
+        with (
+            open(args.input, "r", encoding="utf-8") as fin,
+            open(args.output, "w", encoding="utf-8") as fout,
+        ):
             for i, line in enumerate(fin, start=1):
                 if not line.strip():
                     continue
@@ -571,9 +652,9 @@ def main(argv: List[str] | None = None) -> int:
                 except Exception:
                     fout.write(line)
                     continue
-                
+
                 total += 1
-                
+
                 # Check if this record needs distillation
                 needs_distill = False
                 conv = rec.get("conversation", [])
@@ -585,7 +666,7 @@ def main(argv: List[str] | None = None) -> int:
                             if idx >= args.min_think_chars:
                                 needs_distill = True
                         break
-                
+
                 if needs_distill:
                     distilled_rec, info = distill_record(rec)
                     fout.write(json.dumps(distilled_rec, ensure_ascii=False) + "\n")
@@ -593,8 +674,10 @@ def main(argv: List[str] | None = None) -> int:
                         distilled_count += 1
                 else:
                     fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
-        
-        print(f"[DONE] Full distillation complete: {distilled_count}/{total} records modified")
+
+        print(
+            f"[DONE] Full distillation complete: {distilled_count}/{total} records modified"
+        )
         print(f"[DONE] Output: {args.output}")
 
     return 0

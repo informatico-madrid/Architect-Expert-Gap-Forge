@@ -48,12 +48,15 @@ record = rg.Record(
     fields={
         "conversation": [
             {"role": "user", "content": "Hola, genera un ejemplo simple"},
-            {"role": "assistant", "content": "Aquí tienes:\n```python\nprint(\"Hola Mundo\")\n```"}
+            {
+                "role": "assistant",
+                "content": 'Aquí tienes:\n```python\nprint("Hola Mundo")\n```',
+            },
         ],
         "instruction": "Genera un ejemplo",
-        "context": ""
+        "context": "",
     },
-    metadata={"debug": True}
+    metadata={"debug": True},
 )
 
 print("DEBUG: Logging record")

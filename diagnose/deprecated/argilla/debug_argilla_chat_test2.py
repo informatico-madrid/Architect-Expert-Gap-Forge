@@ -23,20 +23,22 @@ dataset_name = f"debug_chatfield2_{uuid.uuid4().hex[:8]}"
 
 settings = rg.Settings(
     fields=[
-        rg.ChatField(name="conversation", title="Conversación (multi-turn)", use_markdown=True),
+        rg.ChatField(
+            name="conversation", title="Conversación (multi-turn)", use_markdown=True
+        ),
         rg.TextField(name="instruction", title="Instruction", use_markdown=True),
         rg.TextField(name="thought_extracted", title="Think", use_markdown=True),
         rg.TextField(name="code_extracted", title="Code", use_markdown=True),
         rg.TextField(name="context", title="Context", use_markdown=True),
     ],
     questions=[
-        rg.RatingQuestion(name="quality", title="Quality", values=[1,2,3,4,5]),
+        rg.RatingQuestion(name="quality", title="Quality", values=[1, 2, 3, 4, 5]),
         rg.TextQuestion(name="notes", title="Notes", use_markdown=True),
     ],
     metadata=[
         rg.FloatMetadataProperty(name="ldi_score", title="LDI Score"),
-        rg.IntegerMetadataProperty(name="code_tokens", title="Code Tokens")
-    ]
+        rg.IntegerMetadataProperty(name="code_tokens", title="Code Tokens"),
+    ],
 )
 
 print("DEBUG2: Creating dataset", dataset_name)
@@ -58,14 +60,17 @@ record = rg.Record(
     fields={
         "conversation": [
             {"role": "user", "content": "Hola, genera un ejemplo simple"},
-            {"role": "assistant", "content": "Aquí tienes:\n```python\nprint(\"Hola Mundo\")\n```"}
+            {
+                "role": "assistant",
+                "content": 'Aquí tienes:\n```python\nprint("Hola Mundo")\n```',
+            },
         ],
         "instruction": "Genera un ejemplo",
         "thought_extracted": "pensamiento...",
-        "code_extracted": "print(\"Hola\")",
-        "context": ""
+        "code_extracted": 'print("Hola")',
+        "context": "",
     },
-    metadata={"ldi_score": 0.5, "code_tokens": 5}
+    metadata={"ldi_score": 0.5, "code_tokens": 5},
 )
 
 print("DEBUG2: Logging record")

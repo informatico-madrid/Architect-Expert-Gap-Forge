@@ -1,30 +1,50 @@
-# Project Constitution — Architectural & Coding Rules (AEGF)
+# Architect-Expert-Gap-Forge (AEGF) Constitution
 
-This document records the conventions, architectural patterns, toolchain and governance that are actively enforced by the repository at the time of extraction. It is derived from in-repo artefacts (notably `AGENTS.md`, `.github/copilot-instructions.md`, `src/` modules and `configs/`). Use this as the canonical, machine-readable summary of "how we work".
+> AEGF is a high-performance pipeline designed to solve the **Knowledge Cutoff problem** in Large Language Models. While frontier models are excellent generalists, they often hallucinate or fail when dealing with rapidly evolving APIs, legacy-to-modern migrations, or domain-specific architectures (e.g., Home Assistant 2026 standards).
 
-## Purpose
+## Version
+1.0.0
 
+## 🔍 Context Detection
+
+### Context A: Ralph Loop (Implementation Mode)
+
+You are in a Ralph loop if:
+- Started by `ralph-loop.sh`
+- Prompt mentions "implement spec"
+- A `.ralph/state.json` exists and is active
+
+**In this mode:**
+- Focus on implementation of the CURRENT task (from tasks.md)
+- Complete ALL acceptance criteria in the task's **Done when** field
+- Run the **Verify** command to confirm completion
+- Mark the task as `[x]` in tasks.md
+- Append progress to `progress.txt`
+- Output `TASK_COMPLETE` when current task is verified
+- Output `ALL_TASKS_COMPLETE` when all tasks in tasks.md are done
+- NEVER output completion signals unless the task genuinely passes verification
+
+### Context B: Interactive Chat
+
+When not in a Ralph loop:
+- Be helpful and conversational
+- Create specs with `/speckit.specify`
+
+---
+
+## Core Principles
+
+### I. Purpose
 - Capture the project's implicit and explicit rules so tooling and contributors can be consistent.
 - Describe the required developer & CI checks that must run before code is staged or merged.
 
-## Technology Stack (observed)
+### II. Testing & Coverage
 
-- **Language:** Python 3.12+
-- **Core libs:** PyYAML, pydantic, requests, python-dotenv, tqdm
-- **Optional/infra:** google-genai (Gemini SDK), vLLM backend (AEGF_VLLM_API_URL), NeMo components (optional imports)
-- **QA & formatting:** pytest, pytest-cov, ruff (formatter), pyright (type checking in CI)
+- Unit tests and integration tests are required for new modules. Use `pytest` and typed fixtures in `tests/`.
+- Coverage requirements: CI expects >= 90% coverage for tracked modules (`src/audit`, `src/utils`), enforced by `make coverage` settings.
+- Avoid `# pragma: no cover` except for unavoidable boilerplate and document any exception.
 
-## High-level Architecture & Pipeline
-
-- Pipeline stages (implemented): Discovery → Factory → Curation → Training → Quality Gate (Audit) → Merger.
-- Stage code locations under `src/`:
-  - `src/discovery/` — ingestion & processor
-  - `src/factory/` — synthetic data generation (e.g. `production_v11.py`)
-  - `src/curation/` — optional NeMo-based curation
-  - `src/audit/` — evaluation pipeline, inference router, prompt manager
-  - `src/utils/` — shared helpers (e.g. `doc_loader.py`)
-
-## Coding Conventions (enforced / expected)
+### III. Coding Conventions (enforced / expected)
 
 - **Strict typing:** all public functions and methods must be fully annotated. Use `TypedDict`, `@dataclass(slots=True, frozen=True)` and `pydantic` models for structured data.
 - **Immutability by default:** data records should be frozen dataclasses or immutable models unless there is an explicit lifecycle reason to mutate.
@@ -33,51 +53,99 @@ This document records the conventions, architectural patterns, toolchain and gov
 - **Concurrency:** async code uses structured concurrency (`asyncio.TaskGroup`) when appropriate; wrap blocking I/O in `asyncio.to_thread()`.
 - **Error handling:** explicit exceptions only; no bare `except: pass`. Do not use `SystemExit` for flow-control.
 
-## Patterns & Design Constraints
+### IV. Patterns & Design Constraints
 
 - **Strategy + Router:** inference backends are behind a strategy interface and selected by a router (see `src/audit/inference.py`).
 - **Prompt externalization:** all prompt templates live under `configs/` and are formatted by `PromptManager` (`src/audit/prompt_manager.py`).
 - **Plural / batch operations favored:** batch generation and persistence rather than record-by-record operations.
 - **SRP & module size:** modules should be small and single-responsibility; prefer extraction to `src/utils/` for cross-cutting concerns.
 
-## Testing & Coverage
+### V. Repository & CI Governance
 
-- Unit tests and integration tests are required for new modules. Use `pytest` and typed fixtures in `tests/`.
-- Coverage requirements: CI expects >= 90% coverage for tracked modules (`src/audit`, `src/utils`), enforced by `make coverage` settings.
-- Avoid `# pragma: no cover` except for unavoidable boilerplate and document any exception.
-
-## Repository & CI Governance
-
-- **Staging policy:** files may be created/edited, but staging/committing requires explicit human approval.
 - **Header policy for new source files:** Python source files must include the project header (shebang, project id `Architect-Expert-Gap-Forge (AEGF)`, copyright, SPDX license); CI checks headers with `scripts/check_headers.py --check`.
-- **Commit message style:** Conventional Commits required for proposed commit messages (type(scope?): subject).
 
-## Data & Prompts
-
-- Master documents (single source truth) live under `data/Gap/` and are required by `src/utils/doc_loader.py` (the loader raises if missing).
-- Prompt templates are stored under `configs/stage_*` (notably `stage_5_evaluation`) and loaded by `PromptManager`.
-- Default data exchange format is JSONL for datasets and synthetic outputs (`data/synthetic/`, `outputs/`).
-
-## External Integrations & Backends
-
-- **vLLM**: default inference endpoint configured via `AEGF_VLLM_API_URL` (default `http://localhost:8000/v1`).
-- **Gemini (google-genai)**: chosen only when the `google-genai` package is present *and* `GOOGLE_API_KEY` is set.
-- **NeMo Curator & NeMo Guardrails:** optional integrations guarded by try/except; do not break core flows when absent.
-
-## Security & Secrets
+### VI Security & Secrets
 
 - Never store credentials in source. Use environment variables and `.example` files for config templates.
 - CI uses local mocks for external services; avoid live external calls during CI.
 
-## Agent / Automation Rules (observed)
-
-- Agents must announce planned edits via the repository todo process and wait for human confirmation before staging files.
-- Automation must not alter remote repository history. `git commit` and `git push` are forbidden without explicit human approval.
-
-## Non-negotiables (observed constraints)
+### VII Non-negotiables (observed constraints)
 
 - DRY: duplicate logic must be extracted to shared modules.
 - No silent failures: parse or validation errors must raise explicit exceptions.
 
+### VIII. Simplicity & YAGNI
+Build exactly what's needed, nothing more.
+
 ---
-This constitution is an extraction of the current repo state and should be updated when the codebase rules evolve. For authoritative source-of-truth see `AGENTS.md` and `.github/copilot-instructions.md` in the repository root.
+
+## Autonomy Configuration
+
+### YOLO Mode: [ENABLED]
+### Git Autonomy: [ENABLED]
+
+---
+
+## Ralph Loop Scripts (SpecKit Integrated)
+
+```bash
+# Execute a feature spec (primary usage)
+.ralph/ralph-loop.sh specs/001-stage1-discovery
+
+# With options
+.ralph/ralph-loop.sh specs/001-feature --max 50 --review-every 3
+
+# Resume interrupted session
+.ralph/ralph-loop.sh --resume
+
+# Use goose multi-model instead of claude
+RALPH_AGENT=goose .ralph/ralph-loop.sh specs/001-feature
+```
+
+### State management scripts
+```bash
+# Parse tasks.md → JSON counts
+python3 .ralph/scripts/count_tasks.py specs/001-stage1-discovery/tasks.md
+
+# Full per-task detail
+python3 .ralph/scripts/count_tasks.py specs/001-stage1-discovery/tasks.md --full
+
+# Initialize/update state
+python3 .ralph/scripts/merge_state.py .ralph/state.json --init specs/001-stage1-discovery/tasks.md
+python3 .ralph/scripts/merge_state.py .ralph/state.json --set taskIndex=10
+```
+
+### Completion signals
+- `TASK_COMPLETE` — current task verified and done
+- `ALL_TASKS_COMPLETE` — all tasks in tasks.md marked [x]
+
+### Three-layer verification
+1. **Contradiction detection** — rejects "cannot complete" + TASK_COMPLETE
+2. **Signal verification** — agent must emit explicit signal
+3. **Artifact review** — periodic reviewer checks code vs plan
+
+## The Magic Word
+
+When user says "Ralph, start working", provide the terminal command.
+
+---
+
+**Created:** 10/03/2026
+
+
+### 6. Create CLAUDE.md
+
+Same content as AGENTS.md.
+
+---
+
+## You're Ready!
+
+1. Create specs with `/speckit.specify [feature description]`
+2. Run `./scripts/ralph-loop.sh` to start building
+
+See the full [README](README.md) for detailed usage.
+
+# Project Constitution — Architectural & Coding Rules (AEGF)
+
+This document records the conventions, architectural patterns, toolchain and governance that are actively enforced by the repository at the time of extraction. It is derived from in-repo artefacts (notably `AGENTS.md`, `.github/copilot-instructions.md`, `src/` modules and `configs/`). Use this as the canonical, machine-readable summary of "how we work".
