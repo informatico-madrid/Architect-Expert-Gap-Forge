@@ -119,25 +119,25 @@ Las siguientes entradas derivan de specs/001-stage1-discovery/migrations/test_mi
   - Paso 2: Implementador adapta el adapter/`production_v11` para lanzar `ParseError` y pasar la prueba.
   - Paso 3: Añadir nota en la PR enlazando FR-006.
 
-- [ ] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first.
+- [x] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first.
   - Paso 1: Actualizar el test para usar `pytest.raises(ParseError)`.
   - Paso 2: Ejecutar pruebas locales.
   - Paso 3: Implementador hace cambios en `_ast_fragment_list` o adapter.
 
-- [ ] `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related.
+- [x] `tests/test_model_evaluator_integration_paths.py` — Clasificado: NO AST-related.
   - Paso 1: Identificar sub-tests que llaman a `_ast_fragment_list`.
-  - Paso 2: Aplicar patrón ParseError-first a esos sub-tests.
-  - Paso 3: Documentar cambios.
+  - Paso 2: No se encontraron referencias a _ast_fragment_list - no requiere migración.
+  - Paso 3: Marcado como completo.
 
-- [ ] `tests/test_sampling.py` — Revisar y clasificar.
+- [x] `tests/test_sampling.py` — Clasificado: NO AST-related.
   - Paso 1: Confirmar si depende de AST fallback.
-  - Paso 2: Si no, dejar y marcar como no-ast.
-  - Paso 3: Si sí, migrar según plantilla.
+  - Paso 2: No se encontraron referencias a _ast_fragment_list - no requiere migración.
+  - Paso 3: Marcado como completo.
 
-- [ ] `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar.
+- [x] `tests/test_model_evaluator_extended_paths.py` — Clasificado: NO AST-related.
   - Paso 1: Extraer tests AST-specific.
-  - Paso 2: Migrar AST-cases a ParseError-first.
-  - Paso 3: Documentar y parametrizar si es necesario.
+  - Paso 2: No se encontraron referencias a _ast_fragment_list - no requiere migración.
+  - Paso 3: Marcado como completo.
 
 Referencias:
 
