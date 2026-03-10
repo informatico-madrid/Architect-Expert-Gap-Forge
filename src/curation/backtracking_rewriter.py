@@ -1009,6 +1009,18 @@ async def apply_backtracking_rewrite(
     # Replace think block, preserving sacred code
     new_content = replace_think_block(assistant, new_think)
 
+    # CRITICAL: Verify sacred constraint - code after </think> must be byte-identical
+    # to the original. If not, restore from original to fix any whitespace issues.
+    _, original_code_rest = extract_think_block(assistant)
+    _, new_code_rest = extract_think_block(new_content)
+    if original_code_rest != new_code_rest:
+        # Code was modified - restore from original (sacred constraint enforcement)
+        logger.warning(
+            "Sacred constraint violation detected for id=%s: restoring original code",
+            record.get("id", "unknown"),
+        )
+        new_content = f"{new_think}{_THINK_CLOSE_TAG}{original_code_rest}"
+
     # Shallow-copy conversation with updated assistant content
     conversation = list(record.get("conversation", []))
     for i, msg in enumerate(conversation):

@@ -360,6 +360,37 @@ class TestApplyBacktrackingRewrite:
             )
         assert result is None
 
+    def test_sacred_constraint_restores_original_code(self) -> None:
+        """Verify sacred constraint: code after <filepath> must be preserved."""
+        from src.curation.backtracking_rewriter import (
+            BacktrackingConfig,
+            apply_backtracking_rewrite,
+        )
+
+        # Original code with 4-space indentation
+        original_code = 'class Test:\n    def method(self):\n        pass'
+        record = _make_record(
+            legacy_detected=True,
+            think_text="Old reasoning",
+            code_text=original_code,
+        )
+        mock_client = AsyncMock()
+        mock_client.generate.return_value = "New backtracking reasoning."
+
+        result = asyncio.run(
+            apply_backtracking_rewrite(
+                record,
+                mock_client,
+                BacktrackingConfig(),
+            )
+        )
+        assert result is not None
+        assistant = result["conversation"][-1]["content"]
+        idx = assistant.find("</think>")
+        code_after = assistant[idx + len("</think>"):]
+        # The sacred code must be preserved exactly
+        assert original_code in code_after
+
 
 # ---------------------------------------------------------------------------
 # Tests: I/O helpers
