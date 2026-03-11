@@ -28,6 +28,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from src.utils.metrics import get_metrics
 
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
@@ -84,6 +85,8 @@ class DiscoveryConfig(BaseModel):
 class RepoIngestor:
     """Agnostic engine for discovering and fetching codebases."""
 
+    MAX_RATE_LIMIT_RETRIES = 2  # Maximum retries per endpoint for rate limiting
+
     def __init__(self, cfg: DiscoveryConfig) -> None:
         self.cfg = cfg
         self.raw_path = self.cfg.base_dir / self.cfg.raw_subdir / self.cfg.category
@@ -93,6 +96,10 @@ class RepoIngestor:
             self.session.headers.update(
                 {"Authorization": f"token {self.cfg.github_token}"}
             )
+        # Track rate limit retries per endpoint (key: endpoint URL)
+        self._rate_limit_retries: dict[str, int] = {}
+        # T030c: Initialize metrics collector
+        self._metrics = get_metrics()
 
     def discover(self) -> List[str]:
         """Merges dynamic search results with static repo lists."""
@@ -128,47 +135,105 @@ class RepoIngestor:
     def _should_include_repo(self, repo_id: str) -> bool:
         """Determine if a repository should be included based on profile filters.
 
-        This is a placeholder for more sophisticated filtering.
-        In dry-run mode, this logs the filters that would be applied.
+        Applies profile_extensions and profile_ignored_paths filters.
+        For static repos, checks if the repo is already cloned and validates content.
+
+        Args:
+            repo_id: Repository identifier (e.g., "owner/repo")
+
+        Returns:
+            True if the repo should be included, False otherwise
         """
-        if self.cfg.profile_extensions:
-            # For now, we assume all repos could have these extensions
-            # In a full implementation, we might check repo metadata
-            logger.debug("Repo %s - checking extensions", repo_id)
+        # If no filters are configured, include all repos
+        if not self.cfg.profile_extensions and not self.cfg.profile_ignored_paths:
+            return True
+
+        # Try to check local clone if it exists
+        try:
+            owner, name = repo_id.split("/")
+            repo_path = self.raw_path / owner / name
+        except ValueError:
+            logger.warning("Invalid repo format: %s", repo_id)
+            return False
+
+        if not repo_path.exists():
+            # Repo not cloned yet - for dynamic discovery, we'll filter later after clone
+            # For static repos without local clone, we can't verify extensions
+            # Include it but log a warning
+            if self.cfg.profile_extensions:
+                logger.debug(
+                    "Repo %s not cloned locally, cannot verify extensions %s - including anyway",
+                    repo_id,
+                    self.cfg.profile_extensions,
+                )
+            return True
+
+        # Check ignored paths first
         if self.cfg.profile_ignored_paths:
-            logger.debug("Repo %s - checking ignored paths", repo_id)
+            for ignored in self.cfg.profile_ignored_paths:
+                if ignored in repo_path.parts:
+                    logger.debug("Repo %s matches ignored path: %s", repo_id, ignored)
+                    return False
+
+        # Check extensions if configured
+        if self.cfg.profile_extensions:
+            has_matching_files = self._has_matching_extensions(repo_path)
+            if not has_matching_files:
+                logger.info(
+                    "Excluding repo %s: no files with extensions %s",
+                    repo_id,
+                    self.cfg.profile_extensions,
+                )
+                return False
+
         return True
+
+    def _has_matching_extensions(self, repo_path: Path) -> bool:
+        """Check if repository contains files with configured extensions.
+
+        Args:
+            repo_path: Path to the local repository
+
+        Returns:
+            True if at least one file with matching extension exists
+        """
+        if not self.cfg.profile_extensions:
+            return True
+
+        try:
+            for item in repo_path.rglob("*"):
+                if item.is_file() and item.suffix in self.cfg.profile_extensions:
+                    return True
+        except PermissionError:
+            logger.warning("Permission denied scanning repo: %s", repo_path)
+        return False
 
     def _filter_repos(self, repos: List[str]) -> List[str]:
         """Filter repositories based on profile configuration.
 
         Applies profile_extensions and profile_ignored_paths filters.
+        For repos not yet cloned, they are included (will be filtered after clone).
+
+        Args:
+            repos: List of repository identifiers
+
+        Returns:
+            Filtered list of repository identifiers
         """
         if not self.cfg.profile_extensions and not self.cfg.profile_ignored_paths:
             return repos
 
         filtered: List[str] = []
         for repo in repos:
-            if self.cfg.profile_extensions:
-                # In a full implementation, we'd check the actual repo contents
-                # For now, log that filtering is applied
-                logger.debug(
-                    "Filtering repo %s by extensions: %s",
-                    repo,
-                    self.cfg.profile_extensions,
-                )
-            if self.cfg.profile_ignored_paths:
-                # Filter out repos that match ignored path patterns
-                # This is a simple check - full impl would check actual paths
-                logger.debug(
-                    "Filtering repo %s by ignored paths: %s",
-                    repo,
-                    self.cfg.profile_ignored_paths,
-                )
-            filtered.append(repo)
+            if self._should_include_repo(repo):
+                filtered.append(repo)
 
         logger.info(
-            "Filtered %d repos to %d based on profile", len(repos), len(filtered)
+            "Filtered %d repos to %d based on profile extensions=%s ignored_paths=%s",
+            len(repos),
+            len(filtered),
+            self.cfg.profile_extensions,
+            self.cfg.profile_ignored_paths,
         )
         return filtered
 
@@ -183,6 +248,9 @@ class RepoIngestor:
         collected: List[str] = []
         page = 1
 
+        # Reset retry counter for this endpoint
+        self._rate_limit_retries[url] = 0
+
         while len(collected) < self.cfg.limit:
             params = {
                 "q": query if is_code else f"{query} stars:>={self.cfg.min_stars}",
@@ -195,7 +263,16 @@ class RepoIngestor:
 
             response = self.session.get(url, params=params)
             if response.status_code == 403:
+                current_retries = self._rate_limit_retries.get(url, 0)
+                if current_retries >= self.MAX_RATE_LIMIT_RETRIES:
+                    logger.error(
+                        "Rate limit retry limit (%d) exceeded for %s, skipping endpoint",
+                        self.MAX_RATE_LIMIT_RETRIES,
+                        url,
+                    )
+                    break
                 self._handle_backoff(response)
+                self._rate_limit_retries[url] = current_retries + 1
                 continue
 
             if response.status_code != 200:
@@ -236,10 +313,15 @@ class RepoIngestor:
                 logger.info("[DRY-RUN] Syncing %s", repo_id)
                 continue
 
+            # T030c: Measure fetch time and track as file processing
+            fetch_start = time.perf_counter()
             if target.exists():
                 self._update_repo(repo_id, target)
             else:
                 self._clone_repo(repo_id, target)
+            fetch_latency = time.perf_counter() - fetch_start
+            self._metrics.record_file_processing_time(name, fetch_latency)
+            self._metrics.increment_files_processed(name)
 
     def _clone_repo(self, repo_id: str, target: Path) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -281,7 +363,7 @@ class RepoIngestor:
         for attempt in range(max_retries):
             try:
                 # Try fast-forward pull first
-                result = subprocess.run(
+                subprocess.run(
                     ["git", "-C", str(target), "pull", "--ff-only"],
                     check=True,
                     capture_output=True,

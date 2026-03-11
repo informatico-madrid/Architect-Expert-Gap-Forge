@@ -39,6 +39,7 @@ import logging
 import os
 import re
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -49,6 +50,23 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.utils.extractors import get_adapter
 from src.utils.extractors.base import ParseError
+from src.utils.metrics import get_metrics
+
+
+# ---------------------------------------------------------------------------
+# Custom Exceptions
+# ---------------------------------------------------------------------------
+class RepoAbortError(Exception):
+    """Raised when a parse error triggers repository-level abort."""
+
+    def __init__(self, repo_name: str, file_path: Path, parse_error: ParseError):
+        self.repo_name = repo_name
+        self.file_path = file_path
+        self.parse_error = parse_error
+        super().__init__(
+            f"Parse error in {file_path} triggered abort for repository {repo_name}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -158,7 +176,8 @@ class ProcessingConfig(BaseModel):
         default="homeassistant", description="Profile name for extractor adapter"
     )
     on_parse_error: str = Field(
-        default="abort", description="Policy for parse errors: abort, skip, or fallback"
+        default="abort",
+        description="Policy for parse errors: abort, skip, mark_and_continue, or fallback",
     )
 
     # Module discovery configuration
@@ -199,6 +218,9 @@ class RepoProcessor:
         self._adapter = get_adapter(cfg.profile)
         self._on_parse_error = cfg.on_parse_error
 
+        # Initialize metrics collector (T030c)
+        self._metrics = get_metrics()
+
         self._stats = {
             "TYPE1_FUNCTIONAL_UNIT": 0,
             "TYPE3_LOGIC_ONLY": 0,
@@ -209,6 +231,7 @@ class RepoProcessor:
             "modules_found": 0,
             "parse_errors": 0,
             "parse_errors_aborted": 0,
+            "needs_manual_review": [],
         }
 
     # ------------------------------------------------------------------
@@ -228,12 +251,22 @@ class RepoProcessor:
             for repo_dir in sorted(owner_dir.iterdir()):
                 if not repo_dir.is_dir():
                     continue
+                # T030c: Measure repository processing time
+                repo_start = time.perf_counter()
                 self._process_repository(owner_dir.name, repo_dir)
+                repo_latency = time.perf_counter() - repo_start
+                self._metrics.record_file_processing_time(repo_dir.name, repo_latency)
+                self._metrics.increment_files_processed(repo_dir.name)
 
         logger.info(
             "Processing complete — "
-            + " | ".join(f"{k}={v}" for k, v in self._stats.items())
+            + " | ".join(
+                f"{k}={len(v) if isinstance(v, list) else v}"
+                for k, v in self._stats.items()
+            )
         )
+        # T009e: Write persistent needs_manual_review report
+        self._write_needs_manual_review_report()
 
     # ------------------------------------------------------------------
     # Repository dispatch
@@ -252,33 +285,89 @@ class RepoProcessor:
         if gov_files:
             self._emit_governance(prefix, repo_path, gov_files)
 
-        if self.cfg.segment_path:
-            split_target = repo_path / self.cfg.segment_path
-            if split_target.exists() and split_target.is_dir():
-                for sub_dir in sorted(split_target.iterdir()):
-                    if sub_dir.is_dir():
-                        self._process_module_dir(
-                            sub_dir,
-                            repo_path,
-                            f"{prefix}_{sub_dir.name}",
-                            size_limit,
-                            repo_prefix=prefix,
-                        )
-                return
+        try:
+            if self.cfg.segment_path:
+                split_target = repo_path / self.cfg.segment_path
+                if split_target.exists() and split_target.is_dir():
+                    for sub_dir in sorted(split_target.iterdir()):
+                        if sub_dir.is_dir():
+                            self._process_module_dir(
+                                sub_dir,
+                                repo_path,
+                                f"{prefix}_{sub_dir.name}",
+                                size_limit,
+                                repo_prefix=prefix,
+                            )
+                    return
 
-        # No segment_path → discover modules in the entire repo
-        modules = self._discover_modules(repo_path)
-        for mod in modules:
-            mod_prefix = f"{prefix}_{mod.name}"
-            self._emit_module(
-                mod, repo_path, mod_prefix, size_limit, repo_prefix=prefix
+            # No segment_path → discover modules in the entire repo
+            modules = self._discover_modules(repo_path)
+            for mod in modules:
+                mod_prefix = f"{prefix}_{mod.name}"
+                self._emit_module(
+                    mod, repo_path, mod_prefix, size_limit, repo_prefix=prefix
+                )
+        except RepoAbortError as e:
+            # T009d: Abort the entire repository when parse error triggers abort policy
+            logger.warning(
+                "Repository %s aborted due to parse error in %s: %s",
+                repo_name,
+                e.file_path,
+                e.parse_error,
             )
+            # Mark this repo as needing manual review
+            self._stats["needs_manual_review"].append(
+                {
+                    "repo": repo_name,
+                    "file": str(e.file_path),
+                    "reason": "parse_error_abort",
+                    "error": str(e.parse_error),
+                }
+            )
+            # T030c: Emit metrics for parse error
+            self._metrics.increment_parse_error(repo_name, self.cfg.profile)
+            self._metrics.increment_files_marked(repo_name)
+            self._stats["parse_errors_aborted"] += 1
 
     # ------------------------------------------------------------------
     # Module discovery
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
-        """Walk root and return a list of Module objects."""
+        """Walk root and return a list of Module objects.
+
+        The discovery strategy is determined by self.cfg.module_discovery_strategy:
+        - 'manifest': detect modules via manifest.json and __init__.py (default)
+        - 'init': detect modules via __init__.py only
+        - 'directory': detect modules via directory structure with __init__.py
+        - 'manual_mapping': use explicit module_overrides for discovery
+        """
+        strategy = self.cfg.module_discovery_strategy
+
+        # Apply module_overrides if provided (applies to all strategies)
+        if self.cfg.module_overrides:
+            modules = self._discover_with_overrides(root)
+            if modules:
+                # If manual_mapping strategy, only return override-based modules
+                if strategy == "manual_mapping":
+                    self._stats["modules_found"] += len(modules)
+                    return modules
+                # For other strategies, merge overrides into results
+                return self._merge_with_overrides(modules)
+
+        # Route to appropriate strategy
+        if strategy == "directory":
+            return self._discover_by_directory(root)
+        elif strategy == "manual_mapping":
+            # No overrides provided - fall back to manifest/init
+            return self._discover_by_init(root)
+        elif strategy == "init":
+            return self._discover_by_init(root)
+        else:
+            # Default: manifest strategy
+            return self._discover_by_manifest_and_init(root)
+
+    def _discover_by_manifest_and_init(self, root: Path) -> List[Module]:
+        """Discover modules using manifest.json and __init__.py (default strategy)."""
         modules: List[Module] = []
         seen_dirs: Set[Path] = set()
 
@@ -314,6 +403,130 @@ class RepoProcessor:
 
         self._stats["modules_found"] += len(modules)
         return modules
+
+    def _discover_by_init(self, root: Path) -> List[Module]:
+        """Discover modules using __init__.py files only."""
+        modules: List[Module] = []
+        seen_dirs: Set[Path] = set()
+
+        for init_path in root.rglob("__init__.py"):
+            if self._is_ignored(init_path):
+                continue
+            mod_dir = init_path.parent
+            if mod_dir in seen_dirs:
+                continue
+            seen_dirs.add(mod_dir)
+            modules.append(self._build_module(mod_dir, anchor_type="init"))
+
+        self._stats["modules_found"] += len(modules)
+        return modules
+
+    def _discover_by_directory(self, root: Path) -> List[Module]:
+        """Discover modules based on directory structure.
+
+        Finds all directories containing __init__.py files, treating each
+        as a module. Similar to _discover_by_init but the intent is different
+        (directory structure-based vs package-based).
+        """
+        modules: List[Module] = []
+        seen_dirs: Set[Path] = set()
+
+        # Find all directories with __init__.py
+        for init_path in root.rglob("__init__.py"):
+            if self._is_ignored(init_path):
+                continue
+            mod_dir = init_path.parent
+            if mod_dir in seen_dirs:
+                continue
+            seen_dirs.add(mod_dir)
+            modules.append(self._build_module(mod_dir, anchor_type="directory"))
+
+        self._stats["modules_found"] += len(modules)
+        return modules
+
+    def _discover_with_overrides(self, root: Path) -> List[Module]:
+        """Discover modules based on explicit module_overrides configuration."""
+        modules: List[Module] = []
+        if not self.cfg.module_overrides:
+            return modules
+
+        for module_name, override_config in self.cfg.module_overrides.items():
+            # Check if module is enabled
+            if not override_config.get("enabled", True):
+                logger.debug("Module %s disabled via override", module_name)
+                continue
+
+            # Get explicit path from override
+            module_path = override_config.get("path")
+            if module_path:
+                mod_dir = root / module_path
+            else:
+                # Fall back to directory name matching module_name
+                mod_dir = root / module_name
+
+            # Check if the directory exists
+            if not mod_dir.exists() or not mod_dir.is_dir():
+                logger.debug("Module path %s does not exist, skipping", mod_dir)
+                continue
+
+            anchor_type = override_config.get("anchor_type", "manual")
+            manifest_data: dict = {}
+
+            # Try to load manifest if present
+            manifest_path = mod_dir / "manifest.json"
+            if manifest_path.exists():
+                try:
+                    manifest_data = json.loads(manifest_path.read_text(errors="ignore"))
+                    anchor_type = "manifest"
+                except Exception:
+                    pass
+
+            modules.append(
+                self._build_module(
+                    mod_dir, anchor_type=anchor_type, manifest=manifest_data
+                )
+            )
+
+        return modules
+
+    def _merge_with_overrides(self, discovered_modules: List[Module]) -> List[Module]:
+        """Merge discovered modules with module_overrides configuration.
+
+        Removes modules that are disabled in overrides, and adds any modules
+        defined exclusively in overrides.
+        """
+        if not self.cfg.module_overrides:
+            return discovered_modules
+
+        result: List[Module] = []
+        seen_names: Set[str] = set()
+
+        # First, add override-defined modules
+        for module_name, override_config in self.cfg.module_overrides.items():
+            if not override_config.get("enabled", True):
+                continue
+
+            module_path = override_config.get("path")
+            if module_path:
+                # This module is defined in overrides - add it if not already discovered
+                if module_name not in {m.name for m in discovered_modules}:
+                    mod_dir = override_config.get("path")
+                    if mod_dir:
+                        # This path should have been handled in _discover_with_overrides
+                        continue
+            seen_names.add(module_name)
+
+        # Then, add discovered modules that are not disabled
+        for mod in discovered_modules:
+            override = self.cfg.module_overrides.get(mod.name)
+            if override is not None:
+                if not override.get("enabled", True):
+                    logger.debug("Module %s disabled via override, skipping", mod.name)
+                    continue
+            result.append(mod)
+
+        self._stats["modules_found"] += len(result)
+        return result
 
     def _build_module(
         self, mod_dir: Path, anchor_type: str, manifest: Optional[dict] = None
@@ -456,17 +669,42 @@ class RepoProcessor:
                     dependencies = [d.name for d in deps]
                 except ParseError as e:
                     self._stats["parse_errors"] += 1
+                    # T030c: Emit metrics for parse error
+                    self._metrics.increment_parse_error(repo_root.name, self.cfg.profile)
                     if self._on_parse_error == "abort":
+                        # T009d: Abort the entire repository, not just the file
                         logger.warning(
-                            "Parse error in %s, aborting file: %s", mf.path, e
+                            "Parse error in %s, aborting repository: %s",
+                            mf.path,
+                            e,
                         )
-                        self._stats["parse_errors_aborted"] += 1
-                        continue
+                        # Raise to propagate to repository level
+                        raise RepoAbortError(
+                            repo_name=repo_root.name, file_path=mf.path, parse_error=e
+                        )
                     elif self._on_parse_error == "skip":
                         logger.warning(
                             "Parse error in %s, skipping file: %s", mf.path, e
                         )
                         continue
+                    elif self._on_parse_error == "mark_and_continue":
+                        # T009f: Mark file as needs_manual_review but continue processing
+                        logger.warning(
+                            "Parse error in %s, marking for review and continuing: %s",
+                            mf.path,
+                            e,
+                        )
+                        self._stats["needs_manual_review"].append(
+                            {
+                                "repo": repo_root.name,
+                                "file": str(mf.path),
+                                "reason": "parse_error_marked",
+                                "error": str(e),
+                            }
+                        )
+                        # Continue processing but use fallback for dependencies
+                        local_imports = self._extract_local_imports(content)
+                        dependencies = []
                     else:
                         # Fallback: use the old method
                         local_imports = self._extract_local_imports(content)
@@ -843,6 +1081,42 @@ class RepoProcessor:
         out.write_text("\n".join(buf), encoding="utf-8")
         self._stats["TYPE5_GOVERNANCE_RULES"] += 1
         logger.info("Governance bundle: %s (%s)", out.name, source_names)
+
+    # ------------------------------------------------------------------
+    # Needs Manual Review Report
+    # ------------------------------------------------------------------
+    def _write_needs_manual_review_report(self) -> None:
+        """Write a persistent report of files/repos that need manual review.
+
+        T009e: This report is written to the output directory and contains
+        all parse errors that were marked for review (either via abort policy
+        or mark_and_continue policy).
+        """
+        needs_review = self._stats.get("needs_manual_review", [])
+        if not needs_review:
+            logger.debug("No files require manual review")
+            return
+
+        report_dir = self.target_root / "_reports"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "needs_manual_review.json"
+
+        report_data = {
+            "category": self.cfg.category,
+            "profile": self.cfg.profile,
+            "on_parse_error_policy": self._on_parse_error,
+            "total_items": len(needs_review),
+            "items": needs_review,
+        }
+
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report_data, f, indent=2, default=str)
+
+        logger.info(
+            "Needs manual review report written: %s (%d items)",
+            report_path,
+            len(needs_review),
+        )
 
     # ------------------------------------------------------------------
     # Helpers
