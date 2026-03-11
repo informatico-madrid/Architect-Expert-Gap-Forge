@@ -96,10 +96,10 @@ Additional Critical Test Tasks
   - [x] T029a `scripts/measure_recall.py` existe (`compute_recall_at_n`, `measure_recall_for_repo`, `measure_recall_for_profile`)
   - [x] T029b `tests/integration/test_recall_harness.py` existe con estructura de tests
   - [x] T029c Corpus de referencia disponible — tests pasan (5 passed)
-- [ ] T030 Observabilidad — PARCIALMENTE IMPLEMENTADO:
+- [x] T030 Observabilidad — COMPLETO:
   - [x] T030a `src/utils/metrics.py` implementa `DiscoveryMetrics`, `ParseErrorMetric`, `ProcessingLatency`, `export_prometheus()`
   - [x] T030b `tests/unit/test_metrics.py` cubre las clases de métricas
-  - [x] T030c `processor` e `ingestor` no llaman a `DiscoveryMetrics` en su flujo principal: las métricas existen pero no se emiten en la ejecución real — NO integrado
+  - [x] T030c `processor` e `ingestor` ahora llaman a `DiscoveryMetrics` en su flujo principal
 - [ ] T031 Auditar tests que dependen del fallback AST — PARCIALMENTE IMPLEMENTADO:
   - [x] T031a `scripts/audit_ast_fallback.py` genera `specs/001-stage1-discovery/ast_fallback_audit.json`
   - [x] T031b `specs/001-stage1-discovery/migrations/test_migration_plan.md` tiene plan y lista priorizada
