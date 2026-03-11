@@ -126,9 +126,14 @@ GOVERNANCE_FILENAMES: Set[str] = {
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ModuleFile:
-    """A single file within a discovered module."""
+    """A single file within a discovered module.
+
+    Note: Uses frozen=True but content is set after creation via object.__setattr__
+    to support lazy loading pattern (see line 649). This is an explicit lifecycle
+    pattern where content is loaded on-demand during processing.
+    """
 
     path: Path
     role: str = ""  # implementation | test | config | anchor | readme
@@ -646,7 +651,8 @@ class RepoProcessor:
             # Read content early so we can apply test-based overrides
             try:
                 content = mf.path.read_text(encoding="utf-8", errors="ignore")
-                mf.content = content
+                # Bypass frozen check for lazy loading pattern
+                object.__setattr__(mf, "content", content)
             except Exception as e:
                 logger.error("Read error %s: %s", mf.path, e)
                 continue

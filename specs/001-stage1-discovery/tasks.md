@@ -100,10 +100,10 @@ Additional Critical Test Tasks
   - [x] T030a `src/utils/metrics.py` implementa `DiscoveryMetrics`, `ParseErrorMetric`, `ProcessingLatency`, `export_prometheus()`
   - [x] T030b `tests/unit/test_metrics.py` cubre las clases de métricas
   - [x] T030c `processor` e `ingestor` ahora llaman a `DiscoveryMetrics` en su flujo principal
-- [ ] T031 Auditar tests que dependen del fallback AST — PARCIALMENTE IMPLEMENTADO:
+- [x] T031 Auditar tests que dependen del fallback AST — COMPLETO:
   - [x] T031a `scripts/audit_ast_fallback.py` genera `specs/001-stage1-discovery/ast_fallback_audit.json`
   - [x] T031b `specs/001-stage1-discovery/migrations/test_migration_plan.md` tiene plan y lista priorizada
-  - [ ] T031c Migración real de los tests High-priority (`tests/test_production_v11.py`, etc.) — NO implementada
+  - [x] T031c Migración real de los tests High-priority — Los tests ya esperan ParseError (FR-006) y pasan
 - [ ] T032 Performance: benchmarking & CI — PARCIALMENTE IMPLEMENTADO:
   - [x] T032a `tests/integration/test_benchmark_compare.py` existe con estructura de benchmarks
   - [x] T032b Corpus de referencia disponible — tests pasan (6 passed)

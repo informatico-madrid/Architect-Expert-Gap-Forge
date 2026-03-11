@@ -66,9 +66,8 @@ import sys
 import socket
 import tempfile
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set
 from src.schemas.common import RawRecord
 
@@ -148,6 +147,13 @@ DEFAULT_REPORTS_DIR: str = "data/reports"
 
 @dataclass
 class CurationStats:
+    """Statistics accumulator for curation pipeline.
+
+    Note: Not frozen because it requires explicit mutation during the curation
+    lifecycle - counts are incremented as each phase processes records.
+    This is an intentional mutable accumulator pattern, not a data record.
+    """
+
     total_input: int = 0
     # Phase 0
     exact_duplicates: int = 0
