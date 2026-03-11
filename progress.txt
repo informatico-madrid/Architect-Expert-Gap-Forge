@@ -97,6 +97,14 @@ Task: T021 Ejecutar test suite completa y corregir fallos
 Files changed:
 - src/utils/extractors/python_ast_adapter.py (removed unused imports: typing.Any, ExtractorAdapter)
 - src/utils/metrics.py (fixed ambiguous variable name 'l' -> 'latency'/'latency_entry')
+
+=== 2026-03-11 10:25 | Task 30 ===
+Task: Fix T030 constitution violation - add frozen=True to dataclasses in metrics.py
+Files changed:
+- src/utils/metrics.py (added frozen=True, slots=True to ParseErrorMetric and ProcessingLatency; moved count tracking to DiscoveryMetrics._parse_error_counts)
+- tests/unit/test_metrics.py (removed unused pytest import, updated test to match new immutable dataclass)
+Status: DONE
+Tests: 745 passed | Ruff: All checks passed | Constitution: Compliant
 Status: DONE
 
 Tests: 744 passed, 1 skipped
@@ -178,3 +186,44 @@ Status: DONE
 
 Tests: 27 passed (metrics + processor tests)
 Ruff: All checks passed
+
+=== 2026-03-11 10:19 | Iteration 13 | Task 29 ===
+Task: T030 Observabilidad — PARCIALMENTE IMPLEMENTADO:
+Status: DONE
+
+=== REVIEW FAIL at task 29 (2026-03-11 10:20) ===
+
+## Issues Found:
+
+### 1. Constitution Violation - Missing `frozen=True` in dataclasses
+**File**: `src/utils/metrics.py:35` and `src/utils/metrics.py:44`
+
+The constitution requires:
+> "Use `@dataclass(slots=True, frozen=True)` and `pydantic` models for structured data."
+
+Current code:
+```python
+@dataclass
+class ParseErrorMetric:
+    ...
+
+@dataclass  
+class ProcessingLatency:
+    ...
+```
+
+**Problem**: These should be `@dataclass(frozen=True)` but they're not. Additionally, line 82 relies on mutability:
+```python
+self._parse_errors[key].count += 1  # Requires mutable dataclass
+```
+
+**Fix needed**: Either:
+- Use `frozen=True` and store counts in the `DiscoveryMetrics` dicts instead of in the dataclass
+- Or add `frozen=True` and create new instances instead of mutating
+
+### Summary:
+- Tests: **745 passed** ✓
+- Ruff: **All checks passed** ✓  
+- Constitution: **VIOLATED** - dataclasses must be frozen
+
+The metrics implementation violates the immutability requirement in the constitution.

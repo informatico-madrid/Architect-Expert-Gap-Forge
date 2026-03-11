@@ -12,8 +12,6 @@ T030: Tests that verify metrics are emitted correctly.
 
 from __future__ import annotations
 
-import pytest
-
 from src.utils.metrics import (
     DiscoveryMetrics,
     ParseErrorMetric,
@@ -30,7 +28,8 @@ class TestParseErrorMetric:
         metric = ParseErrorMetric(repo="test_repo", profile="homeassistant")
         assert metric.repo == "test_repo"
         assert metric.profile == "homeassistant"
-        assert metric.count == 0
+        # Count is tracked in DiscoveryMetrics._parse_error_counts, not in the dataclass
+        # This ensures the dataclass remains frozen/immutable per constitution requirements
 
 
 class TestProcessingLatency:

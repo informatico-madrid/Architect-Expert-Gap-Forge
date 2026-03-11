@@ -32,16 +32,15 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ParseErrorMetric:
     """Tracks parse errors per repo and profile."""
 
     repo: str
     profile: str
-    count: int = 0
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ProcessingLatency:
     """Tracks processing latency for a file."""
 
@@ -60,6 +59,7 @@ class DiscoveryMetrics:
         """Initialize the metrics collector."""
         self._lock = threading.RLock()
         self._parse_errors: dict[str, ParseErrorMetric] = {}
+        self._parse_error_counts: dict[str, int] = {}
         self._latencies: list[ProcessingLatency] = []
         self._files_marked: dict[str, int] = {}
         self._files_processed: dict[str, int] = {}
@@ -79,7 +79,8 @@ class DiscoveryMetrics:
         with self._lock:
             if key not in self._parse_errors:
                 self._parse_errors[key] = ParseErrorMetric(repo=repo, profile=profile)
-            self._parse_errors[key].count += 1
+                self._parse_error_counts[key] = 0
+            self._parse_error_counts[key] += 1
 
     def record_file_processing_time(
         self,
@@ -129,7 +130,7 @@ class DiscoveryMetrics:
         """
         key = self._make_key(repo, profile)
         with self._lock:
-            return self._parse_errors.get(key, ParseErrorMetric(repo, profile)).count
+            return self._parse_error_counts.get(key, 0)
 
     def get_mean_latency(self, repo: Optional[str] = None) -> float:
         """Get mean processing latency.
@@ -143,12 +144,14 @@ class DiscoveryMetrics:
         with self._lock:
             filtered = self._latencies
             if repo:
-                filtered = [l for l in self._latencies if l.repo == repo]
+                filtered = [
+                    latency for latency in self._latencies if latency.repo == repo
+                ]
 
             if not filtered:
                 return 0.0
 
-            return sum(l.latency_seconds for l in filtered) / len(filtered)
+            return sum(latency.latency_seconds for latency in filtered) / len(filtered)
 
     def get_p95_latency(self, repo: Optional[str] = None) -> float:
         """Get P95 processing latency.
@@ -162,12 +165,14 @@ class DiscoveryMetrics:
         with self._lock:
             filtered = self._latencies
             if repo:
-                filtered = [l for l in self._latencies if l.repo == repo]
+                filtered = [
+                    latency for latency in self._latencies if latency.repo == repo
+                ]
 
             if not filtered:
                 return 0.0
 
-            sorted_latencies = sorted(l.latency_seconds for l in filtered)
+            sorted_latencies = sorted(latency.latency_seconds for latency in filtered)
             idx = int(len(sorted_latencies) * 0.95)
             return sorted_latencies[min(idx, len(sorted_latencies) - 1)]
 
@@ -205,9 +210,10 @@ class DiscoveryMetrics:
         lines.append("# TYPE discovery_parse_errors_total counter")
 
         with self._lock:
-            for metric in self._parse_errors.values():
+            for key, metric in self._parse_errors.items():
+                count = self._parse_error_counts.get(key, 0)
                 lines.append(
-                    f'discovery_parse_errors_total{{repo="{metric.repo}",profile="{metric.profile}"}} {metric.count}'
+                    f'discovery_parse_errors_total{{repo="{metric.repo}",profile="{metric.profile}"}} {count}'
                 )
 
             lines.append("")
@@ -243,6 +249,7 @@ class DiscoveryMetrics:
         """Reset all metrics."""
         with self._lock:
             self._parse_errors.clear()
+            self._parse_error_counts.clear()
             self._latencies.clear()
             self._files_marked.clear()
             self._files_processed.clear()
