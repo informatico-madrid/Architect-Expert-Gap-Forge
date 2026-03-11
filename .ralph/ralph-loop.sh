@@ -685,8 +685,8 @@ generate_worktree_name() {
     local slug="$1"
     local candidate="ralph/${slug}-$(date '+%Y%m%d_%H%M%S')"
 
-    # If branch already exists, add random suffix
-    if git -C "$PROJECT_DIR" branch --list "$candidate" &>/dev/null; then
+    # If branch already exists, add random suffix for collision avoidance
+    if [[ -n "$(git -C "$PROJECT_DIR" branch --list "$candidate" 2>/dev/null)" ]]; then
         candidate="${candidate}-$(printf '%04d' $((RANDOM % 10000)))"
     fi
 
