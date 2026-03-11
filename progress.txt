@@ -339,3 +339,22 @@ Status: DONE (no changes needed - no AST dependency)
 === 2026-03-11 10:51 | Iteration 21 | Task 36 ===
 Task: `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar
 Status: ALL_TASKS_COMPLETE
+
+=== 2026-03-11 16:45 | Ralph Worktree Feature ===
+Feature: 002-ralph-worktree
+Status: COMPLETED
+Tasks implemented: T00-T12
+- T00: Self-snapshot bootstrap (FR-022)
+- T01: Scaffolding - globals, flags, help, trap EXIT
+- T02: run_preflight_checks() implementation
+- T03: check_gitignore_worktrees()
+- T04: Worktree creation functions
+- T05: ensure_sparse_checkout() + call in loop
+- T06: detect_and_recreate_worktree()
+- T07: build_work_prompt + cd wrappers
+- T08: RALPH_PUSH conditional push
+- T09: print_merge_instructions()
+- T10: --clean subcommand
+- T11: main() orchestration + init_state
+- T12: End-to-end verification
+File modified: .ralph/ralph-loop.sh

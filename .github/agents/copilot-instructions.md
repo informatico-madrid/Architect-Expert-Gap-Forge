@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-03-08
 
 ## Active Technologies
+- Bash 5.x (GNU/Linux), Python 3.x (para scripts auxiliares ya existentes) + git 2.43.0 (disponible en sistema), `merge_state.py` (ya existente), `count_tasks.py` (ya existente) (002-ralph-worktree)
+- `.ralph/state.json` (4 campos nuevos), `.gitignore` (1 entrada nueva), `.worktrees/` (directorios temporales) (002-ralph-worktree)
 
 - Python 3.12 (existing repo uses 3.12+) + PyYAML, pydantic, requests, pytest, ruff. Optional: `tree-sitter` (for future adapters). (001-stage1-discovery)
 
@@ -22,6 +24,8 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.12 (existing repo uses 3.12+): Follow standard conventions
 
 ## Recent Changes
+- 002-ralph-worktree: Added Bash 5.x (GNU/Linux), Python 3.x (para scripts auxiliares ya existentes) + git 2.43.0 (disponible en sistema), `merge_state.py` (ya existente), `count_tasks.py` (ya existente)
+- 002-ralph-worktree: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 - 001-stage1-discovery: Added Python 3.12 (existing repo uses 3.12+) + PyYAML, pydantic, requests, pytest, ruff. Optional: `tree-sitter` (for future adapters).
 

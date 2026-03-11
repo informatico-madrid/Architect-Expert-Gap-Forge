@@ -28,11 +28,29 @@
 set -euo pipefail
 
 # ============================================================================
+# Self-Snapshot Bootstrap (FR-022)
+# Protection against agent modifying runtime files during execution
+# ============================================================================
+if [[ "${RALPH_SNAPSHOT:-0}" != "1" ]]; then
+    _snap_dir=$(mktemp -d)
+    mkdir -p "$_snap_dir/recipes" "$_snap_dir/scripts"
+    _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    cp "$_self_dir/ralph-loop.sh"              "$_snap_dir/ralph-loop.sh"
+    cp "$_self_dir/recipes/ralph-work.yaml"    "$_snap_dir/recipes/ralph-work.yaml"
+    cp "$_self_dir/recipes/ralph-review.yaml"  "$_snap_dir/recipes/ralph-review.yaml"
+    cp "$_self_dir/scripts/merge_state.py"     "$_snap_dir/scripts/merge_state.py"
+    cp "$_self_dir/scripts/count_tasks.py"     "$_snap_dir/scripts/count_tasks.py"
+    export RALPH_SNAPSHOT=1
+    export RALPH_SNAPSHOT_DIR="$_snap_dir"
+    exec bash "$_snap_dir/ralph-loop.sh" "$@"
+fi
+
+# ============================================================================
 # Configuration
 # ============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-RALPH_DIR="$SCRIPT_DIR"
+RALPH_DIR="${RALPH_SNAPSHOT_DIR:-$SCRIPT_DIR}"
 
 RALPH_AGENT="${RALPH_AGENT:-claude}"
 CLAUDE_CMD="${CLAUDE_CMD:-claude}"
@@ -40,6 +58,18 @@ RALPH_MAX_ITER="${RALPH_MAX_ITER:-100}"
 RALPH_REVIEW_EVERY="${RALPH_REVIEW_EVERY:-5}"
 RALPH_MAX_RETRIES="${RALPH_MAX_RETRIES:-5}"
 RALPH_YOLO="${RALPH_YOLO:-true}"
+
+# Worktree mode globals (T01)
+WORKTREE_ENABLED=true
+SKIP_PREFLIGHT=false
+RALPH_PUSH="${RALPH_PUSH:-false}"
+PUSH_TRACKING_SET=false
+WORKTREE_PATH=""
+WORKTREE_BRANCH=""
+WORKTREE_CREATED_AT=""
+BASE_BRANCH=""
+CLEAN_MODE=false
+CLEAN_SLUG=""
 
 COUNT_SCRIPT="$RALPH_DIR/scripts/count_tasks.py"
 MERGE_SCRIPT="$RALPH_DIR/scripts/merge_state.py"
@@ -82,6 +112,9 @@ OPTIONS:
     --agent TYPE      Agent: claude|goose|custom (default: claude)
     --no-yolo         Disable skip-permissions flag
     --resume          Resume from existing .ralph/state.json
+    --no-worktree     Run in legacy mode without git worktree
+    --skip-preflight  Skip preflight checks [WARN]
+    --clean [slug]    Remove merged worktrees for given spec slug
     -h, --help        Show this help
 
 WORKFLOW:
@@ -126,6 +159,17 @@ parse_args() {
                 shift ;;
             --resume)
                 RESUME_MODE=true
+                shift ;;
+            --no-worktree)
+                WORKTREE_ENABLED=false
+                shift ;;
+            --skip-preflight)
+                SKIP_PREFLIGHT=true
+                shift ;;
+            --clean)
+                CLEAN_MODE=true
+                CLEAN_SLUG="${2:-}"
+                [[ -n "${2:-}" ]] && shift
                 shift ;;
             -h|--help)
                 show_help
@@ -178,6 +222,15 @@ init_state() {
         --set "maxTaskIterations=$RALPH_MAX_RETRIES" \
         --set "reviewInterval=$RALPH_REVIEW_EVERY" \
         --set "lastReviewAt=0"
+
+    # Write worktree fields if worktree mode enabled (T11)
+    if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+        python3 "$MERGE_SCRIPT" "$STATE_FILE" \
+            --set "worktreePath=$WORKTREE_PATH" \
+            --set "worktreeBranch=$WORKTREE_BRANCH" \
+            --set "worktreeCreatedAt=$WORKTREE_CREATED_AT" \
+            --set "baseBranch=$BASE_BRANCH"
+    fi
 
     log_ok "State initialized: $(python3 "$COUNT_SCRIPT" "$tasks_file")"
 }
@@ -408,6 +461,12 @@ build_work_prompt() {
     local iteration="$4"
     local feedback_file="$PROJECT_DIR/.ralph/review-feedback.txt"
 
+    # Add working directory line for worktree mode (T07)
+    local worktree_section=""
+    if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+        worktree_section=$'\nWorking directory: '"$WORKTREE_PATH"$'\n'
+    fi
+
     local feedback_section=""
     if [[ -f "$feedback_file" ]]; then
         feedback_section="
@@ -426,7 +485,7 @@ $(tail -30 "$PROJECT_DIR/progress.txt")
 
     cat <<PROMPT_EOF
 # Ralph Loop — Work Phase (Iteration $iteration)
-
+$worktree_section
 You are the SpecKit Implementation Agent running inside a Ralph Loop.
 You are 100% autonomous. Your work persists through FILES ONLY.
 
@@ -532,11 +591,296 @@ log_progress() {
 }
 
 # ============================================================================
+# Preflight Checks (T02)
+# ============================================================================
+run_preflight_checks() {
+    # Skip guard
+    if [[ "$SKIP_PREFLIGHT" == "true" ]]; then
+        log_warn "[WARN] Preflight checks omitidos"
+        return 0
+    fi
+
+    # Check 1: worktree list trust (also detects dirty indirectly)
+    local wt_out
+    wt_out=$(git -C "$PROJECT_DIR" worktree list --porcelain 2>&1)
+    if [[ $? -ne 0 ]]; then
+        log_error "git worktree list falló (posible safe.directory error)"
+        log_info  "Fix: git config --global --add safe.directory $PROJECT_DIR"
+        exit 1
+    fi
+
+    # Check 2: dirty working tree
+    local dirty
+    dirty=$(git -C "$PROJECT_DIR" status --porcelain 2>&1)
+    if [[ -n "$dirty" ]]; then
+        log_error "Hay archivos sin commit en el repo principal:"
+        echo "$dirty" | head -10 >&2
+        log_info  "Fix: git add -A && git commit -m 'wip: save work before ralph'"
+        exit 1
+    fi
+
+    # Check 3: in-progress git operations
+    for sentinel in MERGE_HEAD REBASE_HEAD CHERRY_PICK_HEAD; do
+        if [[ -f "$PROJECT_DIR/.git/$sentinel" ]]; then
+            local op="${sentinel//_HEAD/}"
+            log_error "${op} en curso detectado (.git/${sentinel})"
+            log_info  "Fix: git ${op,,} --abort"
+            exit 1
+        fi
+    done
+
+    log_ok "Preflight checks: OK"
+}
+
+# ============================================================================
+# .gitignore Check (T03)
+# ============================================================================
+check_gitignore_worktrees() {
+    local gitignore="$PROJECT_DIR/.gitignore"
+    if ! grep -qxF '.worktrees/' "$gitignore" 2>/dev/null; then
+        echo '.worktrees/' >> "$gitignore"
+        log_info "Añadido .worktrees/ a .gitignore"
+    fi
+}
+
+# ============================================================================
+# Worktree Creation Functions (T04)
+# ============================================================================
+
+# Get the git dir for a worktree (resolves .git file)
+get_worktree_git_dir() {
+    local wt_path="$1"
+    local git_file="$wt_path/.git"
+    if [[ -f "$git_file" ]]; then
+        sed 's/^gitdir: //' "$git_file"
+    else
+        echo "$wt_path/.git"
+    fi
+}
+
+# Configure sparse-checkout to exclude specs/ (FR-008, FR-009, FR-010)
+configure_sparse_checkout() {
+    local wt_path="$1"
+    local git_dir
+    git_dir=$(get_worktree_git_dir "$wt_path")
+
+    git -C "$wt_path" config core.sparseCheckout true
+    git -C "$wt_path" config core.sparseCheckoutCone false
+    printf '/*\n!/specs/\n!/specs/**\n' > "$git_dir/info/sparse-checkout"
+    git -C "$wt_path" read-tree -mu HEAD
+
+    # Add specs/ to exclude as second layer of protection
+    if ! grep -qxF 'specs/' "$git_dir/info/exclude" 2>/dev/null; then
+        echo 'specs/' >> "$git_dir/info/exclude"
+    fi
+
+    # Remove specs/ directory if it still exists on disk (FR-010)
+    if [[ -d "$wt_path/specs" ]]; then
+        rm -rf "$wt_path/specs"
+    fi
+}
+
+# Generate a unique worktree name (FR-001, FR-002)
+generate_worktree_name() {
+    local slug="$1"
+    local candidate="ralph/${slug}-$(date '+%Y%m%d_%H%M%S')"
+
+    # If branch already exists, add random suffix
+    if git -C "$PROJECT_DIR" branch --list "$candidate" &>/dev/null; then
+        candidate="${candidate}-$(printf '%04d' $((RANDOM % 10000)))"
+    fi
+
+    echo "$candidate"
+}
+
+# Initialize a new worktree (FR-001, FR-002, FR-007)
+init_worktree() {
+    local spec_dir="$1"
+    local slug
+    slug=$(basename "$spec_dir")
+
+    WORKTREE_BRANCH=$(generate_worktree_name "$slug")
+    WORKTREE_PATH="$PROJECT_DIR/.worktrees/$(echo "$WORKTREE_BRANCH" | sed 's|ralph/||')"
+    BASE_BRANCH=$(git -C "$PROJECT_DIR" branch --show-current)
+    WORKTREE_CREATED_AT=$(date --iso-8601=seconds)
+
+    mkdir -p "$PROJECT_DIR/.worktrees"
+
+    log_info "Creating worktree: $WORKTREE_PATH"
+    git -C "$PROJECT_DIR" worktree add "$WORKTREE_PATH" -b "$WORKTREE_BRANCH" \
+        || { log_error "git worktree add falló"; exit 1; }
+
+    configure_sparse_checkout "$WORKTREE_PATH"
+
+    # Write worktree fields to state.json
+    python3 "$MERGE_SCRIPT" "$STATE_FILE" \
+        --set "worktreePath=$WORKTREE_PATH" \
+        --set "worktreeBranch=$WORKTREE_BRANCH" \
+        --set "worktreeCreatedAt=$WORKTREE_CREATED_AT" \
+        --set "baseBranch=$BASE_BRANCH"
+
+    log_ok "Worktree created: $WORKTREE_PATH (branch: $WORKTREE_BRANCH)"
+}
+
+# ============================================================================
+# ensure_sparse_checkout per iteration (T05)
+# ============================================================================
+ensure_sparse_checkout() {
+    local wt_path="$1"
+    local git_dir
+    git_dir=$(get_worktree_git_dir "$wt_path") || return 0
+    local sc_file="$git_dir/info/sparse-checkout"
+    local expected
+    expected="$(printf '/*\n!/specs/\n!/specs/**\n')"
+    local actual
+    actual="$(cat "$sc_file" 2>/dev/null || true)"
+    if [[ "$actual" != "$expected" ]]; then
+        configure_sparse_checkout "$wt_path"
+    fi
+}
+
+# ============================================================================
+# detect_and_recreate_worktree (T06)
+# Edge case: directory deleted during execution
+# ============================================================================
+detect_and_recreate_worktree() {
+    if [[ -n "$WORKTREE_PATH" && ! -d "$WORKTREE_PATH" ]]; then
+        log_warn "[WARN] Worktree directory missing; recreating: $WORKTREE_PATH"
+        git -C "$PROJECT_DIR" worktree prune
+        git -C "$PROJECT_DIR" worktree add "$WORKTREE_PATH" "$WORKTREE_BRANCH" \
+            || { log_error "No se pudo recrear el worktree"; exit 1; }
+        configure_sparse_checkout "$WORKTREE_PATH"
+        log_ok "Worktree recreado: $WORKTREE_PATH"
+    fi
+}
+
+# ============================================================================
+# print_merge_instructions (T09)
+# Print merge instructions at loop exit
+# ============================================================================
+print_merge_instructions() {
+    [[ "$WORKTREE_ENABLED" != "true" || -z "$WORKTREE_BRANCH" ]] && return 0
+    local slug
+    slug=$(basename "$WORKTREE_PATH")
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log_info "Worktree:  $WORKTREE_PATH"
+    log_info "Branch:    $WORKTREE_BRANCH"
+    log_info "To merge (squash — recommended):"
+    log_info "  git merge --squash $WORKTREE_BRANCH && git commit -m \"feat($slug): <description>\""
+    log_info "Or (preserve full history):"
+    log_info "  git merge $WORKTREE_BRANCH"
+    log_info "To clean up after merge:"
+    log_info "  .ralph/ralph-loop.sh --clean $slug"
+    log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+# ============================================================================
+# --clean subcommand (T10)
+# ============================================================================
+
+# Detect base branch (main or master)
+detect_base_branch() {
+    local ref
+    ref=$(git -C "$PROJECT_DIR" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null)
+    if [[ -n "$ref" ]]; then
+        echo "${ref##*/}"
+        return 0
+    fi
+    for b in main master; do
+        if git -C "$PROJECT_DIR" branch --list "$b" | grep -q "$b"; then
+            echo "$b"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Run clean for a given slug
+run_clean() {
+    local slug="$1"
+
+    # If no slug provided, read from state.json
+    if [[ -z "$slug" ]]; then
+        if [[ -f "$STATE_FILE" ]]; then
+            slug=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['name'])" "$STATE_FILE")
+        else
+            log_error "No slug provided and no state.json found"
+            exit 1
+        fi
+    fi
+
+    # Detect base branch
+    local base_branch
+    base_branch=$(detect_base_branch) || {
+        log_error "Could not detect base branch"
+        log_info "Hint: Use --base-branch <branch> to specify"
+        exit 1
+    }
+
+    log_info "Cleaning worktrees for slug: $slug (base: $base_branch)"
+
+    # Find worktrees for this slug
+    local wt_pattern="$PROJECT_DIR/.worktrees/${slug}-*"
+    local wt_list
+    wt_list=$(ls -d $wt_pattern 2>/dev/null || true)
+
+    if [[ -z "$wt_list" ]]; then
+        log_info "No worktrees found for slug: $slug"
+        git -C "$PROJECT_DIR" worktree prune
+        return 0
+    fi
+
+    local merged_count=0
+    local unmerged_count=0
+
+    for wt_path in $wt_list; do
+        local wt_branch
+        wt_branch=$(git -C "$PROJECT_DIR" worktree list --porcelain | awk "/^worktree.*$(basename "$wt_path")/{f=1} f && /^branch/{print \$2; f=0}")
+
+        if [[ -z "$wt_branch" ]]; then
+            log_warn "Could not determine branch for worktree: $wt_path"
+            continue
+        fi
+
+        # Check if merged
+        if git -C "$PROJECT_DIR" branch --merged "$base_branch" | grep -q "^[* ][[:space:]]*$wt_branch$"; then
+            log_info "[MERGED] $wt_path ($wt_branch)"
+            log_info "  Removing worktree and branch..."
+            git -C "$PROJECT_DIR" worktree remove --force "$wt_path" 2>/dev/null || true
+            git -C "$PROJECT_DIR" branch -d "$wt_branch" 2>/dev/null || true
+            merged_count=$((merged_count + 1))
+        else
+            log_warn "[NOT MERGED] $wt_path ($wt_branch)"
+            unmerged_count=$((unmerged_count + 1))
+            read -rp "Delete unmerged worktree $wt_path? [y/N] " confirm
+            if [[ "$confirm" == [yY] ]]; then
+                git -C "$PROJECT_DIR" worktree remove --force "$wt_path" 2>/dev/null || true
+                git -C "$PROJECT_DIR" branch -d "$wt_branch" 2>/dev/null || true
+            fi
+        fi
+    done
+
+    git -C "$PROJECT_DIR" worktree prune
+
+    log_ok "Clean complete: $merged_count merged worktrees removed, $unmerged_count not merged"
+}
+
+# ============================================================================
 # Main Loop
 # ============================================================================
 main() {
     parse_args "$@"
+
+    # Trap EXIT for cleanup (T01)
+    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp"; [[ -n "${RALPH_SNAPSHOT_DIR:-}" ]] && rm -rf "$RALPH_SNAPSHOT_DIR"' EXIT
+
     cd "$PROJECT_DIR"
+
+    # Handle --clean subcommand (T10)
+    if [[ "${CLEAN_MODE:-false}" == "true" ]]; then
+        run_clean "${CLEAN_SLUG:-}"
+        exit 0
+    fi
 
     # Validate agent
     case "$RALPH_AGENT" in
@@ -567,6 +911,13 @@ main() {
             exit 1
         fi
         log_info "Resuming from existing state"
+
+        # Restore worktree fields from state.json (T11)
+        if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+            WORKTREE_PATH=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('worktreePath',''))" "$STATE_FILE")
+            WORKTREE_BRANCH=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('worktreeBranch',''))" "$STATE_FILE")
+            BASE_BRANCH=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('baseBranch',''))" "$STATE_FILE")
+        fi
     else
         if [[ -z "$SPEC_DIR" ]]; then
             log_error "Spec directory required. Usage: .ralph/ralph-loop.sh specs/001-feature"
@@ -574,6 +925,13 @@ main() {
             exit 1
         fi
         init_state "$SPEC_DIR"
+
+        # Worktree setup for new execution (T11)
+        if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+            check_gitignore_worktrees
+            run_preflight_checks
+            init_worktree "$SPEC_DIR"
+        fi
     fi
 
     # Read initial state
@@ -606,6 +964,13 @@ main() {
     echo -e "  ${BLUE}Max retries:${NC}  $RALPH_MAX_RETRIES per task"
     echo -e "  ${BLUE}YOLO:${NC}         $RALPH_YOLO"
     echo -e "  ${BLUE}Log:${NC}          $session_log"
+
+    # Add worktree info to banner if enabled (T11)
+    if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+        echo -e "  ${BLUE}Worktree:${NC}    $WORKTREE_PATH"
+        echo -e "  ${BLUE}Branch:${NC}      $WORKTREE_BRANCH"
+    fi
+
     echo ""
     echo -e "  $(get_task_counts "$tasks_file")"
     echo ""
@@ -622,6 +987,12 @@ main() {
         if (( global_iter > RALPH_MAX_ITER )); then
             log_warn "Global iteration cap reached ($RALPH_MAX_ITER)"
             break
+        fi
+
+        # Worktree per-iteration checks (T05, T06)
+        if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+            ensure_sparse_checkout "$WORKTREE_PATH"
+            detect_and_recreate_worktree
         fi
 
         # Re-read task counts each iteration (tasks.md may have changed)
@@ -642,6 +1013,7 @@ main() {
             echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             update_state --set "phase=done"
             log_progress "$next_idx" "ALL COMPLETE" "ALL_TASKS_COMPLETE" "$global_iter"
+            print_merge_instructions
             exit 0
         fi
 
@@ -691,8 +1063,12 @@ main() {
         local agent_exit=0
 
         set +e
+        # cd to worktree before running agent (T07)
+        [[ "$WORKTREE_ENABLED" == "true" ]] && cd "$WORKTREE_PATH"
         agent_output=$(run_work_agent "$work_prompt" "$iter_log")
         agent_exit=$?
+        # cd back to project dir after agent
+        [[ "$WORKTREE_ENABLED" == "true" ]] && cd "$PROJECT_DIR"
         set -e
 
         if [[ $agent_exit -ne 0 ]]; then
@@ -797,14 +1173,30 @@ main() {
             fi
         fi
 
-        # Push if there are unpushed commits
-        local current_branch
-        current_branch=$(git branch --show-current 2>/dev/null || echo "main")
-        git push origin "$current_branch" 2>/dev/null || true
+        # Push if there are unpushed commits (T08 - RALPH_PUSH conditional)
+        if [[ "${RALPH_PUSH:-false}" == "true" ]]; then
+            if git -C "$PROJECT_DIR" remote get-url origin &>/dev/null; then
+                local push_branch
+                if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+                    push_branch="$WORKTREE_BRANCH"
+                else
+                    push_branch=$(git -C "$PROJECT_DIR" branch --show-current)
+                fi
+                if [[ "$PUSH_TRACKING_SET" != "true" ]]; then
+                    git -C "$PROJECT_DIR" push -u origin "$push_branch" 2>/dev/null || true
+                    PUSH_TRACKING_SET=true
+                else
+                    git -C "$PROJECT_DIR" push 2>/dev/null || true
+                fi
+            fi
+        fi
 
         # Brief pause
         sleep 2
     done
+
+    # Print merge instructions at loop exit (T09)
+    print_merge_instructions
 
     echo ""
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
