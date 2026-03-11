@@ -69,7 +69,7 @@ def extract_dependencies(file_path: Path, profile: str) -> list[Dependency]:
     """
     adapter = get_adapter(profile)
     try:
-        result = adapter.parse_file(file_path)
+        adapter.parse_file(file_path)
         return adapter.extract_dependencies(file_path)
     except Exception as e:
         print(f"Error parsing {file_path}: {e}")

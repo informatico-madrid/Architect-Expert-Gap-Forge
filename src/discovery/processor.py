@@ -676,7 +676,9 @@ class RepoProcessor:
                 except ParseError as e:
                     self._stats["parse_errors"] += 1
                     # T030c: Emit metrics for parse error
-                    self._metrics.increment_parse_error(repo_root.name, self.cfg.profile)
+                    self._metrics.increment_parse_error(
+                        repo_root.name, self.cfg.profile
+                    )
                     if self._on_parse_error == "abort":
                         # T009d: Abort the entire repository, not just the file
                         logger.warning(

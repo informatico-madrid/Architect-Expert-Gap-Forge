@@ -39,7 +39,7 @@ import hashlib
 import time
 from pathlib import Path
 from string import Template
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Tuple, Optional
 
 import yaml
 from openai import AsyncOpenAI
@@ -1387,8 +1387,8 @@ class ProgressTracker:
             f"  Total processed: {self.accepted + self.rejected}",
             f"  Accepted:        {self.accepted}",
             f"  Rejected:        {self.rejected}",
-            f"",
-            f"  By type:",
+            "",
+            "  By type:",
             f"    Nominal (Evol):   {self.by_type.get('nominal', 0)}",
             f"    Contrast 23->26:  {self.by_type.get('contrast', 0)}",
             f"    Error Recovery:   {self.by_type.get('error_recovery', 0)}",
@@ -1396,13 +1396,13 @@ class ProgressTracker:
         ]
         if self.mode != "theory":
             lines += [
-                f"",
-                f"  Evol-Instruct breakdown:",
+                "",
+                "  Evol-Instruct breakdown:",
                 f"    Easy:   {self.by_difficulty.get('easy', 0)}",
                 f"    Medium: {self.by_difficulty.get('medium', 0)}",
                 f"    Hard:   {self.by_difficulty.get('hard', 0)}",
-                f"",
-                f"  ANTI-SCHIZOPHRENIA FILTER:",
+                "",
+                "  ANTI-SCHIZOPHRENIA FILTER:",
                 f"    Legacy detected in: {self.legacy_detected} fragments",
                 f"    Gold Injection OK:  {self.gold_injected} (clean 2026 code)",
                 f"    Gold Injection SKIP:{self.gold_skipped} (legacy -> model generates 2026)",

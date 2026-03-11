@@ -46,3 +46,12 @@ legacy/
 .vscode/
 untitled:plan-*.prompt.md
 .ralph/state.json
+progress.txt
+.goose/ralph/.ralph-complete
+.goose/ralph/review-result.txt
+.goose/ralph/work-complete.txt
+.goose/ralph/work-summary.txt
+plans/audit_report_analysis.md
+plans/judge_analysis.md
+plans/judge_prompt_example.md
+plans/ralph-loops-comparison.md

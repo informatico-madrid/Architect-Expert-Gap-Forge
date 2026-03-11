@@ -3,7 +3,6 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 
-import torch
 from safetensors.torch import load_file, save_file
 import os
 import json
@@ -24,7 +23,7 @@ files = sorted(list(set(weight_map.values())))
 
 clean_state_dict = {}
 
-print(f"--- STARTING DEEP CONSOLIDATION ---")
+print("--- STARTING DEEP CONSOLIDATION ---")
 
 for f in files:
     print(f"Processing shard: {f}...")
@@ -41,7 +40,7 @@ for f in files:
         clean_state_dict[new_key] = value
     del shard
 
-print(f"--- SAVING MASTER FILE ---")
+print("--- SAVING MASTER FILE ---")
 # Save to consolidated path so vLLM can load it directly
 save_file(clean_state_dict, "data/outputs/consolidated/adapter_model.safetensors")
 

@@ -1,4 +1,4 @@
-done
+PARTIAL — audit 2026-03-11: 22/44 sub-ítems completos. Ver work-summary.txt para detalle.
 
 T025 + T026 completed successfully.
 

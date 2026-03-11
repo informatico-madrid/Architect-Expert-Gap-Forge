@@ -14,6 +14,8 @@ python src/discovery/ingestor.py --config configs/stage_1_discovery/examples/hom
 python src/discovery/processor.py --config configs/stage_1_discovery/examples/homeassistant.yaml
 ```
 
+Available profile examples: `homeassistant.yaml` and `php_hexagonal.yaml` in `configs/stage_1_discovery/examples/`.
+
 To override the `on_parse_error` at runtime, edit the profile example yaml under `configs/stage_1_discovery/examples/` and set:
 
 ```yaml
@@ -39,5 +41,5 @@ python scripts/check_headers.py --check
 
 ## Notes
 
-- The `processor` will use the adapter selected by the `profile.extractor_adapter` key. The default `homeassistant` profile uses `python_ast_adapter`.
+- The `processor` uses the adapter selected by the `profile` setting in the config YAML, which is passed to `get_adapter(profile)`.
 - Do not push commits automatically; follow repository governance for reviews and commit messages.

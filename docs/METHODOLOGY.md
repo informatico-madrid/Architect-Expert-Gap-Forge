@@ -51,6 +51,62 @@ The scanner now emits **TIPO 5 GOVERNANCE_RULES bundles** for repository‑scop
 
 (The engine itself remains agnostic; the staged tree is simply a convenient way to organize inputs.)
 
+### 1.4. Language-Agnostic Profile Architecture (FR-001, FR-005, FR-008)
+
+The Stage 1 engine implements a **profile-based architecture** that enables language-agnostic operation:
+
+#### Profile System
+
+A **Profile** is a declarative configuration that defines:
+- Target language and file extensions
+- Extractor adapter implementation
+- Module detection strategy
+- Ignored paths and patterns
+- Master documents mapping
+
+| Profile | Language | Extractor Adapter | Module Strategy |
+|---------|----------|-------------------|-----------------|
+| `homeassistant` | Python | `PythonASTAdapter` | `manifest` (via `manifest.json`) |
+| `php_hexagonal` | PHP | `PHPExtractorAdapter` | `directory` |
+
+#### ExtractorAdapter Architecture (FR-005)
+
+The processor uses a **pluggable extractor system**:
+
+```python
+from src.utils.extractors import get_adapter
+from src.utils.extractors.base import ParseError
+
+# Factory pattern returns the appropriate adapter
+adapter = get_adapter(profile="homeassistant")
+
+# Extract dependencies from a file
+dependencies = adapter.extract_dependencies(Path("module/file.py"))
+
+# Parse a file, may raise ParseError
+try:
+    result = adapter.parse_file(Path("module/file.py"))
+except ParseError as e:
+    # Handle according to on_parse_error policy
+    pass
+```
+
+The `ParseError` exception (FR-006) provides structured error information:
+- `file_path`: Path to the failed file
+- `line`: Line number (if available)
+- `error`: Error description
+- `diagnosis`: Root cause analysis
+- `fix_hint`: Suggested fix
+- `adapter`: Adapter that generated the error
+
+#### Module Detection Strategies (FR-008)
+
+Three strategies for grouping files into bounded contexts:
+
+1. **`manifest`**: Detect modules via manifest files (`manifest.json`, `composer.json`, `package.json`)
+2. **`directory`**: Group by directory rules (e.g., `app/`, `src/`, `controllers/`)
+3. **`manual_mapping`**: Use explicit `manual_module_mapping` table in YAML config
+
 ---
 
 ## 2. Taxonomical Diversification (N/C/E/T)

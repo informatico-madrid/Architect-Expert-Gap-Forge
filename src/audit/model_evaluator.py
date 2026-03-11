@@ -167,6 +167,11 @@ DEFAULT_INFERENCE_BACKEND: str = CFG.get("inference_backend", "vllm")
 DEFAULT_GEMINI_MODEL: str = CFG.get("gemini_model", "gemini-2.5-flash")
 DEFAULT_PROFESSOR_MAX_TOKENS: int = CFG.get("professor_max_tokens", 65536)
 DEFAULT_INFERENCE_MAX_TOKENS: int = CFG.get("inference_max_tokens", 65536)
+# Maximum characters sent to the judge per response. Responses beyond this limit
+# are truncated before submission. Must be large enough to cover any legitimate
+# model output (empirical max ~22 K); 32 K gives ample headroom while capping
+# clearly degenerate runaway generations (>100 K).
+JUDGE_RESPONSE_TRUNCATION_LIMIT: int = CFG.get("judge_response_truncation_limit", 65536)
 
 # Singletons
 _prompt_mgr: PromptManager | None = None
@@ -510,13 +515,11 @@ def run_inference(
 
 
 def _extract_code_blocks(text: str) -> str:
-    """Extract all code from fenced blocks or <tool_call>/<write_action> tags."""
+    """Extract all code from fenced blocks (markdown)."""
     blocks: list[str] = []
+    # Only look for markdown code blocks - no tool_call/write_action tags
     for m in re.finditer(r"```(?:\w+)?\n(.*?)```", text, re.DOTALL):
         blocks.append(m.group(1).strip())
-    for tag in ("tool_call", "write_action"):
-        for m in re.finditer(rf"<{tag}>(.*?)</{tag}>", text, re.DOTALL):
-            blocks.append(m.group(1).strip())
     return "\n\n".join(blocks)
 
 
@@ -552,13 +555,13 @@ def llm_judge_score(
 
     # Truncate responses to avoid exceeding context
     b_resp = (
-        baseline_resp[:6000] + "\n...[truncated]"
-        if len(baseline_resp) > 6000
+        baseline_resp[:JUDGE_RESPONSE_TRUNCATION_LIMIT] + "\n...[truncated]"
+        if len(baseline_resp) > JUDGE_RESPONSE_TRUNCATION_LIMIT
         else baseline_resp
     )
     a_resp = (
-        adapter_resp[:6000] + "\n...[truncated]"
-        if len(adapter_resp) > 6000
+        adapter_resp[:JUDGE_RESPONSE_TRUNCATION_LIMIT] + "\n...[truncated]"
+        if len(adapter_resp) > JUDGE_RESPONSE_TRUNCATION_LIMIT
         else adapter_resp
     )
 

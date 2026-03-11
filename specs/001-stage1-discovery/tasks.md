@@ -104,10 +104,10 @@ Additional Critical Test Tasks
   - [x] T031a `scripts/audit_ast_fallback.py` genera `specs/001-stage1-discovery/ast_fallback_audit.json`
   - [x] T031b `specs/001-stage1-discovery/migrations/test_migration_plan.md` tiene plan y lista priorizada
   - [x] T031c Migración real de los tests High-priority — Los tests ya esperan ParseError (FR-006) y pasan
-- [ ] T032 Performance: benchmarking & CI — PARCIALMENTE IMPLEMENTADO:
+- [x] T032 Performance: benchmarking & CI — COMPLETO:
   - [x] T032a `tests/integration/test_benchmark_compare.py` existe con estructura de benchmarks
   - [x] T032b Corpus de referencia disponible — tests pasan (6 passed)
-  - [ ] T032c No existe `scripts/benchmark/` ni baseline capturado — NO implementado
+  - [x] T032c `scripts/benchmark/` existe con baseline capturado en `scripts/benchmark/baselines/homeassistant.json`
 
 ---
 
@@ -115,30 +115,30 @@ Additional Critical Test Tasks
 
 Las siguientes entradas derivan de `specs/001-stage1-discovery/migrations/test_migration_plan.md`.
 
-- [ ] `tests/test_production_v11.py` — Migrar a ParseError-first
-  1. Actualizar el test para esperar `ParseError` (plantilla en `migrations/test_migration_plan.md`)
-  2. Implementador adapta `production_v11` para lanzar `ParseError`
-  3. Añadir nota en PR enlazando FR-006
+- [x] `tests/test_production_v11.py` — Migrar a ParseError-first
+  1. Test ya espera `ParseError` en `test_invalid_python_raises_parse_error` (línea 548)
+  2. `production_v11._ast_fragment_list` lanza `ParseError` en SyntaxError y vacío (líneas 1012-1049)
+  3. Docstring referencia "instead of fallback" (FR-006)
 
-- [ ] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first
-  1. Reemplazar `assert` de AST fallback por `pytest.raises(ParseError)`
-  2. Ejecutar tests locales para confirmar que pasan
-  3. Aplicar cambios en `_ast_fragment_list` o adapter si necesario
+- [x] `tests/test_production_v11_helpers.py` — Migrar a ParseError-first
+  1. Reemplazar `assert` de AST fallback por `pytest.raises(ParseError)` ✓ (ya implementado)
+  2. Ejecutar tests locales para confirmar que pasan ✓ (19 tests pass)
+  3. Aplicar cambios en `_ast_fragment_list` o adapter si necesario ✓ (ya done en T031c)
 
-- [ ] `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related
-  1. Identificar sub-tests que llaman a `_ast_fragment_list`
-  2. Aplicar ParseError-first en los sub-tests identificados
-  3. Documentar el cambio en el PR
+- [x] `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related
+  1. Identificar sub-tests que llaman a `_ast_fragment_list` ✓ (no hay - el archivo solo testa model_evaluator)
+  2. Aplicar ParseError-first en los sub-tests identificados ✓ (no aplicable)
+  3. Documentar el cambio en el PR ✓ (no requiere cambios - no hay dependencia con AST)
 
-- [ ] `tests/test_sampling.py` — Revisar y clasificar
-  1. Confirmar dependencia con AST fallback
-  2. Si no depende: marcar como `no-ast` y dejar sin cambios
-  3. Si depende: migrar a ParseError-first
+- [x] `tests/test_sampling.py` — Revisar y clasificar
+  1. Confirmar dependencia con AST fallback ✓ (no depende - solo testa sampling/load_dataset)
+  2. Si no depende: marcar como `no-ast` y dejar sin cambios ✓ (aplicado)
+  3. Si depende: migrar a ParseError-first ✓ (no aplicable)
 
-- [ ] `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar
-  1. Extraer tests AST-specific
-  2. Migrar a ParseError-first
-  3. Parametrizar si hay múltiples variantes
+- [x] `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar
+  1. Extraer tests AST-specific ✓ (no hay - archivo solo testa model_evaluator)
+  2. Migrar a ParseError-first ✓ (no aplicable - no hay dependencia AST)
+  3. Parametrizar si hay múltiples variantes ✓ (no aplicable)
 
 Referencias:
 - Migration plan: specs/001-stage1-discovery/migrations/test_migration_plan.md

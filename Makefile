@@ -31,6 +31,9 @@ train:
 merge:
 	docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) run --rm merger
 
+quantize:
+	docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) run --rm quantizer
+
 # ── Development targets ───────────────────────────────────────────────────────
 
 ## test: Run the full test suite without coverage (fast local iteration).

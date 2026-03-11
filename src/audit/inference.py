@@ -73,6 +73,7 @@ class BaseInferenceClient(abc.ABC):
         max_tokens: int = 65536,
         temperature: float = 0.6,
         json_mode: bool = False,
+        tools: list[dict[str, Any]] | None = None,
     ) -> str:
         """Generate a text completion and return the raw response string.
 
@@ -100,6 +101,7 @@ class BaseInferenceClient(abc.ABC):
         retries: int = 3,
         retry_delay: float = 5.0,
         json_mode: bool = False,
+        tools: list[dict[str, Any]] | None = None,
     ) -> str:
         """Generate with exponential-backoff retry on transient errors.
 
@@ -116,6 +118,7 @@ class BaseInferenceClient(abc.ABC):
                     max_tokens=max_tokens,
                     temperature=temperature,
                     json_mode=json_mode,
+                    tools=tools,
                 )
             except Exception as exc:
                 last_exc = exc
@@ -217,6 +220,7 @@ class VLLMClient(BaseInferenceClient):
         max_tokens: int = 65536,
         temperature: float = 0.6,
         json_mode: bool = False,
+        tools: list[dict[str, Any]] | None = None,
     ) -> str:
         messages: list[ChatMessage] = []
         if system_prompt:
@@ -231,6 +235,9 @@ class VLLMClient(BaseInferenceClient):
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
+        # Tools disabled - using text-only inference
+        # if tools:
+        #     payload["tools"] = tools
 
         resp = requests.post(
             f"{self._api_url}/chat/completions",

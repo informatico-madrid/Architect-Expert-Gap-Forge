@@ -21,11 +21,10 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, List, Set
+from typing import List, Set
 
 from src.utils.extractors.base import (
     Dependency,
-    ExtractorAdapter,
     ParseError,
     ParseResult,
 )

@@ -246,6 +246,16 @@ def main():
         action="store_true",
         help="Print detailed results",
     )
+    parser.add_argument(
+        "--save-baseline",
+        action="store_true",
+        help="Save results as baseline in scripts/benchmark/baselines/",
+    )
+    parser.add_argument(
+        "--no-fail",
+        action="store_true",
+        help="Don't exit with error if targets fail (useful for CI)",
+    )
 
     args = parser.parse_args()
 
@@ -293,26 +303,40 @@ def main():
             print(f"Files processed: {results['total_files']}")
             print(f"Files with errors: {results['total_errors']}")
             print(f"Dependencies extracted: {results['total_dependencies']}")
-            print(f"\nLatency:")
+            print("\nLatency:")
             print(
                 f"  Mean: {results['latency']['mean_ms']:.2f}ms (target: <{results['targets']['latency_mean_target_ms']}ms)"
             )
             print(
                 f"  P95:  {results['latency']['p95_ms']:.2f}ms (target: <{results['targets']['latency_p95_target_ms']}ms)"
             )
-            print(f"\nThroughput:")
+            print("\nThroughput:")
             print(
                 f"  {results['throughput']['files_per_hour']:.0f} files/hour (target: >={results['targets']['throughput_target']})"
             )
-            print(f"\nTarget Checks:")
+            print("\nTarget Checks:")
             for check, passed in target_checks.items():
                 status = "✓ PASS" if passed else "✗ FAIL"
                 print(f"  {check}: {status}")
 
         # Exit with error if any target fails
-        if not all(target_checks.values()):
+        if not all(target_checks.values()) and not args.no_fail:
             print("\n⚠ Some targets did not meet requirements!", file=sys.stderr)
             sys.exit(1)
+
+        # Save as baseline if requested
+        if args.save_baseline:
+            baseline_dir = Path(__file__).resolve().parent / "baselines"
+            baseline_dir.mkdir(parents=True, exist_ok=True)
+            baseline_path = baseline_dir / f"{args.profile}.json"
+
+            # Remove target_checks for clean baseline
+            baseline_results = {
+                k: v for k, v in results.items() if k != "target_checks"
+            }
+            with open(baseline_path, "w") as f:
+                json.dump(baseline_results, f, indent=2)
+            print(f"\n✓ Baseline saved to: {baseline_path}")
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

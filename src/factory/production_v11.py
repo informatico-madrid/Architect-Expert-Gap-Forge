@@ -51,7 +51,8 @@ try:
     from think_filter import apply_to_record as _think_filter_apply
 except ImportError:
     try:
-        import importlib.util as _ilu, os as _os
+        import importlib.util as _ilu
+        import os as _os
 
         _tf_path = _os.path.join(_os.path.dirname(__file__), "think_filter.py")
         _tf_spec = _ilu.spec_from_file_location("think_filter", _tf_path)
@@ -1831,8 +1832,8 @@ class ProgressTracker:
             f"  Total processed: {self.accepted + self.rejected}",
             f"  Accepted:        {self.accepted}",
             f"  Rejected:        {self.rejected}",
-            f"",
-            f"  By type:",
+            "",
+            "  By type:",
             f"    Nominal (Evol):   {self.by_type.get('nominal', 0)}",
             f"    Contrast 23->26:  {self.by_type.get('contrast', 0)}",
             f"    Error Recovery:   {self.by_type.get('error_recovery', 0)}",
@@ -1840,13 +1841,13 @@ class ProgressTracker:
         ]
         if self.mode != "theory":
             lines += [
-                f"",
-                f"  Evol-Instruct breakdown:",
+                "",
+                "  Evol-Instruct breakdown:",
                 f"    Easy:   {self.by_difficulty.get('easy', 0)}",
                 f"    Medium: {self.by_difficulty.get('medium', 0)}",
                 f"    Hard:   {self.by_difficulty.get('hard', 0)}",
-                f"",
-                f"  ANTI-SCHIZOPHRENIA FILTER:",
+                "",
+                "  ANTI-SCHIZOPHRENIA FILTER:",
                 f"    Legacy detected in: {self.legacy_detected} fragments",
                 f"    Gold Injection OK:  {self.gold_injected} (clean 2026 code)",
                 f"    Gold Injection SKIP:{self.gold_skipped} (legacy -> model generates 2026)",

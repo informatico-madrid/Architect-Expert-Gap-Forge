@@ -25,9 +25,8 @@ Notes:
 
 import yaml
 import json
-import re
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from openai import OpenAI
 
 # ============================================================================
@@ -470,7 +469,7 @@ if __name__ == "__main__":
     print("=" * 80)
     print(f"Model: {MODEL_NAME}")
     print(f"Samples: {TARGET_SAMPLES} (controlled test)")
-    print(f"Framework: Distilabel + local vLLM")
+    print("Framework: Distilabel + local vLLM")
     print("Metrics: Logic Density > 2.5:1, Zero Meta-Speech")
     print("=" * 80)
 
@@ -484,7 +483,7 @@ if __name__ == "__main__":
         try:
             conversation = generate_agentic_conversation(seed, idx)
             results.append(conversation)
-            print(f"  ✅ Conversation generated (4 turns)")
+            print("  ✅ Conversation generated (4 turns)")
         except Exception as e:
             print(f"  ❌ Error: {e}")
 
@@ -547,7 +546,7 @@ if __name__ == "__main__":
     )
     print(f"Average Logic Density Index: {avg_logic_density:.2f}:1 (Target: >2.5:1)")
     print(f"\n📁 Saved to: {output_path}")
-    print(f"✅ NeMo-Curator compatible for downstream curation")
+    print("✅ NeMo-Curator compatible for downstream curation")
     print(
         f"APIGen-MT-5k roles: [user, assistant, tool, assistant] x {len(results)} conversations"
     )

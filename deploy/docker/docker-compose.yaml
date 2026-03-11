@@ -104,3 +104,14 @@ services:
       /workspace/data_factory/${AEGF_CONFIG_PATH} \
       --lora_model_dir=${AEGF_CHECKPOINT_PATH}
       "
+  quantizer:
+    <<: *axolotl-base
+    container_name: aegf_quantizer
+    user: "0:0"
+    command: >
+      bash -c "
+      echo 'Instalando llmcompressor...' &&
+      pip install llmcompressor &&
+      echo 'Iniciando cuantización FP8...' &&
+      python3 /workspace/data_factory/src/quantizer/quantize_fp8.py
+      "

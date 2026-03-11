@@ -24,6 +24,25 @@ AEGF is structured as a modular, **6-stage industrial pipeline**. The core engin
 
 Purpose: Curated repository ingestion that builds the "Raw Gold" source corpus used by later synthesis stages. The engine is fully **domain-agnostic** — behaviour is driven exclusively by external YAML configuration files (`configs/*.yaml`).
 
+#### Profile System (Language-Agnostic)
+
+The Stage 1 engine uses a **Profile-based architecture** to support multiple languages and use cases:
+
+| Profile | Language | Use Case | Extractor Adapter |
+|---------|----------|----------|-------------------|
+| `homeassistant` | Python | Home Assistant integrations | `PythonASTAdapter` |
+| `php_hexagonal` | PHP | Legacy PHP → Hexagonal architecture | `PHPExtractorAdapter` |
+
+**Profile Configuration** (FR-001):
+```yaml
+profile: homeassistant           # Profile identifier
+profile_extensions: ['.py']      # Language extensions to filter
+profile_ignored_paths:          # Paths to ignore
+  - vendor
+  - node_modules
+  - __pycache__
+```
+
 #### Modes (set via `mode:` in the YAML config)
 
 - **`static` (Primary / Recommended):** Clones a hand-picked list of vetted repositories defined under `static_repos` in the config. No GitHub token required.
@@ -44,6 +63,8 @@ Purpose: Curated repository ingestion that builds the "Raw Gold" source corpus u
 | `per_page` | int | `100` | Results per GitHub API page (1–100) |
 | `base_dir` | path | `cwd()` | Root directory of the project |
 | `raw_subdir` | str | `data/raw` | Subdirectory under `base_dir` for cloned repos |
+| `profile_extensions` | list[str] | `null` | File extensions to include (e.g., `['.py']`) |
+| `profile_ignored_paths` | list[str] | `null` | Paths to ignore during processing |
 
 #### Output Structure
 
@@ -121,6 +142,45 @@ Purpose: Transform raw repository clones into per-module, typed `.txt` bundles (
 - **Local-imports normalization:** `_extract_local_imports` now returns concrete filenames (e.g., `const.py`, `helpers.py`) instead of dotted module fragments; duplicates are suppressed. These filenames populate the bundle's `[ARCH_HEADER]` `LOCAL_IMPORTS` field.
 - **INFRASTRUCTURE purged:** Loose root-level files are no longer emitted as a virtual `INFRASTRUCTURE` module — the processor only emits discovered modules (manifest/__init__).
 
+#### ExtractorAdapter Architecture (FR-005)
+
+The processor uses a **pluggable extractor system** that adapts to different programming languages:
+
+```python
+from src.utils.extractors import get_adapter
+
+# Initialize adapter based on profile
+adapter = get_adapter(profile="homeassistant")
+```
+
+| Adapter | Language | Key Methods |
+|---------|----------|-------------|
+| `PythonASTAdapter` | Python | `extract_dependencies()`, `parse_file()` |
+| `PHPExtractorAdapter` | PHP | `extract_dependencies()`, `parse_file()` |
+
+#### ParseError Policy (FR-006)
+
+When the extractor fails to parse a file, the system follows a configurable policy:
+
+| Policy | Behavior |
+|--------|----------|
+| `abort` (default) | Mark file as `needs_manual_review` and abort repo processing |
+| `skip` | Skip the file and continue processing |
+| `mark_and_continue` | Mark file, log error, and continue |
+
+The `ParseError` exception includes:
+- `file_path`, `line`, `error`, `diagnosis`, `fix_hint`, `adapter`
+
+#### Module Detection Strategies (FR-008)
+
+Three strategies for grouping files into modules/bounded contexts:
+
+| Strategy | Description |
+|----------|-------------|
+| `manifest` | Detect modules via manifest files (`manifest.json`, `composer.json`, `package.json`) |
+| `directory` | Group by directory rules (e.g., `app/`, `src/`, `controllers/`) |
+| `manual_mapping` | Use explicit `manual_module_mapping` table in YAML config |
+
 Operational Flow (examples):
 
 Run Ingestion (Stage 1):
@@ -157,6 +217,30 @@ These three Markdown documents are the **API Delta knowledge base** of the entir
 | `HA_JINJA_YAML_GUIDE_2026.md` | `$jinja_guide` | Jinja2 & YAML template breaking changes from HA 2024.10 → 2026.2 (automations, templates, entities) |
 
 All three files live in `data/Gap/` by default (override with `--gap-dir`).
+
+#### Dynamic Profile-Based Loading (FR-009)
+
+Master Documents are loaded dynamically based on the active **profile**:
+
+```python
+from src.factory import production_v11
+from pathlib import Path
+
+# Load master docs for a specific profile
+master_docs = production_v11.load_master_docs(
+    gap_dir=Path('data/Gap'),
+    profile='homeassistant'  # or 'php_hexagonal'
+)
+```
+
+**Profile Master Documents Mapping:**
+
+| Profile | Required Files |
+|---------|---------------|
+| `homeassistant` | `HA_MASTER_GUIDE_2026.md`, `technical_changelog_2026.md`, `HA_JINJA_YAML_GUIDE_2026.md` |
+| `php_hexagonal` | `PHP_MASTER_GUIDE.md`, `hexagonal_architecture.md`, `SOLID_PRINCIPLES.md` |
+
+The mapping is defined in `configs/stage_1_discovery/master_docs_map.yaml`. If a required document is missing, the system raises `FileNotFoundError` with a clear message.
 
 #### How to Create / Maintain Them
 

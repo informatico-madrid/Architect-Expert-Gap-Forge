@@ -1,0 +1,27 @@
+{
+  "profile": "homeassistant",
+  "timestamp": "2026-03-11T10:35:47.186693Z",
+  "total_files": 4,
+  "total_errors": 0,
+  "total_dependencies": 12,
+  "files_per_repo": 2,
+  "repos_count": 2,
+  "latency": {
+    "mean_ms": 0.7278022485479596,
+    "median_ms": 0.6488084982265718,
+    "p95_ms": 1.497892748011509,
+    "p99_ms": 1.536107348074438,
+    "min_ms": 0.06793099964852445,
+    "max_ms": 1.5456609980901703
+  },
+  "throughput": {
+    "files_per_second": 1373.9996022203873,
+    "files_per_hour": 4946398.567993394
+  },
+  "targets": {
+    "throughput_target": 1000,
+    "latency_mean_target_ms": 200,
+    "latency_p95_target_ms": 1000,
+    "repos_per_hour_target": 10
+  }
+}

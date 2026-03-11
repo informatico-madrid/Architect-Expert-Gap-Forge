@@ -8,6 +8,30 @@ All 31 tasks completed:
 - Formatting: ruff format passed
 - Headers: All critical headers present
 
+=== 2026-03-11 10:40 | Task 32 ===
+Task: T032 test_production_v11.py — Migrar a ParseError-first
+Files changed:
+- tests/test_production_v11.py (removed unused import hashlib)
+- specs/001-stage1-discovery/tasks.md (marked as complete)
+Verification:
+- Tests: 68 passed (including test_invalid_python_raises_parse_error)
+- Ruff: All checks passed
+- Implementation already raises ParseError (production_v11.py lines 1012-1017, 1044-1049)
+- Test already expects ParseError (test at lines 548-558)
+Status: DONE (was already implemented, minor lint fix applied)
+
+=== 2026-03-11 10:45 | Task 33 ===
+Task: T033 test_production_v11_helpers.py — Migrar a ParseError-first
+Files changed:
+- tests/test_production_v11_helpers.py (removed unused import textwrap)
+- specs/001-stage1-discovery/tasks.md (marked as complete)
+Verification:
+- Tests: 19 passed (including test_ast_fragment_list_fallback_on_error)
+- Ruff: All checks passed
+- Implementation already raises ParseError (production_v11.py lines 1012-1017, 1044-1049)
+- Test already expects ParseError (test_ast_fragment_list_fallback_on_error)
+Status: DONE (already implemented, minor lint fix applied)
+
 Last update: 2026-03-11
 
 === 2026-03-11 09:40 | Task 20 ===
@@ -48,6 +72,20 @@ Status: DONE
 
 Tests: 744 passed, 1 skipped
 Ruff: All checks passed
+
+=== 2026-03-11 10:38 | Task 32 ===
+Task: T032 Performance: benchmarking & CI — COMPLETO
+Files changed:
+- scripts/benchmark/__init__.py (added exports for benchmark_profile, compare_results)
+- scripts/benchmark/measure_performance.py (added --save-baseline and --no-fail options)
+- scripts/benchmark/compare_baseline.py (new: baseline comparison script)
+- scripts/benchmark/baselines/homeassistant.json (captured baseline)
+- specs/001-stage1-discovery/tasks.md (marked T032c as complete)
+Verification:
+- Tests: 6 passed (benchmark integration tests)
+- Ruff: All checks passed
+- Baseline comparison works correctly
+Status: DONE
 Header check: All critical headers present
 PR_CHECKLIST.md: Updated with accurate status
 
@@ -244,3 +282,60 @@ Verification:
 - Constitution: Compliant (ModuleFile now frozen with documented lazy-loading pattern; CurationStats has explicit lifecycle reason documented)
 - T031c: Tests already use ParseError-first pattern (FR-006) - migration verified complete
 Status: DONE
+
+=== 2026-03-11 10:33 | Iteration 15 | Task 30 ===
+Task: T031 Auditar tests que dependen del fallback AST — PARCIALMENTE IMPLEMENTADO:
+Status: DONE
+
+=== 2026-03-11 10:37 | Iteration 16 | Task 31 ===
+Task: T032 Performance: benchmarking & CI — PARCIALMENTE IMPLEMENTADO:
+Status: DONE
+
+=== 2026-03-11 10:40 | Iteration 17 | Task 32 ===
+Task: `tests/test_production_v11.py` — Migrar a ParseError-first
+Status: DONE
+
+=== 2026-03-11 10:43 | Iteration 18 | Task 33 ===
+Task: `tests/test_production_v11_helpers.py` — Migrar a ParseError-first
+Status: DONE
+
+=== 2026-03-11 10:50 | Iteration 19 | Task 34 ===
+Task: `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related
+Files changed:
+- specs/001-stage1-discovery/tasks.md (marked as complete)
+Verification:
+- Tests: 36 passed
+- Analysis: No AST-related tests found in this file
+- This file tests model_evaluator.py (inference, scorecards, reports) - not production_v11 AST parsing
+- The _ast_fragment_list function is only tested in test_production_v11.py and test_production_v11_helpers.py (already migrated in Tasks 32-33)
+Status: DONE (no changes needed - no AST dependency)
+
+=== 2026-03-11 10:55 | Task 36 ===
+Task: `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar
+Files changed:
+- specs/001-stage1-discovery/tasks.md (marked as complete)
+Verification:
+- Tests: 15 passed
+- Analysis: No AST-related code in this file
+- This file tests model_evaluator.py (command handlers, gap analysis, domain standards) - not production_v11 AST parsing
+- No _ast_fragment_list calls, no python_ast_adapter imports
+Status: DONE (no changes needed - no AST dependency)
+
+=== 2026-03-11 10:45 | Iteration 19 | Task 34 ===
+Task: `tests/test_model_evaluator_integration_paths.py` — Revisar y migrar AST-related
+Status: DONE
+
+=== 2026-03-11 10:49 | Task 35 ===
+Task: `tests/test_sampling.py` — Revisar y clasificar
+Files changed:
+- specs/001-stage1-discovery/tasks.md (marked as complete)
+Verification:
+- Tests: 26 passed
+- Analysis: No AST-related code in this file
+- This file tests sampling.py (stratified_sample, load_dataset) - not production_v11 AST parsing
+- The `fragment_name` field is just metadata in records, not AST parsing
+Status: DONE (no changes needed - no AST dependency)
+
+=== 2026-03-11 10:51 | Iteration 21 | Task 36 ===
+Task: `tests/test_model_evaluator_extended_paths.py` — Revisar y clasificar
+Status: ALL_TASKS_COMPLETE

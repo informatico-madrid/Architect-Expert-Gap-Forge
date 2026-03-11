@@ -123,7 +123,6 @@ class TestRecallHarness:
             extracted = extract_dependencies(file_path, profile)
 
             recall_5 = compute_recall_at_n(extracted, gold_list, 5)
-            recall_10 = compute_recall_at_n(extracted, gold_list, 10)
 
             assert recall_5 >= MIN_RECALL_5, (
                 f"Recall@5 too low for {filename}: {recall_5:.2f} < {MIN_RECALL_5}"
