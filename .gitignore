@@ -45,3 +45,4 @@ legacy/
 # --- IDE ---
 .vscode/
 untitled:plan-*.prompt.md
+.ralph/state.json

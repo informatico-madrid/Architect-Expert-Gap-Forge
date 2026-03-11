@@ -2,8 +2,6 @@
 
 This file documents the project's operational surface and the expected governance constraints. It has been synchronized against the repository state (scanned on 2026-03-04).
 
-**Project Root:** `/mnt/bunker_data/ai/data_factory`
-
 **Read the constitution:** `.specify/memory/constitution.md`
 
 That file is your single source of truth for this project.

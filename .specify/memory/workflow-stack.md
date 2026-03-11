@@ -11,11 +11,6 @@ Scope
 
 ### Agent Operational Rules (Non-Negotiable)
 
-- Agents MUST NOT run `git commit` or `git push` or any command that modifies remote repository history.
-- Agents MAY run `git add` only for files that have been explicitly confirmed by a human reviewer or the repository owner in the active conversation.
-- Agents MUST use the `manage_todo_list` tool to declare planned edits before making file changes, and must wait for explicit confirmation to stage files.
-- Agents MUST NOT create branches, tags, or modify remote refs without explicit approval.
-- Agents MUST provide a clear summary of the proposed changes and the exact files that will be staged.
 - Agents MUST NOT modify production scripts solely to make tests pass. If a test indicates a real production bug, agents MUST stop, report the issue, and obtain explicit human confirmation before editing production code.
 - Agents MUST include the project's standard file header in every new source file they create. The required header must contain:
    - a shebang (`#!/usr/bin/env python3`) for Python files,
@@ -31,7 +26,6 @@ Scope
    - Allowed `type` values: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`, `perf`, `style`, `revert`.
    - The `subject` must be imperative, lower-case, and no longer than 50 characters. An optional body may follow after a blank line and should be wrapped at 72 characters.
    - Agents MUST NOT include secrets, credentials, or personal-identifying information in commit messages.
-   - Agents MUST only *propose* commit messages; they MUST NOT execute `git commit` without explicit human confirmation.
 
 ### Language requirement for agents
 

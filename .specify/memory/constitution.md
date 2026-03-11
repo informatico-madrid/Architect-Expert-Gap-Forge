@@ -86,65 +86,7 @@ Build exactly what's needed, nothing more.
 
 ---
 
-## Ralph Loop Scripts (SpecKit Integrated)
 
-```bash
-# Execute a feature spec (primary usage)
-.ralph/ralph-loop.sh specs/001-stage1-discovery
-
-# With options
-.ralph/ralph-loop.sh specs/001-feature --max 50 --review-every 3
-
-# Resume interrupted session
-.ralph/ralph-loop.sh --resume
-
-# Use goose multi-model instead of claude
-RALPH_AGENT=goose .ralph/ralph-loop.sh specs/001-feature
-```
-
-### State management scripts
-```bash
-# Parse tasks.md → JSON counts
-python3 .ralph/scripts/count_tasks.py specs/001-stage1-discovery/tasks.md
-
-# Full per-task detail
-python3 .ralph/scripts/count_tasks.py specs/001-stage1-discovery/tasks.md --full
-
-# Initialize/update state
-python3 .ralph/scripts/merge_state.py .ralph/state.json --init specs/001-stage1-discovery/tasks.md
-python3 .ralph/scripts/merge_state.py .ralph/state.json --set taskIndex=10
-```
-
-### Completion signals
-- `TASK_COMPLETE` — current task verified and done
-- `ALL_TASKS_COMPLETE` — all tasks in tasks.md marked [x]
-
-### Three-layer verification
-1. **Contradiction detection** — rejects "cannot complete" + TASK_COMPLETE
-2. **Signal verification** — agent must emit explicit signal
-3. **Artifact review** — periodic reviewer checks code vs plan
-
-## The Magic Word
-
-When user says "Ralph, start working", provide the terminal command.
-
----
-
-**Created:** 10/03/2026
-
-
-### 6. Create CLAUDE.md
-
-Same content as AGENTS.md.
-
----
-
-## You're Ready!
-
-1. Create specs with `/speckit.specify [feature description]`
-2. Run `./scripts/ralph-loop.sh` to start building
-
-See the full [README](README.md) for detailed usage.
 
 # Project Constitution — Architectural & Coding Rules (AEGF)
 

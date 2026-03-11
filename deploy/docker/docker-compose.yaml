@@ -18,8 +18,8 @@ services:
     deploy:
       resources:
         limits:
-            cpus: '42'      # Limita el uso total a 10 núcleos lógicos
-            memory: 500G
+          cpus: ${AEGF_CPU_LIMIT}
+          memory: ${AEGF_RAM_SWAP_LIMIT}
         reservations:
           devices:
             - driver: nvidia
@@ -36,13 +36,13 @@ services:
     privileged: true
     ulimits:
       memlock: -1
-      stack: 67108864
+      stack: ${AEGF_ULIMIT_MEMORY_STACK}
     command: >
       bash -c "
       apt-get update && 
       export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True" &&
-      export OMP_NUM_THREADS=20 &&
-      export MKL_NUM_THREADS=20 &&
+      export OMP_NUM_THREADS=${AEGF_CPU_LIMIT} &&
+      export MKL_NUM_THREADS=${AEGF_CPU_LIMIT} &&
       accelerate launch 
       --num_processes=2 
       --num_machines=1 
