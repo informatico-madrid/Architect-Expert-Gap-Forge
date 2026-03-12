@@ -56,3 +56,8 @@ Notas rápidas:
     - Desarrollar un `KeywordMatcher` que analice el archivo legacy de osCommerce (entrada) y seleccione solo los fragmentos de doctrina relevantes.
     - Modificar `_base_system_block` en `production_v11.py` para aceptar `relevant_changelog` en lugar del string completo.
 - **Restricción**: No implementar hasta que el refactor de arquitectura actual en la rama de Ralph-Loop sea mergeado en main.
+
+### [ ] INFRA: Prototipado de PHPLegacyDriver (Regex-based)
+- **Razón**: El parsing AST es inestable en código procedural 2000-2010.
+- **Objetivo**: Desarrollar extractor basado en firmas de patrones (globals, db_calls, includes).
+- **Validación**: Testear extracción en osCommerce, WP y ZenCart.

@@ -206,7 +206,88 @@ Stage 1 — Discovery Pipeline (Refactored)
 
 ---
 
-## 5. Engineering War Stories (To Be Documented)
+## 5. Architectural Archeology: The Great PHP Library
+
+### The Universal Corpus Vision
+
+We didn't just want to modernize osCommerce. We wanted to build a **Universal Training Corpus** that captures the full spectrum of PHP technical debt — from the earliest procedural spaghetti to modern Symfony patterns. This is what we call **Architectural Archeology**: the systematic excavation and classification of code fossils across decades of PHP evolution.
+
+### Five Paradigms, One Pipeline
+
+The Multi-Legacy corpus consolidates **5 distinct technical debt paradigms** into a single, trainable dataset:
+
+| Paradigm | Platform | Era | Pain Level | Modernization Target |
+|----------|----------|-----|------------|---------------------|
+| **Procedural Chaos** | osCommerce 2.x | 2003-2008 | 🔴 EXTREME | Symfony Services + DI |
+| **Fork Fatigue** | ZenCart | 2008-2015 | 🟠 HIGH | Composer + Namespaces |
+| **Hook-Driven Madness** | WordPress | 2005-PRESENT | 🔴 EXTREME | Symfony EventDispatcher |
+| **EAV/Bean Hell** | SuiteCRM | 2010-2020 | 🟠 HIGH | Doctrine Entities |
+| **Service Locator Rot** | Joomla 3.x | 2012-2023 | 🟠 HIGH | Dependency Injection |
+
+### The Corpus Stats
+
+```
+data/raw/multi_legacy/
+├── osCommerce/          # 43,707 PHP files — procedural nightmare
+│   ├── oscommerce2/    # Pure 2003 legacy
+│   └── osCommerce-V4/  # Transitional
+├── WordPress/           # ~15,000 PHP files — hook chaos
+│   └── WordPress/      # The world's most popular CMS
+├── OpenMage/           # Magento 1 LTS — enterprise legacy
+│   └── magento-lts/   # Still running 30% of e-commerce
+├── gburton/            # CE-Phoenix — community fork
+└── zencart/            # 1,521 files — osCommerce DNA
+```
+
+**Total: ~66,000 PHP files of technical debt**
+
+### How Architectural Archeology Works
+
+The system simultaneously identifies obsolete patterns across all platforms:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    ARCHITECTURAL ARCHEOLOGY ENGINE                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
+│  │  OSCOMMERCE  │  │  WORDPRESS   │  │   MAGENTO   │              │
+│  │   DETECTOR   │  │   DETECTOR   │  │   DETECTOR  │              │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘              │
+│         │                  │                  │                       │
+│  ┌──────┴──────────────────┴──────────────────┴───────┐              │
+│  │              PATTERN FOSSIL LAYERS                 │              │
+│  │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │              │
+│  │  Layer 5: $_GET/$_POST raw access               │              │
+│  │  Layer 4: mysql_* function calls                 │              │
+│  │  Layer 3: global $variable pollution            │              │
+│  │  Layer 2: include/require spaghetti             │              │
+│  │  Layer 1: Magic quotes & register_globals       │              │
+│  └──────────────────────────────────────────────────┘              │
+│                            │                                      │
+│                            ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │              MODERNIZATION TARGET EMITTER                      ││
+│  │  "Here is a fossil. Here is how it should look in 2026."    ││
+│  └─────────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Pattern Detection Examples
+
+| Platform | Fossil Pattern | Detection Method | Modern Target |
+|----------|---------------|------------------|---------------|
+| osCommerce | `global $order;` | Regex: `\bglobal\s+\$` | Constructor injection |
+| osCommerce | `mysql_query($sql)` | Regex: `mysql_query\(|$sql\s*\.` | Doctrine QueryBuilder |
+| WordPress | `add_action('init', 'my_func')` | Regex: `add_action\(|add_filter\(` | Symfony EventSubscriber |
+| WordPress | `$wpdb->prepare($sql, ...)` | Regex: `\$wpdb->` | Doctrine DQL |
+| Magento | `$this->getModel('catalog/product')` | Regex: `->getModel\(|->create\(` | Symfony DI Container |
+| Joomla | `JFactory::getDbo()` | Regex: `JFactory::get[A-Z]` | Interface injection |
+| Joomla | `JPlugin::loadLanguage()` | Regex: `loadLanguage\(` | Symfony Translation |
+
+---
+
+## 6. Engineering War Stories (To Be Documented)
 
 *This section will be expanded as the PHP pipeline reaches production milestones.*
 
@@ -219,7 +300,7 @@ Stage 1 — Discovery Pipeline (Refactored)
 
 ---
 
-## 6. Conclusion: Domain-Agnosticism Validated
+## 7. Conclusion: Domain-Agnosticism Validated
 
 The AEGF framework was never just a "Python/Home Assistant tool." The completion of the PHPLegacyDriver proves that:
 
