@@ -47,3 +47,12 @@ Notas rápidas:
 - Fast‑mode es una estrategia de búsqueda (no reemplaza validación a escala): sirve para encontrar direcciones prometedoras antes de escalar.
 
 ---
+
+### [ ] INFRA: Dynamic Context Router para Master Documents (Post-Merge Ralph)
+- **Contexto**: Actualmente se inyectan ~53k tokens de $changelog en cada prompt, saturando la atención del modelo y consumiendo VRAM innecesaria.
+- **Objetivo**: Implementar un sistema de ruteo dinámico de contexto que segmente el Master Guide y el Changelog.
+- **Tareas Técnicas**:
+    - Reutilizar la lógica de `get_theory_fragments` para chunking por headers (`#`, `##`).
+    - Desarrollar un `KeywordMatcher` que analice el archivo legacy de osCommerce (entrada) y seleccione solo los fragmentos de doctrina relevantes.
+    - Modificar `_base_system_block` en `production_v11.py` para aceptar `relevant_changelog` en lugar del string completo.
+- **Restricción**: No implementar hasta que el refactor de arquitectura actual en la rama de Ralph-Loop sea mergeado en main.
