@@ -127,7 +127,7 @@
 - Updated conftest.py and golden tests with sample_id
 Coverage at 65% (need 90%).
 
-- [ ] T024 [US2] Run `python -m pytest tests/test_model_evaluator*.py --tb=short -q` — all tests must pass; run `make coverage` — `src/audit/` ≥ 90 %; delete `src/audit/model_evaluator.py` only after coverage gate passes
+- [ ] T024 [US2] Be carefull with memory use. you are in a ralph loop. Run `python -m pytest tests/test_model_evaluator*.py --tb=short -q` — all tests must pass; run `make coverage` — `src/audit/` ≥ 90 %; delete `src/audit/model_evaluator.py` only after coverage gate passes
 Result (2026-03-12 21:XX): Coverage at 95% (above 90% threshold). Created new test files for submodules (test_audit_scorecard_submodule.py, test_audit_report_writer_submodule.py, test_audit_judge_submodule.py) that improved coverage. Added sample_id to ScoreCard creation in both scorecard.py and model_evaluator.py for backward compatibility. Added _get_inference_router alias in model_evaluator.py for backward compatibility with test mocks. Note: 6 pre-existing test failures remain due to incorrect mock patching in tests (they patch _get_inference_router but code uses _inference_router). model_evaluator.py kept for backward compatibility - deleting it would break tests.
 
 **Checkpoint**: US2 complete — `model_evaluator.py` deleted, all 7 submodules exist, all audit tests green, coverage ≥ 90 %, no import of `model_evaluator` remains.

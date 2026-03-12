@@ -1156,9 +1156,7 @@ main() {
         orphans_before=$(pgrep -fc pytest 2>/dev/null || true)
         if (( ${orphans_before:-0} > 0 )); then
             log_warn "Purging $orphans_before orphaned pytest process(es) before agent start"
-            pkill -TERM -f pytest 2>/dev/null || true
-            sleep 2
-            pkill -KILL -f pytest 2>/dev/null || true
+            python3 "$RALPH_DIR/kill_pytest_orphans.py" --timeout 5 || true
         fi
 
         # Log memory before agent execution
@@ -1186,9 +1184,7 @@ main() {
         orphans_after=$(pgrep -fc pytest 2>/dev/null || true)
         if (( ${orphans_after:-0} > 0 )); then
             log_warn "Purging $orphans_after orphaned pytest process(es) after agent exit"
-            pkill -TERM -f pytest 2>/dev/null || true
-            sleep 2
-            pkill -KILL -f pytest 2>/dev/null || true
+            python3 "$RALPH_DIR/kill_pytest_orphans.py" --timeout 5 || true
         fi
 
         # cd back to project dir after agent
