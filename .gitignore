@@ -13,8 +13,8 @@ __pycache__/
 # Ignore local configurations
 configs/**/*.yaml
 configs/**/*.json
-
 configs/stage_2_factory/taxonomy/home_assistant/
+stant/
 
 # But keep the examples
 !configs/**/*.example
