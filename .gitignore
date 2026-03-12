@@ -56,3 +56,15 @@ plans/judge_analysis.md
 plans/judge_prompt_example.md
 plans/ralph-loops-comparison.md
 .worktrees/
+
+# --- RUIDO DE ORQUESTACIÓN (mantener en local) ---
+logs/
+reports/
+output/
+.goose/ralph/iteration.txt
+
+# --- SKILLS LOCK ---
+skills-lock.json
+
+# --- LEGACY (contiene API keys) ---
+legacy/
