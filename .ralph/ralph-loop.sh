@@ -74,6 +74,7 @@ CLEAN_SLUG=""
 COUNT_SCRIPT="$RALPH_DIR/scripts/count_tasks.py"
 MERGE_SCRIPT="$RALPH_DIR/scripts/merge_state.py"
 CONSTITUTION="$PROJECT_DIR/.specify/memory/constitution.md"
+SPECKIT_IMPLEMENT_AGENT="$PROJECT_DIR/.github/agents/speckit.implement.agent.md"
 
 # Colors
 RED='\033[0;31m'
@@ -483,10 +484,19 @@ $(tail -30 "$PROJECT_DIR/progress.txt")
 "
     fi
 
+    # Load Speckit Implement Agent instructions for fluid integration
+    local speckit_implement_instructions=""
+    if [[ -f "$SPECKIT_IMPLEMENT_AGENT" ]]; then
+        speckit_implement_instructions="
+## Speckit Implement Agent Instructions
+$(cat "$SPECKIT_IMPLEMENT_AGENT")
+"
+    fi
+
     cat <<PROMPT_EOF
 # Ralph Loop — Work Phase (Iteration $iteration)
 $worktree_section
-You are the SpecKit Implementation Agent running inside a Ralph Loop.
+You are the SpecKit Implementation running inside a Ralph Loop.
 You are 100% autonomous. Your work persists through FILES ONLY.
 
 ## CRITICAL: Read these files FIRST
@@ -501,6 +511,7 @@ $task_body
 \`\`\`
 $feedback_section
 $progress_tail
+$speckit_implement_instructions
 
 ## Execution Rules
 1. Implement EXACTLY this one task
@@ -876,6 +887,13 @@ main() {
 
     cd "$PROJECT_DIR"
 
+    # Convert relative SPEC_DIR to absolute path if needed
+    if [[ -n "$SPEC_DIR" && "$SPEC_DIR" != /* ]]; then
+        local old_spec_dir="$SPEC_DIR"
+        SPEC_DIR="$(pwd)/$SPEC_DIR"
+        log_info "Converted relative path '$old_spec_dir' to absolute '$SPEC_DIR'"
+    fi
+
     # Handle --clean subcommand (T10)
     if [[ "${CLEAN_MODE:-false}" == "true" ]]; then
         run_clean "${CLEAN_SLUG:-}"
@@ -928,11 +946,18 @@ main() {
 
         # Worktree setup for new execution (T11)
         if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+            log_info "Setting up worktree mode..."
             check_gitignore_worktrees
+            log_info "Running preflight checks..."
             run_preflight_checks
+            log_info "Creating worktree..."
             init_worktree "$SPEC_DIR"
+        else
+            log_info "Running in legacy mode (no worktree)"
         fi
     fi
+
+    log_info "Worktree setup complete. Proceeding to main loop..."
 
     # Read initial state
     local spec_dir tasks_file
