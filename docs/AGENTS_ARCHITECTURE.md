@@ -1,6 +1,6 @@
 # Project Agents Architecture
 
-> This document provides an overview of the orchestration system for CTOs and stakeholders who need to understand how the autonomous development pipeline works. For agent context files, see `.github/agents/` and `.specify/memory/`.
+> This document provides an overview of the orchestration system to understand how the autonomous development pipeline works. For agent context files, see `.github/agents/` and `.specify/memory/`.
 
 ---
 
@@ -105,5 +105,3 @@ Each worktree operates independently with its own branch and working directory, 
 | Workflow Stack | `.specify/memory/workflow-stack.md` |
 
 ---
-
-*This document is for human stakeholders. Agent context lives in the files referenced above.*
