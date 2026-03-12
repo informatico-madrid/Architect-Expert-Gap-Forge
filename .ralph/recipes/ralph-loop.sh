@@ -230,23 +230,26 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     echo -e "${BLUE}Archivos en $STATE_DIR:${NC}"
     ls -la "$STATE_DIR" | sed 's/^/  /'
     echo ""
-    
+
     if [ -f "$STATE_DIR/review-result.txt" ]; then
         RESULT=$(cat "$STATE_DIR/review-result.txt" | tr -d '[:space:]')
-        
-        if [ "$RESULT" = "SHIP" ]; then
+
+        if [ "$RESULT" = "REVIEW_PASS" ] || [ "$RESULT" = "SHIP" ]; then
             echo ""
             echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
             echo -e "${GREEN}  ✓ SHIPPED after $i iteration(s)${NC}"
             echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
             echo "COMPLETE: $(date)" > "$STATE_DIR/.ralph-complete"
             exit 0
-        else
+        elif [ "$RESULT" = "REVIEW_FAIL" ] || [ "$RESULT" = "REVISE" ]; then
             echo ""
             echo -e "${YELLOW}↻ REVISE - Feedback for next iteration:${NC}"
             if [ -f "$STATE_DIR/review-feedback.txt" ]; then
                 cat "$STATE_DIR/review-feedback.txt"
             fi
+        else
+            echo ""
+            echo -e "${YELLOW}↻ Review: no clear signal (unrecognized token: $RESULT), continuing${NC}"
         fi
     else
         echo -e "${RED}✗ No review result found${NC}"

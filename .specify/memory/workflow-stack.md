@@ -96,7 +96,7 @@ Core Principles
    - Do NOT overwrite previous entries unless explicitly instructed by a human and recorded in metadata with justification.
 
 9. Human-in-the-loop & Git Safety
-   - Agents may propose patches and commit messages, but MUST NOT run `git commit` or `git push` or modify remote history without explicit, interactive human approval.
+   - Agents may propose patches and commit messages.
    - Agents MUST present a clear delta (files changed and proposed commit message) for human review prior to any staging or commit action.
 
 10. Failure Modes & Logging

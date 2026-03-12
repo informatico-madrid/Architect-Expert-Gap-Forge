@@ -410,15 +410,27 @@ REVIEW_EOF
         return 0
     fi
 
-    if echo "$review_output" | grep -q "REVIEW_PASS"; then
+    # Accept multiple review token formats for compatibility with different reviewers.
+    if echo "$review_output" | grep -q -E "REVIEW_PASS|SHIP"; then
         log_ok "Artifact review: PASS"
         return 0
-    elif echo "$review_output" | grep -q "REVIEW_FAIL"; then
+    elif echo "$review_output" | grep -q -E "REVIEW_FAIL|REVISE"; then
         log_warn "Artifact review: FAIL"
-        # extract feedback
+        # extract feedback after either REVIEW_FAIL or REVISE marker (if any)
         local feedback
-        feedback=$(echo "$review_output" | sed -n '/REVIEW_FAIL/,$p' | tail -n +2)
-        echo "$feedback" > "$PROJECT_DIR/.ralph/review-feedback.txt"
+        if echo "$review_output" | grep -q "REVIEW_FAIL"; then
+            feedback=$(echo "$review_output" | sed -n '/REVIEW_FAIL/,$p' | tail -n +2)
+        elif echo "$review_output" | grep -q "REVISE"; then
+            feedback=$(echo "$review_output" | sed -n '/REVISE/,$p' | tail -n +2)
+        else
+            feedback=""
+        fi
+
+        if [ -n "$feedback" ]; then
+            echo "$feedback" > "$PROJECT_DIR/.ralph/review-feedback.txt"
+        else
+            rm -f "$PROJECT_DIR/.ralph/review-feedback.txt" 2>/dev/null || true
+        fi
 
         # Append to progress.txt
         {
