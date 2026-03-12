@@ -83,6 +83,10 @@ from src.audit.schema import (
     SampleRecord,
     ScoreCard,
 )
+from src.audit.scorecard import (
+    _grade_label,
+    _verdict,
+)
 from src.utils.doc_loader import load_master_docs
 
 # ---------------------------------------------------------------------------
@@ -763,32 +767,6 @@ def compute_scorecard(
 # ---------------------------------------------------------------------------
 # Report Generation
 # ---------------------------------------------------------------------------
-
-
-def _grade_label(score: float) -> str:
-    """Convert numeric score to letter grade."""
-    if score >= 90:
-        return "A+"
-    if score >= 80:
-        return "A"
-    if score >= 70:
-        return "B"
-    if score >= 60:
-        return "C"
-    if score >= 50:
-        return "D"
-    return "F"
-
-
-def _verdict(grade: float) -> str:
-    """Return human-readable verdict for the audit."""
-    if grade >= 80:
-        return "PASS — Adapter demonstrates significant improvement. Safe to merge."
-    if grade >= 60:
-        return "CONDITIONAL — Adapter shows improvement but gaps remain. Review recommended."
-    if grade >= 40:
-        return "WARN — Marginal improvement. Additional training or data review needed."
-    return "FAIL — Adapter does not meet quality threshold. Do NOT merge."
 
 
 def generate_report(
