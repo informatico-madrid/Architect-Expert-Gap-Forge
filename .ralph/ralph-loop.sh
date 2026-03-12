@@ -657,6 +657,7 @@ configure_sparse_checkout() {
     local git_dir
     git_dir=$(get_worktree_git_dir "$wt_path")
 
+    mkdir -p "$git_dir/info"
     git -C "$wt_path" config core.sparseCheckout true
     git -C "$wt_path" config core.sparseCheckoutCone false
     printf '/*\n!/specs/\n!/specs/**\n' > "$git_dir/info/sparse-checkout"
