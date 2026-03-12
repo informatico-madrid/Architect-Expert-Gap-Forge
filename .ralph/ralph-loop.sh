@@ -28,29 +28,11 @@
 set -euo pipefail
 
 # ============================================================================
-# Self-Snapshot Bootstrap (FR-022)
-# Protection against agent modifying runtime files during execution
-# ============================================================================
-if [[ "${RALPH_SNAPSHOT:-0}" != "1" ]]; then
-    _snap_dir=$(mktemp -d)
-    mkdir -p "$_snap_dir/recipes" "$_snap_dir/scripts"
-    _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    cp "$_self_dir/ralph-loop.sh"              "$_snap_dir/ralph-loop.sh"
-    cp "$_self_dir/recipes/ralph-work.yaml"    "$_snap_dir/recipes/ralph-work.yaml"
-    cp "$_self_dir/recipes/ralph-review.yaml"  "$_snap_dir/recipes/ralph-review.yaml"
-    cp "$_self_dir/scripts/merge_state.py"     "$_snap_dir/scripts/merge_state.py"
-    cp "$_self_dir/scripts/count_tasks.py"     "$_snap_dir/scripts/count_tasks.py"
-    export RALPH_SNAPSHOT=1
-    export RALPH_SNAPSHOT_DIR="$_snap_dir"
-    exec bash "$_snap_dir/ralph-loop.sh" "$@"
-fi
-
-# ============================================================================
 # Configuration
 # ============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-RALPH_DIR="${RALPH_SNAPSHOT_DIR:-$SCRIPT_DIR}"
+RALPH_DIR="$SCRIPT_DIR"
 
 RALPH_AGENT="${RALPH_AGENT:-claude}"
 CLAUDE_CMD="${CLAUDE_CMD:-claude}"
@@ -882,17 +864,17 @@ run_clean() {
 main() {
     parse_args "$@"
 
-    # Trap EXIT for cleanup (T01)
-    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp"; [[ -n "${RALPH_SNAPSHOT_DIR:-}" ]] && rm -rf "$RALPH_SNAPSHOT_DIR"' EXIT
+    # Trap EXIT for cleanup
+    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp"' EXIT
 
-    cd "$PROJECT_DIR"
-
-    # Convert relative SPEC_DIR to absolute path if needed
+    # Convert relative SPEC_DIR to absolute path
     if [[ -n "$SPEC_DIR" && "$SPEC_DIR" != /* ]]; then
         local old_spec_dir="$SPEC_DIR"
-        SPEC_DIR="$(pwd)/$SPEC_DIR"
+        SPEC_DIR="$PROJECT_DIR/$SPEC_DIR"
         log_info "Converted relative path '$old_spec_dir' to absolute '$SPEC_DIR'"
     fi
+
+    cd "$PROJECT_DIR"
 
     # Handle --clean subcommand (T10)
     if [[ "${CLEAN_MODE:-false}" == "true" ]]; then
