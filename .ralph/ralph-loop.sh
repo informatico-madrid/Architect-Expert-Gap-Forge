@@ -387,23 +387,28 @@ run_artifact_review() {
     log_info "Running artifact review (task $task_index)..."
 
     local review_prompt
+    local _review_wt_path="${WORKTREE_PATH:-$PROJECT_DIR}"
+    local _review_constitution="${_review_wt_path}/.specify/memory/constitution.md"
+    local _review_tests_cmd="cd ${_review_wt_path} && pytest tests/ -x --tb=short 2>&1 | tail -30"
+    local _review_lint_cmd="cd ${_review_wt_path} && ruff check src/ 2>&1 | tail -20"
     review_prompt=$(cat <<REVIEW_EOF
 You are a CODE REVIEWER (QA Architect) performing an artifact review.
 
 ## Context
-- Constitution: Read .specify/memory/constitution.md
+- Constitution: Read $_review_constitution
 - Spec: Read $spec_dir/spec.md
 - Plan: Read $spec_dir/plan.md  
 - Tasks: Read $spec_dir/tasks.md
 - Progress: Read $PROJECT_DIR/progress.txt (last 50 lines)
 - Current task just completed: $task_desc
+- Working directory for all shell commands: $_review_wt_path
 
 ## Review Criteria
 1. Does the code match the architectural design in plan.md?
 2. Does it follow the rules in constitution.md? (naming, typing, headers, etc.)
 3. Are there obvious bugs, missing error handling, or broken tests?
-4. Run: pytest tests/ -x --tb=short 2>&1 | tail -30
-5. Run: ruff check src/ 2>&1 | tail -20
+4. Run: $_review_tests_cmd
+5. Run: $_review_lint_cmd
 
 ## Output
 If everything looks good: output REVIEW_PASS
@@ -485,9 +490,28 @@ build_work_prompt() {
     local feedback_file="$PROJECT_DIR/.ralph/review-feedback.txt"
 
     # Add working directory line for worktree mode (T07)
+    # IMPORTANT: the worktree section is a HARD CONSTRAINT, not a hint.
+    # Claude CLI resolves the project root via .git, which in a worktree points
+    # back to the main repo. Without explicit absolute paths the agent will edit
+    # files in the main branch instead of the worktree.
     local worktree_section=""
+    local constitution_path="$PROJECT_DIR/.specify/memory/constitution.md"
+    local tests_cmd="pytest tests/ -x --tb=short"
+    local lint_cmd="ruff check src/"
+    local progress_file="$PROJECT_DIR/progress.txt"
     if [[ "$WORKTREE_ENABLED" == "true" ]]; then
-        worktree_section=$'\nWorking directory: '"$WORKTREE_PATH"$'\n'
+        constitution_path="$WORKTREE_PATH/.specify/memory/constitution.md"
+        tests_cmd="cd $WORKTREE_PATH && pytest tests/ -x --tb=short"
+        lint_cmd="cd $WORKTREE_PATH && ruff check src/"
+        progress_file="$PROJECT_DIR/progress.txt"
+        worktree_section="
+## ⚠ WORKTREE MODE — MANDATORY CONSTRAINTS
+- Your working directory is: $WORKTREE_PATH
+- **ALL file reads and writes MUST use this absolute path as base.**
+- DO NOT edit any files outside $WORKTREE_PATH (the main repo at $PROJECT_DIR is OFF-LIMITS).
+- When running shell commands use: cd $WORKTREE_PATH before any relative path.
+- git commits must be made from $WORKTREE_PATH (already on branch: $WORKTREE_BRANCH).
+"
     fi
 
     local feedback_section=""
@@ -522,7 +546,7 @@ You are the SpecKit Implementation running inside a Ralph Loop.
 You are 100% autonomous. Your work persists through FILES ONLY.
 
 ## CRITICAL: Read these files FIRST
-1. .specify/memory/constitution.md (project rules — NON-NEGOTIABLE)
+1. $constitution_path (project rules — NON-NEGOTIABLE)
 2. $spec_dir/plan.md (architectural design)
 3. $spec_dir/spec.md (feature specification)
 4. $spec_dir/tasks.md (task list with checkboxes)
@@ -539,14 +563,14 @@ $speckit_implement_instructions
 1. Implement EXACTLY this one task
 2. Follow constitution.md rules strictly (typing, headers, naming, etc.)
 3. Follow the architecture in plan.md
-4. Run tests: pytest tests/ -x --tb=short
-5. Run lint: ruff check src/
+4. Run tests: $tests_cmd
+5. Run lint: $lint_cmd
 6. If the task has [VERIFY] tag: run the verification command and report results
-7. Commit with a descriptive message referencing the task ID
+7. Commit (from $WORKTREE_PATH) with a descriptive message referencing the task ID
 
 ## When Done
 - Mark the task as [x] in $spec_dir/tasks.md
-- Append your progress to progress.txt:
+- Append your progress to $progress_file:
   \`\`\`
   === $(date '+%Y-%m-%d %H:%M') | Task $task_index ===
   Task: <task ID and description>
@@ -560,12 +584,13 @@ $speckit_implement_instructions
 
 ## If you CANNOT complete the task:
 - Do NOT output TASK_COMPLETE
-- Document what blocked you in progress.txt
+- Document what blocked you in $progress_file
 - The loop will retry with a fresh context
 
 ## FORBIDDEN
 - Do not mark tasks [x] unless they are actually verified working
-- Do not skip tests or lint checks  
+- Do not skip tests or lint checks
+- Do not edit files outside $WORKTREE_PATH
 - Do not hallucinate dependencies not in plan.md
 - Do not ask for human input — you are fully autonomous
 PROMPT_EOF
