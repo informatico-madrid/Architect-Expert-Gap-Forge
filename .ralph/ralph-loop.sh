@@ -41,6 +41,9 @@ RALPH_REVIEW_EVERY="${RALPH_REVIEW_EVERY:-5}"
 RALPH_MAX_RETRIES="${RALPH_MAX_RETRIES:-5}"
 RALPH_YOLO="${RALPH_YOLO:-true}"
 
+# Test concurrency guard: limit how many pytest processes this loop allows
+RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:-1}"
+
 # Worktree mode globals (T01)
 WORKTREE_ENABLED=true
 SKIP_PREFLIGHT=false
@@ -638,6 +641,38 @@ run_preflight_checks() {
 }
 
 # ============================================================================
+# Test concurrency guard
+# Ensure the loop doesn't launch test-heavy runs when other pytest processes
+# are already consuming RAM/swap. This provides a soft guard and a lockfile
+# to serialize test executions initiated by the loop.
+# ============================================================================
+
+count_pytest_processes() {
+    # Count processes that look like pytest runs. Use a forgiving matcher.
+    local cnt
+    cnt=$(pgrep -fc pytest || true)
+    echo "${cnt:-0}"
+}
+
+wait_for_test_slot() {
+    local max=${RALPH_TEST_CONCURRENCY:-1}
+    local interval=5
+
+    while true; do
+        local running
+        running=$(count_pytest_processes)
+        if [[ -z "$running" ]]; then
+            running=0
+        fi
+        if (( running < max )); then
+            return 0
+        fi
+        log_info "Waiting for test slot: $running running, max $max"
+        sleep $interval
+    done
+}
+
+# ============================================================================
 # .gitignore Check (T03)
 # ============================================================================
 check_gitignore_worktrees() {
@@ -1085,8 +1120,23 @@ main() {
         set +e
         # cd to worktree before running agent (T07)
         [[ "$WORKTREE_ENABLED" == "true" ]] && cd "$WORKTREE_PATH"
-        agent_output=$(run_work_agent "$work_prompt" "$iter_log")
-        agent_exit=$?
+
+        # Wait for a test slot to avoid saturating RAM/swap with parallel pytest runs
+        wait_for_test_slot
+
+        # Acquire test lock to serialize test-heavy agent runs initiated by this loop
+        if (( RALPH_TEST_CONCURRENCY > 0 )); then
+            exec 9>/tmp/ralph-test.lock
+            flock -x 9
+            agent_output=$(run_work_agent "$work_prompt" "$iter_log")
+            agent_exit=$?
+            flock -u 9
+            exec 9>&-
+        else
+            agent_output=$(run_work_agent "$work_prompt" "$iter_log")
+            agent_exit=$?
+        fi
+
         # cd back to project dir after agent
         [[ "$WORKTREE_ENABLED" == "true" ]] && cd "$PROJECT_DIR"
         set -e

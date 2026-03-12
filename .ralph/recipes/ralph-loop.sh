@@ -175,7 +175,11 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     echo ""
     echo -e "${YELLOW}▶ WORK PHASE${NC}"
     
-    GOOSE_PROVIDER="$WORKER_PROVIDER" GOOSE_MODEL="$WORKER_MODEL" goose run --recipe "$RECIPE_DIR/ralph-work.yaml" || {
+    # Serialize worker runs via flock to avoid concurrent, parallel pytest invocations
+    (
+      flock -x 200
+      GOOSE_PROVIDER="$WORKER_PROVIDER" GOOSE_MODEL="$WORKER_MODEL" goose run --recipe "$RECIPE_DIR/ralph-work.yaml"
+    ) 200>/tmp/ralph-test.lock || {
         echo -e "${RED}✗ WORK PHASE FAILED${NC}"
         exit 1
     }
