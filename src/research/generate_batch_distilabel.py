@@ -23,6 +23,7 @@ Notes:
   increase visibility in test environments.
 """
 
+import os
 import yaml
 import json
 from pathlib import Path
@@ -183,7 +184,7 @@ TARGET_SAMPLES = len(seeds)
 # ============================================================================
 # 3. OPENAI/vLLM CLIENT CONFIGURATION
 # ============================================================================
-client = OpenAI(base_url="http://localhost:8000/v1", api_key="sk-master-bunker-2026")
+client = OpenAI(base_url="http://localhost:8000/v1", api_key=os.getenv("AEGF_API_KEY", ""))
 
 MODEL_NAME = "qwen3-30b-a3b-thinking-fp8"
 GENERATION_PARAMS = {
