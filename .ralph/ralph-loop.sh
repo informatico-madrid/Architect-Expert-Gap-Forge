@@ -42,7 +42,7 @@ RALPH_MAX_RETRIES="${RALPH_MAX_RETRIES:-5}"
 RALPH_YOLO="${RALPH_YOLO:-true}"
 
 # Test concurrency guard: limit how many pytest processes this loop allows
-RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:-1}"
+RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:3}"
 
 # Worktree mode globals (T01)
 WORKTREE_ENABLED=true
