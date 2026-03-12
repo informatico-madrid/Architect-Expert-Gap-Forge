@@ -78,6 +78,31 @@ log_ok()    { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Memory tracking for debugging memory leaks
+RALPH_MEM_LOG="${RALPH_MEM_LOG:-$PROJECT_DIR/.ralph/memory.log}"
+
+log_memory() {
+    local label="${1:-unknown}"
+    if command -v python3 &>/dev/null; then
+        local mem_mb
+        mem_mb=$(python3 -c "
+import sys
+try:
+    import psutil
+    print(f'{psutil.Process().memory_info().rss / 1024 / 1024:.1f}')
+except ImportError:
+    import resource
+    mem_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    import platform
+    if platform.system() == 'Darwin':
+        print(f'{mem_kb / 1024 / 1024:.1f}')
+    else:
+        print(f'{mem_kb / 1024:.1f}')
+" 2>/dev/null || echo "N/A")
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iter=$global_iter Label=$label Mem=${mem_mb}MB" >> "$RALPH_MEM_LOG"
+    fi
+}
+
 # ============================================================================
 # Help
 # ============================================================================
@@ -1124,6 +1149,21 @@ main() {
         # Wait for a test slot to avoid saturating RAM/swap with parallel pytest runs
         wait_for_test_slot
 
+        # Purge any orphaned pytest processes left by previous agents before
+        # launching a new agent. The agent may have launched pytest in background
+        # (isBackground=true) without waiting; those become orphans consuming RAM.
+        local orphans_before
+        orphans_before=$(pgrep -fc pytest 2>/dev/null || true)
+        if (( ${orphans_before:-0} > 0 )); then
+            log_warn "Purging $orphans_before orphaned pytest process(es) before agent start"
+            pkill -TERM -f pytest 2>/dev/null || true
+            sleep 2
+            pkill -KILL -f pytest 2>/dev/null || true
+        fi
+
+        # Log memory before agent execution
+        log_memory "before_agent"
+
         # Acquire test lock to serialize test-heavy agent runs initiated by this loop
         if (( RALPH_TEST_CONCURRENCY > 0 )); then
             exec 9>/tmp/ralph-test.lock
@@ -1135,6 +1175,20 @@ main() {
         else
             agent_output=$(run_work_agent "$work_prompt" "$iter_log")
             agent_exit=$?
+        fi
+
+        # Log memory after agent execution
+        log_memory "after_agent"
+
+        # Purge any orphaned pytest processes the agent may have left running in
+        # background. Without this, isBackground=true pytest calls accumulate.
+        local orphans_after
+        orphans_after=$(pgrep -fc pytest 2>/dev/null || true)
+        if (( ${orphans_after:-0} > 0 )); then
+            log_warn "Purging $orphans_after orphaned pytest process(es) after agent exit"
+            pkill -TERM -f pytest 2>/dev/null || true
+            sleep 2
+            pkill -KILL -f pytest 2>/dev/null || true
         fi
 
         # cd back to project dir after agent

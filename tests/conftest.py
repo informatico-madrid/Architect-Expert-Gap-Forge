@@ -13,12 +13,38 @@ prompt templates and tools have a stable baseline during the test run.
 
 from __future__ import annotations
 
+import sys
 import yaml
 from pathlib import Path
 
 import pytest
 
 from src.factory import production_v11 as pv11
+from src.utils.cache_reset import reset_all_caches, log_memory_usage
+
+
+# ---------------------------------------------------------------------------
+# Pytest hooks for memory management
+# ---------------------------------------------------------------------------
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Reset caches before each test session to prevent memory growth."""
+    # Log initial memory
+    log_memory_usage("[pytest_configure] ")
+    
+    # Reset all caches
+    results = reset_all_caches()
+    
+    # Log which caches were reset (only in verbose mode)
+    if config.getoption("-v", default=False):
+        reset_count = sum(1 for v in results.values() if v)
+        print(f"[pytest_configure] Reset {reset_count}/{len(results)} caches", file=sys.stderr)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Log memory usage at the end of the test session."""
+    log_memory_usage("[pytest_sessionfinish] ")
 
 
 @pytest.fixture(scope="session", autouse=True)
