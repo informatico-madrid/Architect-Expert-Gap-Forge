@@ -18,19 +18,29 @@ The V11.0 pipeline employs a **Context-Aware Dual-Pass Scanner** to resolve cros
 flowchart TD
 	S([Start — repository scan])
 	P1[Pass 1\\nSystem Mapping\\n(directory & coordinator detection)]
-	GOV([Emit TIPO‑5\\nGOVERNANCE_RULES bundle\\n(cached)])
+	GOV([Emit governance_cache bundle])
 	P2[Pass 2\\nModular Fragmentation\\n(AST parsing → fragments)]
 	AB[Abstraction Layer\\n(replace bodies with docstrings)]
 	FR[Fragments\\n(signatures + governance + metadata)]
-	DEC{Gold‑injection decision\\n(legacy patterns?)}
+	DEC{Gold‑injection decision\\n(multi‑condition)}
+	LEGACY{Legacy patterns\\ndetected?}
+	POISON{Poison patterns\\nin output?}
+	TYPE{Example type\\n== error_recovery?}
 	GI[Gold Injected\\n(attach ground‑truth code)]
-	GS[Gold Skip\\n(use remediation implementation)]
+	GS[Gold Skip\\n(use model‑generated 2026 code)]
 	OUT([Output → staged fragments for factory])
 
 	S --> P1 --> GOV --> P2 --> AB --> FR --> DEC
 	GOV -.-> AB
-	DEC -->|No legacy| GI --> OUT
-	DEC -->|Legacy detected| GS --> OUT
+	DEC --> LEGACY
+	LEGACY -->|Yes| GS
+	LEGACY -->|No| POISON
+	POISON -->|Yes| GS
+	POISON -->|No| TYPE
+	TYPE -->|Yes| GS
+	TYPE -->|No| GI
+	GI --> OUT
+	GS --> OUT
 
 	classDef gov fill:#f9f,stroke:#333,stroke-width:1px;
 	class GOV gov;
@@ -39,10 +49,19 @@ flowchart TD
 </details>
 
 ### 1.2. Hybrid Gold-Injection Protocol (GI vs. GS)
-To ensure maximum fidelity while allowing for the remediation of legacy technical debt, we implement a conditional injection logic:
-- **GI (Gold Injected):** If the source code is detected as "Clean" (compliant with modern asynchronous standards), the Assistant's reasoning is paired with the original **Ground-Truth Code**.
-- **GS (Gold Skip):** If "Legacy Patterns" (e.g., global mutable state, blocking I/O, or monolithic setups) are detected, the pipeline discards the repository code and retains the **Teacher's Remediation Implementation**.
-*Outcome: The dataset maintains a "Platinum Grade" standard, serving as a corrective signal for legacy systems.*
+To ensure maximum fidelity while allowing for the remediation of legacy technical debt, we implement a **multi-condition** injection logic:
+
+**GI (Gold Injected):** The pipeline attaches the original ground-truth code ONLY when ALL of these conditions are met:
+1. Source code has NO legacy patterns detected
+2. Generated output has NO poison patterns (no "CoT schizophrenia" — the reasoning says 2026 but the code contains legacy)
+3. Example type is NOT `error_recovery` (these must preserve the teacher's fix)
+
+**GS (Gold Skip):** The pipeline uses the model's generated 2026 code (not the repository code) when ANY of these conditions hold:
+1. Legacy patterns detected in source code
+2. Poison patterns detected in output (CoT schizophrenia)
+3. Example type is `error_recovery` (teacher's fix must be preserved)
+
+*Outcome: The dataset maintains a "Platinum Grade" standard — gold injection is conservative and avoids training the model on mismatched reasoning/code pairs.*
 
 ### 1.3. Configuration Staging & Governance
 A recent refactor introduced a **staged configuration tree** (stage_1_discovery → stage_2_factory → stage_3_curation → stage_4_training → inference) to decouple the discovery, generation, curation and training phases. Each stage contains copies of the necessary taxonomy, prompt templates and runtime settings; original files are retained for backwards compatibility.
