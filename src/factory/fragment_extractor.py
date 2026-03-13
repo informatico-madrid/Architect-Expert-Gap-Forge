@@ -24,7 +24,7 @@ import ast
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from src.schemas.common import FragmentTypedDict
 from src.utils.extractors.base import ParseError
@@ -175,6 +175,51 @@ def _ast_fragment_list(
     return frags
 
 
+def _php_fragment_list(
+    logic_fname: str,
+    logic_code: str,
+    context_str: str,
+    extra_fields: Dict,
+) -> List[FragmentTypedDict]:
+    """Extract fragment dicts from a pre-divided PHP bundle.
+
+    PHP bundles arrive pre-divided (fragmentation done in Phase 3), so this
+    function returns exactly one element per --- FILE: chunk, no AST re-parsing.
+
+    legacy_signatures and implicit_deps arrive pre-populated in extra_fields
+    (via T035/T039).
+
+    Raises ParseError if logic_code is empty.
+    """
+    if not logic_code or not logic_code.strip():
+        raise ParseError(
+            file_path=Path(logic_fname),
+            line=1,
+            message="Empty logic_code: PHP bundle has no content",
+        )
+
+    # PHP bundles are pre-fragmented by Phase 3 - return one element per chunk
+    # The fragment name comes from the filename stem, content is as-is
+    fragment_name = Path(logic_fname).stem
+
+    return [
+        {
+            **extra_fields,
+            "name": fragment_name,
+            "skeleton": logic_code,
+            "original": logic_code,
+            "context": context_str,
+        }
+    ]
+
+
+# Extension Mapper: dispatch by file extension to appropriate fragmenter
+_EXTENSION_FRAGMENTERS: Dict[str, Callable[..., List[FragmentTypedDict]]] = {
+    ".py": _ast_fragment_list,
+    ".php": _php_fragment_list,
+}
+
+
 def get_v2_fragments(
     bundle: Dict,
     blueprint_cache: Dict[str, str],
@@ -236,6 +281,13 @@ def get_v2_fragments(
             "module_name": module_name,
             "governance": governance_content,
         }
+
+        # Extension Mapper dispatch
+        suffix = Path(logic_fname).suffix.lower()
+        fragmenter = _EXTENSION_FRAGMENTERS.get(suffix)
+        if fragmenter:
+            return fragmenter(logic_fname, logic_code, bundle["context"], extra)
+        # Fallback to AST for unknown extensions
         return _ast_fragment_list(logic_fname, logic_code, bundle["context"], extra)
 
     if btype == "LOGIC_ONLY":
@@ -248,7 +300,22 @@ def get_v2_fragments(
             if ext and ext not in allowed_extensions:
                 return []
 
-        # Re-use existing get_fragments for all subtypes (Python/jinja/yaml)
+        # Extension Mapper dispatch - use specialized fragmenter if available
+        suffix = Path(logic_fname).suffix.lower()
+        fragmenter = _EXTENSION_FRAGMENTERS.get(suffix)
+        if fragmenter:
+            extra = {
+                "type": "php" if suffix == ".php" else "python",
+                "subtype": "logic_only",
+                "virtual_filename": _vname(logic_fname),
+                "blueprint": blueprint_content,
+                "local_imports": local_imports_raw,
+                "module_name": module_name,
+                "governance": governance_content,
+            }
+            return fragmenter(logic_fname, logic_code, bundle["context"], extra)
+
+        # Fallback: Re-use existing get_fragments for all subtypes (Python/jinja/yaml)
         base_frags = get_fragments(logic_fname, logic_code, allowed_extensions=None)
         for f in base_frags:
             f["virtual_filename"] = _vname(f["virtual_filename"])
