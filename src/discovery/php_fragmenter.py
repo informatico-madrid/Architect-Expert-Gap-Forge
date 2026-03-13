@@ -252,3 +252,177 @@ PhpFragmentTuple = Tuple[PhpFragment, ...]
 
 # ImplicitDependencyTuple is a tuple of ImplicitDependency instances
 ImplicitDependencyTuple = Tuple[ImplicitDependency, ...]
+
+
+# ---------------------------------------------------------------------------
+# Utility Functions
+# ---------------------------------------------------------------------------
+
+def strip_html_markup(source: str) -> str:
+    """
+    Extract only PHP code blocks from a mixed PHP/HTML/JS file.
+
+    This function parses source code containing PHP tags embedded in HTML/JavaScript
+    and returns only the PHP content, stripping all HTML markup and plain JavaScript.
+
+    Args:
+        source: The raw source code potentially containing PHP, HTML, and JS.
+
+    Returns:
+        The concatenated PHP code blocks with original PHP tags preserved.
+        Returns empty string if no PHP blocks are found.
+
+    Examples:
+        >>> source = '''<html><body><?php echo $var; ?></body></html>'''
+        >>> strip_html_markup(source)
+        '<?php echo $var; ?>'
+
+        >>> source = '''<div><?php include('header.php'); ?>
+        ... <?php if ($condition) { ?></div>'''
+        >>> strip_html_markup(source)
+        '''<?php include('header.php'); ?>
+        <?php if ($condition) { ?>'''
+    """
+    import re
+
+    # Regex to match PHP code blocks: <?php ... ?> or <? ... ?>
+    # Handles both short tags (<?) and standard PHP tags (<?php)
+    # The non-greedy match .*? ensures we match the smallest possible block
+    php_pattern = re.compile(
+        r'<\?(?:php\s|$)(.*?)\?>',
+        re.DOTALL | re.IGNORECASE
+    )
+
+    # Find all PHP blocks and extract their content
+    matches = php_pattern.findall(source)
+
+    if not matches:
+        return ""
+
+    # Reconstruct with PHP tags preserved
+    result_parts: list[str] = []
+    for match in matches:
+        # Determine which opening tag was used
+        full_match = php_pattern.search(source)
+        if full_match:
+            # Check if it was <?php or just <?
+            start_pos = full_match.start()
+            if source[start_pos:start_pos + 5].lower() == '<?php':
+                result_parts.append(f"<?php {match}?>")
+            else:
+                # Short tag - preserve as <? ... ?>
+                result_parts.append(f"<? {match}?>")
+
+    return "\n".join(result_parts)
+
+
+def fast_brace_scan(source: str, open_pos: int) -> int:
+    """
+    Match closing brace for an opening brace at given position.
+
+    Scans forward character-by-character to find the matching closing brace,
+    handling nested braces correctly.
+
+    Args:
+        source: The source code string to scan.
+        open_pos: Position of the opening brace '{' in the source.
+
+    Returns:
+        The position of the matching closing brace '}'.
+        Returns -1 if no matching brace is found (unmatched brace).
+
+    Note:
+        This function performs a simple character-loop scan and is not
+        optimized for extremely large files. For those cases, consider
+        using a proper parser or the FastBraceScanner class.
+    """
+    if open_pos >= len(source) or source[open_pos] != '{':
+        return -1
+
+    depth = 1
+    pos = open_pos + 1
+    in_string = False
+    string_char = ''
+
+    while pos < len(source):
+        char = source[pos]
+
+        # Handle PHP string context (don't count braces in strings)
+        if char in ('"', "'"):
+            if not in_string:
+                in_string = True
+                string_char = char
+            elif char == string_char and (pos == 0 or source[pos - 1] != '\\'):
+                in_string = False
+                string_char = ''
+
+        # Skip brace counting inside strings
+        if in_string:
+            pos += 1
+            continue
+
+        # Handle comments and literals
+        if pos + 1 < len(source):
+            # Single-line comment
+            if source[pos:pos + 2] == '//':
+                # Skip to end of line
+                while pos < len(source) and source[pos] != '\n':
+                    pos += 1
+                pos += 1
+                continue
+            # Multi-line comment
+            if source[pos:pos + 2] == '/*':
+                end = source.find('*/', pos + 2)
+                if end == -1:
+                    return -1
+                pos = end + 2
+                continue
+
+        if char == '{':
+            depth += 1
+        elif char == '}':
+            depth -= 1
+            if depth == 0:
+                return pos
+
+        pos += 1
+
+    return -1
+
+
+def read_php_file(path: Path) -> str:
+    """
+    Read a PHP file with proper encoding handling.
+
+    Attempts UTF-8 first, falls back to latin-1 if UTF-8 fails.
+    Logs a warning if fallback encoding is used.
+
+    Args:
+        path: Path to the PHP file to read.
+
+    Returns:
+        The file contents as a string.
+
+    Raises:
+        PhpReadError: If both UTF-8 and latin-1 encoding fail.
+    """
+    # Try UTF-8 first (most common)
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        logger.warning(
+            "UTF-8 decode failed for %s, falling back to latin-1",
+            path,
+        )
+        try:
+            return path.read_text(encoding="latin-1")
+        except UnicodeDecodeError as e:
+            raise PhpReadError(
+                f"Failed to read {path} with UTF-8 or latin-1 encoding: {e}"
+            ) from e
+
+
+class PhpReadError(Exception):
+    """Exception raised when a PHP file cannot be read."""
+
+    pass
