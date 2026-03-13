@@ -113,6 +113,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 7. Implementation execution rules:
    - **Setup first**: Initialize project structure, dependencies, configuration
    - **Tests before code**: If you need to write tests for contracts, entities, and integration scenarios
+   - **TESTING MANDATORY**: Read .github/agents/speckit.test-prompt.md BEFORE creating any tests - follow ALL patterns exactly
    - **Core development**: Implement models, services, CLI commands, endpoints
    - **Integration work**: Database connections, middleware, logging, external services
    - **Polish and validation**: Unit tests, performance optimization, documentation
