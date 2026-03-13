@@ -30,7 +30,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.audit.model_evaluator import (
+from src.audit.cli import (
     cmd_adapter,
     cmd_baseline,
     cmd_generate_exam,
@@ -194,7 +194,7 @@ class TestCmdSamplePhase1:
             assert record.reference_standards, (
                 f"reference_standards must be injected for {record.id}"
             )
-            assert "MASTER_GUIDE" in record.reference_standards
+            assert "Master Guide" in record.reference_standards
 
     def test_skips_reference_standards_injection_when_already_present(
         self, tmp_path: Path
@@ -229,7 +229,7 @@ class TestCmdSamplePhase1:
 
         mock_gap = "Generated gap analysis text."
         with patch(
-            "src.audit.model_evaluator.generate_gap_analysis",
+            "src.audit.cli.generate_gap_analysis",
             return_value=mock_gap,
         ) as mock_fn:
             cmd_sample(args)
@@ -248,7 +248,7 @@ class TestCmdSamplePhase1:
         args = _default_args(tmp_path, dataset=str(dataset), force=True, sample_size=4)
 
         with patch(
-            "src.audit.model_evaluator.generate_gap_analysis",
+            "src.audit.cli.generate_gap_analysis",
         ) as mock_fn:
             cmd_sample(args)
 
@@ -269,7 +269,7 @@ class TestCmdSamplePhase1:
 
         args = _default_args(tmp_path, force=False, audit_dir=str(audit_dir))
 
-        with patch("src.audit.model_evaluator.load_dataset") as mock_load:
+        with patch("src.audit.cli.load_dataset") as mock_load:
             cmd_sample(args)
 
         mock_load.assert_not_called()
@@ -316,7 +316,7 @@ class TestCmdGenerateExamPhase2:
         mock_exam = make_exam_record()
 
         with patch(
-            "src.audit.model_evaluator.generate_exam_question",
+            "src.audit.cli.generate_exam_question",
             return_value=mock_exam,
         ) as mock_fn:
             cmd_generate_exam(args)
@@ -335,7 +335,7 @@ class TestCmdGenerateExamPhase2:
         exams = [make_exam_record(s) for s in samples]
         persist_exam(exams, args.audit_dir)
 
-        with patch("src.audit.model_evaluator.generate_exam_question") as mock_fn:
+        with patch("src.audit.cli.generate_exam_question") as mock_fn:
             cmd_generate_exam(args)
 
         mock_fn.assert_not_called()
@@ -401,7 +401,7 @@ class TestCmdBaselinePhase3:
         ]
 
         with patch(
-            "src.audit.model_evaluator.run_inference",
+            "src.audit.cli.run_inference",
             return_value=mock_results,
         ) as mock_inf:
             cmd_baseline(args)
@@ -435,7 +435,7 @@ class TestCmdBaselinePhase3:
             for s in samples
         ]
         with patch(
-            "src.audit.model_evaluator.run_inference",
+            "src.audit.cli.run_inference",
             return_value=mock_results,
         ):
             cmd_baseline(args)
@@ -484,7 +484,7 @@ class TestCmdAdapterPhase4:
         ]
 
         with patch(
-            "src.audit.model_evaluator.run_inference",
+            "src.audit.cli.run_inference",
             return_value=mock_results,
         ) as mock_inf:
             cmd_adapter(args)
@@ -557,11 +557,11 @@ class TestCmdScorePhase5:
 
         with (
             patch(
-                "src.audit.model_evaluator.compute_scorecard",
+                "src.audit.cli.compute_scorecard",
                 return_value=mock_sc,
             ) as mock_score,
             patch(
-                "src.audit.model_evaluator.generate_report",
+                "src.audit.cli.generate_report",
                 return_value=(mock_report_path, AuditReport()),
             ) as mock_report,
         ):
@@ -614,9 +614,9 @@ class TestCmdScorePhase5:
         mock_report_path.write_text("# Report", encoding="utf-8")
 
         with (
-            patch("src.audit.model_evaluator.compute_scorecard", return_value=mock_sc),
+            patch("src.audit.cli.compute_scorecard", return_value=mock_sc),
             patch(
-                "src.audit.model_evaluator.generate_report",
+                "src.audit.cli.generate_report",
                 return_value=(mock_report_path, AuditReport()),
             ),
         ):

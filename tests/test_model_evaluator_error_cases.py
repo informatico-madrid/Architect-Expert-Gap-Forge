@@ -22,11 +22,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.audit.model_evaluator import (
-    generate_gap_analysis,
-    generate_exam_question,
-    llm_judge_score,
-)
+from src.audit.gap_generator import generate_gap_analysis
+from src.audit.exam_builder import generate_exam_question
+from src.audit.judge import llm_judge_score
 from src.audit.schema import PromptGenerationError, SampleRecord, ExamRecord
 from tests.fixtures import golden_sample, golden_exam
 
@@ -37,7 +35,7 @@ class TestGapAnalysisErrorCases:
 
     def test_empty_gap_analysis_response_raises_error(self, golden_sample: Any) -> None:
         """generate_gap_analysis must raise PromptGenerationError when response is empty."""
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = ""  # Empty response
             mock_router.return_value.professor.return_value = mock_client
@@ -54,7 +52,7 @@ class TestExamGenerationErrorCases:
 
     def test_invalid_json_response_raises_error(self, golden_sample: Any) -> None:
         """generate_exam_question must raise PromptGenerationError on invalid JSON."""
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.exam_builder._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = "{ invalid json"  # Invalid
             mock_router.return_value.professor.return_value = mock_client
@@ -72,7 +70,7 @@ class TestExamGenerationErrorCases:
             "target_patterns": ["pattern 1"],
         }
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.exam_builder._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(
                 incomplete_response
@@ -90,7 +88,7 @@ class TestExamGenerationErrorCases:
             "target_patterns": ["pattern 1"],
         }
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.exam_builder._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(
                 incomplete_response
@@ -107,7 +105,7 @@ class TestJudgeScoringErrorCases:
 
     def test_invalid_judge_json_response_raises_error(self, golden_exam: Any) -> None:
         """llm_judge_score must raise on invalid JSON from judge."""
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.judge._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = "{ not valid json"
             mock_router.return_value.professor.return_value = mock_client
@@ -131,7 +129,7 @@ class TestJudgeScoringErrorCases:
             "reasoning": "judgment text",
         }
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.judge._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(incomplete)
             mock_router.return_value.professor.return_value = mock_client
@@ -155,7 +153,7 @@ class TestJudgeScoringErrorCases:
             "reasoning": "judgment text",
         }
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.judge._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(incomplete)
             mock_router.return_value.professor.return_value = mock_client
@@ -179,7 +177,7 @@ class TestJudgeScoringErrorCases:
             "adapter": {"ha_modernity": 0.9},
         }
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.judge._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(incomplete)
             mock_router.return_value.professor.return_value = mock_client
@@ -204,7 +202,7 @@ class TestJudgeScoringErrorCases:
             "reasoning": "judgment text",
         }
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.judge._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(incomplete_dims)
             mock_router.return_value.professor.return_value = mock_client
@@ -234,7 +232,7 @@ class TestCmdGenerateGapErrorCases:
         sample_without_gap = dataclasses.replace(golden_sample, gap_analysis="")
 
         # Mock generate_gap_analysis to raise PromptGenerationError
-        with patch("src.audit.model_evaluator.generate_gap_analysis") as mock_gap_gen:
+        with patch("src.audit.cli.generate_gap_analysis") as mock_gap_gen:
             mock_gap_gen.side_effect = PromptGenerationError(
                 "Gap analysis generation failed: mocked error"
             )
@@ -259,25 +257,25 @@ class TestCmdGenerateGapErrorCases:
             )
 
             # Mock load_dataset to avoid file I/O
-            with patch("src.audit.model_evaluator.load_dataset") as mock_load_ds:
+            with patch("src.audit.cli.load_dataset") as mock_load_ds:
                 mock_load_ds.return_value = [
                     {"id": "test", "metadata": {"example_type": "nominal"}}
                 ]
 
                 # Mock stratified_sample to return sample without gap_analysis
-                with patch("src.audit.model_evaluator.stratified_sample") as mock_strat:
+                with patch("src.audit.cli.stratified_sample") as mock_strat:
                     mock_strat.return_value = [sample_without_gap]
 
                     # Mock load_master_docs to avoid I/O
                     with patch(
-                        "src.audit.model_evaluator.load_master_docs"
+                        "src.audit.cli.load_master_docs"
                     ) as mock_docs:
                         mock_docs.return_value = ("master", "changelog", "jinja")
 
                         # Mock persist_sample to avoid I/O
-                        with patch("src.audit.model_evaluator.persist_sample"):
+                        with patch("src.audit.persistence.persist_sample"):
                             # Import and call the function
-                            from src.audit.model_evaluator import cmd_sample
+                            from src.audit.cli import cmd_sample
 
                             with pytest.raises(
                                 SystemExit, match="Gap analysis generation failed"
@@ -294,13 +292,13 @@ class TestCmdGenerateExamErrorCases:
     ) -> None:
         """cmd_generate_exam must propagate PromptGenerationError from generate_exam_question."""
         # Mock generate_exam_question to raise PromptGenerationError
-        with patch("src.audit.model_evaluator.generate_exam_question") as mock_exam_gen:
+        with patch("src.audit.cli.generate_exam_question") as mock_exam_gen:
             mock_exam_gen.side_effect = PromptGenerationError(
                 "Exam generation failed: mocked error"
             )
 
             # Mock load_persisted_sample to return samples with ha_standards and gap_analysis
-            with patch("src.audit.model_evaluator.load_persisted_sample") as mock_load:
+            with patch("src.audit.cli.load_persisted_sample") as mock_load:
                 # Create a sample with reference_standards and gap_analysis to pass validation
                 complete_sample = dataclasses.replace(
                     golden_sample,
@@ -325,9 +323,9 @@ class TestCmdGenerateExamErrorCases:
                 )
 
                 # Mock persist_exam to avoid I/O
-                with patch("src.audit.model_evaluator.persist_exam"):
+                with patch("src.audit.persistence.persist_exam"):
                     # Import and call the function
-                    from src.audit.model_evaluator import cmd_generate_exam
+                    from src.audit.cli import cmd_generate_exam
 
                     with pytest.raises(SystemExit, match="Exam generation failed"):
                         cmd_generate_exam(args)

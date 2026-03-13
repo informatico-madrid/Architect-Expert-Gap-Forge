@@ -47,7 +47,7 @@ def _make_jsonl(path: Path, records: list[RawRecord]) -> None:
 
 
 def test_build_rewrite_prompt_error_and_contrast() -> None:
-    from src.curation.backtracking_rewriter import build_rewrite_prompt
+    from src.curation.backtrack_strategy import build_rewrite_prompt
 
     r1 = _make_record(example_type="error_recovery", gold_injected=False)
     sys1, user1 = build_rewrite_prompt(r1, "error_first")
@@ -63,10 +63,8 @@ def test_build_rewrite_prompt_error_and_contrast() -> None:
 def test_apply_backtracking_rewrite_strips_think_and_preserves_code(
     tmp_path: Path,
 ) -> None:
-    from src.curation.backtracking_rewriter import (
-        BacktrackingConfig,
-        apply_backtracking_rewrite,
-    )
+    from src.curation.backtracking_config import BacktrackingConfig
+    from src.curation.rewrite_engine import apply_backtracking_rewrite
 
     rec = _make_record(
         record_id="striptest", legacy_detected=True, think_text="Old reasoning"
@@ -95,10 +93,8 @@ def test_apply_backtracking_rewrite_strips_think_and_preserves_code(
 
 
 def test_rewrite_pipeline_with_mock_client(tmp_path: Path) -> None:
-    from src.curation.backtracking_rewriter import (
-        BacktrackingConfig,
-        rewrite_pipeline,
-    )
+    from src.curation.backtracking_config import BacktrackingConfig
+    from src.curation.rewrite_engine import rewrite_pipeline
 
     # Prepare three records: one theory (filtered), one nominal (pass-through), one legacy (rewritten)
     rec1 = _make_record(record_id="t1", example_type="theory")
@@ -135,7 +131,8 @@ def test_rewrite_pipeline_with_mock_client(tmp_path: Path) -> None:
 
 def test_main_exits_zero_with_required_args(tmp_path: Path) -> None:
     """main() must return 0 when pipeline succeeds."""
-    from src.curation.backtracking_rewriter import PipelineReport, main
+    from src.curation.backtracking_config import PipelineReport
+    from src.curation.rewrite_cli import main
 
     inp = tmp_path / "in.jsonl"
     out = tmp_path / "out.jsonl"
@@ -153,7 +150,7 @@ def test_main_exits_zero_with_required_args(tmp_path: Path) -> None:
     )
 
     with patch(
-        "src.curation.backtracking_rewriter.rewrite_pipeline",
+        "src.curation.rewrite_cli.rewrite_pipeline",
         new_callable=AsyncMock,
         return_value=fake_report,
     ) as mock_pipeline:
@@ -168,11 +165,8 @@ def test_main_exits_zero_with_required_args(tmp_path: Path) -> None:
 
 def test_main_cli_overrides_are_applied(tmp_path: Path) -> None:
     """CLI flags --model, --temperature, --base-url must override config values."""
-    from src.curation.backtracking_rewriter import (
-        BacktrackingConfig,
-        PipelineReport,
-        main,
-    )
+    from src.curation.backtracking_config import BacktrackingConfig, PipelineReport
+    from src.curation.rewrite_cli import main
 
     inp = tmp_path / "in.jsonl"
     out = tmp_path / "out.jsonl"
@@ -198,7 +192,7 @@ def test_main_cli_overrides_are_applied(tmp_path: Path) -> None:
         return fake_report
 
     with patch(
-        "src.curation.backtracking_rewriter.rewrite_pipeline",
+        "src.curation.rewrite_cli.rewrite_pipeline",
         new_callable=AsyncMock,
         side_effect=_capture,
     ):
@@ -231,11 +225,8 @@ def test_main_cli_overrides_are_applied(tmp_path: Path) -> None:
 def test_main_loads_yaml_config(tmp_path: Path) -> None:
     """main() must load config values from a YAML file when --config is provided."""
     import yaml
-    from src.curation.backtracking_rewriter import (
-        BacktrackingConfig,
-        PipelineReport,
-        main,
-    )
+    from src.curation.backtracking_config import BacktrackingConfig, PipelineReport
+    from src.curation.rewrite_cli import main
 
     inp = tmp_path / "in.jsonl"
     out = tmp_path / "out.jsonl"
@@ -266,7 +257,7 @@ def test_main_loads_yaml_config(tmp_path: Path) -> None:
         return fake_report
 
     with patch(
-        "src.curation.backtracking_rewriter.rewrite_pipeline",
+        "src.curation.rewrite_cli.rewrite_pipeline",
         new_callable=AsyncMock,
         side_effect=_capture,
     ):
@@ -288,7 +279,7 @@ def test_main_loads_yaml_config(tmp_path: Path) -> None:
 def test_load_legacy_regexes_from_yaml(tmp_path: Path) -> None:
     """Load compiled regex patterns from a well-formed YAML file."""
     import yaml
-    from src.curation.backtracking_rewriter import _load_legacy_regexes
+    from src.curation.backtrack_strategy import _load_legacy_regexes
 
     patterns_file = tmp_path / "patterns.yaml"
     data = {
@@ -311,7 +302,7 @@ def test_load_legacy_regexes_from_yaml(tmp_path: Path) -> None:
 
 def test_load_legacy_regexes_missing_file() -> None:
     """Return empty tuple with a warning when the file does not exist."""
-    from src.curation.backtracking_rewriter import _load_legacy_regexes
+    from src.curation.backtrack_strategy import _load_legacy_regexes
 
     regexes = _load_legacy_regexes("/nonexistent/patterns.yaml")
     assert regexes == ()
@@ -320,7 +311,7 @@ def test_load_legacy_regexes_missing_file() -> None:
 def test_load_legacy_regexes_invalid_regex(tmp_path: Path) -> None:
     """Skip invalid regex entries without aborting."""
     import yaml
-    from src.curation.backtracking_rewriter import _load_legacy_regexes
+    from src.curation.backtrack_strategy import _load_legacy_regexes
 
     patterns_file = tmp_path / "bad.yaml"
     data = {
@@ -345,7 +336,7 @@ def test_load_legacy_regexes_invalid_regex(tmp_path: Path) -> None:
 def test_validate_resolution_clean_second_half() -> None:
     """Legacy only in first half (Legacy Impulse) — should pass."""
     import re
-    from src.curation.backtracking_rewriter import _validate_resolution_no_legacy
+    from src.curation.backtrack_strategy import _validate_resolution_no_legacy
 
     regexes = (re.compile(r"\bhass\.data\b"),)
     # First half mentions legacy (intentional), second half is clean
@@ -363,7 +354,7 @@ def test_validate_resolution_clean_second_half() -> None:
 def test_validate_resolution_legacy_in_second_half() -> None:
     """Legacy in second half (resolution) — should be rejected."""
     import re
-    from src.curation.backtracking_rewriter import _validate_resolution_no_legacy
+    from src.curation.backtrack_strategy import _validate_resolution_no_legacy
 
     regexes = (re.compile(r"\bhass\.data\b"),)
     # Legacy pattern appears in the resolution half (second half)
@@ -382,7 +373,7 @@ def test_validate_resolution_legacy_in_second_half() -> None:
 def test_validate_resolution_legacy_in_code_block() -> None:
     """Legacy in the sacred code block — should be rejected."""
     import re
-    from src.curation.backtracking_rewriter import _validate_resolution_no_legacy
+    from src.curation.backtrack_strategy import _validate_resolution_no_legacy
 
     regexes = (re.compile(r"\bhass\.data\b"),)
     think = "Clean reasoning without any legacy patterns at all."
@@ -394,7 +385,7 @@ def test_validate_resolution_legacy_in_code_block() -> None:
 
 def test_validate_resolution_empty_regexes() -> None:
     """No regexes configured — always passes."""
-    from src.curation.backtracking_rewriter import _validate_resolution_no_legacy
+    from src.curation.backtrack_strategy import _validate_resolution_no_legacy
 
     passed, reason = _validate_resolution_no_legacy("anything", "anything", ())
     assert passed
@@ -404,7 +395,7 @@ def test_validate_resolution_empty_regexes() -> None:
 def test_validate_resolution_multiple_patterns() -> None:
     """Multiple patterns — reject if any match in resolution half."""
     import re
-    from src.curation.backtracking_rewriter import _validate_resolution_no_legacy
+    from src.curation.backtrack_strategy import _validate_resolution_no_legacy
 
     regexes = (
         re.compile(r"\bhass\.data\b"),
@@ -433,11 +424,9 @@ def test_validate_resolution_multiple_patterns() -> None:
 def test_apply_rewrite_rejection_sampling_discards_legacy_resolution() -> None:
     """Record is discarded (raises) when resolution half has legacy patterns."""
     import re
-    from src.curation.backtracking_rewriter import (
-        BacktrackingConfig,
-        _RejectionSamplingError,
-        apply_backtracking_rewrite,
-    )
+    from src.curation.backtracking_config import BacktrackingConfig
+    from src.curation.backtracking_helpers import _RejectionSamplingError
+    from src.curation.rewrite_engine import apply_backtracking_rewrite
 
     record = _make_record(
         record_id="reject_test",
@@ -468,10 +457,8 @@ def test_apply_rewrite_rejection_sampling_discards_legacy_resolution() -> None:
 def test_apply_rewrite_rejection_sampling_passes_clean_resolution() -> None:
     """Record passes when legacy is only in the first half (Legacy Impulse)."""
     import re
-    from src.curation.backtracking_rewriter import (
-        BacktrackingConfig,
-        apply_backtracking_rewrite,
-    )
+    from src.curation.backtracking_config import BacktrackingConfig
+    from src.curation.rewrite_engine import apply_backtracking_rewrite
 
     record = _make_record(
         record_id="pass_test",

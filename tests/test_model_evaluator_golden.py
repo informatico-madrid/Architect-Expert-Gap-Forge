@@ -22,10 +22,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.audit.model_evaluator import (
-    compute_scorecard,
-    generate_report,
-)
+from src.audit.scorecard import compute_scorecard
+from src.audit.report_writer import generate_report
 from src.audit.schema import AuditReport, ScoreCard, ExamRecord
 from tests.fixtures import (
     golden_exam,
@@ -73,18 +71,13 @@ class TestComputeScorecardGoldenFile:
         }
         judge_data["adapter"] = adapter_scores
 
-        with patch(
-            "src.audit.model_evaluator.llm_judge_score",
-            return_value=judge_data,
-        ):
-            # Ensure deterministic testing by removing target patterns
-            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
-            sc = compute_scorecard(
-                exam=local_exam,
-                baseline_resp="baseline response",
-                adapter_resp="adapter response",
-                judge_model="test-judge",
-            )
+        # Ensure deterministic testing by removing target patterns
+        local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
+        sc = compute_scorecard(
+            exam=local_exam,
+            judge_resp=judge_data,
+            adapter_resp="adapter response",
+        )
 
         # Verify composite score calculation
         from src.audit.schema import SCORING_WEIGHTS
@@ -118,17 +111,12 @@ class TestComputeScorecardGoldenFile:
             "reasoning": "Mock reasoning",
         }
 
-        with patch(
-            "src.audit.model_evaluator.llm_judge_score",
-            return_value=judge_data,
-        ):
-            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
-            sc = compute_scorecard(
-                exam=local_exam,
-                baseline_resp="baseline",
-                adapter_resp="adapter",
-                judge_model="test-judge",
-            )
+        local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
+        sc = compute_scorecard(
+            exam=local_exam,
+            judge_resp=judge_data,
+            adapter_resp="adapter",
+        )
 
         from src.audit.schema import SCORING_WEIGHTS
 
@@ -160,17 +148,12 @@ class TestComputeScorecardGoldenFile:
             "reasoning": golden_judge_response["judge_reasoning"],
         }
 
-        with patch(
-            "src.audit.model_evaluator.llm_judge_score",
-            return_value=judge_data,
-        ):
-            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
-            sc = compute_scorecard(
-                exam=local_exam,
-                baseline_resp="baseline",
-                adapter_resp="adapter",
-                judge_model="test-judge",
-            )
+        local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
+        sc = compute_scorecard(
+            exam=local_exam,
+            judge_resp=judge_data,
+            adapter_resp="adapter",
+        )
 
         assert golden_judge_response["judge_reasoning"][:100] in sc.judge_reasoning
 
@@ -201,17 +184,12 @@ async with self.client.get(url) as resp:
             "reasoning": "Good use of patterns",
         }
 
-        with patch(
-            "src.audit.model_evaluator.llm_judge_score",
-            return_value=judge_data,
-        ):
-            # Keep target_patterns for this test so pattern detection is exercised
-            sc = compute_scorecard(
-                exam=golden_exam,
-                baseline_resp="baseline",
-                adapter_resp=adapter_response_with_patterns,
-                judge_model="test-judge",
-            )
+        # Keep target_patterns for this test so pattern detection is exercised
+        sc = compute_scorecard(
+            exam=golden_exam,
+            judge_resp=judge_data,
+            adapter_resp=adapter_response_with_patterns,
+        )
 
         # Should have detected patterns (notes should be populated or empty, but no error)
         assert isinstance(sc.notes, str)
@@ -237,6 +215,7 @@ class TestGenerateReportGoldenFile:
 
         scorecard = ScoreCard(
             record_id=golden_exam.id,
+            sample_id=golden_exam.id,
             example_type=golden_exam.example_type,
             fragment_name=golden_exam.fragment_name,
             ha_modernity=0.95,
@@ -293,6 +272,7 @@ class TestGenerateReportGoldenFile:
 
         scorecard = ScoreCard(
             record_id=golden_exam.id,
+            sample_id=golden_exam.id,
             example_type=golden_exam.example_type,
             fragment_name=golden_exam.fragment_name,
             ha_modernity=0.95,
@@ -344,6 +324,7 @@ class TestGenerateReportGoldenFile:
 
         scorecard = ScoreCard(
             record_id=golden_exam.id,
+            sample_id=golden_exam.id,
             example_type=golden_exam.example_type,
             fragment_name=golden_exam.fragment_name,
             ha_modernity=0.95,
@@ -425,17 +406,12 @@ class TestFullPipelineGoldenFile:
             "reasoning": golden_judge_response["judge_reasoning"],
         }
 
-        with patch(
-            "src.audit.model_evaluator.llm_judge_score",
-            return_value=judge_data,
-        ):
-            local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
-            scorecard = compute_scorecard(
-                exam=local_exam,
-                baseline_resp=baseline.response,
-                adapter_resp=adapter.response,
-                judge_model="test-judge",
-            )
+        local_exam = ExamRecord.from_sample(golden_exam, target_patterns=[])
+        scorecard = compute_scorecard(
+            exam=local_exam,
+            judge_resp=judge_data,
+            adapter_resp=adapter.response,
+        )
 
         # Verify scorecard from realistic judge data
         assert scorecard.composite_score > 0.85

@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 
-"""Unit tests for src/curation/nemo_curator_suite.py.
+"""Unit tests for src/curation/ submodules.
 
 All four curation phases tested with pure (no NeMo / no Ray / no datasketch):
   Phase 0  — exact_dedup
@@ -21,31 +21,40 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
 
-import src.curation.nemo_curator_suite as ncs
-from src.curation.nemo_curator_suite import (
+# Import from new submodules
+from src.curation.curator_pipeline import (
     ConversationExtractor,
     CurationStats,
-    _build_clusters_naive,
-    _char_shingles,
-    _count_code_tokens,
-    _count_natural_tokens,
-    _extract_assistant_text,
-    _has_meta_speech,
-    _heuristic_quality_score,
-    _ldi,
-    exact_dedup,
+    _NEMO_AVAILABLE,
     load_jsonl,
     run_nemo_filter_pipeline,
     save_report,
-    semantic_dedup,
-    structural_quality_filter,
     write_jsonl,
 )
+from src.curation.dedup_filter import (
+    _build_clusters_naive,
+    _char_shingles,
+    _extract_assistant_text,
+    _heuristic_quality_score,
+    exact_dedup,
+    semantic_dedup,
+)
+from src.curation.quality_filter import (
+    _count_code_tokens,
+    _count_natural_tokens,
+    _has_meta_speech,
+    _ldi,
+    structural_quality_filter,
+)
+
+# Import curator_pipeline module for monkeypatching (tests patch module-level vars)
+import src.curation.curator_pipeline as ncs
 
 
 # ===========================================================================
@@ -268,7 +277,7 @@ class TestExactDedup:
 class TestRunNemoFilterPipeline:
     def test_raises_runtime_error_when_not_installed(self, tmp_path: Path) -> None:
         """When nemo-curator is not installed, raises RuntimeError immediately."""
-        if ncs._NEMO_AVAILABLE:
+        if _NEMO_AVAILABLE:
             pytest.skip(
                 "nemo-curator is installed; this test covers the missing-dep path"
             )
@@ -785,13 +794,13 @@ class TestRunNemoFilterPipelineMocked:
         ):
             monkeypatch.setattr(ncs, attr, _DummyStage, raising=False)
         monkeypatch.setattr(
-            ncs.socket, "socket", lambda *args, **kwargs: _DummySocket()
+            socket, "socket", lambda *args, **kwargs: _DummySocket()
         )
 
         input_path = tmp_path / "in.jsonl"
         input_path.write_text("{}", encoding="utf-8")
         output = tmp_path / "out"
-        ncs.run_nemo_filter_pipeline(str(input_path), str(output))
+        run_nemo_filter_pipeline(str(input_path), str(output))
 
         assert dummy_client.started
         assert dummy_client.stopped

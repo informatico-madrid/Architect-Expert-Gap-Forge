@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from src.factory import production_v11 as pv11
+from src.factory.prompt_builder import load_master_docs
 
 
 class TestLoadMasterDocsWithProfile:
@@ -45,7 +45,7 @@ class TestLoadMasterDocsWithProfile:
 
     def test_load_master_docs_default_profile(self, gap_dir_with_docs: Path) -> None:
         """Test load_master_docs with default homeassistant profile."""
-        master, changelog, jinja = pv11.load_master_docs(gap_dir_with_docs)
+        master, changelog, jinja = load_master_docs(gap_dir_with_docs)
 
         assert master == "# Master Guide"
         assert changelog == "# Changelog"
@@ -53,7 +53,7 @@ class TestLoadMasterDocsWithProfile:
 
     def test_load_master_docs_explicit_profile(self, gap_dir_with_docs: Path) -> None:
         """Test load_master_docs with explicit homeassistant profile."""
-        master, changelog, jinja = pv11.load_master_docs(
+        master, changelog, jinja = load_master_docs(
             gap_dir_with_docs, profile="homeassistant"
         )
 
@@ -67,7 +67,7 @@ class TestLoadMasterDocsWithProfile:
         # Missing changelog and jinja
 
         with pytest.raises(FileNotFoundError) as exc_info:
-            pv11.load_master_docs(tmp_path)
+            load_master_docs(tmp_path)
 
         assert "Technical Changelog" in str(exc_info.value)
 
@@ -92,13 +92,13 @@ class TestLoadMasterDocsWithProfile:
         (config_dir / "master_docs_map.yaml").write_text(yaml.dump(config))
 
         # Monkeypatch the config path to use our test config
-        import src.factory.production_v11 as pv11_module
+        import src.factory.prompt_builder as pb_module
 
-        original_config_path = pv11_module._MASTER_DOCS_MAP_FILE
-        pv11_module._MASTER_DOCS_MAP_FILE = str(config_dir / "master_docs_map.yaml")
+        original_config_path = pb_module._MASTER_DOCS_MAP_FILE
+        pb_module._MASTER_DOCS_MAP_FILE = str(config_dir / "master_docs_map.yaml")
 
         try:
-            master, changelog, jinja = pv11.load_master_docs(
+            master, changelog, jinja = load_master_docs(
                 gap_dir_with_profile_docs, profile="php_hexagonal"
             )
 
@@ -106,14 +106,14 @@ class TestLoadMasterDocsWithProfile:
             assert changelog == "# PHP Changelog"
             assert jinja == "# PHP Template Guide"
         finally:
-            pv11_module._MASTER_DOCS_MAP_FILE = original_config_path
+            pb_module._MASTER_DOCS_MAP_FILE = original_config_path
 
     def test_load_master_docs_unknown_profile_fallback(
         self, gap_dir_with_docs: Path
     ) -> None:
         """Test load_master_docs falls back to defaults for unknown profile."""
         # Without config file, unknown profile should use defaults
-        master, changelog, jinja = pv11.load_master_docs(
+        master, changelog, jinja = load_master_docs(
             gap_dir_with_docs, profile="unknown_profile"
         )
 

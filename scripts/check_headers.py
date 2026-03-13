@@ -59,7 +59,8 @@ def git_py_files() -> List[str]:
     def in_scope(p: str) -> bool:
         return any(p.startswith(pref) for pref in INCLUDE_PREFIXES) or ("/" not in p)
 
-    return [p for p in files if in_scope(p)]
+    # Filter to only include files that actually exist on disk
+    return [p for p in files if in_scope(p) and Path(p).is_file()]
 
 
 def check_file(path: str) -> Tuple[bool, List[str]]:

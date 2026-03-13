@@ -7,7 +7,8 @@ import re
 
 import pytest
 
-from src.curation import backtracking_rewriter as br
+from src.curation import backtracking_helpers as br
+from src.curation import backtrack_strategy as br_strategy
 
 
 def test_extract_replace_think_block():
@@ -60,16 +61,16 @@ def test_strip_python_comments():
 def test_load_legacy_regexes_and_validate(tmp_path):
     yaml_path = tmp_path / "legacy.yaml"
     yaml_path.write_text("legacy_patterns:\n  - pattern: 'deprecated_api'\n")
-    legacy = br._load_legacy_regexes(str(yaml_path))
+    legacy = br_strategy._load_legacy_regexes(str(yaml_path))
     assert isinstance(legacy, tuple) and len(legacy) == 1
 
     # resolution contains deprecated_api inside fenced code — should be detected
     new_think = "A" * 40 + " deprecated_api()"
     resolution = "```python\ndeprecated_api()\n```"
-    ok, reason = br._validate_resolution_no_legacy(new_think, resolution, legacy)
+    ok, reason = br_strategy._validate_resolution_no_legacy(new_think, resolution, legacy)
     assert not ok
     assert "deprecated_api" in reason
 
     # no legacy patterns — should pass
-    ok2, _ = br._validate_resolution_no_legacy(new_think, resolution, ())
+    ok2, _ = br_strategy._validate_resolution_no_legacy(new_think, resolution, ())
     assert ok2

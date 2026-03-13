@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.audit.model_evaluator import (
+from src.audit.cli import (
     cmd_baseline,
     cmd_full,
     cmd_score,
@@ -41,7 +41,7 @@ class TestCommandErrorPropagation:
         args.max_tokens = 4096
         args.validate = False
 
-        with patch("src.audit.model_evaluator.logger") as mock_logger:
+        with patch("src.audit.cli.logger") as mock_logger:
             # cmd_baseline should warn when exam.jsonl is missing
             try:
                 cmd_baseline(args)
@@ -66,7 +66,7 @@ class TestCommandErrorPropagation:
         args.api_url = "http://localhost:8000"
         args.validate = False
 
-        with patch("src.audit.model_evaluator.logger") as mock_logger:
+        with patch("src.audit.cli.logger") as mock_logger:
             # cmd_score should handle missing baseline.jsonl
             try:
                 cmd_score(args)
@@ -83,7 +83,7 @@ class TestCmdFullIfExists:
 
     def test_cmd_full_exists_and_is_callable(self) -> None:
         """Verify cmd_full exists in the module."""
-        from src.audit.model_evaluator import cmd_full
+        from src.audit.cli import cmd_full
 
         assert callable(cmd_full)
 
@@ -93,12 +93,12 @@ class TestCmdFullIfExists:
         args.audit_dir = "/tmp/test"
         args.validate = True
 
-        with patch("src.audit.model_evaluator.cmd_sample"):
-            with patch("src.audit.model_evaluator.cmd_generate_exam"):
-                with patch("src.audit.model_evaluator.cmd_baseline"):
-                    with patch("src.audit.model_evaluator.cmd_adapter"):
-                        with patch("src.audit.model_evaluator.cmd_score"):
-                            with patch("src.audit.model_evaluator.logger"):
+        with patch("src.audit.cli.cmd_sample"):
+            with patch("src.audit.cli.cmd_generate_exam"):
+                with patch("src.audit.cli.cmd_baseline"):
+                    with patch("src.audit.cli.cmd_adapter"):
+                        with patch("src.audit.cli.cmd_score"):
+                            with patch("src.audit.cli.logger"):
                                 try:
                                     cmd_full(args)
                                 except (SystemExit, FileNotFoundError):
@@ -138,7 +138,7 @@ class TestMainExitCodes:
         mock_cmd = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_sample", mock_cmd):
+            with patch("src.audit.cli.cmd_sample", mock_cmd):
                 try:
                     main()
                 except SystemExit:
@@ -164,7 +164,7 @@ class TestMainExitCodes:
         mock_cmd = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_baseline", mock_cmd):
+            with patch("src.audit.cli.cmd_baseline", mock_cmd):
                 try:
                     main()
                 except SystemExit:
@@ -189,7 +189,7 @@ class TestMainExitCodes:
         mock_cmd = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_adapter", mock_cmd):
+            with patch("src.audit.cli.cmd_adapter", mock_cmd):
                 try:
                     main()
                 except SystemExit:
@@ -214,7 +214,7 @@ class TestMainExitCodes:
         mock_cmd = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_score", mock_cmd):
+            with patch("src.audit.cli.cmd_score", mock_cmd):
                 try:
                     main()
                 except SystemExit:
@@ -240,7 +240,7 @@ class TestMainExitCodes:
         mock_cmd = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_sample", mock_cmd):
+            with patch("src.audit.cli.cmd_sample", mock_cmd):
                 with patch("logging.basicConfig") as mock_logging:
                     try:
                         main()
@@ -263,7 +263,7 @@ class TestBuildDomainStandardsSection:
 
     def test_build_domain_standards_with_gap_analysis_priority(self) -> None:
         """_build_domain_standards_section must prioritize gap_analysis."""
-        from src.audit.model_evaluator import _build_domain_standards_section
+        from src.audit.exam_builder import _build_domain_standards_section
 
         gap_text = "Must implement lazy loading"
         ref_text = "Use async iterators"
@@ -276,7 +276,7 @@ class TestBuildDomainStandardsSection:
 
     def test_build_domain_standards_with_reference_only(self) -> None:
         """_build_domain_standards_section must use reference when gap empty."""
-        from src.audit.model_evaluator import _build_domain_standards_section
+        from src.audit.exam_builder import _build_domain_standards_section
 
         ref_text = "Use immutable datastructures"
 
@@ -288,9 +288,9 @@ class TestBuildDomainStandardsSection:
 
     def test_build_domain_standards_uses_default_patterns(self) -> None:
         """_build_domain_standards_section must fall back to default patterns."""
-        from src.audit.model_evaluator import _build_domain_standards_section
+        from src.audit.exam_builder import _build_domain_standards_section
 
-        with patch("src.audit.model_evaluator._load_domain_patterns") as mock_patterns:
+        with patch("src.audit.exam_builder._load_domain_patterns") as mock_patterns:
             mock_patterns.return_value = {
                 "default_standards": "AEGF Gold Standard applies"
             }
@@ -308,7 +308,7 @@ class TestGapAnalysisGeneration:
 
     def test_generate_gap_analysis_with_large_reference(self) -> None:
         """generate_gap_analysis must truncate large references."""
-        from src.audit.model_evaluator import generate_gap_analysis
+        from src.audit.gap_generator import generate_gap_analysis
         from src.audit.schema import SampleRecord
 
         large_ref = "x" * 5000
@@ -326,7 +326,7 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_router.return_value.professor.return_value = mock_client
             mock_client.generate_with_retry.return_value = "Gap analysis text"
@@ -346,7 +346,7 @@ class TestGapAnalysisGeneration:
 
     def test_generate_gap_analysis_with_validate_mode(self) -> None:
         """generate_gap_analysis with validate=True should skip inference."""
-        from src.audit.model_evaluator import generate_gap_analysis
+        from src.audit.gap_generator import generate_gap_analysis
         from src.audit.schema import SampleRecord
 
         sample = SampleRecord(
@@ -363,7 +363,7 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
             result = generate_gap_analysis(
                 sample,
                 master="Master",
@@ -379,10 +379,8 @@ class TestGapAnalysisGeneration:
 
     def test_generate_gap_analysis_empty_response_raises_error(self) -> None:
         """generate_gap_analysis must raise error on empty professor response."""
-        from src.audit.model_evaluator import (
-            generate_gap_analysis,
-            PromptGenerationError,
-        )
+        from src.audit.gap_generator import generate_gap_analysis
+        from src.audit.schema import PromptGenerationError
         from src.audit.schema import SampleRecord
 
         sample = SampleRecord(
@@ -399,7 +397,7 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch("src.audit.model_evaluator._inference_router") as mock_router:
+        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
             mock_client = MagicMock()
             mock_router.return_value.professor.return_value = mock_client
             # Simulate empty response from professor

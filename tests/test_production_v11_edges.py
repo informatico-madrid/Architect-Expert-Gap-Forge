@@ -20,7 +20,11 @@ from pathlib import Path
 
 import pytest
 
-from src.factory import production_v11 as pv11
+from src.factory import prompt_builder as pb_module
+from src.factory import pipeline_runner as pr_module
+from src.factory import config as cfg_module
+from src.factory.checkpoint import AsyncFileWriter, ProgressTracker
+from src.factory.pipeline_runner import generate_sample_async, process_fragment
 
 
 from tests.fixtures.production_v11_mocks import (
@@ -31,9 +35,9 @@ from tests.fixtures.nemo_mocks import enable_fake_nemo, disable_fake_nemo
 
 def test_generate_sample_async_gold_injected_nominal_clean(monkeypatch, tmp_path):
     # Simplify rendering/prompt helpers and load taxonomy
-    monkeypatch.setattr(pv11, "_prompt", lambda key: "[P]", raising=False)
-    monkeypatch.setattr(pv11, "_render", lambda s, **k: s, raising=False)
-    monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [], raising=False)
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: "[P]", raising=False)
+    monkeypatch.setattr(pb_module, "_render", lambda s, **k: s, raising=False)
+    monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [], raising=False)
     # No global taxonomy load here; we monkeypatch prompt/render helpers above
 
     frag = {
@@ -55,9 +59,9 @@ def test_generate_sample_async_gold_injected_nominal_clean(monkeypatch, tmp_path
     sem = asyncio.Semaphore(1)
 
     async def go():
-        return await pv11.generate_sample_async(
+        return await generate_sample_async(
             client,
-            pv11.DEFAULT_MODEL,
+            cfg_module.DEFAULT_MODEL,
             frag,
             "nominal",
             "easy",
@@ -73,8 +77,8 @@ def test_generate_sample_async_gold_injected_nominal_clean(monkeypatch, tmp_path
 
 
 def test_generate_sample_async_zero_reasoning_rejected(monkeypatch, tmp_path):
-    monkeypatch.setattr(pv11, "_prompt", lambda key: "[P]", raising=False)
-    monkeypatch.setattr(pv11, "_render", lambda s, **k: s, raising=False)
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: "[P]", raising=False)
+    monkeypatch.setattr(pb_module, "_render", lambda s, **k: s, raising=False)
     # No global taxonomy load here; prompt helpers are monkeypatched above
 
     frag = {
@@ -90,9 +94,9 @@ def test_generate_sample_async_zero_reasoning_rejected(monkeypatch, tmp_path):
     client = make_client_with_write_action("pkg/zero.py", "print(1)")
 
     async def go():
-        return await pv11.generate_sample_async(
+        return await generate_sample_async(
             client,
-            pv11.DEFAULT_MODEL,
+            cfg_module.DEFAULT_MODEL,
             frag,
             "nominal",
             "easy",
@@ -110,8 +114,8 @@ def test_generate_sample_async_zero_reasoning_rejected(monkeypatch, tmp_path):
 
 def test_process_fragment_writes_rejected_on_poison(monkeypatch, tmp_path):
     # Monkeypatch minimal prompt rendering
-    monkeypatch.setattr(pv11, "_prompt", lambda key: "[P]", raising=False)
-    monkeypatch.setattr(pv11, "_render", lambda s, **k: s, raising=False)
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: "[P]", raising=False)
+    monkeypatch.setattr(pb_module, "_render", lambda s, **k: s, raising=False)
     # No global taxonomy load here; prompt helpers are monkeypatched above
 
     frag = {
@@ -129,21 +133,21 @@ def test_process_fragment_writes_rejected_on_poison(monkeypatch, tmp_path):
     )
     # Force deterministic example type assignment to avoid random error_recovery branch
     monkeypatch.setattr(
-        pv11,
+        pb_module,
         "assign_example_type",
         lambda frag, has_legacy=False: ("nominal", "easy"),
         raising=False,
     )
 
-    writer_ok = pv11.AsyncFileWriter(Path(tmp_path) / "ok.jsonl")
-    writer_bad = pv11.AsyncFileWriter(Path(tmp_path) / "bad.jsonl")
-    tracker = pv11.ProgressTracker(total=1, mode="code")
+    writer_ok = AsyncFileWriter(Path(tmp_path) / "ok.jsonl")
+    writer_bad = AsyncFileWriter(Path(tmp_path) / "bad.jsonl")
+    tracker = ProgressTracker(total=1, mode="code")
     args = SimpleNamespace(think_filter=False, think_filter_min_chars=5000)
 
     async def go():
-        await pv11.process_fragment(
+        await process_fragment(
             client,
-            pv11.DEFAULT_MODEL,
+            cfg_module.DEFAULT_MODEL,
             frag,
             "M",
             "C",
@@ -184,8 +188,7 @@ def test_run_nemo_filter_pipeline_with_fake_nemo(tmp_path):
 
     # Enable fake nemo/datasketch, reload the suite to pick up availability
     enable_fake_nemo()
-    import src.curation.nemo_curator_suite as ncs
-
+    from src.curation import curator_pipeline as ncs
     importlib.reload(ncs)
 
     try:

@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 
-"""Configuration loading and CLI entry point coverage tests for model_evaluator.py.
+"""Configuration loading and CLI entry point coverage tests for audit config and model_evaluator.py.
 
 Tests file I/O, YAML loading, env var overrides, and argument parsing—the infrastructure
 that AEGF §1.3 requires to be fully covered (no vibe-coding).
@@ -18,7 +18,8 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.audit.model_evaluator import _load_config
+import src
+from src.audit.config import _load_config
 
 
 @pytest.mark.integration
@@ -27,6 +28,9 @@ class TestConfigFileLoadingWithIOPatching:
 
     def test_load_config_when_file_exists_and_parses(self) -> None:
         """_load_config must parse YAML when file exists."""
+        # Reset config cache first
+        import src.audit.config
+        src.audit.config._config_cache = None
         yaml_content = """
 api_url: "http://custom:9000"
 sample_size: 10
@@ -50,8 +54,11 @@ professor_backend: "custom"
 
     def test_load_config_when_file_missing_uses_defaults(self) -> None:
         """_load_config must return empty dict when file doesn't exist."""
+        # Reset config cache first
+        import src.audit.config
+        src.audit.config._config_cache = None
         with patch("pathlib.Path.exists") as mock_exists:
-            with patch("src.audit.model_evaluator.logger") as mock_logger:
+            with patch("src.audit.config.logger") as mock_logger:
                 mock_exists.return_value = False
 
                 config = _load_config()
@@ -142,7 +149,7 @@ class TestDomainPatternsFileLoading:
 
     def test_load_domain_patterns_when_file_exists(self) -> None:
         """_load_domain_patterns must load patterns from YAML."""
-        from src.audit.model_evaluator import _load_domain_patterns
+        from src.audit.exam_builder import _load_domain_patterns
 
         patterns_yaml = """
 default_standards: "Domain standards content"
@@ -163,9 +170,7 @@ modernity_rubric:
                     }
 
                     # Reset cache to force reload
-                    import src.audit.model_evaluator
-
-                    src.audit.model_evaluator._domain_patterns_cache = None
+                    src.audit.exam_builder._domain_patterns_cache = None
 
                     patterns = _load_domain_patterns()
 
@@ -175,16 +180,14 @@ modernity_rubric:
 
     def test_load_domain_patterns_when_file_missing(self) -> None:
         """_load_domain_patterns must use empty dict when file missing."""
-        from src.audit.model_evaluator import _load_domain_patterns
+        from src.audit.exam_builder import _load_domain_patterns
 
         with patch("pathlib.Path.exists") as mock_exists:
-            with patch("src.audit.model_evaluator.logger") as mock_logger:
+            with patch("src.audit.exam_builder.logger") as mock_logger:
                 mock_exists.return_value = False
 
                 # Reset cache
-                import src.audit.model_evaluator
-
-                src.audit.model_evaluator._domain_patterns_cache = None
+                src.audit.exam_builder._domain_patterns_cache = None
 
                 patterns = _load_domain_patterns()
 
@@ -199,7 +202,7 @@ class TestAdvancedFormatting:
 
     def test_format_reference_standards_result_parts_assembly(self) -> None:
         """_format_reference_standards must correctly assemble result parts."""
-        from src.audit.model_evaluator import _format_reference_standards
+        from src.audit.exam_builder import _format_reference_standards
 
         # Mock CFG with config that forces result_parts assembly
         config = {
@@ -210,7 +213,7 @@ class TestAdvancedFormatting:
             }
         }
 
-        with patch.dict("src.audit.model_evaluator.CFG", config, clear=False):
+        with patch.dict("src.audit.exam_builder.CFG", config, clear=False):
             result = _format_reference_standards(
                 master="Master " * 20,
                 changelog="Changelog " * 20,
@@ -223,7 +226,7 @@ class TestAdvancedFormatting:
 
     def test_format_reference_standards_handles_empty_sections(self) -> None:
         """_format_reference_standards must handle empty or None sections."""
-        from src.audit.model_evaluator import _format_reference_standards
+        from src.audit.exam_builder import _format_reference_standards
 
         config = {
             "master_docs_formatting": {
@@ -233,7 +236,7 @@ class TestAdvancedFormatting:
             }
         }
 
-        with patch.dict("src.audit.model_evaluator.CFG", config, clear=False):
+        with patch.dict("src.audit.exam_builder.CFG", config, clear=False):
             # Test with empty strings
             result = _format_reference_standards("", "", "")
 
@@ -247,7 +250,7 @@ class TestCLIEntryPointWithMonkeypatch:
 
     def test_main_with_sample_subcommand(self, monkeypatch, capsys) -> None:
         """main() must handle 'sample' subcommand."""
-        from src.audit.model_evaluator import main
+        from src.audit.cli import main
 
         test_args = [
             "model_evaluator.py",
@@ -264,7 +267,7 @@ class TestCLIEntryPointWithMonkeypatch:
         mock_cmd_sample = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_sample", mock_cmd_sample):
+            with patch("src.audit.cli.cmd_sample", mock_cmd_sample):
                 try:
                     main()
                 except SystemExit:
@@ -275,7 +278,7 @@ class TestCLIEntryPointWithMonkeypatch:
 
     def test_main_with_generate_exam_subcommand(self, monkeypatch) -> None:
         """main() must handle 'generate-exam' subcommand."""
-        from src.audit.model_evaluator import main
+        from src.audit.cli import main
 
         test_args = [
             "model_evaluator.py",
@@ -289,7 +292,7 @@ class TestCLIEntryPointWithMonkeypatch:
         mock_cmd_exam = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_generate_exam", mock_cmd_exam):
+            with patch("src.audit.cli.cmd_generate_exam", mock_cmd_exam):
                 try:
                     main()
                 except SystemExit:
@@ -299,7 +302,7 @@ class TestCLIEntryPointWithMonkeypatch:
 
     def test_main_with_invalid_subcommand_prints_help(self, capsys) -> None:
         """main() must print help for invalid subcommand."""
-        from src.audit.model_evaluator import main
+        from src.audit.cli import main
 
         test_args = [
             "model_evaluator.py",
@@ -317,7 +320,7 @@ class TestCLIEntryPointWithMonkeypatch:
 
     def test_main_full_subcommand(self, monkeypatch) -> None:
         """main() must handle 'full' subcommand for complete pipeline."""
-        from src.audit.model_evaluator import main
+        from src.audit.cli import main
 
         test_args = [
             "model_evaluator.py",
@@ -331,7 +334,7 @@ class TestCLIEntryPointWithMonkeypatch:
         mock_cmd_full = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_full", mock_cmd_full):
+            with patch("src.audit.cli.cmd_full", mock_cmd_full):
                 try:
                     main()
                 except SystemExit:
@@ -341,7 +344,7 @@ class TestCLIEntryPointWithMonkeypatch:
 
     def test_main_with_validate_mode(self, monkeypatch) -> None:
         """main() must set validate=True when --validate flag provided."""
-        from src.audit.model_evaluator import main
+        from src.audit.cli import main
 
         test_args = [
             "model_evaluator.py",
@@ -356,7 +359,7 @@ class TestCLIEntryPointWithMonkeypatch:
         mock_cmd_sample = MagicMock()
 
         with patch("sys.argv", test_args):
-            with patch("src.audit.model_evaluator.cmd_sample", mock_cmd_sample):
+            with patch("src.audit.cli.cmd_sample", mock_cmd_sample):
                 try:
                     main()
                 except SystemExit:
@@ -376,7 +379,7 @@ class TestLoadMasterDocsIntegration:
 
     def test_load_master_docs_file_reading(self, tmp_path) -> None:
         """load_master_docs must read master, changelog, and jinja files."""
-        from src.audit.model_evaluator import load_master_docs
+        from src.utils.doc_loader import load_master_docs
 
         master_content = "Master documentation content"
         changelog_content = "Version 2.0: Added features"
@@ -385,14 +388,14 @@ class TestLoadMasterDocsIntegration:
         # Create temp gap directory and actual files to avoid flaky mocks
         gap_dir = tmp_path / "gap_audit"
         gap_dir.mkdir()
-        # Use filenames expected by the repository evaluation config
-        (gap_dir / "HA_MASTER_GUIDE_2026.md").write_text(
+        # Use default filenames expected by doc_loader
+        (gap_dir / "reference_guide.md").write_text(
             master_content, encoding="utf-8"
         )
-        (gap_dir / "technical_changelog_2026.md").write_text(
+        (gap_dir / "technical_changelog.md").write_text(
             changelog_content, encoding="utf-8"
         )
-        (gap_dir / "HA_JINJA_YAML_GUIDE_2026.md").write_text(
+        (gap_dir / "syntax_guide.md").write_text(
             jinja_content, encoding="utf-8"
         )
 

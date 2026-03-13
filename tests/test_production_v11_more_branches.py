@@ -18,7 +18,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.factory import production_v11 as pv11
+from src.factory import prompt_builder as pb_module
+from src.factory.pipeline_runner import generate_sample_async
 
 
 class _FuncCompletions:
@@ -109,9 +110,9 @@ class _FakeClient:
 
 
 def _setup_prompts(monkeypatch):
-    monkeypatch.setattr(pv11, "_prompt", lambda k: "[P]", raising=False)
-    monkeypatch.setattr(pv11, "_render", lambda s, **k: s, raising=False)
-    monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [], raising=False)
+    monkeypatch.setattr(pb_module, "_prompt", lambda k: "[P]", raising=False)
+    monkeypatch.setattr(pb_module, "_render", lambda s, **k: s, raising=False)
+    monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [], raising=False)
 
 
 def test_generate_sample_async_functional_unit_gold_injection(monkeypatch):
@@ -133,7 +134,7 @@ def test_generate_sample_async_functional_unit_gold_injection(monkeypatch):
     }
 
     result = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -166,7 +167,7 @@ def test_generate_sample_async_detects_poison_and_marks_auto_rejected(monkeypatc
     }
 
     result = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -198,7 +199,7 @@ def test_generate_sample_async_fails_on_zero_reasoning(monkeypatch):
     }
 
     result = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,

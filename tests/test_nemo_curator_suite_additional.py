@@ -16,22 +16,26 @@ from pathlib import Path
 
 import pytest
 
-from src.curation.nemo_curator_suite import (
+from src.curation.curator_pipeline import (
     CurationStats,
-    _build_clusters_naive,
-    _char_shingles,
-    _count_code_tokens,
-    _count_natural_tokens,
-    _extract_assistant_text,
-    _has_meta_speech,
-    _heuristic_quality_score,
-    _ldi,
-    exact_dedup,
     load_jsonl,
     save_report,
-    semantic_dedup,
-    structural_quality_filter,
     write_jsonl,
+)
+from src.curation.dedup_filter import (
+    _build_clusters_naive,
+    _char_shingles,
+    _extract_assistant_text,
+    _heuristic_quality_score,
+    exact_dedup,
+    semantic_dedup,
+)
+from src.curation.quality_filter import (
+    _count_code_tokens,
+    _count_natural_tokens,
+    _has_meta_speech,
+    _ldi,
+    structural_quality_filter,
 )
 
 
@@ -132,7 +136,7 @@ def test_build_clusters_naive_groups_duplicates() -> None:
 
 
 def test_semantic_dedup_drops_similar_records(monkeypatch) -> None:
-    monkeypatch.setattr("src.curation.nemo_curator_suite._DATASKETCH_AVAILABLE", False)
+    monkeypatch.setattr("src.curation.curator_pipeline._DATASKETCH_AVAILABLE", False)
     stats = CurationStats()
     base = {"assistant": "Unique high quality reasoning."}
     dupe = {"assistant": "Unique high quality reasoning."}

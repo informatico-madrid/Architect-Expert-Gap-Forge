@@ -12,7 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.factory import production_v11 as pv11
+import src.factory.prompt_builder as pb_module
+from src.factory.pipeline_runner import generate_sample_async
 
 
 class FakeCompletions:
@@ -49,7 +50,7 @@ def test_generate_sample_async_accepts_and_injects_gold(tmp_path) -> None:
     raw = f"<think>{reasoning}</think><tool_call>{json.dumps(tool_json)}</tool_call>"
 
     # Populate minimal taxonomy prompts used by build_system_nominal
-    pv11._TAX = {
+    pb_module._TAX = {
         "prompts": {
             "system": {
                 "python": {
@@ -69,13 +70,13 @@ def test_generate_sample_async_accepts_and_injects_gold(tmp_path) -> None:
             },
         }
     }
-    pv11.TOOLS_DEFINITION = []
+    pb_module.TOOLS_DEFINITION = []
 
     client = FakeClient(raw)
     sem = asyncio.Semaphore(1)
 
     res = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client=client,
             model="m",
             frag=frag,

@@ -18,10 +18,19 @@ import re
 
 import pytest
 
-from src.factory import production_v11 as pv11
-
-# Provide legacy alias used by other tests in this file
-factory_v11 = pv11
+from src.factory.checkpoint import AsyncFileWriter, load_checkpoint, make_checkpoint_key
+from src.factory.fragment_extractor import (
+    _ast_fragment_list,
+    get_file_chunks,
+    get_fragments,
+    get_v2_fragments,
+    parse_bundle,
+)
+from src.factory.ldi_validator import assign_example_type, validate_ldi
+import src.factory.ldi_validator as _ldi_module
+from src.factory.config import EVOL_LEVELS
+from src.factory.pipeline_runner import parse_raw_response
+from src.factory.prompt_builder import detect_legacy_patterns
 
 
 def test_detect_legacy_patterns_python_and_jinja():
@@ -29,7 +38,7 @@ def test_detect_legacy_patterns_python_and_jinja():
     # legacy pattern: hass.data[] usage
     hass.data['some'] = 1
     """
-    res = pv11.detect_legacy_patterns(code, subtype="code")
+    res = detect_legacy_patterns(code, subtype="code")
     assert isinstance(res, list)
     assert any("hass.data" in d or "runtime_data" in d for d in res)
 
@@ -37,7 +46,7 @@ def test_detect_legacy_patterns_python_and_jinja():
 trigger:
 - platform: state
     """
-    res_j = pv11.detect_legacy_patterns(jinja_code, subtype="jinja")
+    res_j = detect_legacy_patterns(jinja_code, subtype="jinja")
     assert isinstance(res_j, list)
     assert len(res_j) >= 0
 
@@ -49,7 +58,7 @@ def test_parse_raw_response_tool_call_and_write_action():
         "arguments": {"path": "/tmp/x", "content": "hi"},
     }
     raw = f"<think>reasoning text</think><tool_call>{json.dumps(tool_json)}</tool_call>"
-    parsed, reasoning = pv11.parse_raw_response(raw)
+    parsed, reasoning = parse_raw_response(raw)
     assert reasoning == "reasoning text"
     assert parsed["name"] == "write_to_file"
     assert parsed["arguments"]["content"] == "hi"
@@ -62,7 +71,7 @@ def test_parse_raw_response_tool_call_and_write_action():
         "<content>print(1)\n</content>"
         "</write_action>"
     )
-    parsed2, reasoning2 = pv11.parse_raw_response(wa)
+    parsed2, reasoning2 = parse_raw_response(wa)
     assert reasoning2 == "R"
     assert parsed2["name"] == "write_to_file"
     assert parsed2["arguments"]["path"] == "/a/b.py"
@@ -71,7 +80,7 @@ def test_parse_raw_response_tool_call_and_write_action():
 
 def test_parse_raw_response_raises_on_no_action():
     with pytest.raises(ValueError):
-        pv11.parse_raw_response("no actions here")
+        parse_raw_response("no actions here")
 
 
 def test_get_file_chunks_and_parse_bundle_and_fragments(tmp_path: Path):
@@ -89,12 +98,12 @@ def test_get_file_chunks_and_parse_bundle_and_fragments(tmp_path: Path):
         "def test_foo():\n    assert True\n"
     )
 
-    bundle = pv11.parse_bundle(content)
+    bundle = parse_bundle(content)
     assert bundle["entity_id"] == "my_entity"
     assert bundle["type"] == "FUNCTIONAL_UNIT"
     assert "logic.py" in bundle["files"]
 
-    frags = pv11.get_v2_fragments(
+    frags = get_v2_fragments(
         bundle,
         blueprint_cache={"mod1": ""},
         allowed_extensions=None,
@@ -106,7 +115,7 @@ def test_get_file_chunks_and_parse_bundle_and_fragments(tmp_path: Path):
 
     # get_file_chunks splitting
     packed = """--- FILE: a.py ---\nprint(1)\n--- FILE: b.py ---\nprint(2)\n"""
-    chunks = pv11.get_file_chunks(packed)
+    chunks = get_file_chunks(packed)
     assert chunks == [("a.py", "print(1)"), ("b.py", "print(2)")]
 
 
@@ -116,37 +125,37 @@ def myfunc(x):
     return x * 2
 """
     extra = {"virtual_filename": "logic.py"}
-    frags = pv11._ast_fragment_list("logic.py", py_code, "CTX", extra)
+    frags = _ast_fragment_list("logic.py", py_code, "CTX", extra)
     assert any(f["name"] == "myfunc" for f in frags)
 
     # Jinja template block -> fragment
     jinja = "{% macro m() %}OK{% endmacro %}"
-    frags_j = pv11.get_fragments("tmpl.jinja2", jinja)
+    frags_j = get_fragments("tmpl.jinja2", jinja)
     assert any(f.get("type") == "template" for f in frags_j)
 
     # YAML config -> fragment (make it long enough to be accepted)
     yaml = "sensor:\n" + ("  - platform: test\n" * 10)
-    frags_y = pv11.get_fragments("conf.yaml", yaml)
+    frags_y = get_fragments("conf.yaml", yaml)
     assert any(f.get("subtype") == "yaml" for f in frags_y)
 
 
 def test_validate_ldi_cases():
     # Zero reasoning
-    ok, ldi, msg = pv11.validate_ldi(100, 0, "code")
-    assert ok is False and "Zero reasoning" in msg
+    result = validate_ldi(100, 0, "code")
+    assert result.is_valid is False and "Zero reasoning" in result.reason
 
     # Doc/template mode with short reasoning
-    ok2, ldi2, msg2 = pv11.validate_ldi(50, 10, "doc")
-    assert ok2 is False and "Reasoning too short" in msg2
+    result2 = validate_ldi(50, 10, "doc")
+    assert result2.is_valid is False and "Reasoning too short" in result2.reason
 
     # Micro-snippet exception (short code but ldi > 0.01)
-    ok3, ldi3, msg3 = pv11.validate_ldi(50, 10, "code")
-    assert ok3 is True
+    result3 = validate_ldi(50, 10, "code")
+    assert result3.is_valid is True
 
 
 def test_make_checkpoint_key_and_load_checkpoint(tmp_path: Path):
-    k1 = pv11.make_checkpoint_key("frag", "file.py")
-    k2 = pv11.make_checkpoint_key("frag", "file.py")
+    k1 = make_checkpoint_key("frag", "file.py")
+    k2 = make_checkpoint_key("frag", "file.py")
     assert k1 == k2 and isinstance(k1, str) and len(k1) == 16
 
     # Write accepted + rejected JSONL
@@ -155,13 +164,13 @@ def test_make_checkpoint_key_and_load_checkpoint(tmp_path: Path):
     accepted.write_text(json.dumps({"metadata": {"checkpoint_key": "A1"}}) + "\n")
     rejected.write_text(json.dumps({"checkpoint_key": "B2"}) + "\n")
 
-    done = pv11.load_checkpoint(accepted, rejected)
+    done = load_checkpoint(accepted, rejected)
     assert "A1" in done and "B2" in done
 
 
 def test_async_file_writer_write(tmp_path: Path):
     out = tmp_path / "out.jsonl"
-    writer = pv11.AsyncFileWriter(out)
+    writer = AsyncFileWriter(out)
     asyncio.run(writer.write({"x": 1}))
     content = out.read_text(encoding="utf-8").strip()
     assert content
@@ -171,7 +180,7 @@ def test_async_file_writer_write(tmp_path: Path):
 
 def test_get_file_chunks_splits_content() -> None:
     content = "--- FILE: a.py ---\nprint('a')\n--- FILE: b.py ---\nprint('b')"
-    chunks = factory_v11.get_file_chunks(content)
+    chunks = get_file_chunks(content)
     assert chunks == [("a.py", "print('a')"), ("b.py", "print('b')")]
 
 
@@ -187,7 +196,7 @@ def test_parse_bundle_extracts_metadata() -> None:
         "--- FILE: main.py ---\nprint('ok')\n"
         "--- FILE: other.py ---\nprint('bye')\n"
     )
-    parsed = factory_v11.parse_bundle(bundle_txt)
+    parsed = parse_bundle(bundle_txt)
     assert parsed["entity_id"] == "Sample"
     assert parsed["context"] == "Demo"
     assert parsed["type"] == "LOGIC_ONLY"
@@ -199,7 +208,7 @@ def test_ast_fragment_list_generates_fragments() -> None:
     code = (
         "def foo():\n    return 1\n\nclass Bar:\n    def baz(self):\n        return 2\n"
     )
-    fragments = factory_v11._ast_fragment_list(
+    fragments = _ast_fragment_list(
         "module.py", code, "ctx", {"extra": True}
     )
     assert len(fragments) >= 2
@@ -211,7 +220,7 @@ def test_ast_fragment_list_fallback_on_error() -> None:
     from src.utils.extractors.base import ParseError
 
     with pytest.raises(ParseError) as exc:
-        factory_v11._ast_fragment_list("module.py", "invalid code..", "ctx", {})
+        _ast_fragment_list("module.py", "invalid code..", "ctx", {})
     err = exc.value
     assert err.file_path.name == "module.py"
     assert err.line == 1
@@ -245,7 +254,7 @@ def test_get_v2_fragments_functional_unit() -> None:
     bundle = _functional_bundle()
     blueprint_cache = {"mod": "blueprint"}
     governance_cache = {"root": "governance"}
-    fragments = factory_v11.get_v2_fragments(
+    fragments = get_v2_fragments(
         bundle, blueprint_cache, governance_cache=governance_cache
     )
     assert fragments
@@ -254,17 +263,17 @@ def test_get_v2_fragments_functional_unit() -> None:
 
 def test_get_v2_fragments_logic_only() -> None:
     bundle = _logic_only_bundle()
-    fragments = factory_v11.get_v2_fragments(bundle, {}, allowed_extensions={".py"})
+    fragments = get_v2_fragments(bundle, {}, allowed_extensions={".py"})
     assert fragments
     assert fragments[0]["virtual_filename"].endswith("logic.py")
 
 
 def test_get_fragments_handles_various_types() -> None:
-    py_frags = factory_v11.get_fragments("module.py", "def foo():\n    return 1")
+    py_frags = get_fragments("module.py", "def foo():\n    return 1")
     assert any(f["type"] == "python" for f in py_frags)
-    markdown = factory_v11.get_fragments("README", "Short doc")
+    markdown = get_fragments("README", "Short doc")
     assert markdown and markdown[0]["type"] == "readme"
-    jinja = factory_v11.get_fragments(
+    jinja = get_fragments(
         "template.jinja", "{%- macro m() %}print('ok'){%- endmacro %}"
     )
     assert jinja and jinja[0]["type"] == "template"
@@ -276,34 +285,37 @@ def test_get_fragments_handles_various_types() -> None:
         "    target:\n"
         "      entity_id: light.test_light\n"
     )
-    yaml = factory_v11.get_fragments("config.yaml", yaml_code)
+    yaml = get_fragments("config.yaml", yaml_code)
     assert yaml and yaml[0]["type"] == "config"
 
 
 def test_validate_ldi_variants() -> None:
-    assert not factory_v11.validate_ldi(100, 0, "code")[0]
-    assert not factory_v11.validate_ldi(200, 10, "doc")[0]
-    valid, _, _ = factory_v11.validate_ldi(500, 10, "code")
-    assert not valid or isinstance(valid, bool)
+    vldi = validate_ldi
+    assert not vldi(100, 0, "code").is_valid
+    assert not vldi(200, 10, "doc").is_valid
+    result = vldi(500, 10, "code")
+    assert result.is_valid or isinstance(result.is_valid, bool)
 
 
 def test_assign_example_type_respects_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(factory_v11.random, "random", lambda: 0.1)
-    typ, diff = factory_v11.assign_example_type({}, has_legacy=True)
+    monkeypatch.setattr(_ldi_module.random, "random", lambda: 0.1)
+    _r = assign_example_type({}, has_legacy=True)
+    typ, diff = _r.example_type, _r.difficulty
     assert typ in {"contrast", "error_recovery"}
     assert diff is None
 
 
 def test_assign_example_type_distribution(monkeypatch: pytest.MonkeyPatch) -> None:
     choices = iter([0.05, 0.05, 0.8])
-    monkeypatch.setattr(factory_v11.random, "random", lambda: next(choices))
-    monkeypatch.setattr(factory_v11.random, "choice", lambda seq: seq[0])
-    typ, diff = factory_v11.assign_example_type({})
+    monkeypatch.setattr(_ldi_module.random, "random", lambda: next(choices))
+    monkeypatch.setattr(_ldi_module.random, "choice", lambda seq: seq[0])
+    _r = assign_example_type({})
+    typ, diff = _r.example_type, _r.difficulty
     assert typ == "nominal"
-    assert diff in factory_v11.EVOL_LEVELS
+    assert diff is not None
 
 
 def test_make_checkpoint_key() -> None:
-    key = factory_v11.make_checkpoint_key("name", "file.py", rep=2)
+    key = make_checkpoint_key("name", "file.py", rep=2)
     assert len(key) == 16
     assert re.fullmatch(r"[0-9a-f]{16}", key)

@@ -13,7 +13,7 @@ These tests MUST FAIL with the current regex pattern and PASS after the fix.
 """
 
 import pytest
-from src.curation.backtracking_rewriter import _sanitize_generated_reasoning
+from src.curation.backtracking_helpers import _sanitize_generated_reasoning
 
 
 class TestSanitizePreservesIdentifiers:

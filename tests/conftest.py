@@ -7,7 +7,7 @@
 """Pytest conftest: ensure a minimal prompt taxonomy is loaded for tests.
 
 This session-scoped autouse fixture writes a minimal taxonomy YAML and
-invokes `src.factory.production_v11.load_taxonomy` so tests that rely on
+invokes `src.factory.prompt_builder.load_taxonomy` so tests that rely on
 prompt templates and tools have a stable baseline during the test run.
 """
 
@@ -19,32 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from src.factory import production_v11 as pv11
-from src.utils.cache_reset import reset_all_caches, log_memory_usage
-
-
-# ---------------------------------------------------------------------------
-# Pytest hooks for memory management
-# ---------------------------------------------------------------------------
-
-
-def pytest_configure(config: pytest.Config) -> None:
-    """Reset caches before each test session to prevent memory growth."""
-    # Log initial memory
-    log_memory_usage("[pytest_configure] ")
-    
-    # Reset all caches
-    results = reset_all_caches()
-    
-    # Log which caches were reset (only in verbose mode)
-    if config.getoption("-v", default=False):
-        reset_count = sum(1 for v in results.values() if v)
-        print(f"[pytest_configure] Reset {reset_count}/{len(results)} caches", file=sys.stderr)
-
-
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    """Log memory usage at the end of the test session."""
-    log_memory_usage("[pytest_sessionfinish] ")
+from src.factory import prompt_builder as pb_module
+from src.factory.prompt_builder import load_taxonomy, set_test_state
+from src.factory.config import TaxonomyState
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -114,7 +91,8 @@ def minimal_taxonomy(tmp_path_factory) -> Path:
         },
     }
     tax_file.write_text(yaml.safe_dump(taxonomy, allow_unicode=True))
-    pv11.load_taxonomy(tax_file)
+    state = load_taxonomy(tax_file)
+    set_test_state(state)
     return tax_file
 
 
@@ -195,6 +173,7 @@ def make_exam_record(sample: SampleRecord | None = None, **kwargs: Any) -> ExamR
 
 def make_scorecard(
     record_id: str = "sample-001",
+    sample_id: str = "sample-001",  # Alias for record_id
     example_type: str = "nominal",
     fragment_name: str = "climate_entity",
     ha_modernity: float = 0.9,
@@ -207,6 +186,7 @@ def make_scorecard(
     """Construct a ScoreCard with sensible defaults."""
     return ScoreCard(
         record_id=record_id,
+        sample_id=sample_id,
         example_type=example_type,
         fragment_name=fragment_name,
         ha_modernity=ha_modernity,

@@ -16,7 +16,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.factory import production_v11 as pv11
+from src.factory import prompt_builder as pb_module
+from src.factory import config as cfg_module
+from src.factory.checkpoint import ProgressTracker
+from src.factory.pipeline_runner import generate_sample_async, process_fragment
 
 
 class _FakeCompletions:
@@ -57,9 +60,9 @@ class _FakeClient:
 def test_generate_sample_async_nominal_accepts_and_injects(monkeypatch):
     async def _run():
         # Simplify prompt rendering / taxonomy dependency
-        monkeypatch.setattr(pv11, "_prompt", lambda key: "[P]", raising=False)
-        monkeypatch.setattr(pv11, "_render", lambda s, **k: s, raising=False)
-        monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [], raising=False)
+        monkeypatch.setattr(pb_module, "_prompt", lambda key: "[P]", raising=False)
+        monkeypatch.setattr(pb_module, "_render", lambda s, **k: s, raising=False)
+        monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [], raising=False)
 
         client = _FakeClient()
         semaphore = asyncio.Semaphore(1)
@@ -73,7 +76,7 @@ def test_generate_sample_async_nominal_accepts_and_injects(monkeypatch):
             "subtype": "code",
         }
 
-        result = await pv11.generate_sample_async(
+        result = await generate_sample_async(
             client,
             "model-x",
             frag,
@@ -124,8 +127,8 @@ def test_generate_sample_async_rejects_on_parse_failure(monkeypatch):
             def __init__(self):
                 self.chat = BadChat()
 
-        monkeypatch.setattr(pv11, "_prompt", lambda key: "[P]", raising=False)
-        monkeypatch.setattr(pv11, "_render", lambda s, **k: s, raising=False)
+        monkeypatch.setattr(pb_module, "_prompt", lambda key: "[P]", raising=False)
+        monkeypatch.setattr(pb_module, "_render", lambda s, **k: s, raising=False)
 
         client = BadClient()
         semaphore = asyncio.Semaphore(1)
@@ -138,7 +141,7 @@ def test_generate_sample_async_rejects_on_parse_failure(monkeypatch):
             "subtype": "code",
         }
 
-        result = await pv11.generate_sample_async(
+        result = await generate_sample_async(
             client,
             "model-x",
             frag,
@@ -187,7 +190,9 @@ def test_process_fragment_writes_to_ok_when_sample_kept(monkeypatch):
                 },
             }
 
-        monkeypatch.setattr(pv11, "generate_sample_async", fake_generate, raising=False)
+        monkeypatch.setattr(
+            "src.factory.pipeline_runner.generate_sample_async", fake_generate
+        )
 
         class FakeWriter:
             def __init__(self):
@@ -197,7 +202,7 @@ def test_process_fragment_writes_to_ok_when_sample_kept(monkeypatch):
                 self.records.append(rec)
 
         # Use a real tracker (small) — it prints but is safe
-        tracker = pv11.ProgressTracker(total=1, mode="code")
+        tracker = ProgressTracker(total=1, mode="code")
 
         writer_ok = FakeWriter()
         writer_bad = FakeWriter()
@@ -214,7 +219,7 @@ def test_process_fragment_writes_to_ok_when_sample_kept(monkeypatch):
             "subtype": "code",
         }
 
-        await pv11.process_fragment(
+        await process_fragment(
             client=None,
             model="m",
             frag=frag,

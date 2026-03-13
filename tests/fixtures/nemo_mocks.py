@@ -6,7 +6,7 @@
 """Inject lightweight fake `nemo_curator` and `datasketch` modules into
 `sys.modules` for unit tests that exercise guarded import paths.
 
-Call `enable_fake_nemo()` before importing `src.curation.nemo_curator_suite`
+Call `enable_fake_nemo()` before importing `src.curation.curator_pipeline`
 or use `importlib.reload()` afterwards to ensure the suite detects the
 availability flags at import time.
 """
@@ -24,7 +24,7 @@ _REGISTERED: List[str] = []
 def enable_fake_nemo() -> None:
     """Insert fake `nemo_curator` and `datasketch` packages into sys.modules.
 
-    After calling this function, importing `src.curation.nemo_curator_suite`
+    After calling this function, importing `src.curation.curator_pipeline`
     will find `nemo_curator` and `datasketch` and behave as if the
     optional dependencies are installed.
     """

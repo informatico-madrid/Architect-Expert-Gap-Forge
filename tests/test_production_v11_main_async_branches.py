@@ -12,7 +12,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import src.factory.production_v11 as pv11
+import src.factory.pipeline_runner as pr_module
+import src.factory.prompt_builder as pb_module
 
 
 @pytest.fixture
@@ -52,7 +53,7 @@ def test_main_async_resume_with_pending_frags(
 
         # Mock dependencies
         monkeypatch.setattr(
-            pv11,
+            pr_module,
             "load_taxonomy",
             MagicMock(
                 return_value={
@@ -64,39 +65,39 @@ def test_main_async_resume_with_pending_frags(
             ),
         )
         monkeypatch.setattr(
-            pv11,
+            pr_module,
             "load_master_docs",
             MagicMock(return_value=("master", "changelog", "jinja")),
         )
         monkeypatch.setattr(
-            pv11, "get_theory_fragments", MagicMock(return_value=mock_frags)
+            pr_module, "get_theory_fragments", MagicMock(return_value=mock_frags)
         )
         monkeypatch.setattr(
-            pv11, "load_checkpoint", MagicMock(return_value={"frag1_file1.py_0"})
+            pr_module, "load_checkpoint", MagicMock(return_value={"frag1_file1.py_0"})
         )  # one done
         mock_writer = MagicMock()
         mock_writer.write = AsyncMock()
         monkeypatch.setattr(
-            pv11, "AsyncFileWriter", MagicMock(return_value=mock_writer)
+            pr_module, "AsyncFileWriter", MagicMock(return_value=mock_writer)
         )
         mock_tracker = MagicMock()
         mock_tracker.record = AsyncMock()
         mock_tracker.close = MagicMock()
         monkeypatch.setattr(
-            pv11, "ProgressTracker", MagicMock(return_value=mock_tracker)
+            pr_module, "ProgressTracker", MagicMock(return_value=mock_tracker)
         )
 
         mock_client = MagicMock()
         monkeypatch.setattr(
-            "src.factory.production_v11.AsyncOpenAI",
+            "src.factory.pipeline_runner.AsyncOpenAI",
             MagicMock(return_value=mock_client),
         )
 
         mock_generate = AsyncMock(return_value={"status": "accepted", "sample": {}})
-        monkeypatch.setattr(pv11, "generate_theory_sample_async", mock_generate)
+        monkeypatch.setattr(pr_module, "generate_theory_sample_async", mock_generate)
 
         # Run
-        await pv11.main_async(mock_args)
+        await pr_module.main_async(mock_args)
 
         # Check that generate was called for the pending frag
         assert mock_generate.call_count == 2
@@ -115,31 +116,31 @@ def test_main_async_resume_all_processed(tmp_path, mock_args, mock_frags, monkey
         done_keys = {"frag1_file1.py_0", "frag2_file2.py_0"}
 
         monkeypatch.setattr(
-            pv11, "load_taxonomy", MagicMock(return_value={"prompts": {}})
+            pr_module, "load_taxonomy", MagicMock(return_value={"prompts": {}})
         )
         monkeypatch.setattr(
-            pv11,
+            pb_module,
             "_TAX",
             {"prompts": {"system": {"theory": "system"}, "user": {"theory": "user"}}},
         )
         monkeypatch.setattr(
-            pv11,
+            pr_module,
             "load_master_docs",
             MagicMock(return_value=("master", "changelog", "jinja")),
         )
         monkeypatch.setattr(
-            pv11, "get_theory_fragments", MagicMock(return_value=mock_frags)
+            pr_module, "get_theory_fragments", MagicMock(return_value=mock_frags)
         )
-        monkeypatch.setattr(pv11, "load_checkpoint", MagicMock(return_value=done_keys))
+        monkeypatch.setattr(pr_module, "load_checkpoint", MagicMock(return_value=done_keys))
 
         mock_client = MagicMock()
         monkeypatch.setattr(
-            "src.factory.production_v11.AsyncOpenAI",
+            "src.factory.pipeline_runner.AsyncOpenAI",
             MagicMock(return_value=mock_client),
         )
 
         # Run - should return early
-        await pv11.main_async(mock_args)
+        await pr_module.main_async(mock_args)
 
         # No generation should happen
         # Since all processed, it returns without creating writers etc.
@@ -155,41 +156,41 @@ def test_main_async_theory_mode(tmp_path, mock_args, mock_frags, monkeypatch):
         mock_args.output = str(tmp_path / "theory.jsonl")
 
         monkeypatch.setattr(
-            pv11, "load_taxonomy", MagicMock(return_value={"prompts": {}})
+            pr_module, "load_taxonomy", MagicMock(return_value={"prompts": {}})
         )
         monkeypatch.setattr(
-            pv11, "_TAX", {"prompts": {"theory": {"system": "system", "user": "user"}}}
+            pb_module, "_TAX", {"prompts": {"theory": {"system": "system", "user": "user"}}}
         )
         monkeypatch.setattr(
-            pv11,
+            pr_module,
             "load_master_docs",
             MagicMock(return_value=("master", "changelog", "jinja")),
         )
         monkeypatch.setattr(
-            pv11, "get_theory_fragments", MagicMock(return_value=mock_frags)
+            pr_module, "get_theory_fragments", MagicMock(return_value=mock_frags)
         )
         mock_writer = MagicMock()
         mock_writer.write = AsyncMock()
         monkeypatch.setattr(
-            pv11, "AsyncFileWriter", MagicMock(return_value=mock_writer)
+            pr_module, "AsyncFileWriter", MagicMock(return_value=mock_writer)
         )
         mock_tracker = MagicMock()
         mock_tracker.record = AsyncMock()
         mock_tracker.close = MagicMock()
         monkeypatch.setattr(
-            pv11, "ProgressTracker", MagicMock(return_value=mock_tracker)
+            pr_module, "ProgressTracker", MagicMock(return_value=mock_tracker)
         )
 
         mock_client = MagicMock()
         monkeypatch.setattr(
-            "src.factory.production_v11.AsyncOpenAI",
+            "src.factory.pipeline_runner.AsyncOpenAI",
             MagicMock(return_value=mock_client),
         )
 
         mock_generate = AsyncMock(return_value={"status": "accepted", "sample": {}})
-        monkeypatch.setattr(pv11, "generate_theory_sample_async", mock_generate)
+        monkeypatch.setattr(pr_module, "generate_theory_sample_async", mock_generate)
 
-        await pv11.main_async(mock_args)
+        await pr_module.main_async(mock_args)
 
         # Check generate_theory_sample_async was called
         assert mock_generate.call_count == 2  # for 2 frags
@@ -205,41 +206,41 @@ def test_main_async_with_output_specified(tmp_path, mock_args, mock_frags, monke
         mock_args.output = str(tmp_path / "output.jsonl")
 
         monkeypatch.setattr(
-            pv11, "load_taxonomy", MagicMock(return_value={"prompts": {}})
+            pr_module, "load_taxonomy", MagicMock(return_value={"prompts": {}})
         )
         monkeypatch.setattr(
-            pv11, "_TAX", {"prompts": {"theory": {"system": "system", "user": "user"}}}
+            pb_module, "_TAX", {"prompts": {"theory": {"system": "system", "user": "user"}}}
         )
         monkeypatch.setattr(
-            pv11,
+            pr_module,
             "load_master_docs",
             MagicMock(return_value=("master", "changelog", "jinja")),
         )
         monkeypatch.setattr(
-            pv11, "get_theory_fragments", MagicMock(return_value=mock_frags)
+            pr_module, "get_theory_fragments", MagicMock(return_value=mock_frags)
         )
         mock_writer = MagicMock()
         mock_writer.write = AsyncMock()
         monkeypatch.setattr(
-            pv11, "AsyncFileWriter", MagicMock(return_value=mock_writer)
+            pr_module, "AsyncFileWriter", MagicMock(return_value=mock_writer)
         )
         mock_tracker = MagicMock()
         mock_tracker.record = AsyncMock()
         mock_tracker.close = MagicMock()
         monkeypatch.setattr(
-            pv11, "ProgressTracker", MagicMock(return_value=mock_tracker)
+            pr_module, "ProgressTracker", MagicMock(return_value=mock_tracker)
         )
 
         mock_client = MagicMock()
         monkeypatch.setattr(
-            "src.factory.production_v11.AsyncOpenAI",
+            "src.factory.pipeline_runner.AsyncOpenAI",
             MagicMock(return_value=mock_client),
         )
 
         mock_generate = AsyncMock(return_value={"status": "accepted", "sample": {}})
-        monkeypatch.setattr(pv11, "generate_theory_sample_async", mock_generate)
+        monkeypatch.setattr(pr_module, "generate_theory_sample_async", mock_generate)
 
-        await pv11.main_async(mock_args)
+        await pr_module.main_async(mock_args)
 
         # Should work without resume
         assert mock_generate.call_count == 2
@@ -276,10 +277,10 @@ def test_foo(): pass
 
         # Mock dependencies
         monkeypatch.setattr(
-            pv11, "load_taxonomy", MagicMock(return_value={"prompts": {}})
+            pr_module, "load_taxonomy", MagicMock(return_value={"prompts": {}})
         )
         monkeypatch.setattr(
-            pv11,
+            pb_module,
             "_TAX",
             {
                 "prompts": {
@@ -289,29 +290,29 @@ def test_foo(): pass
             },
         )
         monkeypatch.setattr(
-            pv11,
+            pr_module,
             "load_master_docs",
             MagicMock(return_value=("master", "changelog", "jinja")),
         )
         monkeypatch.setattr(
-            pv11, "detect_legacy_patterns", MagicMock(return_value=[])
+            pr_module, "detect_legacy_patterns", MagicMock(return_value=[])
         )  # no legacy
         mock_writer = MagicMock()
         mock_writer.write = AsyncMock()
         monkeypatch.setattr(
-            pv11, "AsyncFileWriter", MagicMock(return_value=mock_writer)
+            pr_module, "AsyncFileWriter", MagicMock(return_value=mock_writer)
         )
         mock_tracker = MagicMock()
         mock_tracker.record = AsyncMock()
         mock_tracker.close = MagicMock()
         mock_tracker.summary = MagicMock(return_value="summary")
         monkeypatch.setattr(
-            pv11, "ProgressTracker", MagicMock(return_value=mock_tracker)
+            pr_module, "ProgressTracker", MagicMock(return_value=mock_tracker)
         )
 
         mock_client = MagicMock()
         monkeypatch.setattr(
-            "src.factory.production_v11.AsyncOpenAI",
+            "src.factory.pipeline_runner.AsyncOpenAI",
             MagicMock(return_value=mock_client),
         )
 
@@ -321,9 +322,9 @@ def test_foo(): pass
                 "sample": {"metadata": {"example_type": "nominal"}, "conversation": []},
             }
         )
-        monkeypatch.setattr(pv11, "generate_sample_async", mock_generate)
+        monkeypatch.setattr(pr_module, "generate_sample_async", mock_generate)
 
-        await pv11.main_async(mock_args)
+        await pr_module.main_async(mock_args)
 
         # Check that generate_sample_async was called
         assert mock_generate.call_count == 1

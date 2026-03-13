@@ -19,7 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from src.factory import production_v11 as pv11
+from src.factory.checkpoint import make_checkpoint_key
+from src.factory.pipeline_runner import main_async
 
 
 def _write_bundle(path: Path, content: str) -> None:
@@ -78,6 +79,7 @@ def test_main_async_two_pass_scan(tmp_path, monkeypatch, gap_dir):
         tracker,
         args,
         jinja_guide="",
+        state=None,
     ):
         calls.append(frag.get("name"))
         # simulate writing accepted sample
@@ -85,7 +87,7 @@ def test_main_async_two_pass_scan(tmp_path, monkeypatch, gap_dir):
             {
                 "id": f"fake_{frag.get('name')}",
                 "metadata": {
-                    "checkpoint_key": pv11.make_checkpoint_key(
+                    "checkpoint_key": make_checkpoint_key(
                         frag.get("name"), frag.get("virtual_filename")
                     )
                 },
@@ -95,10 +97,14 @@ def test_main_async_two_pass_scan(tmp_path, monkeypatch, gap_dir):
             "accepted", "nominal", "easy", gold_injected=True, has_legacy=False
         )
 
-    monkeypatch.setattr(pv11, "process_fragment", fake_process_fragment, raising=False)
+    monkeypatch.setattr(
+        "src.factory.pipeline_runner.process_fragment", fake_process_fragment
+    )
 
     # Prevent real AsyncOpenAI instantiation side-effects
-    monkeypatch.setattr(pv11, "AsyncOpenAI", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(
+        "src.factory.pipeline_runner.AsyncOpenAI", lambda *a, **k: None, raising=False
+    )
 
     args = SimpleNamespace(
         _gap_dir=tmp_path,
@@ -118,7 +124,7 @@ def test_main_async_two_pass_scan(tmp_path, monkeypatch, gap_dir):
         theory=False,
     )
 
-    asyncio.run(pv11.main_async(args))
+    asyncio.run(main_async(args))
 
     # Ensure we called process_fragment for at least one fragment
     assert calls

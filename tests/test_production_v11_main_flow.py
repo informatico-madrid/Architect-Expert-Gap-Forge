@@ -12,7 +12,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.factory import production_v11 as pv
+from src.factory import pipeline_runner as pr_module
+from src.factory import prompt_builder as pb_module
+from src.factory.checkpoint import make_checkpoint_key
+from src.factory.pipeline_runner import main_async as pv_main_async
 
 
 FUNCTIONAL_UNIT_TXT = """=== LOGICAL ENTITY: test_entity ===
@@ -29,7 +32,7 @@ def test_sensor(): pass
 
 
 def _accepted_sample_for_frag(frag: dict) -> dict:
-    ck = pv.make_checkpoint_key(frag["name"], frag.get("virtual_filename", ""))
+    ck = make_checkpoint_key(frag["name"], frag.get("virtual_filename", ""))
     return {
         "status": "accepted",
         "sample": {
@@ -74,15 +77,18 @@ def test_main_async_processes_fragments_writes_output(
     )
 
     # Stub prompt helpers to avoid loading taxonomy
-    monkeypatch.setattr(pv, "_prompt", lambda key: f"<{key}>", raising=False)
-    monkeypatch.setattr(pv, "_render", lambda template, **subs: template, raising=False)
+    monkeypatch.setattr(
+        "src.factory.prompt_builder._prompt", lambda key: f"<{key}>", raising=False
+    )
+    monkeypatch.setattr(
+        "src.factory.prompt_builder._render", lambda template, **subs: template, raising=False
+    )
 
     # Deterministic assignment to avoid randomness
     monkeypatch.setattr(
-        pv,
+        pr_module,
         "assign_example_type",
-        lambda frag, has_legacy=False: ("nominal", "easy"),
-        raising=False,
+        lambda frag, has_legacy=False: SimpleNamespace(example_type="nominal", difficulty="easy"),
     )
 
     # Replace generate_sample_async with a fast accepted-response stub
@@ -98,17 +104,20 @@ def test_main_async_processes_fragments_writes_output(
         has_legacy=False,
         legacy_patterns=None,
         jinja_guide="",
+        state=None,
     ):
         return _accepted_sample_for_frag(frag)
 
-    monkeypatch.setattr(pv, "generate_sample_async", fake_generate, raising=False)
+    monkeypatch.setattr(
+        "src.factory.pipeline_runner.generate_sample_async", fake_generate
+    )
 
     # Avoid instantiating real AsyncOpenAI (not used by the stub)
     class DummyAsyncOpenAI:
         def __init__(self, *args, **kwargs):
             pass
 
-    monkeypatch.setattr(pv, "AsyncOpenAI", DummyAsyncOpenAI, raising=False)
+    monkeypatch.setattr(pr_module, "AsyncOpenAI", DummyAsyncOpenAI, raising=False)
 
     # Build args namespace expected by main_async (set attributes on instance)
     class Args:
@@ -137,7 +146,7 @@ def test_main_async_processes_fragments_writes_output(
     args._gap_dir = Path(args.gap_dir)
 
     # Run the async pipeline
-    asyncio.run(pv.main_async(args))
+    asyncio.run(pv_main_async(args))
 
     # Validate that output file was created and contains JSON lines
     out_path = Path(args.output)
@@ -200,12 +209,12 @@ rule: value
     )
 
     # Stubs
-    monkeypatch.setattr(pv, "_prompt", lambda key: f"<{key}>", raising=False)
-    monkeypatch.setattr(pv, "_render", lambda template, **subs: template, raising=False)
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: f"<{key}>", raising=False)
+    monkeypatch.setattr(pb_module, "_render", lambda template, **subs: template, raising=False)
     monkeypatch.setattr(
-        pv,
+        pr_module,
         "assign_example_type",
-        lambda frag, has_legacy=False: ("nominal", "easy"),
+        lambda frag, has_legacy=False: SimpleNamespace(example_type="nominal", difficulty="easy"),
         raising=False,
     )
 
@@ -221,12 +230,15 @@ rule: value
         has_legacy=False,
         legacy_patterns=None,
         jinja_guide="",
+        state=None,
     ):
         return _accepted_sample_for_frag(frag)
 
-    monkeypatch.setattr(pv, "generate_sample_async", fake_generate, raising=False)
     monkeypatch.setattr(
-        pv, "AsyncOpenAI", lambda *a, **k: SimpleNamespace(), raising=False
+        "src.factory.pipeline_runner.generate_sample_async", fake_generate
+    )
+    monkeypatch.setattr(
+        "src.factory.pipeline_runner.AsyncOpenAI", lambda *a, **k: SimpleNamespace(), raising=False
     )
 
     # Args
@@ -254,7 +266,7 @@ rule: value
     args._gap_dir = Path(args.gap_dir)
 
     # Run and assert output created
-    asyncio.run(pv.main_async(args))
+    asyncio.run(pv_main_async(args))
     out_path = Path(args.output)
     assert out_path.exists()
     lines = [l for l in out_path.read_text(encoding="utf-8").splitlines() if l.strip()]

@@ -21,7 +21,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 import pytest
 
-from src.factory import production_v11 as pv11
+import src.factory.prompt_builder as pb_module
+import src.factory.pipeline_runner as pr_module
+from src.factory import config as cfg_module
+from src.factory import config as cfg_module
+from src.factory.cli import main as cli_main, parse_args as cli_parse_args
+from src.factory.pipeline_runner import generate_sample_async, main_async
 
 
 class FakeCompletions:
@@ -52,7 +57,7 @@ def make_theory_frag(name: str = "T1") -> dict:
 
 
 def test_generate_theory_sample_success_and_failure(monkeypatch):
-    monkeypatch.setattr(pv11, "_prompt", lambda key: "prompt")
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
     # Success: assistant returns <think>reason</think> + long answer (>150 chars)
     answer = "A" * 200
     content = f"<think>{'reasoning' * 30}</think>{answer}"
@@ -60,7 +65,7 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     sem = asyncio.Semaphore(1)
     frag = make_theory_frag("Sec1")
     res = asyncio.run(
-        pv11.generate_theory_sample_async(client, "m", frag, "master", "changelog", sem)
+        pr_module.generate_theory_sample_async(client, "m", frag, "master", "changelog", sem)
     )
     assert res["status"] == "accepted"
     assert (
@@ -72,7 +77,7 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     short_content = f"<think>r</think>short"
     client2 = FakeClient(short_content)
     res2 = asyncio.run(
-        pv11.generate_theory_sample_async(
+        pr_module.generate_theory_sample_async(
             client2, "m", frag, "master", "changelog", sem
         )
     )
@@ -82,7 +87,7 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     edge_content = f"reasoning text</think>{answer}"
     client3 = FakeClient(edge_content)
     res3 = asyncio.run(
-        pv11.generate_theory_sample_async(
+        pr_module.generate_theory_sample_async(
             client3, "m", frag, "master", "changelog", sem
         )
     )
@@ -90,7 +95,7 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
 
 
 def test_generate_sample_async_poison_and_legacy(monkeypatch):
-    monkeypatch.setattr(pv11, "_prompt", lambda key: "prompt")
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
     # Prepare a clean tool_call with long generated content (passes LDI)
     tool_json = {
         "name": "write_to_file",
@@ -114,9 +119,11 @@ def test_generate_sample_async_poison_and_legacy(monkeypatch):
     }
 
     # Monkeypatch post_validate_output to detect a toxic pattern
-    monkeypatch.setattr(pv11, "post_validate_output", lambda code, t, s: ["toxic"])
+    monkeypatch.setattr(
+        "src.factory.pipeline_runner.post_validate_output", lambda code, t, s: ["toxic"]
+    )
     res = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -134,7 +141,7 @@ def test_generate_sample_async_poison_and_legacy(monkeypatch):
 
     # Legacy branch: when has_legacy=True, gold_injected must be False
     res2 = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -153,13 +160,13 @@ def test_generate_sample_async_poison_and_legacy(monkeypatch):
 
 
 def test_main_async_theory_mode(tmp_path, monkeypatch):
-    monkeypatch.setattr(pv11, "_prompt", lambda key: "prompt")
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
     # Create minimal master/changelog/jinja guide with one long section
     gap = tmp_path / "gapdir"
     gap.mkdir()
-    master = gap / pv11._MASTER_GUIDE_FILENAME
-    changelog = gap / pv11._TECHNICAL_CHANGELOG_FILENAME
-    jinja = gap / pv11._JINJA_YAML_GUIDE_FILENAME
+    master = gap / cfg_module._MASTER_GUIDE_FILENAME
+    changelog = gap / cfg_module._TECHNICAL_CHANGELOG_FILENAME
+    jinja = gap / cfg_module._JINJA_YAML_GUIDE_FILENAME
     master.write_text("# Section One\n" + "X" * 300)
     changelog.write_text("# Changelog\n" + "Y" * 300)
     jinja.write_text("JINJA GUIDE")
@@ -172,7 +179,7 @@ def test_main_async_theory_mode(tmp_path, monkeypatch):
         def __init__(self, base_url=None, api_key=None):
             self.chat = SimpleNamespace(completions=FakeCompletions(fake_resp))
 
-    monkeypatch.setattr(pv11, "AsyncOpenAI", FakeAsyncOpenAI)
+    monkeypatch.setattr(pr_module, "AsyncOpenAI", FakeAsyncOpenAI)
 
     # Run main_async in theory mode (test limited)
     class Args:
@@ -187,7 +194,7 @@ def test_main_async_theory_mode(tmp_path, monkeypatch):
         output = str(tmp_path / "out.jsonl")
         resume = False
 
-    asyncio.run(pv11.main_async(Args()))
+    asyncio.run(main_async(Args()))
 
     # Output file should exist (writer created by main_async)
     assert Path(Args.output).exists()
@@ -211,7 +218,7 @@ def test_main_function(monkeypatch):
     mock_taxonomy_path.exists.return_value = True
 
     def mock_path(path_str):
-        if str(path_str) == pv11.__file__:
+        if str(path_str) == pb_module.__file__:
             return mock_base_dir
         elif "taxonomy" in str(path_str):
             return mock_taxonomy_path
@@ -220,7 +227,7 @@ def test_main_function(monkeypatch):
         else:
             return MagicMock()
 
-    monkeypatch.setattr(pv11, "Path", mock_path)
+    monkeypatch.setattr(pr_module, "Path", mock_path)
 
     # Set up path hierarchy
     mock_base_dir.resolve.return_value = mock_base_dir
@@ -233,9 +240,9 @@ def test_main_function(monkeypatch):
     mock_data_dir.__truediv__.return_value = mock_gap_dir
 
     # Mock load_taxonomy
-    monkeypatch.setattr(pv11, "load_taxonomy", MagicMock())
+    monkeypatch.setattr(pr_module, "load_taxonomy", MagicMock())
     monkeypatch.setattr(
-        pv11,
+        pb_module,
         "_TAX",
         {"prompts": {"system": {"theory": "system"}, "user": {"theory": "user"}}},
     )
@@ -245,10 +252,10 @@ def test_main_function(monkeypatch):
 
     # Mock main_async to avoid creating coroutine
     mock_main_async = AsyncMock()
-    monkeypatch.setattr(pv11, "main_async", mock_main_async)
+    monkeypatch.setattr("src.factory.cli.main_async", mock_main_async)
 
     # Call main - should not raise exceptions
-    pv11.main()
+    cli_main()
 
     # Verify that main_async was called
     mock_main_async.assert_called_once()
@@ -259,7 +266,7 @@ def test_parse_args_basic(monkeypatch):
     monkeypatch.setattr(
         "sys.argv", ["production_v11.py", "--test", "5", "--workers", "2"]
     )
-    args = pv11.parse_args()
+    args = cli_parse_args()
     assert args.test == 5
     assert args.workers == 2
 
@@ -291,7 +298,7 @@ def test_parse_args_full(monkeypatch):
             "123",
         ],
     )
-    args = pv11.parse_args()
+    args = cli_parse_args()
     assert args.test == 10
     assert args.workers == 4
     assert args.limit == 100

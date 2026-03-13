@@ -8,7 +8,9 @@ import re
 
 import pytest
 
-from src.curation import backtracking_rewriter as br
+from src.curation import backtracking_config as br_cfg
+from src.curation import backtracking_helpers as br_helpers
+from src.curation import rewrite_engine as br_engine
 
 
 def test_apply_backtracking_rewrite_retry_and_success(monkeypatch):
@@ -18,7 +20,7 @@ def test_apply_backtracking_rewrite_retry_and_success(monkeypatch):
         "conversation": [{"role": "assistant", "content": "<think>old</think>code"}],
         "metadata": {"legacy_detected": True},
     }
-    cfg = br.BacktrackingConfig()
+    cfg = br_cfg.BacktrackingConfig()
 
     # Client will raise once, then return a fenced block that sanitizes to empty,
     # then finally return a valid reasoning.
@@ -44,7 +46,7 @@ def test_apply_backtracking_rewrite_retry_and_success(monkeypatch):
     monkeypatch.setattr(asyncio, "sleep", _nosleep)
     client = FakeClient(responses)
     result = asyncio.run(
-        br.apply_backtracking_rewrite(
+        br_engine.apply_backtracking_rewrite(
             rec,
             client,
             cfg,
@@ -65,7 +67,7 @@ def test_apply_backtracking_rewrite_rejection(monkeypatch):
         "conversation": [{"role": "assistant", "content": "<think>abc</think>rest"}],
         "metadata": {"legacy_detected": True},
     }
-    cfg = br.BacktrackingConfig()
+    cfg = br_cfg.BacktrackingConfig()
 
     # Client returns a resolution containing deprecated_api()
     class FakeClient2:
@@ -81,7 +83,7 @@ def test_apply_backtracking_rewrite_rejection(monkeypatch):
     # depending on splitting heuristics; accept both behaviours as valid.
     try:
         res = asyncio.run(
-            br.apply_backtracking_rewrite(
+            br_engine.apply_backtracking_rewrite(
                 rec,
                 FakeClient2(),
                 cfg,
@@ -91,7 +93,7 @@ def test_apply_backtracking_rewrite_rejection(monkeypatch):
                 _legacy_regexes=(re.compile(r"deprecated_api"),),
             )
         )
-    except br._RejectionSamplingError:
+    except br_helpers._RejectionSamplingError:
         return
     # Implementation may either reject (raise) or return None or return a
     # rewritten record depending on heuristics. Accept a returned dict and

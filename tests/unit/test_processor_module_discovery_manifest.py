@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.discovery.processor import Module, ModuleFile, ProcessingConfig, RepoProcessor
+from src.discovery import Module, ModuleFile, ProcessingConfig, RepoProcessor
 
 
 class TestProcessorModuleDiscoveryManifest:

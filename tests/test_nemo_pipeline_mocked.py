@@ -9,7 +9,10 @@ import types
 
 import pytest
 
-from src.curation import nemo_curator_suite as nc
+from src.curation.curator_pipeline import run_nemo_filter_pipeline
+
+# Module alias for backward compatibility
+from src.curation import curator_pipeline as nc
 
 
 def test_run_nemo_filter_pipeline_mock_success(tmp_path, monkeypatch):
@@ -91,7 +94,7 @@ def test_run_nemo_filter_pipeline_mock_success(tmp_path, monkeypatch):
         monkeypatch.setattr(nc, name, DummyFilter, raising=False)
 
     # Should not raise
-    nc.run_nemo_filter_pipeline(str(in_path), str(out_dir))
+    run_nemo_filter_pipeline(str(in_path), str(out_dir))
 
     # Ensure client started and stopped
     assert client_holder, "RayClient was not instantiated"
@@ -156,7 +159,7 @@ def test_run_nemo_filter_pipeline_mock_exception(tmp_path, monkeypatch):
         monkeypatch.setattr(nc, name, DummyFilter, raising=False)
 
     with pytest.raises(RuntimeError):
-        nc.run_nemo_filter_pipeline(str(in_path), str(out_dir))
+        run_nemo_filter_pipeline(str(in_path), str(out_dir))
 
     # Ensure client was stopped in finally block
     assert client_holder, "RayClient was not instantiated"

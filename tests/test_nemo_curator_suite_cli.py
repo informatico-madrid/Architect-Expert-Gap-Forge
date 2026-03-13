@@ -14,7 +14,10 @@ from __future__ import annotations
 from pathlib import Path
 import json
 
-from src.curation import nemo_curator_suite as ncs
+from src.curation.curator_cli import main as ncs_main
+
+# Module alias for backward compatibility
+from src.curation import curator_cli as ncs
 
 
 def make_jsonl(path: Path, records: list) -> None:
@@ -30,7 +33,7 @@ def test_main_exact_dedup_dry_run(tmp_path: Path) -> None:
     make_jsonl(inp, [rec, rec])
 
     # Dry-run (no --apply): should return 0 and not write output file
-    rc = ncs.main(
+    rc = ncs_main(
         ["--input", str(inp), "--output", str(out), "--exact-dedup"]
     )  # no --apply -> dry-run
     assert rc == 0
@@ -43,5 +46,5 @@ def test_main_filter_not_installed_returns_error(tmp_path: Path) -> None:
     make_jsonl(inp, [{"conversation": []}])
 
     # Request NeMo filter when environment lacks nemo-curator → error code 1
-    rc = ncs.main(["--input", str(inp), "--output", str(out), "--filter"])
+    rc = ncs_main(["--input", str(inp), "--output", str(out), "--filter"])
     assert rc == 1

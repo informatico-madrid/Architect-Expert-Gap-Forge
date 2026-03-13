@@ -18,7 +18,9 @@ from pathlib import Path
 
 import pytest
 
-from src.factory import production_v11 as pv11
+from src.factory import prompt_builder as pb_module
+from src.factory.pipeline_runner import generate_sample_async, process_fragment
+from src.factory.ldi_validator import assign_example_type
 
 
 @pytest.fixture(autouse=True)
@@ -28,9 +30,9 @@ def stub_templates(monkeypatch: pytest.MonkeyPatch) -> None:
     Uses `monkeypatch` so modifications are reverted after each test module.
     """
 
-    monkeypatch.setattr(pv11, "_prompt", lambda key: f"<{key}>")
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: f"<{key}>")
     monkeypatch.setattr(
-        pv11,
+        pb_module,
         "_render",
         lambda template, **subs: (
             template
@@ -38,12 +40,12 @@ def stub_templates(monkeypatch: pytest.MonkeyPatch) -> None:
             else template + " " + " ".join(f"{k}={v}" for k, v in subs.items())
         ),
     )
-    monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
+    monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
     monkeypatch.setattr(
-        pv11, "LEGACY_2023_PATTERNS", [{"legacy_code": "old_code"}], raising=False
+        pb_module, "LEGACY_2023_PATTERNS", [{"legacy_code": "old_code"}], raising=False
     )
     monkeypatch.setattr(
-        pv11,
+        pb_module,
         "JINJA_LEGACY_2023_PATTERNS",
         [{"legacy_code": "old_template", "context_type": "jinja"}],
         raising=False,
@@ -90,7 +92,7 @@ def test_generate_sample_async_gold_injection():
     frag = make_frag(functional=True)
     sem = asyncio.Semaphore(1)
     res = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -120,7 +122,7 @@ def test_generate_sample_async_legacy_skip():
     frag = make_frag(functional=False)
     sem = asyncio.Semaphore(1)
     res = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -151,7 +153,7 @@ def test_generate_sample_async_ldi_fail_returns_rejected():
     frag = make_frag(functional=False)
     sem = asyncio.Semaphore(1)
     res = asyncio.run(
-        pv11.generate_sample_async(
+        generate_sample_async(
             client,
             "m",
             frag,
@@ -194,9 +196,12 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
     async def fake_generate(*args, **kwargs):
         return sample
 
-    monkeypatch.setattr(pv11, "generate_sample_async", fake_generate)
     monkeypatch.setattr(
-        pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy")
+        "src.factory.pipeline_runner.generate_sample_async", fake_generate
+    )
+    monkeypatch.setattr(
+        "src.factory.ldi_validator.assign_example_type",
+        lambda frag, has_legacy=False: ("nominal", "easy"),
     )
 
     class DummyWriter:
@@ -226,6 +231,8 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
         "virtual_filename": "f.py",
         "original": "orig",
         "subtype": "code",
+        "context": "test context",
+        "skeleton": "test skeleton",
     }
 
     class Args:
@@ -234,7 +241,7 @@ def test_process_fragment_integration_monkeypatched(monkeypatch):
 
     sem = asyncio.Semaphore(1)
     asyncio.run(
-        pv11.process_fragment(
+        process_fragment(
             FakeClient(""),
             "m",
             frag,

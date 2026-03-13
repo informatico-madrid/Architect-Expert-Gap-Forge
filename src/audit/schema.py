@@ -12,14 +12,19 @@ flow: sampling -> exam -> inference -> score.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Final
+from typing import Any, Final, TypedDict
 
 __all__ = [
+    # TypedDicts (legacy names for backwards compatibility)
+    "SampleRecordTD",
+    "ExamRecordTD",
+    # Dataclasses (primary exports)
     "SampleRecord",
+    "ExamRecord",
+    "NormalizedJudgeResponse",
     "InferenceResult",
     "ScoreCard",
     "AuditReport",
-    "ExamRecord",
     "PromptGenerationError",
     "SCORING_WEIGHTS",
     "EXAMPLE_TYPES",
@@ -40,6 +45,52 @@ SCORING_WEIGHTS: Final[dict[str, float]] = {
 }
 
 # ---------------------------------------------------------------------------
+# TypedDicts (immutable structured data contracts)
+# ---------------------------------------------------------------------------
+
+
+class SampleRecordTD(TypedDict):
+    """Evaluation record with conversation and metadata (legacy TypedDict)."""
+
+    id: str
+    conversation: list[dict]
+    metadata: dict
+
+
+class ExamRecordTD(TypedDict):
+    """Exam question with evaluation criteria and target patterns (legacy TypedDict)."""
+
+    sample_id: str
+    exam_question: str
+    eval_criteria: list[str]
+    target_patterns: list[str]
+    reference_standards: str
+    gap_analysis: str
+
+
+class NormalizedJudgeResponse(TypedDict):
+    """Normalized response from the LLM judge."""
+
+    baseline: dict[str, float]
+    adapter: dict[str, float]
+    reasoning: str
+
+
+# ---------------------------------------------------------------------------
+# Backward compatibility - factory functions
+# ---------------------------------------------------------------------------
+
+
+def exam_record_from_sample(sample: SampleRecord, **kwargs: Any) -> ExamRecord:
+    """Create an ExamRecord from a SampleRecord.
+
+    This function provides backward compatibility for code that previously used
+    ExamRecord.from_sample().
+    """
+    return ExamRecord.from_sample(sample, **kwargs)
+
+
+# ---------------------------------------------------------------------------
 # Exceptions
 # ---------------------------------------------------------------------------
 
@@ -55,7 +106,7 @@ class PromptGenerationError(Exception):
 
 @dataclass(slots=True, frozen=True)
 class SampleRecord:
-    """Evaluation record extracted from the original dataset."""
+    """Evaluation record extracted from the original dataset (dataclass version)."""
 
     id: str
     example_type: str
@@ -72,7 +123,7 @@ class SampleRecord:
 
 @dataclass(slots=True, frozen=True)
 class ExamRecord(SampleRecord):
-    """Extension of SampleRecord that includes the generated exam."""
+    """Extension of SampleRecord that includes the generated exam (dataclass version)."""
 
     exam_question: str = ""
     eval_criteria: list[str] = field(default_factory=list)
@@ -98,11 +149,12 @@ class InferenceResult:
 
 @dataclass(slots=True, frozen=True)
 class ScoreCard:
-    """Multi-dimensional evaluation of a response produced by the judge."""
+    """ScoreCard with original field structure (backward compatibility)."""
 
     record_id: str
     example_type: str
     fragment_name: str
+    sample_id: str = ""  # Alias for record_id (used by report_writer)
     ha_modernity: float = 0.0
     reasoning_depth: float = 0.0
     functionality: float = 0.0
@@ -111,6 +163,20 @@ class ScoreCard:
     composite_score: float = 0.0
     delta_vs_baseline: float = 0.0
     judge_reasoning: str = ""
+    notes: str = ""
+
+
+@dataclass(slots=True, frozen=True)
+class ScoreCardTD:
+    """Multi-dimensional evaluation of a response produced by the judge (legacy)."""
+
+    sample_id: str
+    dimensions: dict[str, float]
+    composite_score: float
+    delta_vs_baseline: float
+    grade: str
+    verdict: str
+    notes: list[str] = field(default_factory=list)
     notes: str = ""
 
 

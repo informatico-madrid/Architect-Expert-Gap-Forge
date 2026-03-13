@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from src.curation import backtracking_rewriter as br
+from src.curation import backtracking_helpers as br
 
 
 def test_load_prompt_file_missing_raises(tmp_path: Path) -> None:

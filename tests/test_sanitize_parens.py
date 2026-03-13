@@ -11,7 +11,7 @@ sanitizer. The test must fail on the buggy implementation and pass
 after the sanitizer is adjusted to preserve code-like backtick spans.
 """
 
-from src.curation.backtracking_rewriter import _sanitize_generated_reasoning
+from src.curation.backtracking_helpers import _sanitize_generated_reasoning
 
 
 def test_preserve_backticked_call_with_parentheses() -> None:

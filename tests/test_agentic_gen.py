@@ -24,7 +24,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import src.factory.agentic_gen as ag
+import src.factory.agentic_prompt_builder as ag
 
 
 # ===========================================================================

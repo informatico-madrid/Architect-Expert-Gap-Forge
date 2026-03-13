@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from src.discovery.processor import Module, ModuleFile, ProcessingConfig, RepoProcessor
+from src.discovery import Module, ModuleFile, ProcessingConfig, RepoProcessor
 
 
 class TestProcessorEmitsBundlesWithArchHeader:

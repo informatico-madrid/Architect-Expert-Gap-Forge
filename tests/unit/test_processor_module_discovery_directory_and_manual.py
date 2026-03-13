@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.discovery.processor import Module, ProcessingConfig, RepoProcessor
+from src.discovery import Module, ProcessingConfig, RepoProcessor
 
 
 class TestProcessorModuleDiscoveryDirectory:

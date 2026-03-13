@@ -25,7 +25,7 @@ from src.audit.schema import (
 )
 from src.schemas.common import NormalizedJudgeResponse
 
-logger = logging.getLogger("AEGF.Scorecard")
+logger = logging.getLogger(__name__)
 
 
 def _extract_code_blocks(text: str) -> str:
@@ -202,6 +202,7 @@ def compute_scorecard(
 
     return ScoreCard(
         record_id=exam.id,
+        sample_id=exam.id,  # Alias for record_id (used by report_writer)
         example_type=exam.example_type,
         fragment_name=exam.fragment_name,
         ha_modernity=round(a.get("ha_modernity", 0.0), 3),

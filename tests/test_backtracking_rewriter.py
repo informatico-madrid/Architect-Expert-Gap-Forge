@@ -85,7 +85,7 @@ class TestThinkBlockManipulation:
     """Test think-block extraction and replacement utilities."""
 
     def test_extract_splits_at_think_tag(self) -> None:
-        from src.curation.backtracking_rewriter import extract_think_block
+        from src.curation.backtracking_helpers import extract_think_block
 
         content = "Some reasoning here</think>\n```python\npass\n```"
         think, rest = extract_think_block(content)
@@ -93,7 +93,7 @@ class TestThinkBlockManipulation:
         assert rest == "\n```python\npass\n```"
 
     def test_extract_handles_no_tag(self) -> None:
-        from src.curation.backtracking_rewriter import extract_think_block
+        from src.curation.backtracking_helpers import extract_think_block
 
         content = "No think tag at all"
         think, rest = extract_think_block(content)
@@ -101,7 +101,7 @@ class TestThinkBlockManipulation:
         assert rest == content
 
     def test_replace_preserves_code(self) -> None:
-        from src.curation.backtracking_rewriter import replace_think_block
+        from src.curation.backtracking_helpers import replace_think_block
 
         original = "Old reasoning</think>\n```python\npass\n```"
         result = replace_think_block(original, "New reasoning with backtracking")
@@ -110,7 +110,7 @@ class TestThinkBlockManipulation:
         assert result.split("</think>")[1] == original.split("</think>")[1]
 
     def test_replace_with_empty_think(self) -> None:
-        from src.curation.backtracking_rewriter import replace_think_block
+        from src.curation.backtracking_helpers import replace_think_block
 
         original = "</think>\ncode here"
         result = replace_think_block(original, "New think content")
@@ -127,13 +127,13 @@ class TestClassifyRewriteStrategy:
     """Test strategy classification logic."""
 
     def test_legacy_detected_gets_full_backtracking(self) -> None:
-        from src.curation.backtracking_rewriter import classify_rewrite_strategy
+        from src.curation.backtrack_strategy import classify_rewrite_strategy
 
         record = _make_record(legacy_detected=True, example_type="contrast")
         assert classify_rewrite_strategy(record) == "full_backtracking"
 
     def test_gold_injected_no_legacy_gets_trace_reconstruction(self) -> None:
-        from src.curation.backtracking_rewriter import classify_rewrite_strategy
+        from src.curation.backtrack_strategy import classify_rewrite_strategy
 
         record = _make_record(
             gold_injected=True, legacy_detected=False, example_type="nominal"
@@ -141,7 +141,7 @@ class TestClassifyRewriteStrategy:
         assert classify_rewrite_strategy(record) == "trace_reconstruction"
 
     def test_error_recovery_gets_error_first(self) -> None:
-        from src.curation.backtracking_rewriter import classify_rewrite_strategy
+        from src.curation.backtrack_strategy import classify_rewrite_strategy
 
         record = _make_record(
             gold_injected=False,
@@ -151,7 +151,7 @@ class TestClassifyRewriteStrategy:
         assert classify_rewrite_strategy(record) == "error_first"
 
     def test_contrast_no_gold_no_legacy_gets_contrast(self) -> None:
-        from src.curation.backtracking_rewriter import classify_rewrite_strategy
+        from src.curation.backtrack_strategy import classify_rewrite_strategy
 
         record = _make_record(
             gold_injected=False,
@@ -161,7 +161,7 @@ class TestClassifyRewriteStrategy:
         assert classify_rewrite_strategy(record) == "contrast_backtracking"
 
     def test_clean_nominal_gets_pass_through(self) -> None:
-        from src.curation.backtracking_rewriter import classify_rewrite_strategy
+        from src.curation.backtrack_strategy import classify_rewrite_strategy
 
         record = _make_record(
             gold_injected=False,
@@ -171,7 +171,7 @@ class TestClassifyRewriteStrategy:
         assert classify_rewrite_strategy(record) == "pass_through"
 
     def test_theory_gets_skip(self) -> None:
-        from src.curation.backtracking_rewriter import classify_rewrite_strategy
+        from src.curation.backtrack_strategy import classify_rewrite_strategy
 
         record = _make_record(example_type="theory")
         assert classify_rewrite_strategy(record) == "skip"
@@ -186,38 +186,30 @@ class TestBacktrackingFilter:
     """Test filtering logic for backtracking eligibility."""
 
     def test_theory_excluded(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            passes_backtracking_filter,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.backtrack_strategy import passes_backtracking_filter
 
         record = _make_record(example_type="theory")
         assert passes_backtracking_filter(record, BacktrackingConfig()) is False
 
     def test_over_token_limit_excluded(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            passes_backtracking_filter,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.backtrack_strategy import passes_backtracking_filter
 
         # 4000 tokens ≈ 16000 chars; create a record with way more
         record = _make_record(total_chars=20000)
         assert passes_backtracking_filter(record, BacktrackingConfig()) is False
 
     def test_normal_record_passes(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            passes_backtracking_filter,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.backtrack_strategy import passes_backtracking_filter
 
         record = _make_record(example_type="contrast", total_chars=4000)
         assert passes_backtracking_filter(record, BacktrackingConfig()) is True
 
     def test_no_think_tag_excluded(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            passes_backtracking_filter,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.backtrack_strategy import passes_backtracking_filter
 
         record: RawRecord = {
             "id": "no_think",
@@ -239,7 +231,7 @@ class TestBuildRewritePrompt:
     """Test prompt construction for different strategies."""
 
     def test_full_backtracking_prompt_mentions_legacy(self) -> None:
-        from src.curation.backtracking_rewriter import build_rewrite_prompt
+        from src.curation.backtrack_strategy import build_rewrite_prompt
 
         record = _make_record(
             legacy_detected=True,
@@ -253,7 +245,7 @@ class TestBuildRewritePrompt:
         assert "hass.data[]" in user_prompt or "legacy" in user_prompt.lower()
 
     def test_trace_reconstruction_includes_code(self) -> None:
-        from src.curation.backtracking_rewriter import build_rewrite_prompt
+        from src.curation.backtrack_strategy import build_rewrite_prompt
 
         record = _make_record(
             gold_injected=True, code_text="```python\nclass MyEntity:\n    pass\n```"
@@ -264,7 +256,7 @@ class TestBuildRewritePrompt:
         assert "MyEntity" in user_prompt or "code" in user_prompt.lower()
 
     def test_pass_through_returns_empty(self) -> None:
-        from src.curation.backtracking_rewriter import build_rewrite_prompt
+        from src.curation.backtrack_strategy import build_rewrite_prompt
 
         record = _make_record(example_type="nominal", gold_injected=False)
         system_prompt, user_prompt = build_rewrite_prompt(record, "pass_through")
@@ -281,10 +273,8 @@ class TestApplyBacktrackingRewrite:
     """Test the single-record rewrite with mocked inference."""
 
     def test_rewrite_replaces_think_block(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            apply_backtracking_rewrite,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.rewrite_engine import apply_backtracking_rewrite
 
         record = _make_record(
             legacy_detected=True,
@@ -314,10 +304,8 @@ class TestApplyBacktrackingRewrite:
         assert result["metadata"]["backtracking_applied"] is True
 
     def test_pass_through_returns_original(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            apply_backtracking_rewrite,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.rewrite_engine import apply_backtracking_rewrite
 
         record = _make_record(
             example_type="nominal",
@@ -338,10 +326,8 @@ class TestApplyBacktrackingRewrite:
         assert result["metadata"]["backtracking_strategy"] == "pass_through"
 
     def test_inference_failure_returns_none(self) -> None:
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            apply_backtracking_rewrite,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.rewrite_engine import apply_backtracking_rewrite
 
         record = _make_record(legacy_detected=True)
         mock_client = AsyncMock()
@@ -349,7 +335,7 @@ class TestApplyBacktrackingRewrite:
 
         # Patch asyncio.sleep so retry back-off does not slow the test suite
         with patch(
-            "src.curation.backtracking_rewriter.asyncio.sleep", new_callable=AsyncMock
+            "src.curation.rewrite_engine.asyncio.sleep", new_callable=AsyncMock
         ):
             result = asyncio.run(
                 apply_backtracking_rewrite(
@@ -362,10 +348,8 @@ class TestApplyBacktrackingRewrite:
 
     def test_sacred_constraint_restores_original_code(self) -> None:
         """Verify sacred constraint: code after <filepath> must be preserved."""
-        from src.curation.backtracking_rewriter import (
-            BacktrackingConfig,
-            apply_backtracking_rewrite,
-        )
+        from src.curation.backtracking_config import BacktrackingConfig
+        from src.curation.rewrite_engine import apply_backtracking_rewrite
 
         # Original code with 4-space indentation
         original_code = "class Test:\n    def method(self):\n        pass"
@@ -401,7 +385,7 @@ class TestIOHelpers:
     """Test JSONL load/save helpers."""
 
     def test_load_jsonl(self, tmp_path: Path) -> None:
-        from src.curation.backtracking_rewriter import load_jsonl
+        from src.curation.rewrite_engine import load_jsonl
 
         records = [_make_record(record_id=f"r{i}") for i in range(3)]
         path = tmp_path / "test.jsonl"
@@ -412,7 +396,7 @@ class TestIOHelpers:
         assert loaded[0]["id"] == "r0"
 
     def test_save_jsonl(self, tmp_path: Path) -> None:
-        from src.curation.backtracking_rewriter import save_jsonl
+        from src.curation.rewrite_engine import save_jsonl
 
         records = [_make_record(record_id=f"r{i}") for i in range(2)]
         path = tmp_path / "output.jsonl"
@@ -434,7 +418,7 @@ class TestConfigLoading:
     """Test YAML config loading for BacktrackingConfig."""
 
     def test_default_config_values(self) -> None:
-        from src.curation.backtracking_rewriter import BacktrackingConfig
+        from src.curation.backtracking_config import BacktrackingConfig
 
         cfg = BacktrackingConfig()
         assert cfg.max_tokens == 4000
@@ -442,7 +426,7 @@ class TestConfigLoading:
         assert cfg.temperature == 0.6
 
     def test_load_from_yaml(self, tmp_path: Path) -> None:
-        from src.curation.backtracking_rewriter import load_backtracking_config
+        from src.curation.backtracking_config import load_backtracking_config
 
         yaml_content = textwrap.dedent("""\
             max_tokens: 3000

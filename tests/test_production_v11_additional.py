@@ -18,10 +18,11 @@ from typing import Any, Dict, List
 import pytest
 import yaml
 
-from src.factory.production_v11 import (
-    AsyncFileWriter,
-    ProgressTracker,
-    assign_example_type,
+from src.factory.checkpoint import AsyncFileWriter, ProgressTracker, load_checkpoint, make_checkpoint_key
+from src.factory.fragment_extractor import get_file_chunks, get_fragments, get_v2_fragments, parse_bundle
+from src.factory.ldi_validator import assign_example_type, validate_ldi
+from src.factory.pipeline_runner import parse_raw_response
+from src.factory.prompt_builder import (
     build_system_contrast,
     build_system_contrast_jinja,
     build_system_error_recovery,
@@ -38,17 +39,9 @@ from src.factory.production_v11 import (
     build_user_nominal,
     build_user_nominal_jinja,
     detect_legacy_patterns,
-    get_fragments,
     get_theory_fragments,
-    get_v2_fragments,
-    load_checkpoint,
     load_taxonomy,
-    make_checkpoint_key,
-    parse_bundle,
-    parse_raw_response,
     post_validate_output,
-    validate_ldi,
-    get_file_chunks,
 )
 
 
@@ -202,12 +195,12 @@ class TestLegacyAndValidation:
         assert "as_timestamp" in toxins[0]
 
     def test_validate_ldi_various_cases(self) -> None:
-        ok, ldi, _ = validate_ldi(200, 100, "code")
-        assert ok and ldi > 0
-        valid, _, reason = validate_ldi(100, 20000, "code")
-        assert not valid and "Verbosity" in reason
-        doc_mode, _, msg = validate_ldi(5, 60, "doc")
-        assert doc_mode and "Doc/Test/Template" in msg
+        result = validate_ldi(200, 100, "code")
+        assert result.is_valid and result.score > 0
+        result = validate_ldi(100, 20000, "code")
+        assert not result.is_valid and "Verbosity" in result.reason
+        result = validate_ldi(5, 60, "doc")
+        assert result.is_valid and "Doc/Test/Template" in result.reason
 
 
 @pytest.mark.unit
@@ -350,13 +343,15 @@ class TestAssignExampleType:
     def test_assigns_nominal_when_clean(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(random, "random", lambda: 0.25)
         monkeypatch.setattr(random, "choice", lambda seq: "medium")
-        example_type, difficulty = assign_example_type(
+        _result = assign_example_type(
             _make_fragment(), has_legacy=False
         )
+        example_type, difficulty = _result.example_type, _result.difficulty
         assert example_type == "nominal"
         assert difficulty == "medium"
 
     def test_forces_contrast_for_legacy(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(random, "random", lambda: 0.1)
-        t, d = assign_example_type(_make_fragment(), has_legacy=True)
+        _result = assign_example_type(_make_fragment(), has_legacy=True)
+        t, d = _result.example_type, _result.difficulty
         assert t in {"contrast", "error_recovery"}

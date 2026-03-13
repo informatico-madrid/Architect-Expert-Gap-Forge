@@ -20,7 +20,9 @@ import textwrap
 
 import pytest
 
-from src.factory import production_v11 as pv11
+from src.factory import prompt_builder as pb_module
+from src.factory import pipeline_runner as pr_module
+from src.factory import config as cfg_module
 
 
 class FakeCompletions:
@@ -45,13 +47,13 @@ def test_main_async_minimal(tmp_path, monkeypatch):
     # Prepare minimal gap docs
     gap = tmp_path / "gap"
     gap.mkdir()
-    (gap / pv11._MASTER_GUIDE_FILENAME).write_text(
+    (gap / cfg_module._MASTER_GUIDE_FILENAME).write_text(
         "# Master guide\nSome master content"
     )
-    (gap / pv11._TECHNICAL_CHANGELOG_FILENAME).write_text(
+    (gap / cfg_module._TECHNICAL_CHANGELOG_FILENAME).write_text(
         "# Changelog\nLots of changes"
     )
-    (gap / pv11._JINJA_YAML_GUIDE_FILENAME).write_text("# Jinja Guide\nTemplate rules")
+    (gap / cfg_module._JINJA_YAML_GUIDE_FILENAME).write_text("# Jinja Guide\nTemplate rules")
 
     # Prepare a raw .txt bundle (FUNCTIONAL_UNIT)
     raw = tmp_path / "raw"
@@ -76,9 +78,9 @@ def test_main_async_minimal(tmp_path, monkeypatch):
     (raw / "bundle1.txt").write_text(bundle)
 
     # Stub prompt/template functions to avoid taxonomy dependency
-    monkeypatch.setattr(pv11, "_prompt", lambda key: f"<{key}>")
+    monkeypatch.setattr(pb_module, "_prompt", lambda key: f"<{key}>")
     monkeypatch.setattr(
-        pv11,
+        pb_module,
         "_render",
         lambda template, **subs: (
             template
@@ -86,11 +88,11 @@ def test_main_async_minimal(tmp_path, monkeypatch):
             else template + " " + " ".join(f"{k}={v}" for k, v in subs.items())
         ),
     )
-    monkeypatch.setattr(pv11, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
+    monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
 
     # Deterministic assignment of example type
     monkeypatch.setattr(
-        pv11, "assign_example_type", lambda frag, has_legacy=False: ("nominal", "easy")
+        pr_module, "assign_example_type", lambda frag, has_legacy=False: SimpleNamespace(example_type="nominal", difficulty="easy")
     )
 
     # Fake client returns a long reasoning and write_action with content
@@ -98,10 +100,10 @@ def test_main_async_minimal(tmp_path, monkeypatch):
     generated_code = "def foo():\n    return 42\n"
     content = f"<think>{reasoning}</think><write_action><path>module.py</path><content>{generated_code}</content></write_action>"
     FakeClient = make_fake_client_factory(content)
-    monkeypatch.setattr(pv11, "AsyncOpenAI", FakeClient)
+    monkeypatch.setattr(pr_module, "AsyncOpenAI", FakeClient)
 
     # Ensure think_filter is disabled during test
-    monkeypatch.setattr(pv11, "_think_filter_apply", None, raising=False)
+    monkeypatch.setattr(pr_module, "_think_filter_apply", None, raising=False)
 
     # Build args namespace for main_async
     class Args:
@@ -123,7 +125,7 @@ def test_main_async_minimal(tmp_path, monkeypatch):
         theory_reps = 3
 
     # Run main_async
-    asyncio.run(pv11.main_async(Args()))
+    asyncio.run(pr_module.main_async(Args()))
 
     # Validate output exists and contains JSON lines
     outp = Path(Args.output)

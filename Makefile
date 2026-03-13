@@ -38,7 +38,7 @@ quantize:
 
 ## test: Run the full test suite without coverage (fast local iteration).
 test:
-	$(PYTHON) -m pytest tests/ -q
+	$(PYTHON) -m pytest tests/ -q -p no:randomly -p no:warnings
 
 ## coverage: Run tests with coverage; fails if < 90 % on tracked modules.
 coverage:
@@ -47,9 +47,11 @@ coverage:
 		--cov=src/utils \
 		--cov=src/factory \
 		--cov=src/curation \
+		--cov=src/discovery \
 		--cov-report=term-missing \
 		--cov-report=xml:coverage.xml \
-		--cov-fail-under=90
+		--cov-fail-under=90 \
+		-p no:randomly -p no:warnings
 
 ## lint: Static type check with pyright (install separately: pip install pyright).
 lint:

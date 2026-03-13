@@ -17,7 +17,7 @@ from __future__ import annotations
 from pathlib import Path
 import pytest
 
-from src.discovery.processor import ProcessingConfig, RepoProcessor
+from src.discovery import ProcessingConfig, RepoProcessor
 
 
 class TestProcessorAdapterIntegration:
@@ -339,7 +339,7 @@ class TestProcessorArchHeaderWithDependencies:
 
     def test_arch_header_includes_dependencies(self) -> None:
         """Test that _make_arch_header includes dependencies."""
-        from src.discovery.processor import (
+        from src.discovery import (
             Module,
             ModuleFile,
             RepoProcessor,
