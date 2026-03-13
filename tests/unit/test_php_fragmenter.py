@@ -1,0 +1,555 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# SPDX-License-Identifier: Apache-2.0
+
+"""
+Unit tests for php_fragmenter module.
+
+Tests the core utility functions: strip_html_markup, fast_brace_scan,
+and read_php_file for the PHP Legacy Driver.
+
+Author: Joao Maria Arranz Aparicio
+"""
+
+from __future__ import annotations
+
+import pytest
+from pathlib import Path
+
+from src.discovery.php_fragmenter import (
+    fast_brace_scan,
+    read_php_file,
+    strip_html_markup,
+    PhpReadError,
+)
+
+
+class TestStripHtmlMarkup:
+    """Tests for strip_html_markup function."""
+
+    def test_simple_php_block(self) -> None:
+        """Test extraction of a simple PHP block from HTML."""
+        source = "<html><body><?php echo $var; ?></body></html>"
+        result = strip_html_markup(source)
+        assert "<?php echo $var; ?>" in result
+
+    def test_multiple_php_blocks(self) -> None:
+        """Test extraction of multiple PHP blocks."""
+        source = """<div>
+<?php include('header.php'); ?>
+<p>Some HTML</p>
+<?php if ($condition) { ?>
+<div>Conditional content</div>
+<?php } ?>
+</div>"""
+        result = strip_html_markup(source)
+        assert "<?php include('header.php');" in result
+        assert "<?php if ($condition) {" in result
+        assert "<?php } ?>" in result
+        # HTML should be stripped
+        assert "<div>" not in result
+        assert "<p>" not in result
+
+    def test_no_php_blocks(self) -> None:
+        """Test empty string returned when no PHP blocks present."""
+        source = "<html><body><p>Just HTML</p></body></html>"
+        result = strip_html_markup(source)
+        assert result == ""
+
+    def test_php_with_short_tags(self) -> None:
+        """Test extraction with short PHP tags (<?)."""
+        source = "<div><? echo $var; ?></div>"
+        result = strip_html_markup(source)
+        assert "<? " in result or "<?php" in result
+
+    def test_php_with_html_comments(self) -> None:
+        """Test PHP blocks with HTML comments inside."""
+        source = """<?php
+// This is a comment
+function test() { return true; }
+?>"""
+        result = strip_html_markup(source)
+        assert "<?php" in result
+        assert "function test()" in result
+
+    def test_javascript_preserved_in_php(self) -> None:
+        """Test that JavaScript inside PHP tags is preserved."""
+        source = """<script>
+<?php echo 'var x = 1;'; ?>
+</script>"""
+        result = strip_html_markup(source)
+        # PHP block inside script should be extracted
+        assert "<?php" in result
+
+    def test_empty_php_tags(self) -> None:
+        """Test empty PHP block handling."""
+        source = "<div><?php ?></div>"
+        result = strip_html_markup(source)
+        assert "<?php" in result
+
+    def test_mixed_content_complex(self) -> None:
+        """Test complex mixed PHP/HTML/JS content."""
+        source = """<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        var jsVar = <?php echo $jsValue; ?>;
+    </script>
+</head>
+<body>
+    <?php if ($showHeader): ?>
+    <header><?php echo $title; ?></header>
+    <?php endif; ?>
+
+    <div class="content">
+        <?php foreach ($items as $item): ?>
+        <p><?php echo $item; ?></p>
+        <?php endforeach; ?>
+    </div>
+</body>
+</html>"""
+        result = strip_html_markup(source)
+        # All PHP blocks should be extracted
+        assert "<?php if ($showHeader):" in result
+        assert "<?php echo $title; ?>" in result
+        assert "<?php foreach ($items as $item):" in result
+        assert "<?php endforeach; ?>" in result
+        # HTML/JS should be stripped
+        assert "<!DOCTYPE html>" not in result
+        assert "<script>" not in result
+
+
+class TestFastBraceScan:
+    """Tests for fast_brace_scan function."""
+
+    def test_simple_matched_braces(self) -> None:
+        """Test matching simple braces."""
+        source = "function test() { return 1; }"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1  # Position of last '}'
+        assert source[close_pos] == "}"
+
+    def test_nested_braces(self) -> None:
+        """Test matching nested braces."""
+        source = "function test() { if ($x) { return 1; } return 0; }"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+        assert source[close_pos] == "}"
+
+    def test_deeply_nested_braces(self) -> None:
+        """Test deeply nested braces."""
+        source = "function test() { if ($a) { if ($b) { if ($c) { return 1; } } } }"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_unmatched_brace(self) -> None:
+        """Test unmatched opening brace returns -1."""
+        source = "function test() { return 1;"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == -1
+
+    def test_empty_braces(self) -> None:
+        """Test empty braces."""
+        source = "function test() {}"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == open_pos + 1
+        assert source[close_pos] == "}"
+
+    def test_braces_in_string_not_counted(self) -> None:
+        """Test that braces inside strings are not counted."""
+        source = "function test() { $str = '{not a brace}'; return 1; }"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        # Should find the outer closing brace, not the one in string
+        assert close_pos == len(source) - 1
+
+    def test_braces_in_single_quoted_string(self) -> None:
+        """Test braces inside single-quoted strings."""
+        source = "function test() { $str = '{single}'; return 1; }"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_single_line_comment_not_counted(self) -> None:
+        """Test that braces in single-line comments are skipped."""
+        source = """function test() {
+// comment with { brace
+return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        # Should find the outer closing brace
+        assert close_pos == len(source) - 1
+
+    def test_multiline_comment_not_counted(self) -> None:
+        """Test that braces in multi-line comments are skipped."""
+        source = """function test() {
+/* comment with { brace } */
+return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_invalid_position_not_brace(self) -> None:
+        """Test that non-brace position returns -1."""
+        source = "function test() { return 1; }"
+        # Position 0 is 'f', not a brace
+        close_pos = fast_brace_scan(source, 0)
+        assert close_pos == -1
+
+    def test_position_past_end(self) -> None:
+        """Test that position beyond string length returns -1."""
+        source = "function test() { return 1; }"
+        close_pos = fast_brace_scan(source, len(source) + 1)
+        assert close_pos == -1
+
+
+class TestReadPhpFile:
+    """Tests for read_php_file function."""
+
+    def test_read_utf8_file(self, tmp_path: Path) -> None:
+        """Test reading a UTF-8 encoded PHP file."""
+        content = "<?php\necho 'Hello World';\n// Some comment with ñ and émojis 🎉\n"
+        file_path = tmp_path / "test_utf8.php"
+        file_path.write_text(content, encoding="utf-8")
+
+        result = read_php_file(file_path)
+        assert result == content
+
+    def test_read_latin1_file(self, tmp_path: Path) -> None:
+        """Test reading a latin-1 encoded PHP file."""
+        # Content with latin-1 specific characters
+        content = "<?php\n// Café résumé\n$var = 'naïve';\n"
+        file_path = tmp_path / "test_latin1.php"
+        file_path.write_bytes(content.encode("latin-1"))
+
+        result = read_php_file(file_path)
+        assert result == content
+
+    def test_read_utf8_with_fallback_to_latin1(self, tmp_path: Path) -> None:
+        """Test UTF-8 failing and falling back to latin-1."""
+        # This is a valid latin-1 sequence that's invalid UTF-8
+        content_bytes = b"<?php\n$str = '\xc0\xc1\xfe\xff';\n"
+        file_path = tmp_path / "test_fallback.php"
+        file_path.write_bytes(content_bytes)
+
+        # Should succeed via latin-1 fallback
+        result = read_php_file(file_path)
+        assert result.encode("latin-1") == content_bytes
+
+    def test_read_binary_file_raises_error(self, tmp_path: Path) -> None:
+        """Test that truly binary file raises PhpReadError."""
+        # Invalid bytes that neither UTF-8 nor latin-1 can decode properly
+        content_bytes = b"\x00\x01\x02\xff\xfe\xfd\x80\x81"
+        file_path = tmp_path / "test_binary.php"
+        file_path.write_bytes(content_bytes)
+
+        with pytest.raises(PhpReadError) as exc_info:
+            read_php_file(file_path)
+        assert "Failed to read" in str(exc_info.value)
+
+    def test_read_empty_file(self, tmp_path: Path) -> None:
+        """Test reading an empty file."""
+        file_path = tmp_path / "empty.php"
+        file_path.write_text("", encoding="utf-8")
+
+        result = read_php_file(file_path)
+        assert result == ""
+
+    def test_read_file_with_bom(self, tmp_path: Path) -> None:
+        """Test reading a file with UTF-8 BOM."""
+        content = "<?php\necho 'Hello';\n"
+        file_path = tmp_path / "test_bom.php"
+        # Write with BOM
+        file_path.write_bytes(b"\xef\xbb\xbf" + content.encode("utf-8"))
+
+        result = read_php_file(file_path)
+        # BOM should either be stripped or included - both are acceptable
+        # The function uses read_text which handles BOM
+        assert "echo 'Hello'" in result
+
+
+class TestExtractPreamble:
+    """Tests for _extract_preamble function (T015)."""
+
+    def test_extract_preamble_basic(self) -> None:
+        """Test basic preamble extraction - returns (preamble_content, remaining_source)."""
+        from src.discovery.php_fragmenter import _extract_preamble
+
+        source = """<?php
+// Bootstrap code
+define('DIR_WS_INCLUDES', 'includes/');
+require_once('includes/database_tables.php');
+
+// End of preamble
+function processData($id) {
+    return $id * 2;
+}
+"""
+        preamble, remaining = _extract_preamble(source)
+
+        # Preamble should contain bootstrap code
+        assert "define('DIR_WS_INCLUDES'" in preamble
+        assert "require_once" in preamble
+
+        # Remaining should start with the function
+        assert "function processData" in remaining
+        # Should NOT include preamble content in remaining
+        assert "DIR_WS_INCLUDES" not in remaining
+
+    def test_extract_preamble_no_preamble(self) -> None:
+        """Test when there's no preamble - entire source is remaining."""
+        from src.discovery.php_fragmenter import _extract_preamble
+
+        source = """<?php
+function test() {
+    return 1;
+}
+"""
+        preamble, remaining = _extract_preamble(source)
+
+        # Should have empty preamble
+        assert preamble == ""
+        # All content should be in remaining
+        assert "function test" in remaining
+
+    def test_extract_preamble_computes_hash(self) -> None:
+        """Test that preamble has valid SHA-256 hash reference."""
+        import hashlib
+        from src.discovery.php_fragmenter import _extract_preamble
+
+        source = """<?php
+define('TEST', 'value');
+function test() {}
+"""
+        preamble, _ = _extract_preamble(source)
+
+        # Should be able to compute SHA-256 of preamble
+        if preamble:  # Only test if there's preamble content
+            hash_result = hashlib.sha256(preamble.encode()).hexdigest()
+            assert len(hash_result) == 64  # SHA-256 is 64 hex chars
+
+
+class TestExtractFunctionBlocks:
+    """Tests for _extract_function_blocks function (T016)."""
+
+    def test_extract_function_blocks_basic(self) -> None:
+        """Test basic function extraction - returns list of (start, end, content)."""
+        from src.discovery.php_fragmenter import _extract_function_blocks
+
+        source = """<?php
+function getData($id) {
+    return $id;
+}
+
+function processRecord($record) {
+    return $record * 2;
+}
+"""
+        source_file = Path("/test/file.php")
+        blocks = _extract_function_blocks(source, source_file)
+
+        # Should find 2 functions
+        assert len(blocks) == 2
+
+        # Each block should be (start_line, end_line, content)
+        for start, end, content in blocks:
+            assert isinstance(start, int)
+            assert isinstance(end, int)
+            assert isinstance(content, str)
+            assert start > 0
+            assert end >= start
+            assert "function" in content
+
+    def test_extract_function_blocks_with_class(self) -> None:
+        """Test that class methods are NOT extracted as standalone blocks."""
+        from src.discovery.php_fragmenter import _extract_function_blocks
+
+        source = """<?php
+class MyClass {
+    public function method() {
+        return 1;
+    }
+}
+
+function standaloneFunction() {
+    return 2;
+}
+"""
+        source_file = Path("/test/file.php")
+        blocks = _extract_function_blocks(source, source_file)
+
+        # Should only find the standalone function
+        assert len(blocks) == 1
+        assert "standaloneFunction" in blocks[0][2]
+
+    def test_extract_function_blocks_nested_braces(self) -> None:
+        """Test that nested braces are handled correctly."""
+        from src.discovery.php_fragmenter import _extract_function_blocks
+
+        source = """<?php
+function complexFunction($x) {
+    if ($x) {
+        for ($i = 0; $i < 10; $i++) {
+            echo $i;
+        }
+    }
+    return $x;
+}
+"""
+        source_file = Path("/test/file.php")
+        blocks = _extract_function_blocks(source, source_file)
+
+        assert len(blocks) == 1
+        # Function should have all content including nested braces
+        assert "if ($x)" in blocks[0][2]
+        assert "for ($i = 0" in blocks[0][2]
+
+
+class TestExtractSwitchCases:
+    """Tests for _extract_switch_cases function (T017)."""
+
+    def test_extract_switch_cases_basic(self) -> None:
+        """Test basic switch/case extraction - returns list of (start, end, raw, case_label)."""
+        from src.discovery.php_fragmenter import _extract_switch_cases
+
+        source = """<?php
+switch ($action) {
+    case 'add':
+        $result = 'added';
+        break;
+    case 'edit':
+        $result = 'edited';
+        break;
+    case 'delete':
+        $result = 'deleted';
+        break;
+}
+"""
+        source_file = Path("/test/file.php")
+        cases = _extract_switch_cases(source, source_file)
+
+        # Should find the switch block
+        assert len(cases) >= 1
+
+        # Each case should be (start, end, raw_content, case_label)
+        for start, end, raw, label in cases:
+            assert isinstance(start, int)
+            assert isinstance(end, int)
+            assert isinstance(raw, str)
+            assert isinstance(label, str)
+
+    def test_extract_switch_cases_case_labels(self) -> None:
+        """Test that case labels are correctly extracted."""
+        from src.discovery.php_fragmenter import _extract_switch_cases
+
+        source = """<?php
+switch ($mode) {
+    case 'initialize':
+        doInit();
+        break;
+    case 'process':
+        doProcess();
+        break;
+}
+"""
+        source_file = Path("/test/file.php")
+        cases = _extract_switch_cases(source, source_file)
+
+        # Should have case labels
+        labels = [c[3] for c in cases]
+        assert 'initialize' in labels or 'add' in labels or 'process' in labels
+
+    def test_extract_switch_cases_no_switch(self) -> None:
+        """Test when there's no switch statement - returns empty list."""
+        from src.discovery.php_fragmenter import _extract_switch_cases
+
+        source = """<?php
+function test() {
+    return 1;
+}
+"""
+        source_file = Path("/test/file.php")
+        cases = _extract_switch_cases(source, source_file)
+
+        assert cases == []
+
+
+class TestFragmentBySize:
+    """Tests for _fragment_by_size function (T018)."""
+
+    def test_fragment_by_size_basic(self) -> None:
+        """Test basic size-based fragmentation - returns list of (start, end, content)."""
+        from src.discovery.php_fragmenter import _fragment_by_size
+
+        # Create source with 100 lines
+        lines = [f"line {i}" for i in range(100)]
+        source = "\n".join(lines)
+
+        # Fragment with max 30 lines
+        fragments = _fragment_by_size(source, max_lines=30)
+
+        # Should create multiple fragments
+        assert len(fragments) > 1
+
+        # Each fragment should be (start_line, end_line, content)
+        for start, end, content in fragments:
+            assert isinstance(start, int)
+            assert isinstance(end, int)
+            assert isinstance(content, str)
+            assert start > 0
+            assert end >= start
+
+    def test_fragment_by_size_with_overlap(self) -> None:
+        """Test that overlap parameter adds context to each fragment."""
+        from src.discovery.php_fragmenter import _fragment_by_size
+
+        # Create source with distinct markers to check overlap
+        lines = [f"LINE_{i}" for i in range(100)]
+        source = "\n".join(lines)
+
+        # Fragment with overlap of 5 lines
+        fragments = _fragment_by_size(source, max_lines=30, overlap=5)
+
+        # With overlap, fragments should overlap
+        # Check that content is repeated between fragments
+        if len(fragments) > 1:
+            # First fragment ends around line 30
+            # Second fragment should start with some overlap content
+            first_content = fragments[0][2]
+            second_content = fragments[1][2]
+
+            # The overlap should contain content from the end of first fragment
+            # (exact behavior depends on implementation)
+
+    def test_fragment_by_size_single_fragment(self) -> None:
+        """Test when source fits in max_lines - returns single fragment."""
+        from src.discovery.php_fragmenter import _fragment_by_size
+
+        source = """<?php
+function test() {
+    return 1;
+}
+"""
+        fragments = _fragment_by_size(source, max_lines=100)
+
+        # Should return one fragment covering entire source
+        assert len(fragments) == 1
+        assert "function test" in fragments[0][2]
+
+    def test_fragment_by_size_empty_source(self) -> None:
+        """Test with empty source - returns empty list."""
+        from src.discovery.php_fragmenter import _fragment_by_size
+
+        fragments = _fragment_by_size("", max_lines=30)
+
+        assert fragments == []

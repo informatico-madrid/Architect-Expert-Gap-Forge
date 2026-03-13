@@ -288,13 +288,18 @@ def strip_html_markup(source: str) -> str:
     # Regex to match PHP code blocks: <?php ... ?> or <? ... ?>
     # Handles both short tags (<?) and standard PHP tags (<?php)
     # The non-greedy match .*? ensures we match the smallest possible block
+    # Pattern breakdown:
+    # - <\? matches the opening <?
+    # - (?:php\s|php$|) matches: "php " (with space), "php" at end, or empty (short tag)
+    # - (.*?) captures the PHP content non-greedily
+    # - \?> matches the closing ?>
     php_pattern = re.compile(
-        r'<\?(?:php\s|$)(.*?)\?>',
+        r'<\?(?:php\s|php$|)(.*?)\?>',
         re.DOTALL | re.IGNORECASE
     )
 
-    # Find all PHP blocks and extract their content
-    matches = php_pattern.findall(source)
+    # Find all PHP blocks using finditer to get match positions
+    matches = list(php_pattern.finditer(source))
 
     if not matches:
         return ""
@@ -302,16 +307,16 @@ def strip_html_markup(source: str) -> str:
     # Reconstruct with PHP tags preserved
     result_parts: list[str] = []
     for match in matches:
-        # Determine which opening tag was used
-        full_match = php_pattern.search(source)
-        if full_match:
-            # Check if it was <?php or just <?
-            start_pos = full_match.start()
-            if source[start_pos:start_pos + 5].lower() == '<?php':
-                result_parts.append(f"<?php {match}?>")
-            else:
-                # Short tag - preserve as <? ... ?>
-                result_parts.append(f"<? {match}?>")
+        # Get the full matched text to determine the opening tag type
+        full_match_text = match.group(0)
+        content = match.group(1)
+
+        # Check if it was <?php or just <?
+        if full_match_text[:5].lower() == '<?php':
+            result_parts.append(f"<?php {content}?>")
+        else:
+            # Short tag - preserve as <? ... ?>
+            result_parts.append(f"<? {content}?>")
 
     return "\n".join(result_parts)
 
@@ -404,7 +409,8 @@ def read_php_file(path: Path) -> str:
         The file contents as a string.
 
     Raises:
-        PhpReadError: If both UTF-8 and latin-1 encoding fail.
+        PhpReadError: If both UTF-8 and latin-1 encoding fail, or if the file
+            appears to be binary (non-text content).
     """
     # Try UTF-8 first (most common)
     try:
@@ -415,11 +421,24 @@ def read_php_file(path: Path) -> str:
             path,
         )
         try:
-            return path.read_text(encoding="latin-1")
+            content = path.read_text(encoding="latin-1")
         except UnicodeDecodeError as e:
             raise PhpReadError(
                 f"Failed to read {path} with UTF-8 or latin-1 encoding: {e}"
             ) from e
+
+        # Check for binary content: if >30% of characters are non-printable
+        # or control characters (excluding common ones like tab, newline, carriage return)
+        non_printable = sum(
+            1 for c in content
+            if ord(c) < 32 and c not in '\t\n\r'
+        )
+        if len(content) > 0 and (non_printable / len(content)) > 0.30:
+            raise PhpReadError(
+                f"Failed to read {path}: file appears to be binary"
+            )
+
+        return content
 
 
 class PhpReadError(Exception):
