@@ -127,8 +127,10 @@ GITHUB_TOKEN=ghp_xxx python src/discovery/ingestor.py --config configs/stage_1_d
 
 **Note:** Static/manual ingestion is preferred to avoid low-signal bulk crawling and reduce architectural hallucinations at the source.
 
-### Stage 1.5 — Processing & Repackaging (`src/discovery/processor.py`)
-**Engine:** `processor.py` (Module-aware V2)
+### Stage 1.5 — Processing & Repackaging (`src/discovery/`)
+**Engine:** `processor_cli.py` (Module-aware V2)
+
+> **Nota:** Tras la refactorización de spec 003, `processor.py` fue dividido en submódulos de responsabilidad única. El CLI principal es `processor_cli.py`.
 
 Purpose: Transform raw repository clones into per-module, typed `.txt` bundles (Logical Entities) that preserve architectural context for SFT.
 
@@ -190,7 +192,7 @@ python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistan
 
 Run Processing (Stage 1.5):
 ```
-python src/discovery/processor.py --config configs/stage_1_discovery/homeassistant.yaml
+python -m src.discovery.processor_cli --config configs/stage_1_discovery/homeassistant.yaml
 ```
 
 Notes:
@@ -223,11 +225,11 @@ All three files live in `data/Gap/` by default (override with `--gap-dir`).
 Master Documents are loaded dynamically based on the active **profile**:
 
 ```python
-from src.factory import production_v11
+from src.factory import prompt_builder
 from pathlib import Path
 
 # Load master docs for a specific profile
-master_docs = production_v11.load_master_docs(
+master_docs = prompt_builder.load_master_docs(
     gap_dir=Path('data/Gap'),
     profile='homeassistant'  # or 'php_hexagonal'
 )
@@ -266,16 +268,16 @@ These documents are the most important inputs that govern sample quality. The re
 
 ```bash
 # Default: auto-resolves to <project_root>/data/Gap
-python src/factory/production_v11.py --workers 16
+python -m src.factory.cli --workers 16
 
 # Custom location
-python src/factory/production_v11.py --gap-dir /path/to/master/docs --workers 16
+python -m src.factory.cli --gap-dir /path/to/master/docs --workers 16
 
 # Verify all three files exist before a long run
 python -c "
 from pathlib import Path
-from src.factory.production_v10 import load_master_docs
-m, c, j = load_master_docs(Path('data/Gap'))
+from src.factory import prompt_builder
+m, c, j = prompt_builder.load_master_docs(Path('data/Gap'))
 print(f'Master Guide:      {len(m):,} chars')
 print(f'Changelog:         {len(c):,} chars')
 print(f'Jinja/YAML Guide:  {len(j):,} chars')
@@ -285,7 +287,9 @@ print(f'Jinja/YAML Guide:  {len(j):,} chars')
 ---
 
 ### Stage 2 — Factory (`src/factory/`)
-**Engines:** `production_v11.py` (Stable) & `agentic_gen.py` (Experimental)
+**Engines:** `pipeline_runner.py` (Stable) & `agentic_runner.py` (Experimental)
+
+> **Nota:** Tras la refactorización de spec 003, los archivos monolíticos fueron divididos en submódulos. El motor de producción principal ahora es `pipeline_runner.py` (orquestador) que usa los submódulos `prompt_builder.py`, `fragment_extractor.py`, `ldi_validator.py`, `checkpoint.py` y `config.py`. Para ejecución CLI, usa `cli.py`.
 
 Synthetic trajectory generation codebase with decoupled semantics (Prompts in external YAML Taxonomies) and Fail-Fast architectures.
 
@@ -308,26 +312,26 @@ The core production engine. Forces the model to reason (`<think>`) toward a pre-
 
 ```bash
 # Test mode: quick validation with 10 fragments
-python src/factory/production_v11.py --test 10 --workers 4
+python -m src.factory.cli --test 10 --workers 4
 
 # Full production run: 24 workers, 50 raw files
-python src/factory/production_v11.py --limit 50 --workers 24
+python -m src.factory.cli --limit 50 --workers 24
 
 # Process Jinja2/YAML templates with custom extension filter
-python src/factory/production_v11.py --raw-dir data/raw/ha-jinja \
+python -m src.factory.cli --raw-dir data/raw/ha-jinja \
   --extensions .jinja .jinja2 .yaml .yml \
   --workers 16
 
 # Theory mode: Generate 100 doctrine samples (teacher-student format)
-python src/factory/production_v11.py --theory --theory-reps 100 --workers 8 \
+python -m src.factory.cli --theory --theory-reps 100 --workers 8 \
   --output data/synthetic/theory_dataset.jsonl
 
 # Resume interrupted run (auto-skips processed fragments)
-python src/factory/production_v11.py --resume data/synthetic/v10_run_20260224.jsonl \
+python -m src.factory.cli --resume data/synthetic/v10_run_20260224.jsonl \
   --workers 16 --limit 50
 
 # Custom gap directory + custom taxonomy path
-python src/factory/production_v11.py --gap-dir /path/to/master/docs \
+python -m src.factory.cli --gap-dir /path/to/master/docs \
   --taxonomy /path/to/custom_taxonomy.yaml --workers 16
 ```
 
@@ -373,7 +377,7 @@ Each line is a JSON sample with structure:
 
 ---
 
-#### 🔹 Agentic Multi-Turn — `agentic_gen.py` (Experimental)
+#### 🔹 Agentic Multi-Turn — `agentic_cli.py` (Experimental)
 
 Generates complex 4-turn tool-calling trajectories optimized for tool-use fine-tuning:
 - Turn 1: User request with context
@@ -392,29 +396,29 @@ Generates complex 4-turn tool-calling trajectories optimized for tool-use fine-t
 
 ```bash
 # Quick test: 5 fragments, 4 workers
-python src/factory/agentic_gen.py --test 5 --workers 4
+python -m src.factory.agentic_cli --test 5 --workers 4
 
 # Full production: 16 workers, all raw files
-python src/factory/agentic_gen.py --workers 16
+python -m src.factory.agentic_cli --workers 16
 
 # Limit to 30 raw files with custom output path
-python src/factory/agentic_gen.py --limit 30 \
+python -m src.factory.agentic_cli --limit 30 \
   --output data/synthetic/agentic_run_20260224.jsonl \
   --workers 12
 
 # Resume from checkpoint
-python src/factory/agentic_gen.py --resume data/synthetic/agentic_v10mt_20260223.jsonl \
+python -m src.factory.agentic_cli --resume data/synthetic/agentic_v10mt_20260223.jsonl \
   --workers 16
 
 # Custom model, API endpoint, and gap directory
-python src/factory/agentic_gen.py --model qwen3-32b \
+python -m src.factory.agentic_cli --model qwen3-32b \
   --base-url http://vllm-server:8000/v1 \
   --api-key my-custom-key \
   --gap-dir /custom/master/docs \
   --workers 8
 
 # Low-resource test (small worker pool, custom seed)
-python src/factory/agentic_gen.py --test 3 --workers 2 --seed 123
+python -m src.factory.agentic_cli --test 3 --workers 2 --seed 123
 ```
 
 **Key Parameters:**
@@ -482,11 +486,13 @@ If any master document is missing, both scripts **fail-fast** with a clear `File
 
 Override with CLI params:
 ```bash
-python src/factory/production_v11.py --gap-dir /custom/master/docs --taxonomy /custom/taxonomy.yaml
+python -m src.factory.cli --gap-dir /custom/master/docs --taxonomy /custom/taxonomy.yaml
 ```
 
 ### Stage 3 — Curation (`src/curation/`)
-**Engine:** `nemo_curator_suite.py` — Unified AEGF Curation Suite
+**Engine:** `curator_cli.py` — Unified AEGF Curation Suite
+
+> **Nota:** Tras la refactorización de spec 003, `nemo_curator_suite.py` fue dividido en submódulos: `dedup_filter.py`, `quality_filter.py`, `curator_pipeline.py` y `curator_cli.py`.
 
 A single, composable command-line engine that chains **four independent curation phases** into a professional pipeline. Phases can run individually or in any combination.
 
@@ -510,7 +516,7 @@ docker exec -it aegf_curator bash
 
 # 4. Run the suite from inside the container
 #    (project root is mounted at /workspace):
-python /workspace/src/curation/nemo_curator_suite.py \
+python -m src.curation.curator_cli \
     --input  /workspace/data/synthetic/CLEAN.jsonl \
     --output /workspace/data/synthetic/CURATED.jsonl \
     --exact-dedup --filter --structural --dedup --apply
@@ -588,7 +594,7 @@ Phases chain automatically in order. Intermediate results are written to temp fi
 
 **Full pipeline — all four phases (inside container):**
 ```bash
-python /workspace/src/curation/nemo_curator_suite.py \
+python -m src.curation.curator_cli \
     --input  /workspace/data/synthetic/v11_clean.jsonl \
     --output /workspace/data/synthetic/CURATED.jsonl \
     --exact-dedup --filter --structural --dedup \
@@ -599,7 +605,7 @@ python /workspace/src/curation/nemo_curator_suite.py \
 
 **Structural + semantic dedup only (no container needed):**
 ```bash
-python src/curation/nemo_curator_suite.py \
+python -m src.curation.curator_cli \
     --input  data/synthetic/v11_clean.jsonl \
     --output data/synthetic/CURATED.jsonl \
     --exact-dedup --structural --dedup \
@@ -609,7 +615,7 @@ python src/curation/nemo_curator_suite.py \
 
 **Dry-run — statistics without writing files:**
 ```bash
-python src/curation/nemo_curator_suite.py \
+python -m src.curation.curator_cli \
     --input  data/synthetic/v11_clean.jsonl \
     --output data/synthetic/CURATED.jsonl \
     --exact-dedup --structural --dedup
@@ -618,7 +624,7 @@ python src/curation/nemo_curator_suite.py \
 
 **Quick validation on 1 000 records:**
 ```bash
-python src/curation/nemo_curator_suite.py \
+python -m src.curation.curator_cli \
     --input  data/synthetic/v11_clean.jsonl \
     --output /tmp/test.jsonl \
     --structural --dedup --sample 1000 --apply
@@ -650,8 +656,10 @@ After `--apply`, the suite writes:
    }
    ```
 
-### Stage 3.5 — Backtracking Alignment (`src/curation/backtracking_rewriter.py`)
-**Engine:** `backtracking_rewriter.py`
+### Stage 3.5 — Backtracking Alignment (`src/curation/`)
+**Engine:** `rewrite_cli.py`
+
+> **Nota:** Tras la refactorización de spec 003, `backtracking_rewriter.py` fue dividido en submódulos: `backtracking_config.py`, `backtracking_helpers.py`, `backtrack_strategy.py`, `rewrite_engine.py` y `rewrite_cli.py`.
 
 A post-curation rewriting stage that transforms `<think>` blocks to embed **self-correction and backtracking** patterns. Inspired by OpenCodeReasoning and AgentMathPlus research, this stage teaches the model to detect mistakes in its own reasoning, backtrack, and converge on the correct architectural solution — rather than always presenting a "perfect first attempt" that does not match real inference behaviour.
 
@@ -680,18 +688,18 @@ The rewrite strategy for each record is determined by `classify_rewrite_strategy
 
 ```bash
 # Minimal run — default config values
-python src/curation/backtracking_rewriter.py \
+python -m src.curation.rewrite_cli \
   --input  data/synthetic/v11_DISTILLED.jsonl \
   --output data/synthetic/v11_backtracking_aligned.jsonl
 
 # Using the project YAML config
-python src/curation/backtracking_rewriter.py \
+python -m src.curation.rewrite_cli \
   --input  data/synthetic/v11_DISTILLED.jsonl \
   --output data/synthetic/v11_backtracking_aligned.jsonl \
   --config configs/stage_3_curation/backtracking_alignment.yaml
 
 # Override specific parameters without editing the YAML
-python src/curation/backtracking_rewriter.py \
+python -m src.curation.rewrite_cli \
   --input  data/synthetic/v11_DISTILLED.jsonl \
   --output data/synthetic/v11_backtracking_aligned.jsonl \
   --config configs/stage_3_curation/backtracking_alignment.yaml \
@@ -701,7 +709,7 @@ python src/curation/backtracking_rewriter.py \
   --log-level DEBUG
 
 # Audit run: save full rewritten think blocks for offline inspection
-python src/curation/backtracking_rewriter.py \
+python -m src.curation.rewrite_cli \
   --input  data/synthetic/v11_DISTILLED.jsonl \
   --output data/synthetic/v11_backtracking_aligned.jsonl \
   --config configs/stage_3_curation/backtracking_alignment.yaml \
@@ -709,7 +717,7 @@ python src/curation/backtracking_rewriter.py \
   --log-level INFO
 
 # Quick validation on 50 records (Python API — corrected async usage)
-python -c "import asyncio; from pathlib import Path; from src.curation.backtracking_rewriter import rewrite_pipeline, BacktrackingConfig; cfg = BacktrackingConfig(batch_size=50); report = asyncio.run(rewrite_pipeline(Path('data/synthetic/v11_DISTILLED.jsonl'), Path('/tmp/bt_test.jsonl'), cfg)); print(report)"
+python -c "import asyncio; from pathlib import Path; from src.curation.rewrite_engine import rewrite_pipeline, BacktrackingConfig; cfg = BacktrackingConfig(batch_size=50); report = asyncio.run(rewrite_pipeline(Path('data/synthetic/v11_DISTILLED.jsonl'), Path('/tmp/bt_test.jsonl'), cfg)); print(report)"
 ```
 
 **CLI reference:**
@@ -765,7 +773,9 @@ make train
 **Protocol:** Rank-64 RSLoRA (Rank-Stabilized LoRA) over Qwen3-30B-A3B-MoE. Optimized for `sm_120` kernels and `bf16` precision. Docker stack defined in `deploy/docker/`.
 
 ### Stage 5 — Quality Gate (`src/audit/`)
-**Engine:** `model_evaluator.py`
+**Engine:** `cli.py`
+
+> **Nota:** Tras la refactorización de spec 003, `model_evaluator.py` fue dividido en submódulos de responsabilidad única: `config.py`, `gap_generator.py`, `exam_builder.py`, `judge.py`, `scorecard.py`, `report_writer.py` y `cli.py` (punto de entrada).
 
 Automated dual-inference evaluation pipeline that acts as a **mandatory gate** between training and weight consolidation. The evaluator compares the base model (control) against the LoRA adapter (trained) on a stratified sample from the training dataset.
 
@@ -785,25 +795,25 @@ Automated dual-inference evaluation pipeline that acts as a **mandatory gate** b
 
 ```bash
 # Full pipeline (sample → baseline → adapter → score)
-python -m src.audit.model_evaluator full \
+python -m src.audit.cli full \
     --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \
     --base-model qwen3-30b-a3b-thinking-fp8 \
     --adapter-model platinum_adapter
 
 # Or step-by-step
-python -m src.audit.model_evaluator sample  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
-python -m src.audit.model_evaluator baseline --model qwen3-30b-a3b-thinking-fp8
-python -m src.audit.model_evaluator adapter  --model platinum_adapter
-python -m src.audit.model_evaluator score
+python -m src.audit.cli sample  --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
+python -m src.audit.cli baseline --model qwen3-30b-a3b-thinking-fp8
+python -m src.audit.cli adapter  --model platinum_adapter
+python -m src.audit.cli score
 ```
 
 #### Validate mode (token-efficient smoke test)
 
 Use `--validate` for a deterministic, low-cost check (sample size = 1). This is useful to verify wiring and prompts without incurring heavy inference costs.
-example 
+example
 
 ```bash
-python -m src.audit.model_evaluator full \
+python -m src.audit.cli full \
   --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \
   --base-model qwen3-30b-a3b-thinking-fp8 \
   --adapter-model platinum_adapter \
@@ -933,11 +943,11 @@ Output artefacts (all written to `--report-dir`):
 
 ## Technical Implementation of the Synthesis Loop
 
-The Synthesis Loop implemented in `production_v11.py` serves as the core of the synthesis and curation pipeline. The process iterates over source files, applies chunking preprocessing, and generates training trajectories via calls to the remote model client; the `system_prompt` injects both the `MASTER_GUIDE` and the `TECHNICAL_CHANGELOG` to force the agent to explicitly reason about temporal deltas (contrast between the old and the new version) before producing a write action.
+The Synthesis Loop implemented in `pipeline_runner.py` serves as the core of the synthesis and curation pipeline. The process iterates over source files, applies chunking preprocessing, and generates training trajectories via calls to the remote model client; the `system_prompt` injects both the `MASTER_GUIDE` and the `TECHNICAL_CHANGELOG` to force the agent to explicitly reason about temporal deltas (contrast between the old and the new version) before producing a write action.
 
-For code chunking the Python `ast` module is used: the `get_fragments` function parses content with `ast.parse`, extracts imports and top-level definitions (including `AsyncFunctionDef`) and constructs skeletons where bodies are replaced by placeholders. Each fragment is accompanied by metadata (`context`, `skeleton`, `original`, `virtual_filename`) that enable generating coherent implementations with the minimal necessary context.
+For code chunking the Python `ast` module is used: the `get_fragments` function (in `fragment_extractor.py`) parses content with `ast.parse`, extracts imports and top-level definitions (including `AsyncFunctionDef`) and constructs skeletons where bodies are replaced by placeholders. Each fragment is accompanied by metadata (`context`, `skeleton`, `original`, `virtual_filename`) that enable generating coherent implementations with the minimal necessary context.
 
-The integration of Qwen3 reasoning tags is implemented via a controlled hybrid format: the system requires the agent to place its reasoning in the `<think>` tag and the resulting action in `<write_action>` (or `<tool_call>` for compatibility with the gold-injection step). The `parse_raw_response` function robustly extracts the reasoning block and the final content; the logical density (`LDI`) is then validated and a retry loop (`MAX_RETRIES`) is applied before accepting the sample. This design ensures traceability between the architectural reasoning and the generated code, facilitating auditability and automated curation.
+The integration of Qwen3 reasoning tags is implemented via a controlled hybrid format: the system requires the agent to place its reasoning in the `<think>` tag and the resulting action in `<write_action>` (or `<tool_call>` for compatibility with the gold-injection step). The `parse_raw_response` function (in `pipeline_runner.py`) robustly extracts the reasoning block and the final content; the logical density (`LDI`) is then validated and a retry loop (`MAX_RETRIES`) is applied before accepting the sample. This design ensures traceability between the architectural reasoning and the generated code, facilitating auditability and automated curation.
 
 ---
 
@@ -977,8 +987,8 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 - [x] **Phase 2: Architecture.** Implementation of the modular 3-stage factory (Discovery to SFT) with NeMo Curator integration.
 - [x] **Phase 3: Data Synthesis.** Production of **67k+ high-density trajectories** using the V11 Diversified Engine (GI/GS Protocol).
 - [x] **Phase 4: Expert SFT.** Deep-scale training of Qwen3-30B-MoE using **RSLoRA** and **Selective Loss Masking** (sm_120 optimized).
-- [x] **Phase 5: Quality Gate.** Automated dual-inference evaluation (`src/audit/model_evaluator.py`) comparing base vs adapter on stratified samples.
-- [x] **Phase 5.5: Backtracking Alignment.** Self-correction & backtracking rewriting of `<think>` blocks (`src/curation/backtracking_rewriter.py`) to close the train/inference distribution gap.
+- [x] **Phase 5: Quality Gate.** Automated dual-inference evaluation (`src/audit/cli.py`) comparing base vs adapter on stratified samples.
+- [x] **Phase 5.5: Backtracking Alignment.** Self-correction & backtracking rewriting of `<think>` blocks (`src/curation/rewrite_engine.py`) to close the train/inference distribution gap.
 - [ ] **Phase 6: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
 
 ---
@@ -1014,13 +1024,16 @@ make test PYTHON=/path/to/python3.12
 
 ### Coverage Scope
 
-Coverage is measured over `src/audit` and `src/utils` (the well-tested utility modules).  
-`model_evaluator.py` and integration-bound modules are excluded from the threshold — they are tracked in [REFACTOR_TODO.md](REFACTOR_TODO.md).
+Coverage is measured over `src/audit`, `src/factory`, `src/curation`, `src/discovery` y `src/utils` (the well-tested modules).  
+Todos los módulos fueron refactorizados en spec 003 y cumplen con el requisito de cobertura ≥ 90%.
 
 ```bash
 # Equivalent to make coverage
 python -m pytest tests/ \
     --cov=src/audit \
+    --cov=src/factory \
+    --cov=src/curation \
+    --cov=src/discovery \
     --cov=src/utils \
     --cov-report=term-missing \
     --cov-fail-under=90
