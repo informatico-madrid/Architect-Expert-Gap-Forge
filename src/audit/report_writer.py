@@ -162,23 +162,22 @@ def generate_report(
         "|----------|-------|---------------|-------|"
     )
     for sc in scorecards:
-        # Extract fields from ScoreCard - handle both old and new formats
+        # Extract fields from ScoreCard - use direct fields (not dimensions dict)
         sample_id = sc.sample_id
         short_id = sample_id[-12:] if len(sample_id) > 12 else sample_id
 
-        # Try to get dimension values or use defaults
-        dimensions = getattr(sc, "dimensions", {})
-        ha_modernity = dimensions.get("ha_modernity", 0.0)
-        reasoning_depth = dimensions.get("reasoning_depth", 0.0)
-        functionality = dimensions.get("functionality", 0.0)
-        completeness = dimensions.get("completeness", 0.0)
-        style = dimensions.get("style", 0.0)
+        # Get dimension values directly from ScoreCard fields
+        ha_modernity = sc.ha_modernity
+        reasoning_depth = sc.reasoning_depth
+        functionality = sc.functionality
+        completeness = sc.completeness
+        style = sc.style
 
         # Fragment name from notes or other available field
         fragment_name = sc.notes[0] if sc.notes else "—"
 
         w(
-            f"| {short_id} | {sc.dimensions.get('example_type', 'unknown') if dimensions else 'unknown'} | {fragment_name[:25]} "
+            f"| {short_id} | {sc.example_type} | {fragment_name[:25]} "
             f"| {ha_modernity:.2f} | {reasoning_depth:.2f} "
             f"| {functionality:.2f} | {completeness:.2f} "
             f"| {style:.2f} | **{sc.composite_score:.3f}** "
