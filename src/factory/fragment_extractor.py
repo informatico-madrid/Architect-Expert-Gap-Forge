@@ -110,6 +110,18 @@ def parse_bundle(txt_content: str) -> Dict:
                     key, _, val = line.partition(":")
                     result["arch"][key.strip()] = val.strip()
 
+    # T034: Generic section discovery loop — capture unknown sections as extra_<name>
+    # Known sections: ARCH_HEADER, MODULE_MAP, GOVERNANCE_HEADER (already parsed above)
+    # The \n--- sentinel prevents --- FILE: fragment bodies from leaking into extra_* keys
+    KNOWN_SECTIONS = {"ARCH_HEADER", "MODULE_MAP", "GOVERNANCE_HEADER"}
+    generic_sections = re.findall(
+        r"\[([A-Z_]+)\](.*?)(?=\n\[|\n---|$)", txt_content, re.DOTALL
+    )
+    for section_name, section_content in generic_sections:
+        if section_name not in KNOWN_SECTIONS:
+            # Store unknown sections as extra_<name> keys in result dict
+            result[f"extra_{section_name.lower()}"] = section_content.strip()
+
     # File chunks after the header section
     parts = re.split(r"--- FILE: (.*?) ---\n", txt_content)
     for i in range(1, len(parts), 2):
