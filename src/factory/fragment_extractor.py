@@ -21,10 +21,11 @@ No import-time side effects.
 """
 
 import ast
+import hashlib
 import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from src.schemas.common import FragmentTypedDict
 from src.utils.extractors.base import ParseError
@@ -110,6 +111,18 @@ def parse_bundle(txt_content: str) -> Dict:
                     key, _, val = line.partition(":")
                     result["arch"][key.strip()] = val.strip()
 
+    # T034: Generic section discovery loop — capture unknown sections as extra_<name>
+    # Known sections: ARCH_HEADER, MODULE_MAP, GOVERNANCE_HEADER (already parsed above)
+    # The \n--- sentinel prevents --- FILE: fragment bodies from leaking into extra_* keys
+    KNOWN_SECTIONS = {"ARCH_HEADER", "MODULE_MAP", "GOVERNANCE_HEADER"}
+    generic_sections = re.findall(
+        r"\[([A-Z_]+)\](.*?)(?=\n\[|\n---|$)", txt_content, re.DOTALL
+    )
+    for section_name, section_content in generic_sections:
+        if section_name not in KNOWN_SECTIONS:
+            # Store unknown sections as extra_<name> keys in result dict
+            result[f"extra_{section_name.lower()}"] = section_content.strip()
+
     # File chunks after the header section
     parts = re.split(r"--- FILE: (.*?) ---\n", txt_content)
     for i in range(1, len(parts), 2):
@@ -175,11 +188,113 @@ def _ast_fragment_list(
     return frags
 
 
+def _php_fragment_list(
+    logic_fname: str,
+    logic_code: str,
+    context_str: str,
+    extra_fields: Dict,
+) -> List[FragmentTypedDict]:
+    """Extract fragment dicts from a pre-divided PHP bundle.
+
+    PHP bundles arrive pre-divided (fragmentation done in Phase 3), so this
+    function returns exactly one element per --- FILE: chunk, no AST re-parsing.
+
+    legacy_signatures and implicit_deps arrive pre-populated in extra_fields
+    (via T035/T039).
+
+    Raises ParseError if logic_code is empty.
+    """
+    if not logic_code or not logic_code.strip():
+        raise ParseError(
+            file_path=Path(logic_fname),
+            line=1,
+            message="Empty logic_code: PHP bundle has no content",
+        )
+
+    # PHP bundles are pre-fragmented by Phase 3 - return one element per chunk
+    # The fragment name comes from the filename stem, content is as-is
+    fragment_name = Path(logic_fname).stem
+
+    return [
+        {
+            **extra_fields,
+            "name": fragment_name,
+            "skeleton": logic_code,
+            "original": logic_code,
+            "context": context_str,
+        }
+    ]
+
+
+def resolve_preamble_ref(
+    arch: dict,
+    bundle_cache: dict[str, str],
+) -> str:
+    """
+    Resolve a PREAMBLE_REF SHA-256 hash back to its preamble content (T072 / FR-022 / R-011).
+
+    Reads ``arch.get("PREAMBLE_REF", "")`` (64-char hex SHA-256).  If set,
+    reverses the hash by scanning ``bundle_cache`` values for one whose SHA-256
+    digest matches.  If found and the content is large (token proxy:
+    ``len(content) // 4 > 800``), truncates to first ``800 * 4 = 3200`` chars.
+
+    Args:
+        arch: Parsed ARCH_HEADER dict (from ``parse_bundle``).
+        bundle_cache: Dict mapping bundle keys to raw preamble/bootstrap content.
+
+    Returns:
+        Preamble content string (possibly truncated), or ``""`` when
+        PREAMBLE_REF is absent or the hash cannot be resolved.
+
+    Examples:
+        >>> import hashlib
+        >>> content = "<?php define('VERSION', '2.3');\\n"
+        >>> h = hashlib.sha256(content.encode()).hexdigest()
+        >>> arch = {"PREAMBLE_REF": h}
+        >>> resolve_preamble_ref(arch, {h: content})
+        "<?php define('VERSION', '2.3');\\n"
+
+        >>> resolve_preamble_ref({"PREAMBLE_REF": "deadbeef"}, {})
+        ''
+
+        >>> resolve_preamble_ref({}, {})
+        ''
+    """
+    preamble_ref = arch.get("PREAMBLE_REF", "")
+    if not preamble_ref or len(preamble_ref) != 64:
+        return ""
+
+    # Build reverse-lookup: sha256(value) → value
+    reverse_map = {
+        hashlib.sha256(v.encode()).hexdigest(): v
+        for v in bundle_cache.values()
+    }
+
+    content = reverse_map.get(preamble_ref, "")
+    if not content:
+        return ""
+
+    # Truncate oversized preambles (token proxy: 4 chars ≈ 1 token, cap at 800 tokens)
+    _MAX_TOKENS = 800
+    if len(content) // 4 > _MAX_TOKENS:
+        content = content[:_MAX_TOKENS * 4]
+
+    return content
+
+
+# Extension Mapper: dispatch by file extension to appropriate fragmenter
+_EXTENSION_FRAGMENTERS: Dict[str, Callable[..., List[FragmentTypedDict]]] = {
+    ".py": _ast_fragment_list,
+    ".php": _php_fragment_list,
+}
+
+
 def get_v2_fragments(
     bundle: Dict,
     blueprint_cache: Dict[str, str],
     allowed_extensions: Optional[set] = None,
     governance_cache: Optional[Dict[str, str]] = None,
+    bundle_cache: Optional[Dict[str, str]] = None,
 ) -> List[FragmentTypedDict]:
     """Generate training-ready fragment dicts from a V2 parse_bundle result.
 
@@ -190,6 +305,8 @@ def get_v2_fragments(
     """
     if governance_cache is None:
         governance_cache = {}
+    if bundle_cache is None:
+        bundle_cache = {}
 
     btype = bundle["type"]
     if btype in ("MODULE_BLUEPRINT", "GOVERNANCE_RULES"):
@@ -201,6 +318,12 @@ def get_v2_fragments(
     blueprint_content = blueprint_cache.get(module_name, "")
     governance_content = governance_cache.get(repo_prefix, "")
     local_imports_raw = arch.get("LOCAL_IMPORTS", "[]")
+
+    # T035: inject extra_legacy_signatures for Teacher prompt ${legacy_signatures}
+    legacy_signatures_content = bundle.get("extra_legacy_signatures", "")
+
+    # T072: resolve PREAMBLE_REF → preamble content for ${preamble} injection
+    preamble_content = resolve_preamble_ref(arch, bundle_cache)
 
     def _vname(fname: str) -> str:
         return f"{module_name}_{fname}" if module_name else fname
@@ -235,7 +358,16 @@ def get_v2_fragments(
             "local_imports": local_imports_raw,
             "module_name": module_name,
             "governance": governance_content,
+            "legacy_signatures": legacy_signatures_content,
+            "preamble": preamble_content,
         }
+
+        # Extension Mapper dispatch
+        suffix = Path(logic_fname).suffix.lower()
+        fragmenter = _EXTENSION_FRAGMENTERS.get(suffix)
+        if fragmenter:
+            return fragmenter(logic_fname, logic_code, bundle["context"], extra)
+        # Fallback to AST for unknown extensions
         return _ast_fragment_list(logic_fname, logic_code, bundle["context"], extra)
 
     if btype == "LOGIC_ONLY":
@@ -248,7 +380,24 @@ def get_v2_fragments(
             if ext and ext not in allowed_extensions:
                 return []
 
-        # Re-use existing get_fragments for all subtypes (Python/jinja/yaml)
+        # Extension Mapper dispatch - use specialized fragmenter if available
+        suffix = Path(logic_fname).suffix.lower()
+        fragmenter = _EXTENSION_FRAGMENTERS.get(suffix)
+        if fragmenter:
+            extra = {
+                "type": "php" if suffix == ".php" else "python",
+                "subtype": "logic_only",
+                "virtual_filename": _vname(logic_fname),
+                "blueprint": blueprint_content,
+                "local_imports": local_imports_raw,
+                "module_name": module_name,
+                "governance": governance_content,
+                "legacy_signatures": legacy_signatures_content,
+                "preamble": preamble_content,
+            }
+            return fragmenter(logic_fname, logic_code, bundle["context"], extra)
+
+        # Fallback: Re-use existing get_fragments for all subtypes (Python/jinja/yaml)
         base_frags = get_fragments(logic_fname, logic_code, allowed_extensions=None)
         for f in base_frags:
             f["virtual_filename"] = _vname(f["virtual_filename"])

@@ -16,6 +16,9 @@ import asyncio
 import json
 import logging
 import re
+import shutil
+import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -67,6 +70,106 @@ from src.factory.checkpoint import (
 # ======================================================================
 
 logger = logging.getLogger(__name__)
+
+# ======================================================================
+# PHP VALIDATION JUDGE — Level 1 (T063)
+# ======================================================================
+
+_PHP_BINARY: Optional[str] = shutil.which("php")
+_REQUIRED_SECTIONS = frozenset(["[DEBT_DIAGNOSTIC]", "[MODERN_PROPOSAL]", "[MAPPING_LOGIC]"])
+_PHP_CODE_BLOCK_RE = re.compile(r"```php\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+
+
+def validate_php_output(
+    generated_content: str,
+    frag: Dict[str, Any],
+    failures_log: Path,
+) -> List[str]:
+    """ValidationJudge Level 1 for PHP legacy output.
+
+    Performs two checks:
+    1. Structural: asserts presence of [DEBT_DIAGNOSTIC], [MODERN_PROPOSAL],
+       [MAPPING_LOGIC] section headers.
+    2. Syntax lint: runs ``php -l`` on each ```php ... ``` block found in
+       the MODERN_PROPOSAL section (skipped gracefully if ``php`` binary
+       is unavailable).
+
+    Failures are appended to *failures_log* as JSON-Lines.
+
+    Args:
+        generated_content: Raw LLM output text.
+        frag: Fragment dict (for logging context).
+        failures_log: Path to ``validation_failures.jsonl`` log file.
+
+    Returns:
+        List of failure reason strings (empty → validation passed).
+    """
+    failures: List[str] = []
+
+    # --- Structural check ---
+    for section in _REQUIRED_SECTIONS:
+        if section not in generated_content:
+            failures.append(f"missing_section:{section}")
+
+    # --- PHP syntax lint ---
+    if _PHP_BINARY:
+        php_blocks = _PHP_CODE_BLOCK_RE.findall(generated_content)
+        for idx, block in enumerate(php_blocks):
+            tmp_path: Optional[str] = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w",
+                    suffix=".php",
+                    delete=False,
+                    encoding="utf-8",
+                ) as tmp:
+                    tmp_path = tmp.name
+                    # Ensure valid PHP opening tag
+                    if not block.lstrip().startswith("<?"):
+                        tmp.write("<?php\n")
+                    tmp.write(block)
+                result = subprocess.run(
+                    [_PHP_BINARY, "-l", tmp_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=3,
+                )
+                if result.returncode != 0:
+                    stderr = (result.stderr or result.stdout).strip()
+                    failures.append(f"php_syntax_block_{idx}:{stderr[:200]}")
+            except subprocess.TimeoutExpired:
+                logger.debug("php -l timed out on block %d for %s", idx, frag.get("name"))
+            except Exception as exc:
+                logger.debug("php lint error on block %d: %s", idx, exc)
+            finally:
+                if tmp_path:
+                    try:
+                        Path(tmp_path).unlink(missing_ok=True)
+                    except Exception:
+                        pass
+    else:
+        logger.debug("PHP binary not found — skipping syntax lint for %s", frag.get("name"))
+
+    # --- Log failures ---
+    if failures:
+        try:
+            failures_log.parent.mkdir(parents=True, exist_ok=True)
+            with failures_log.open("a", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps(
+                        {
+                            "fragment": frag.get("name", ""),
+                            "virtual_filename": frag.get("virtual_filename", ""),
+                            "failures": failures,
+                        }
+                    )
+                    + "\n"
+                )
+        except OSError as exc:
+            logger.warning("Could not write to validation_failures.jsonl: %s", exc)
+
+    return failures
+
 
 # ======================================================================
 # THINK FILTER - LAZY LOADING
@@ -330,6 +433,13 @@ async def generate_sample_async(
                 poison_patterns = post_validate_output(
                     generated_code, example_type, frag.get("subtype", "code")
                 )
+
+                # === PHP VALIDATION JUDGE — Level 1 (T063) ===
+                if frag.get("type") == "php":
+                    _failures_log = OUTPUT_DIR / "validation_failures.jsonl"
+                    php_failures = validate_php_output(generated_code, frag, _failures_log)
+                    if php_failures:
+                        poison_patterns = list(poison_patterns) + [f"php_validation:{r}" for r in php_failures]
 
                 # === CONDITIONAL GOLD INJECTION ===
                 # If fragment has legacy patterns, do NOT inject gold

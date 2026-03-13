@@ -114,6 +114,10 @@ class ProcessingConfig(BaseModel):
         default=None,
         description="Manual overrides for module discovery: {module_name: {enabled, path, anchor_type}}",
     )
+    sc001_timeout_s: float = Field(
+        default=5.0,
+        description="SC-001 timeout in seconds for PHP processing benchmark (AMD Threadripper baseline; override for non-reference hardware)",
+    )
 
     @property
     def final_context_prefix(self) -> str:
@@ -246,6 +250,8 @@ class RepoProcessor:
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
         """Discover modules using the configured strategy."""
+        if self.cfg.module_discovery_strategy == "directory_scan":
+            return self._discover_modules_directory_scan(root)
         return discover_modules(
             root=root,
             strategy=self.cfg.module_discovery_strategy,
@@ -255,6 +261,45 @@ class RepoProcessor:
             module_overrides=self.cfg.module_overrides,
             build_module_func=self._build_module,
         )
+
+    def _discover_modules_directory_scan(self, root: Path) -> List[Module]:
+        """Discover modules by scanning recursively for PHP files (directory_scan strategy).
+
+        Scans root with Path.rglob("*.php"), excludes vendor/, node_modules/,
+        tests/, and cache/ directories, then groups files by parent directory.
+        Each directory containing at least one .php file becomes a module.
+
+        Args:
+            root: Repository root directory to scan.
+
+        Returns:
+            List of Module instances for each directory containing PHP files.
+        """
+        _EXCLUDE_DIRS = {"vendor", "node_modules", "tests", "cache"}
+
+        # Collect all PHP files, excluding known non-source dirs
+        php_files: list[Path] = []
+        for php_file in root.rglob("*.php"):
+            # Exclude by checking any path component against _EXCLUDE_DIRS
+            if not any(part in _EXCLUDE_DIRS for part in php_file.parts):
+                php_files.append(php_file)
+
+        # Group files by parent directory (each dir → one module)
+        dir_to_files: dict[Path, list[Path]] = {}
+        for php_file in php_files:
+            parent = php_file.parent
+            dir_to_files.setdefault(parent, []).append(php_file)
+
+        modules: List[Module] = []
+        for mod_dir, files in dir_to_files.items():
+            try:
+                module = self._build_module(mod_dir, anchor_type="directory_scan")
+                modules.append(module)
+            except Exception as exc:
+                logger.warning("Could not build module for %s: %s", mod_dir, exc)
+
+        logger.info("directory_scan: found %d module directories in %s", len(modules), root)
+        return modules
 
     def _build_module(
         self, mod_dir: Path, anchor_type: str, manifest: Optional[dict] = None

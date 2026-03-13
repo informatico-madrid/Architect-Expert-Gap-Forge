@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
 """
 Memory cache reset utilities for pytest.
 
@@ -9,7 +12,7 @@ accumulate memory between pytest executions in the Ralph loop.
 from __future__ import annotations
 
 import sys
-from typing import Any, Dict
+from typing import Dict
 
 
 def reset_all_caches() -> Dict[str, bool]:
@@ -137,7 +140,6 @@ def reset_all_caches() -> Dict[str, bool]:
     
     # 9. Reset InferenceRouter internal cache in src/audit/inference.py
     try:
-        from src.audit import inference
         # The InferenceRouter class has internal _cache, but we can't easily
         # reset instance caches without recreating the router. This is handled
         # by resetting _router above.

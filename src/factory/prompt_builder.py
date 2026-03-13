@@ -541,6 +541,104 @@ def build_user_theory(theory_frag: Dict) -> Tuple[str, str]:
     return user_msg, template["type"]
 
 
+# ======================================================================
+# PHP LEGACY: Doctrine + snippet loader (T062)
+# ======================================================================
+
+def load_php_legacy_doctrine(base_dir: Optional[Path] = None) -> str:
+    """Load the master Symfony hexagonal doctrine document for PHP legacy prompts.
+
+    Reads ``configs/stage_2_factory/taxonomy/php_legacy/master_symfony_hex.md``
+    relative to ``base_dir`` (defaults to CWD).
+
+    Args:
+        base_dir: Base directory to resolve the doctrine path from (default: cwd).
+
+    Returns:
+        Doctrine content string, or ``""`` if the file does not exist.
+    """
+    root = base_dir or Path.cwd()
+    doctrine_path = root / "configs" / "stage_2_factory" / "taxonomy" / "php_legacy" / "master_symfony_hex.md"
+    if not doctrine_path.exists():
+        logger.warning("PHP doctrine file not found: %s", doctrine_path)
+        return ""
+    return doctrine_path.read_text(encoding="utf-8", errors="ignore")
+
+
+def load_php_platform_snippet(platform: str, base_dir: Optional[Path] = None) -> str:
+    """Load the platform-specific snippet for PHP legacy prompts.
+
+    Reads ``configs/stage_2_factory/taxonomy/php_legacy/snippets/{platform}.md``
+    relative to ``base_dir`` (defaults to CWD).
+
+    Args:
+        platform: Platform name (e.g. ``"oscommerce"``, ``"wordpress"``).
+        base_dir: Base directory to resolve the snippet path from (default: cwd).
+
+    Returns:
+        Platform snippet content string, or ``""`` if the file does not exist.
+    """
+    root = base_dir or Path.cwd()
+    snippet_path = root / "configs" / "stage_2_factory" / "taxonomy" / "php_legacy" / "snippets" / f"{platform}.md"
+    if not snippet_path.exists():
+        logger.warning("PHP platform snippet not found for '%s': %s", platform, snippet_path)
+        # Fall back to generic_php
+        fallback = root / "configs" / "stage_2_factory" / "taxonomy" / "php_legacy" / "snippets" / "generic_php.md"
+        if fallback.exists():
+            return fallback.read_text(encoding="utf-8", errors="ignore")
+        return ""
+    return snippet_path.read_text(encoding="utf-8", errors="ignore")
+
+
+def build_system_php_legacy(
+    arch: Dict,
+    blueprint: str = "",
+    base_dir: Optional[Path] = None,
+) -> str:
+    """Build system prompt for a PHP legacy LOGIC_ONLY or FUNCTIONAL_UNIT bundle.
+
+    Activated when ``arch["LANGUAGE"] == "php"``.  Loads:
+    - ``master_symfony_hex.md`` as ``${doctrine}``
+    - ``snippets/{platform}.md`` as ``${platform_snippet}`` (PLATFORM field)
+
+    Then renders ``system.php_legacy.context`` template from ``taxonomy.yaml``.
+
+    Args:
+        arch: Parsed ARCH_HEADER dict (from ``parse_bundle``).
+        blueprint: Optional module blueprint context string.
+        base_dir: Base directory for resolving taxonomy files (default: cwd).
+
+    Returns:
+        System prompt string, or empty string if LANGUAGE != "php".
+    """
+    if arch.get("LANGUAGE", "").lower() != "php":
+        return ""
+
+    doctrine = load_php_legacy_doctrine(base_dir)
+    platform = arch.get("PLATFORM", "generic_php")
+    platform_snippet = load_php_platform_snippet(platform, base_dir)
+
+    # Render system prompt using taxonomy.yaml template
+    try:
+        template_str = _prompt("system.php_legacy.context")
+        return _render(
+            template_str,
+            doctrine=doctrine,
+            platform_snippet=platform_snippet,
+            blueprint=blueprint,
+            platform=platform,
+            legacy_action=arch.get("LEGACY_ACTION", ""),
+        )
+    except Exception as exc:
+        logger.warning("Could not render PHP legacy system prompt: %s", exc)
+        # Fallback: return doctrine + snippet inline
+        return (
+            f"# PHP Legacy Modernization Expert\n\n"
+            f"## Symfony Hexagonal Architecture\n{doctrine}\n\n"
+            f"## Platform Anti-Patterns ({platform})\n{platform_snippet}"
+        )
+
+
 __all__ = [
     "build_system_nominal",
     "build_system_contrast",
@@ -564,6 +662,9 @@ __all__ = [
     "load_taxonomy",
     "post_validate_output",
     "set_test_state",
+    "load_php_legacy_doctrine",
+    "load_php_platform_snippet",
+    "build_system_php_legacy",
     "_render",
     "_prompt",
 ]
