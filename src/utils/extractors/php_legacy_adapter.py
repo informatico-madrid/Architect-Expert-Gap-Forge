@@ -74,6 +74,7 @@ def _process_php_fragment_worker(args: tuple) -> dict:
                     "preamble_ref": f.preamble_ref,
                     "dependencies": f.dependencies,
                     "platform_hints": f.platform_hints,
+                    "signatures": f.signatures,  # Include signatures for LEGACY_SIGNATURES section
                 }
                 for f in fragments
             ],
@@ -370,6 +371,7 @@ class PhpLegacyAdapter:
                         preamble_ref=frag_data["preamble_ref"],
                         dependencies=frag_data.get("dependencies", ()),
                         platform_hints=frag_data.get("platform_hints", ()),
+                        signatures=frag_data.get("signatures", ()),  # Pass signatures to bundle
                     )
                     output_path = write_bundle(fragment, output_dir)
                     written_files.append(output_path)
@@ -381,8 +383,148 @@ class PhpLegacyAdapter:
         with ThreadPoolExecutor(max_workers=self._write_workers) as executor:
             list(executor.map(write_fragment_bundle, all_fragments))
 
+        # Stage 4: Build include graph and emit MODULE_BLUEPRINT bundles for hub files
+        logger.debug("Stage 4: Building include graph and emitting MODULE_BLUEPRINT bundles")
+        blueprint_files = self._emit_hub_blueprints(file_contents, all_fragments, output_dir)
+        written_files.extend(blueprint_files)
+
         logger.info("Processing complete: %d bundles written to %s", len(written_files), output_dir)
         return written_files
+
+    def _emit_hub_blueprints(
+        self,
+        file_contents: List[tuple[Path, str]],
+        all_fragments: List[tuple[Path, dict]],
+        output_dir: Path,
+    ) -> List[Path]:
+        """Build include graph and emit MODULE_BLUEPRINT bundles for hub files.
+
+        This method identifies files that are included by many other files (hub files)
+        and emits MODULE_BLUEPRINT bundles documenting their role in the architecture.
+
+        Args:
+            file_contents: List of (file_path, content) tuples from Stage 1
+            all_fragments: List of processed fragment results from Stage 2
+            output_dir: Directory to write blueprint bundles to
+
+        Returns:
+            List of paths to created blueprint bundle files
+        """
+        from src.discovery.php_include_graph import (
+            build_include_graph,
+            get_hub_files,
+        )
+
+        # Build the include graph from processed files
+        file_map = {path: content for path, content in file_contents}
+        graph = build_include_graph(file_map)
+
+        # Get hub files (included by 5 or more other files)
+        hub_files = get_hub_files(graph, threshold=5)
+
+        if not hub_files:
+            logger.debug("No hub files found in repository")
+            return []
+
+        logger.info("Found %d hub files, emitting MODULE_BLUEPRINT bundles", len(hub_files))
+
+        blueprint_files: List[Path] = []
+        for hub_file in hub_files:
+            # Get files that include this hub (reverse neighbors)
+            reverse_neighbors = list(graph.reverse_neighbors(hub_file))
+            in_degree = graph.get_in_degree(hub_file)
+
+            # Create the MODULE_BLUEPRINT bundle content
+            blueprint_path = self._write_module_blueprint(
+                hub_file=hub_file,
+                including_files=reverse_neighbors,
+                in_degree=in_degree,
+                output_dir=output_dir,
+            )
+            if blueprint_path:
+                blueprint_files.append(blueprint_path)
+
+        return blueprint_files
+
+    def _write_module_blueprint(
+        self,
+        hub_file: str,
+        including_files: List[str],
+        in_degree: int,
+        output_dir: Path,
+    ) -> Optional[Path]:
+        """Write a MODULE_BLUEPRINT bundle for a hub file.
+
+        Args:
+            hub_file: Path to the hub file
+            including_files: List of files that include this hub
+            in_degree: Number of files that include this hub
+            output_dir: Directory to write the bundle to
+
+        Returns:
+            Path to the written blueprint file, or None if write fails
+        """
+        import hashlib
+
+        # Create a safe filename from the hub path
+        hub_path = Path(hub_file)
+        safe_name = hub_path.stem.replace(" ", "_").replace("/", "_").replace("\\", "_")
+        entity_id = f"{safe_name}_blueprint"
+
+        # Build the MODULE_BLUEPRINT content
+        lines: List[str] = []
+
+        # Header
+        lines.append("=== LOGICAL ENTITY: {} ===".format(entity_id))
+        lines.append("Context: PHP Legacy Repository Knowledge Base")
+        lines.append("Type: MODULE_BLUEPRINT")
+        lines.append("")
+
+        # MODULE_MAP section
+        lines.append("[MODULE_MAP]")
+        lines.append("MODULE: {}".format(hub_file))
+        lines.append("ANCHOR: hub_file")
+        lines.append("ROLE: central_include")
+        lines.append("IN_DEGREE: {}".format(in_degree))
+        lines.append("")
+
+        # DEPENDENCIES - files that include this hub
+        lines.append("[INCLUDED_BY]")
+        for including_file in sorted(including_files):
+            lines.append("  - {}".format(including_file))
+        lines.append("")
+
+        # Add summary count
+        lines.append("[SUMMARY]")
+        lines.append("Total files including this hub: {}".format(len(including_files)))
+        lines.append("")
+
+        # Calculate a hash for the preamble reference (empty for blueprints)
+        preamble_hash = hashlib.sha256(hub_file.encode()).hexdigest()
+
+        # Add minimal ARCH_HEADER for compatibility with Stage 2
+        lines.append("[ARCH_HEADER]")
+        lines.append("MODULE: {}".format(hub_file))
+        lines.append("FILE_ROLE: hub")
+        lines.append("FRAGMENT_TYPE: MODULE_BLUEPRINT")
+        lines.append("LANGUAGE: php")
+        lines.append("PLATFORM: php_legacy")
+        lines.append("DEPENDENCIES: {}".format(", ".join(sorted(including_files)) if including_files else "none"))
+        lines.append("NEIGHBORS: {}".format(len(including_files)))
+        lines.append("PREAMBLE_REF: {}".format(preamble_hash))
+        lines.append("")
+
+        content = "\n".join(lines)
+
+        # Write the file
+        try:
+            output_path = output_dir / "{}.txt".format(entity_id)
+            output_path.write_text(content, encoding="utf-8")
+            logger.debug("Wrote MODULE_BLUEPRINT: %s", output_path)
+            return output_path
+        except Exception as e:
+            logger.warning("Failed to write MODULE_BLUEPRINT for %s: %s", hub_file, e)
+            return None
 
     def _find_php_files(self, repo_path: Path) -> List[Path]:
         """Find all PHP files in a repository.
