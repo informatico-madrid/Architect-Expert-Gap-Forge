@@ -349,3 +349,91 @@ def mock_inference_client() -> MagicMock:
     client.generate.return_value = '{"result": "ok"}'
     client.generate_with_retry.return_value = '{"result": "ok"}'
     return client
+
+
+# =============================================================================
+# ADDITIONAL TEST FIXTURES - Use these for creating tests
+# =============================================================================
+
+
+@pytest.fixture
+def sample_records() -> List[SampleRecord]:
+    """A list of SampleRecords for batch testing."""
+    types = ["nominal", "contrast", "error_recovery", "theory"]
+    records: List[SampleRecord] = []
+    for i, et in enumerate(types):
+        for j in range(3):
+            records.append(
+                make_sample(
+                    id=f"{et}-{j:03d}",
+                    example_type=et,
+                    ldi=0.5 + j * 0.1,
+                )
+            )
+    return records
+
+
+@pytest.fixture
+def empty_sample_record() -> SampleRecord:
+    """A SampleRecord with minimal/empty fields."""
+    return SampleRecord(
+        id="empty-001",
+        example_type="nominal",
+        evol_difficulty="easy",
+        fragment_name="empty",
+        source_file="test.py",
+        user_prompt="",
+        reference_response="",
+        gold_injected=False,
+        ldi=0.0,
+        reference_standards="",
+        gap_analysis="",
+    )
+
+
+@pytest.fixture
+def invalid_sample_record() -> dict:
+    """An invalid sample record (dict format) for error testing."""
+    return {
+        "id": "invalid-001",
+        "metadata": {
+            "example_type": "invalid_type",
+            "evol_difficulty": "unknown",
+            "fragment_name": "",
+            "source_file": "",
+            "gold_injected": False,
+            "ldi": 1.5,  # Invalid: > 1.0
+            "reference_standards": "",
+            "gap_analysis": "",
+        },
+        "conversation": [],
+    }
+
+
+@pytest.fixture
+def mock_api_response_success() -> dict:
+    """A successful API response for mocking."""
+    return {
+        "status": "success",
+        "data": {"result": "expected_value"},
+        "message": "Operation completed",
+    }
+
+
+@pytest.fixture
+def mock_api_response_error() -> dict:
+    """An error API response for mocking."""
+    return {
+        "status": "error",
+        "error": {"code": 500, "message": "Internal server error"},
+    }
+
+
+@pytest.fixture
+def temp_json_file(tmp_path: Path) -> Path:
+    """Create a temporary JSON file for testing file I/O."""
+    import json
+    data = {"key": "value", "number": 42}
+    file_path = tmp_path / "test.json"
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    return file_path
