@@ -417,3 +417,118 @@ def temp_json_file(tmp_path: Path) -> Path:
     file_path = tmp_path / "test.json"
     file_path.write_text(json.dumps(data), encoding="utf-8")
     return file_path
+
+
+# =============================================================================
+# PHP LEGACY DRIVER FIXTURES
+# =============================================================================
+
+PHP_LEGACY_FIXTURES_DIR = Path(__file__).parent / "fixtures" / "php_legacy"
+
+
+def pytest_configure(config):
+    """Register custom pytest marks for PHP legacy driver tests."""
+    config.addinivalue_line("markers", "php_legacy: marks tests for PHP legacy driver functionality")
+    config.addinivalue_line("markers", "php_legacy_unit: marks unit tests for PHP legacy driver")
+    config.addinivalue_line("markers", "php_legacy_integration: marks integration tests for PHP legacy driver")
+
+
+@pytest.fixture
+def php_legacy_fixtures_dir() -> Path:
+    """Return the path to the PHP legacy fixtures directory."""
+    return PHP_LEGACY_FIXTURES_DIR
+
+
+@pytest.fixture
+def php_legacy_sample_content() -> str:
+    """Load a sample PHP content for testing fragment extraction.
+
+    This fixture provides a minimal PHP file with common legacy patterns
+    including functions, includes, and database calls.
+    """
+    return """<?php
+// Sample PHP file for testing
+global $languages_id, $db;
+
+include(DIR_WS_INCLUDES . 'application_top.php');
+
+function tep_db_query($query) {
+    return mysql_query($query);
+}
+
+function get_categories() {
+    global $db;
+    $query = "SELECT * FROM categories WHERE categories_id = '" . $languages_id . "'";
+    return tep_db_query($query);
+}
+
+// Switch case block
+switch ($action) {
+    case 'edit':
+        tep_redirect(FILENAME_EDIT);
+        break;
+    case 'delete':
+        $_SESSION['customer_id'] = $customer_id;
+        break;
+}
+?>"""
+
+
+# Minimal fallback content used when specific fixtures don't exist yet
+PHP_LEGACY_FALLBACK_CONTENT = """<?php
+// Sample PHP file for testing
+global $languages_id, $db;
+
+include(DIR_WS_INCLUDES . 'application_top.php');
+
+function tep_db_query($query) {
+    return mysql_query($query);
+}
+
+function get_categories() {
+    global $db;
+    $query = "SELECT * FROM categories WHERE categories_id = '" . $languages_id . "'";
+    return tep_db_query($query);
+}
+
+// Switch case block
+switch ($action) {
+    case 'edit':
+        tep_redirect(FILENAME_EDIT);
+        break;
+    case 'delete':
+        $_SESSION['customer_id'] = $customer_id;
+        break;
+}
+?>"""
+
+
+@pytest.fixture
+def php_legacy_oscommerce_fixture() -> str:
+    """Load the osCommerce categories fixture for integration tests."""
+    from tests.fixtures.php_legacy import load_php_fixture
+    try:
+        return load_php_fixture("oscommerce_categories.php")
+    except FileNotFoundError:
+        # Return minimal fixture if file not yet created (T002)
+        return PHP_LEGACY_FALLBACK_CONTENT
+
+
+@pytest.fixture
+def php_legacy_wordpress_fixture() -> str:
+    """Load the WordPress ajax actions fixture for integration tests."""
+    from tests.fixtures.php_legacy import load_php_fixture
+    try:
+        return load_php_fixture("wordpress_ajax_actions.php")
+    except FileNotFoundError:
+        return PHP_LEGACY_FALLBACK_CONTENT
+
+
+@pytest.fixture
+def php_legacy_zencart_fixture() -> str:
+    """Load the ZenCart customers fixture for integration tests."""
+    from tests.fixtures.php_legacy import load_php_fixture
+    try:
+        return load_php_fixture("zencart_customers.php")
+    except FileNotFoundError:
+        return PHP_LEGACY_FALLBACK_CONTENT
