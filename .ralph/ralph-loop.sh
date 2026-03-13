@@ -1197,14 +1197,8 @@ main() {
         worktree_tasks=""
         rel_spec=""
         if [[ "$WORKTREE_ENABLED" == "true" && -n "$WORKTREE_PATH" ]]; then
-            # derive relative path of spec_dir inside project
-            rel_spec=$(python3 - <<'PY'
-import os,sys
-proj=sys.argv[1]
-spec=sys.argv[2]
-print(os.path.relpath(spec, proj))
-PY
- "$PROJECT_DIR" "$spec_dir")
+            # derive relative path of spec_dir inside project (strip PROJECT_DIR prefix)
+            rel_spec="${spec_dir#${PROJECT_DIR}/}"
             worktree_tasks="$WORKTREE_PATH/$rel_spec/tasks.md"
             pre_wt_head=$(git -C "$WORKTREE_PATH" rev-parse --verify HEAD 2>/dev/null || echo "")
             pre_wt_status=$(git -C "$WORKTREE_PATH" status --porcelain 2>/dev/null || echo "")
