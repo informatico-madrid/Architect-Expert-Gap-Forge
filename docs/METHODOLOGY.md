@@ -66,7 +66,7 @@ To ensure maximum fidelity while allowing for the remediation of legacy technica
 ### 1.3. Configuration Staging & Governance
 A recent refactor introduced a **staged configuration tree** (stage_1_discovery → stage_2_factory → stage_3_curation → stage_4_training → inference) to decouple the discovery, generation, curation and training phases. Each stage contains copies of the necessary taxonomy, prompt templates and runtime settings; original files are retained for backwards compatibility.
 
-The scanner now emits **TIPO 5 GOVERNANCE_RULES bundles** for repository‑scoped files such as `CLAUDE.md`, `AGENTS.md` or `.cursorrules`. These bundles are cached during Pass 1 of the generator and injected as the final, highest‑authority system prompt (`system.python.governance_context`). This ensures that repo‑specific coding standards are enforced across all modules.
+The scanner now emits **governance_cache** bundles for repository‑scoped files such as `CLAUDE.md`, `AGENTS.md` or `.cursorrules`. These bundles are cached during Pass 1 of the generator and injected as the final, highest‑authority system prompt (`system.python.governance_context`). This ensures that repo‑specific coding standards are enforced across all modules.
 
 (The engine itself remains agnostic; the staged tree is simply a convenient way to organize inputs.)
 
