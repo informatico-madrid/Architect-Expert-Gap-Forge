@@ -5,7 +5,7 @@ ENV_FILE=deploy/.env
 # Python interpreter — override at call site: make test PYTHON=/path/to/python
 PYTHON ?= python
 
-.PHONY: up down shell logs preprocess train merge test coverage lint fmt
+.PHONY: up down shell logs preprocess train merge test coverage lint fmt check-headers
 
 up:
 	docker compose -f $(COMPOSE_FILE) --env-file $(ENV_FILE) up -d --remove-orphans trainer
@@ -60,3 +60,7 @@ lint:
 ## fmt: Auto-format with ruff (install separately: pip install ruff).
 fmt:
 	$(PYTHON) -m ruff format src/ tests/ 2>&1 || echo "[fmt] ruff not installed — skipping"
+
+## check-headers: Verify all Python files have required AEGF headers (Constitution §V).
+check-headers:
+	$(PYTHON) scripts/check_headers.py --check
