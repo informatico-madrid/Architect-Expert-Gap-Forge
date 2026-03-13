@@ -6,7 +6,7 @@
 
 ## Platform Detection
 
-- [ ] CHK001 — Are marker files for all 7 platforms explicitly listed with expected paths? [Completeness, Spec §FR-010]
+- [ ] CHK001 — Are marker files for all 8 platforms explicitly listed with expected paths? [Completeness, Spec §FR-010]
 - [ ] CHK002 — Is the detection algorithm specified: priority order, scoring mechanism, or first-match? [Clarity, Spec §FR-010]
 - [ ] CHK003 — Are requirements defined for repositories that match markers of multiple platforms simultaneously? [Edge Case, Spec §FR-010]
 - [ ] CHK004 — Is the `generic_php` fallback explicitly required when no platform markers are found? [Completeness, Spec §FR-009]
@@ -15,7 +15,7 @@
 
 ## Platform Profiles
 
-- [ ] CHK007 — Are the 7 named platforms (osCommerce, WordPress, ZenCart, Magento, CodeIgniter, Joomla, SuiteCRM) consistent across spec FR-009 and plan.md? [Consistency, Spec §FR-009]
+-- [ ] CHK007 — Are the canonical platform profiles consistent across spec and plan: `oscommerce`, `oscommerce_phoenix`, `wordpress`, `zencart`, `openmage`, `prestashop`, `codeigniter`, `suitecrm`? [Consistency, Spec §FR-009]
 - [ ] CHK008 — Is OpenMage listed in spec SC-007 but called Magento in FR-009 — are they the same profile? [Ambiguity, Spec §FR-009, §SC-007]
 - [ ] CHK009 — Are PrestaShop and PrestaShopCorp (two directories in multi_legacy/) covered by one profile or two? [Ambiguity, Gap]
 - [ ] CHK010 — Is the relationship between `gburton` directory in multi_legacy/ and a named platform profile defined? [Gap]
@@ -38,6 +38,6 @@
 
 ## Notes
 
-- SC-007 lists 7 specific repositories including OpenMage and SalesAgility but FR-009 lists different platform names (Magento, SuiteCRM) — mapping should be explicit
+- SC-007 lists 8 specific repositories (osCommerce, osCommerce Phoenix/gburton, WordPress, ZenCart, OpenMage, PrestaShop, CodeIgniter, SalesAgility/SuiteCRM) — FR-009 profile names now aligned: `openmage` (not Magento), `suitecrm` (maps to salesagility dir)
 - Plan.md lists `gburton` in multi_legacy/ directories but no profile matches this name
 - PrestaShop appears twice in multi_legacy/ (PrestaShop + PrestaShopCorp) — spec doesn't address this

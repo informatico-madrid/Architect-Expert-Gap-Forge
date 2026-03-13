@@ -20,9 +20,9 @@ Para PHP, `ast_tree` será `None` (no hay AST parser), `raw_content` contiene el
 
 ## R-002: Module Discovery Strategy para PHP
 
-**Question**: ¿Cómo descubre `processor.py` módulos en repositorios PHP legacy sin `manifest.json` ni `__init__.py`?
+**Question**: ¿Cómo descubre `metadata_enricher.py` (`RepoProcessor`) módulos en repositorios PHP legacy sin `manifest.json` ni `__init__.py`?
 
-**Decision**: Añadir nueva estrategia `"directory_scan"` en `ProcessingConfig.module_discovery_strategy` que escanea directorios recursivamente buscando archivos `.php`.
+**Decision**: Añadir nueva estrategia `"directory_scan"` en `ProcessingConfig.module_discovery_strategy` (en `src/discovery/metadata_enricher.py`) que escanea directorios recursivamente buscando archivos `.php`.
 
 **Rationale**: Las 4 estrategias existentes (`manifest`, `init`, `directory`, `manual_mapping`) dependen de artefactos Python:
 - `manifest`: busca `manifest.json` + `__init__.py`
@@ -65,17 +65,25 @@ def fast_brace_scan(source: str, open_pos: int) -> int:
             depth -= 1
             if depth == 0:
                 return i
-    return -1  # unmatched — caller marks fragment as DIRTY
+    return -1  # unmatched — caller aborts this fragment and logs
 ```
 
-**DECISION (rev-1): DIRTY fail-safe para brace-mismatch**:
-En archivos de 3000+ líneas, el 5% de fallos de brace-matching producen fragmentos truncados o mal delimitados que degradan silenciosamente el entrenamiento. Todo fragmento donde `fast_brace_scan()` retorne `-1` se marca con `fragment_type="DIRTY"` y se registra en `needs_manual_review.json`. El fragmento DIRTY no es descartado — se captura el rango best-effort para revisión humana:
+**DECISION (rev-2): Abort & Log para brace-mismatch**:
+En archivos de 3000+ líneas, el 5% de fallos de brace-matching producen fragmentos truncados o mal delimitados que degradan silenciosamente el entrenamiento. Cuando `fast_brace_scan()` retorna `-1`, **no se crea ningún `PhpFragment`**. En su lugar, se registra un record compacto en `needs_manual_review.json` y el fragmenter continúa al siguiente bloque extraíble. Esto previene que código sintácticamente inválido entre al corpus de entrenamiento.
 
 ```python
 if close_pos == -1:
-    fragment = PhpFragment(..., fragment_type="DIRTY")
-    manual_review_log.append({"file": path, "reason": "brace_mismatch", "start_line": start})
+    # Abort: no PhpFragment created — log and skip
+    manual_review_log.append({
+        "source_file": str(path),
+        "name": func_name,
+        "start_line": start,
+        "reason": "unmatched_brace",
+    })
+    continue  # skip to next extractable block
 ```
+
+El enum `fragment_type` mantiene exactamente 6 valores válidos: `function`, `class`, `switch_block`, `bootstrap`, `mixed_html`, `catchall`. No existe un tipo `DIRTY` — los fragmentos inválidos simplemente no se emiten.
 
 **Alternatives considered**:
 - `php-parser` via subprocess → rechazado (dependencia externa, latencia, falla en sintaxis rota)
@@ -87,7 +95,7 @@ if close_pos == -1:
 
 **Question**: ¿Cómo desacoplar `get_v2_fragments()` y `_ast_fragment_list()` del hardcode Python/AST?
 
-**Decision**: Extension Mapper dict en `production_v11.py`:
+**Decision**: Extension Mapper dict en `src/factory/fragment_extractor.py`:
 
 ```python
 _EXTENSION_FRAGMENTERS: dict[str, Callable[[str, str], list[dict]]] = {
@@ -100,7 +108,7 @@ _EXTENSION_FRAGMENTERS: dict[str, Callable[[str, str], list[dict]]] = {
 }
 ```
 
-Insertar en `get_v2_fragments()` (L1055-1140) para que `FUNCTIONAL_UNIT` route por extensión en vez de llamar directamente a `_ast_fragment_list()`.
+Insertar en `get_v2_fragments()` (en `src/factory/fragment_extractor.py`) para que `FUNCTIONAL_UNIT` route por extensión en vez de llamar directamente a `_ast_fragment_list()`.
 
 **Rationale**: El código actual en `get_v2_fragments()` llama `_ast_fragment_list()` incondicionalmente para `FUNCTIONAL_UNIT`. El Extension Mapper extiende sin romper — `.py` sigue usando `_ast_fragment_list()`, `.php` usa el nuevo `_php_fragment_list()`.
 
@@ -112,7 +120,7 @@ Insertar en `get_v2_fragments()` (L1055-1140) para que `FUNCTIONAL_UNIT` route p
 
 **Question**: ¿Cómo capturar `[LEGACY_SIGNATURES]` y futuras secciones custom sin hardcodear cada una?
 
-**Decision**: Añadir regex genérico post-parse en `parse_bundle()` (L935-990):
+**Decision**: Añadir regex genérico post-parse en `parse_bundle()` (en `src/factory/fragment_extractor.py`):
 
 ```python
 # Capturar TODAS las secciones [SECTION_NAME]
@@ -162,7 +170,7 @@ user:
       PLATFORM: ${platform}
 ```
 
-Templates se inyectan al sistema via `build_system_with_blueprint()` (L608-640) y `_prompt()` routing por profile.
+Templates se inyectan al sistema via `build_system_with_blueprint()` (en `src/factory/prompt_builder.py`) y `_prompt()` routing por profile.
 
 **Rationale**: La arquitectura de prompts existente usa `_prompt("system.python.base")` con dot-notation en YAML. Añadir `php_legacy` es extensión natural. El output de 3 secciones (DEBT_DIAGNOSTIC, MODERN_PROPOSAL, MAPPING_LOGIC) fue especificado por el usuario para orientar a Symfony hexagonal.
 
@@ -266,7 +274,7 @@ function tep_get_category_tree($parent_id = '0', $spacing = '', $exclude = '') {
 }
 ```
 
-Cada fixture ejerce 3-5 patterns clave de su plataforma en <100 líneas.
+Cada fixture ejerce 3-5 patterns clave de su plataforma en ≥150 líneas.
 
 **Rationale**: Los tests existentes del proyecto usan `tmp_path` con fixtures inline. Para PHP necesitamos archivos `.php` reales por el parsing regex multi-línea.
 
@@ -294,7 +302,7 @@ with ProcessPoolExecutor(max_workers=os.cpu_count()) as cpu_pool:
     futures = {cpu_pool.submit(process_php_file, path, content): path
                for path, content in raw_files.items()}
     for future in as_completed(futures):
-        result = future.result()  # PhpFragment list or DIRTY record
+        result = future.result()  # list[PhpFragment] (malformed blocks already aborted & logged)
         emit_bundle(result)
 ```
 

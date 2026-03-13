@@ -108,7 +108,7 @@ El driver reconoce patrones idiomáticos específicos de cada plataforma legacy:
 
 ### Functional Requirements
 
-- **FR-001**: El sistema DEBE implementar un adaptador `PhpLegacyAdapter` que cumpla el protocolo `ExtractorAdapter` existente, registrándose en el factory de adaptadores con el profile `php_legacy`.
+- **FR-001**: El sistema DEBE implementar un adaptador `PhpLegacyAdapter` que cumpla el protocolo `ExtractorAdapter` existente (en `src/utils/extractors/base.py`), registrándose en `_ADAPTER_REGISTRY` (en `src/utils/extractors/factory.py`) con el profile `php_legacy`.
 - **FR-002**: El sistema DEBE extraer fragmentos de código PHP de archivos `.php` utilizando patrones regex, sin depender de un parser AST de PHP.
 - **FR-003**: El sistema DEBE clasificar cada patrón detectado en exactamente una categoría semántica del enum `SIGNATURE_CATEGORY`: `PERSISTENCE_SMELL`, `STATE_POLLUTION`, `MODULE_LINK_SMELL`, `SECURITY_VULN`, `CONSTANT_POLLUTION`, o `MODERN_HYBRID`. La categoría `MODERN_HYBRID` captura usos de clases OOP, namespaces (`use`), y patrones modernos encontrados en código legacy híbrido (ej. `use OSC\OM\Registry` en osCommerce v4, clases con herencia en ZenCart reciente).
 - **FR-004**: El sistema DEBE generar bundles `.txt` con formato [ARCH_HEADER] compatible con el parser `parse_bundle()` de Stage 2, incluyendo MODULE, REPO_PREFIX, FILE_ROLE, FRAGMENT_TYPE, LOCAL_IMPORTS, DEPENDENCIES, NEIGHBORS, e IMPLICIT_DEPS. El parser `parse_bundle()` de Stage 2 DEBE ser actualizado para capturar secciones adicionales como `[LEGACY_SIGNATURES]` mediante un loop genérico de descubrimiento de secciones (`\[(\w+)\]`), en lugar del allowlist rígido actual.
@@ -117,12 +117,12 @@ El driver reconoce patrones idiomáticos específicos de cada plataforma legacy:
 - **FR-007**: El sistema DEBE detectar cadenas `include`/`require`/`include_once`/`require_once` y construir un grafo de dependencias entre archivos para el repositorio procesado.
 - **FR-008**: El sistema DEBE procesar archivos donde PHP está mezclado con HTML/JavaScript, extrayendo exclusivamente los bloques de lógica PHP.
 - **FR-009**: El sistema DEBE soportar perfiles de plataforma (osCommerce, osCommerce Phoenix, WordPress, ZenCart, OpenMage, PrestaShop, CodeIgniter, SuiteCRM) con patrones regex específicos de cada una, además de un perfil genérico `generic_php`. Joomla se excluye del MVP por ausencia de repositorio en `data/raw/multi_legacy/`.
-- **FR-010**: El sistema DEBE auto-detectar la plataforma de un repositorio basándose en marcadores de directorio y archivos canónicos (ej. `includes/configure.php` para osCommerce, `wp-config.php` para WordPress).
+- **FR-010**: El sistema DEBE auto-detectar la plataforma de un repositorio basándose en marcadores de directorio y archivos canónicos (ej. `includes/application_top.php` para osCommerce, `wp-config.php` para WordPress).
 - **FR-011**: El sistema DEBE aplicar chunking a archivos que excedan el tamaño máximo de fragmento, asegurando que cada chunk sea procesable dentro de la ventana de contexto del modelo.
 - **FR-012**: El sistema DEBE registrar archivos problemáticos (encoding, parse failures, eval dinámico) en `needs_manual_review.json`, siguiendo el mismo formato que el processor actual.
 - **FR-013**: El sistema DEBE procesar todo localmente sin conexiones de red externas (soberanía de datos).
 - **FR-014**: El sistema DEBE categorizar los patrones de seguridad detectados por tipo: SQL injection vectors (`mysql_query` con concatenación de variables), XSS potencial (`echo $_GET`/`$_POST` sin sanitizar), y file inclusion dinámica.
-- **FR-015**: Stage 2 (`get_v2_fragments()` en production_v11.py) DEBE implementar un Extension Mapper — un diccionario que asocie extensiones de archivo a funciones de fragmentación (`.py` → `ast.parse()`, `.php` → regex fragmenter). Este patrón elimina el AST lock actual y permite extensión futura a otros lenguajes sin modificar la lógica de dispatch.
+- **FR-015**: Stage 2 (`get_v2_fragments()` en `src/factory/fragment_extractor.py`) DEBE implementar un Extension Mapper — un diccionario que asocie extensiones de archivo a funciones de fragmentación (`.py` → `ast.parse()`, `.php` → regex fragmenter). Este patrón elimina el AST lock actual y permite extensión futura a otros lenguajes sin modificar la lógica de dispatch.
 - **FR-016**: El sistema DEBE distinguir entre código PHP 'Legacy Puro' (procedural: funciones globales, mysql_*, includes directos) y 'Legacy Modernizado' (OOP: clases con herencia, namespaces `use`, patrones Registry/Factory). Los archivos mixtos se etiquetan como `hybrid` y emiten firmas de ambos tipos.
 - **FR-017**: El fragmentador PHP DEBE usar una estrategia heurística de bloques funcionales: detectar `function nombre()`, bloques `case` dentro de `switch`, y bloques `<?php ?>` significativos como unidades de fragmentación independientes. Archivos sin ninguno de estos delimitadores se fragmentan por tamaño con solapamiento de contexto.
 - **FR-018**: El fragmentador PHP DEBE implementar la Regla del Preámbulo (Preamble Rule): capturar el bloque de código al inicio del archivo (antes del primer `switch`/`function`/bloque lógico principal) que contiene includes, asignaciones de variables críticas, y setup global. Este preámbulo se adjunta virtualmente o se referencia en el [ARCH_HEADER] de cada fragmento derivado del mismo archivo, garantizando que ninguna acción pierda el contexto de inicialización.
@@ -145,14 +145,14 @@ El driver reconoce patrones idiomáticos específicos de cada plataforma legacy:
 
 ### Measurable Outcomes
 
-- **SC-001**: El extractor procesa archivos PHP de 2000+ líneas en menos de 5 segundos por archivo, de forma síncrona.
+- **SC-001**: El extractor procesa archivos PHP de 2000+ líneas en menos de 5 segundos por archivo, de forma síncrona. **Baseline de medición**: AMD Threadripper (máquina de referencia del proyecto), 256 GB RAM, NVMe SSD, archivo de test `tests/fixtures/php_legacy/oscommerce_categories.php` (≥2000 líneas). Test de referencia: `pytest tests/integration/test_php_processor_bundles.py::test_sc001_performance`. El umbral puede ajustarse en `ProcessingConfig.sc001_timeout_s` (default: 5.0) para hardware diferente.
 - **SC-002**: Los bundles generados son parseables por `parse_bundle()` de Stage 2 sin errores — el 100% de los bundles emitidos pasan validación.
 - **SC-003**: Los fragmentos generados tienen un tamaño máximo compatible con la ventana de contexto del modelo (verificable contra el límite configurado).
 - **SC-004**: La detección de categorías semánticas tiene una precisión ≥95% sobre los archivos de test representativos (3 archivos: uno osCommerce, uno WordPress, uno ZenCart).
 - **SC-005**: El grafo de dependencias include/require reconstruido cubre ≥90% de las relaciones reales verificables manualmente en los repositorios de test.
 - **SC-009**: Las respuestas del Teacher para fragmentos PHP siguen el esquema de 3 secciones (DEBT_DIAGNOSTIC, MODERN_PROPOSAL, MAPPING_LOGIC) en ≥90% de las muestras generadas, validable por parsing estructural del output.
 - **SC-006**: En archivos con PHP mezclado con HTML/JavaScript, el driver extrae ≥95% de las firmas de lógica de negocio (funciones, queries, globals) sin incluir markup en los fragmentos emitidos.
-- **SC-007**: El driver soporta los 7 repositorios de `data/raw/multi_legacy/` (osCommerce, WordPress, ZenCart, OpenMage, PrestaShop, CodeIgniter, SalesAgility) sin errores fatales — los archivos problemáticos se registran en `needs_manual_review.json`.
+- **SC-007**: El driver soporta los 8 repositorios de `data/raw/multi_legacy/` (osCommerce, osCommerce Phoenix/gburton, WordPress, ZenCart, OpenMage, PrestaShop, CodeIgniter, SalesAgility/SuiteCRM) sin errores fatales — los archivos problemáticos se registran en `needs_manual_review.json`.
 - **SC-008**: Los tests unitarios e integración cubren ≥90% del código del driver, con al menos 3 fixtures representativos (uno por plataforma principal).
 
 ## Assumptions
@@ -161,7 +161,7 @@ El driver reconoce patrones idiomáticos específicos de cada plataforma legacy:
 - El protocolo `ExtractorAdapter` existente es suficientemente flexible para acomodar un driver regex-based sin modificar la interfaz.
 - Los archivos PHP legacy usan encoding UTF-8 o latin-1 (ISO-8859-1); otros encodings se consideran edge cases.
 - Las constantes de ruta (`DIR_WS_INCLUDES`, `DIR_FS_CATALOG`, etc.) se resuelven best-effort — las que no puedan resolverse se marcan como UNRESOLVED.
-- El parser de Stage 2 (`parse_bundle()` y `get_v2_fragments()`) será actualizado con cambios mínimos para soportar secciones extensibles y routing por extensión de archivo. Estos cambios son retrocompatibles con los bundles Python existentes.
+- Tras la refactorización 003, `parse_bundle()` y `get_v2_fragments()` residen en `src/factory/fragment_extractor.py` (extraídos del antiguo `production_v11.py`). Serán actualizados con cambios mínimos para soportar secciones extensibles y routing por extensión de archivo. Estos cambios son retrocompatibles con los bundles Python existentes.
 - El chunking de archivos grandes sigue la misma estrategia de tamaño máximo definida en la configuración del processor existente.
 
 ## Scope Boundaries

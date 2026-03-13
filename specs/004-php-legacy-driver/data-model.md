@@ -65,8 +65,9 @@ class PhpFragment:
     dependencies: tuple[str, ...]          # Rutas de archivos include/require detectados
     platform_hints: tuple[str, ...]        # Patterns de plataforma encontrados
     file_style: str = "LEGACY_PURE"        # "LEGACY_PURE" | "LEGACY_MODERNIZED" | "HYBRID"
-    implicit_deps: tuple[str, ...] = field(default_factory=tuple)
-    # ↑ Variables usadas sin asignación local — 80% heuristic (known set + frequency scan)
+    implicit_deps: tuple[ImplicitDependency, ...] = field(default_factory=tuple)
+    # ↑ Typed dependencies with confidence; populated by detect_implicit_deps()
+    # ImplicitDependency from php_fragmenter (defined below)
     signatures: tuple[LegacySignature, ...] = field(default_factory=tuple)
     # ↑ Populated by scan_signatures() (Phase 4 / US2); LegacySignature from php_signatures
 ```
@@ -77,7 +78,7 @@ class PhpFragment:
 - `legacy_action` ∈ `{"DB_ACCESS", "ROUTING", "AUTH_SESSION", "OUTPUT_RENDER", "FILE_IO", "BUSINESS_LOGIC"}`
 - `file_style` ∈ `{"LEGACY_PURE", "LEGACY_MODERNIZED", "HYBRID"}`
 - `dependencies` contains only include/require **file paths** (not variable names)
-- `implicit_deps` contains `$`-prefixed variable names (sorted); 80% heuristic — not exhaustive
+- `implicit_deps` contains `ImplicitDependency` instances (sorted by `target_symbol`); 80% heuristic — not exhaustive
 - `fragment_type == "bootstrap"` implies `preamble_ref is None` (a preamble does not reference itself)
 - `preamble_ref` when set is a 64-character lowercase hex string (SHA-256 of the bootstrap fragment's `raw_content`)
 - Immutable (frozen dataclass, `slots=True`)
@@ -194,22 +195,22 @@ class PlatformProfile:
 
 ### ImplicitDependency
 
-Dependencia implícita detectada entre fragmentos (no via include/require).
+Dependencia implícita detectada en un fragmento (variable usada sin asignación local).
 
 ```python
 @dataclass(frozen=True, slots=True)
 class ImplicitDependency:
-    """Dependencia implícita entre fragmentos PHP."""
+    """Variable implícita usada en un fragmento PHP sin asignación local."""
 
-    source_fragment: str    # Fragmento que depende
-    target_symbol: str      # Símbolo referenciado (función/variable global)
-    dependency_type: str    # "function_call" | "global_var" | "constant" | "class_instantiation"
-    confidence: float       # 0.0-1.0, basado en heurística
+    target_symbol: str      # Variable referenciada (e.g., "$languages_id")
+    dependency_type: str    # "global_var" | "constant" | "function_call" | "class_instantiation"
+    confidence: float       # 0.0-1.0: 1.0 for known-set matches, 0.8 for frequency-scan matches
 ```
 
 **Invariantes**:
 - `0.0 <= confidence <= 1.0`
-- `dependency_type` ∈ `{"function_call", "global_var", "constant", "class_instantiation"}`
+- `dependency_type` ∈ `{"global_var", "constant", "function_call", "class_instantiation"}`
+- `target_symbol` starts with `$` for variables, no prefix for constants/functions
 - Immutable (frozen dataclass)
 
 ## Entity Relationships
@@ -235,7 +236,7 @@ PhpFragment + LegacySignature + IncludeGraph
      │
      └── assembles ──▶ Bundle .txt ([ARCH_HEADER] + [MODULE_MAP] + [LEGACY_SIGNATURES])
             │
-            └── consumed by ──▶ Stage 2 (production_v11.py)
+            └── consumed by ──▶ Stage 2 (src/factory/fragment_extractor.py + pipeline_runner.py)
 ```
 
 ## State Transitions

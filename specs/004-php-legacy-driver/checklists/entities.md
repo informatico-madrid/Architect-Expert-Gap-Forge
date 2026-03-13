@@ -13,10 +13,10 @@
 
 ## Category Taxonomy Consistency
 
-- [x] CHK005 — Are the 6 semantic categories in spec FR-003 (PERSISTENCE, STATE, MODULE_LINK, SECURITY_SMELL, CONSTANT_DEF, MODERN_REFERENCE) consistent with data-model's `semantic_label` enum (DB_ACCESS, ROUTING, AUTH_SESSION, OUTPUT_RENDER, FILE_IO, BUSINESS_LOGIC)? **RESOLVED: Two separate taxonomies defined. LEGACY_ACTION = business intent of fragment (PhpFragment.legacy_action). SIGNATURE_TYPE = technical debt pattern (LegacySignature.signature_type). Not mixed.** [Conflict → Resolved, data-model.md §Taxonomy]
-- [x] CHK006 — Is the `category` field in LegacySignature using the same enum as PhpFragment's `semantic_label`? **RESOLVED: Field renamed to `signature_type` in LegacySignature. Uses SIGNATURE_TYPE enum. PhpFragment uses `legacy_action` with LEGACY_ACTION enum. Intentionally different.** [Consistency → Resolved]
-- [x] CHK007 — Are there TWO different category taxonomies (one for signatures, one for fragments) or should they be unified? **RESOLVED: Two taxonomies by design — LEGACY_ACTION (what code does) vs SIGNATURE_TYPE (what’s wrong). Unifying them would confuse the model between business intent and debt classification.** [Ambiguity → Resolved]
-- [x] CHK008 — Is the mapping between the two taxonomies (e.g., PERSISTENCE ↔ DB_ACCESS) documented? **RESOLVED: Not a 1:1 mapping by design. A single fragment with LEGACY_ACTION=DB_ACCESS can carry signatures of SIGNATURE_TYPE=PERSISTENCE AND SECURITY_SMELL simultaneously. See data-model.md §Taxonomy example.** [Gap → Resolved]
+- [x] CHK005 — Are the 6 semantic categories in spec FR-003 (PERSISTENCE_SMELL, STATE_POLLUTION, MODULE_LINK_SMELL, SECURITY_VULN, CONSTANT_POLLUTION, MODERN_HYBRID) consistent with data-model's SIGNATURE_CATEGORY enum? And is LEGACY_ACTION (DB_ACCESS, ROUTING, AUTH_SESSION, OUTPUT_RENDER, FILE_IO, BUSINESS_LOGIC) the separate business-intent taxonomy on PhpFragment? **RESOLVED: Two separate taxonomies defined. LEGACY_ACTION = business intent of fragment (PhpFragment.legacy_action). SIGNATURE_CATEGORY = technical debt pattern (LegacySignature.category). Not mixed.** [Conflict → Resolved, data-model.md §Taxonomy]
+- [x] CHK006 — Is the `category` field in LegacySignature using the same enum as PhpFragment’s `legacy_action`? **RESOLVED: LegacySignature uses `category` field with SIGNATURE_CATEGORY enum (debt smells). PhpFragment uses `legacy_action` with LEGACY_ACTION enum (business intent). Intentionally different — orthogonal taxonomies.** [Consistency → Resolved]
+- [x] CHK007 — Are there TWO different category taxonomies (one for signatures, one for fragments) or should they be unified? **RESOLVED: Two taxonomies by design — LEGACY_ACTION (what code does) vs SIGNATURE_CATEGORY (what’s wrong with it). Unifying them would confuse the model between business intent and debt classification.** [Ambiguity → Resolved]
+- [x] CHK008 — Is the mapping between the two taxonomies (e.g., PERSISTENCE ↔ DB_ACCESS) documented? **RESOLVED: Not a 1:1 mapping by design. A single fragment with LEGACY_ACTION=DB_ACCESS can carry signatures of SIGNATURE_CATEGORY=PERSISTENCE_SMELL AND SECURITY_VULN simultaneously. See data-model.md §Taxonomy example.** [Gap → Resolved]
 
 ## Invariant Completeness
 
@@ -39,9 +39,9 @@
 
 ## Notes
 
-- ~~CRITICAL: Spec FR-003 and data-model.md use DIFFERENT category taxonomies~~ — RESOLVED: CHK005-CHK008 resolved with dual taxonomy design (LEGACY_ACTION vs SIGNATURE_CATEGORY with explicit `_SMELL`/`_POLLUTION`/`_VULN` suffixes)
+- ~~CRITICAL: Spec FR-003 and data-model.md use DIFFERENT category taxonomies~~ — RESOLVED: CHK005-CHK008 resolved with dual taxonomy design (LEGACY_ACTION for business intent vs SIGNATURE_CATEGORY with explicit `_SMELL`/`_POLLUTION`/`_VULN` suffixes for debt classification)
 - ~~PlatformProfile's `signature_patterns: dict[str, str]`~~ — RESOLVED (v3): Now uses `dict` declaration + `MappingProxyType` coercion in `__post_init__` via `object.__setattr__`
 - ~~preamble_ref as fragment_id string~~ — RESOLVED: Now SHA-256 hex digest (64 chars) of bootstrap fragment's `raw_content`
-- ImplicitDependency is defined in data-model but not referenced in bundle-format contract — unclear how it’s serialized [still open]
-- DIRTY fragment type added to PhpFragment — see data-model.md for fail-safe behavior
+- ImplicitDependency entity is now used in PhpFragment.implicit_deps as `tuple[ImplicitDependency, ...]` with confidence scoring — serialized to ARCH_HEADER via `target_symbol` field
+- Brace-mismatch strategy: Abort & Log (no PhpFragment created for unmatched braces) — see research.md R-003 rev-2 and data-model.md §PhpFragment brace failure behavior
 - FastBraceScanner documented in research.md R-003 as the implementation decision for brace-matching

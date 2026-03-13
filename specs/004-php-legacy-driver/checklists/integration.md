@@ -9,7 +9,7 @@
 - [ ] CHK001 — Are all required [ARCH_HEADER] fields for PHP bundles explicitly listed with format and examples? [Completeness, Spec §FR-004]
 - [ ] CHK002 — Is the relationship between LANGUAGE field in ARCH_HEADER and Extension Mapper routing clearly defined? [Clarity, Gap]
 - [ ] CHK003 — Are the new fields (LANGUAGE, PLATFORM, IMPLICIT_DEPS) specified as required or optional? [Clarity, Spec §FR-004]
-- [ ] CHK004 — Is the fragment delimiter format (`--- FRAGMENT: <name> (<type>) ---`) distinguished from Python's bundle delimiter (`--- BUNDLE ---`)? [Consistency, Contract §bundle-format]
+- [ ] CHK004 — Is the fragment delimiter format (`--- FILE: <name> (<type>) ---`) consistent with `parse_bundle()`'s `--- FILE:` regex in Stage 2? [Consistency, Contract §bundle-format]
 - [ ] CHK005 — Is the `[LEGACY_SIGNATURES]` section separator (`---` between entries) unambiguous against fragment delimiters? [Ambiguity, Contract §bundle-format]
 
 ## parse_bundle() Changes

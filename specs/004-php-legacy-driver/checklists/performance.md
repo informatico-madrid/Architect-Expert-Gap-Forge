@@ -22,7 +22,7 @@
 
 ## Scaling
 
-- [ ] CHK011 — Are requirements defined for processing all 7 repositories in `data/raw/multi_legacy/` in a single run? [Coverage, Gap]
+- [ ] CHK011 — Are requirements defined for processing all 8 repositories in `data/raw/multi_legacy/` in a single run? [Coverage, Gap]
 - [ ] CHK012 — Is the total expected bundle count per repository estimated or bounded? [Gap]
 - [ ] CHK013 — Are disk space requirements for generated bundles specified? [Gap]
 - [ ] CHK014 — Is synchronous processing (SC-001) explicitly chosen over async, with rationale documented? [Clarity, Spec §SC-001]

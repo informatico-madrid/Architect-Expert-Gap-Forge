@@ -9,6 +9,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-08
 - Archivos JSONL en `data/synthetic/` y `data/audit/`; configs YAML en `configs/` (003-monolith-modules)
 - Python 3.11+ + re (stdlib), pathlib (stdlib), dataclasses (stdlib), pydantic (existente en proyecto) (004-php-legacy-driver)
 - Filesystem local — bundles `.txt` en `data/outputs/`, repositorios fuente en `data/raw/multi_legacy/` (004-php-legacy-driver)
+- Python 3.11 + Python standard library (concurrent.futures, dataclasses, typing, pathlib, re, hashlib), `pytest` for tests; optional local vLLM/judge for Validation Judge (sampling). (004-php-legacy-driver)
+- Local filesystem — `data/raw/`, `data/outputs/*_bundles/`, `needs_manual_review.json`, bundle cache for preambles. (004-php-legacy-driver)
 
 - Python 3.12 (existing repo uses 3.12+) + PyYAML, pydantic, requests, pytest, ruff. Optional: `tree-sitter` (for future adapters). (001-stage1-discovery)
 
@@ -28,9 +30,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.12 (existing repo uses 3.12+): Follow standard conventions
 
 ## Recent Changes
+- 004-php-legacy-driver: Added Python 3.11 + Python standard library (concurrent.futures, dataclasses, typing, pathlib, re, hashlib), `pytest` for tests; optional local vLLM/judge for Validation Judge (sampling).
 - 004-php-legacy-driver: Added Python 3.11+ + re (stdlib), pathlib (stdlib), dataclasses (stdlib), pydantic (existente en proyecto)
 - 003-monolith-modules: Added Python 3.11 + asyncio, openai (AsyncOpenAI), pydantic, pytest, tqdm, yaml
-- 002-ralph-worktree: Added Bash 5.x (GNU/Linux), Python 3.x (para scripts auxiliares ya existentes) + git 2.43.0 (disponible en sistema), `merge_state.py` (ya existente), `count_tasks.py` (ya existente)
 
 
 <!-- MANUAL ADDITIONS START -->

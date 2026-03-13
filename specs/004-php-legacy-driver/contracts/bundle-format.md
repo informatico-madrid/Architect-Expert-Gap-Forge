@@ -4,7 +4,7 @@
 
 ## Overview
 
-Contrato del formato de bundle `.txt` generado por el PHPLegacyDriver para consumo en Stage 2 (`production_v11.py`). Extiende el formato existente con secciones PHP-específicas.
+Contrato del formato de bundle `.txt` generado por el PHPLegacyDriver para consumo en Stage 2 (`src/factory/fragment_extractor.py` → `parse_bundle()` + `get_v2_fragments()`). Extiende el formato existente con secciones PHP-específicas.
 
 ## Bundle Structure
 
@@ -19,6 +19,9 @@ PLATFORM: <detected_platform>
 LOCAL_IMPORTS: <include/require list, comma-separated>
 DEPENDENCIES: <external dependencies detected>
 NEIGHBORS: <adjacent files from IncludeGraph>
+LEGACY_ACTION: <LEGACY_ACTION enum value>
+IMPLICIT_DEPS: ['$var1', '$var2']
+PREAMBLE_REF: <64-char sha256 hex — omitted for bootstrap fragments>
 
 [MODULE_MAP]
 <file_path_1>: <one-line description>
@@ -26,7 +29,7 @@ NEIGHBORS: <adjacent files from IncludeGraph>
 ...
 
 [LEGACY_SIGNATURES]
-CATEGORY: <LEGACY_ACTION category>
+CATEGORY: <SIGNATURE_CATEGORY category>
 PATTERN: <pattern_name> — <matched_text>
 SEVERITY: <critical|warning|info>
 MODERN_HINT: <suggested modern equivalent>
@@ -39,13 +42,12 @@ CATEGORY: <next signature>
 <source_file> --<include_type>--> <target_file>
 ...
 
---- FRAGMENT: <fragment_name> (<fragment_type>) ---
+--- FILE: <fragment_name> (<fragment_type>) ---
 <raw PHP code of the fragment>
---- END FRAGMENT ---
 
---- FRAGMENT: <next_fragment_name> (<fragment_type>) ---
+--- FILE: <next_fragment_name> (<fragment_type>) ---
 <raw PHP code>
---- END FRAGMENT ---
+
 ```
 
 ## Field Specifications
@@ -63,15 +65,18 @@ CATEGORY: <next signature>
 | LOCAL_IMPORTS | Yes | Comma-separated | `application_top.php, languages.php` |
 | DEPENDENCIES | Yes | Comma-separated | `tep_db_query, tep_redirect` |
 | NEIGHBORS | Yes | Comma-separated | `orders.php, customers.php` |
+| LEGACY_ACTION | Yes | LEGACY_ACTION enum | `DB_ACCESS` |
+| IMPLICIT_DEPS | No | JSON-list string (omit if empty) | `['$db', '$languages_id']` |
+| PREAMBLE_REF | No | 64-char lowercase hex (SHA-256) | `3a7f9c2e1b5d4f8a...` |
 
-**New fields** (LANGUAGE, PLATFORM) se añaden al ARCH_HEADER. El parser existente `parse_bundle()` ya captura campos desconocidos en el dict `arch`, por lo que estos campos son forward-compatible.
+**New fields** (LANGUAGE, PLATFORM, LEGACY_ACTION) se añaden al ARCH_HEADER como campos obligatorios. IMPLICIT_DEPS y PREAMBLE_REF son opcionales — se emiten solo cuando tienen valor; `parse_bundle()` los captura automáticamente mediante el loop `key.partition(":")` existente. PREAMBLE_REF es el hash SHA-256 del fragmento bootstrap del mismo archivo fuente (R-011); Stage 2 lo usa en `resolve_preamble_ref()` para inyectar el contexto de preámbulo como `${preamble}` en el prompt del Teacher (FR-022).
 
 ### [LEGACY_SIGNATURES] Section
 
 **New section** — no existe en bundles Python. Capturada por el generic section parser.
 
 Cada signature se separa por `---` y contiene:
-- `CATEGORY`: Una de las 6 categorías LEGACY_ACTION
+- `CATEGORY`: Una de las 6 categorías SIGNATURE_CATEGORY (`PERSISTENCE_SMELL`, `STATE_POLLUTION`, `MODULE_LINK_SMELL`, `SECURITY_VULN`, `CONSTANT_POLLUTION`, `MODERN_HYBRID`)
 - `PATTERN`: `<nombre_patrón> — <texto_matcheado>`
 - `SEVERITY`: `critical` | `warning` | `info`
 - `MODERN_HINT`: Equivalente moderno sugerido
@@ -85,19 +90,18 @@ Formato por línea: `<source> --<type>--> <target>`
 ### Fragment Delimiter
 
 ```text
---- FRAGMENT: <name> (<type>) ---
+--- FILE: <name> (<type>) ---
 <code>
---- END FRAGMENT ---
 ```
 
-Cada fragmento incluye su nombre y tipo entre paréntesis para que Stage 2 pueda routing.
+Cada fragmento incluye su nombre y tipo entre paréntesis. Se usa el mismo delimitador `--- FILE:` que el parser existente de Stage 2 (`parse_bundle()` en `fragment_extractor.py`) para compatibilidad directa.
 
 ## Compatibility Notes
 
 1. `parse_bundle()` usa regex `\[ARCH_HEADER\](.*?)(?=\n\[|\n---|$)` — las nuevas secciones `[LEGACY_SIGNATURES]` y `[INCLUDE_GRAPH]` correctamente terminan el bloque ARCH_HEADER
 2. Campos nuevos en ARCH_HEADER (LANGUAGE, PLATFORM) se capturan automáticamente por el loop `key.partition(":")` existente
 3. Secciones nuevas requieren el generic section parser (R-005 en research.md)
-4. Delimitador `--- FRAGMENT:` es distinto de `--- BUNDLE ---` usado en bundles Python
+4. Delimitador `--- FILE:` es el mismo que usa `parse_bundle()` — compatibilidad directa con bundles Python existentes
 
 ## Consumers
 

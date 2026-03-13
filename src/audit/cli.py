@@ -56,7 +56,7 @@ from src.audit.config import (
 )
 from src.audit.exam_builder import _format_reference_standards, generate_exam_question
 from src.audit.gap_generator import generate_gap_analysis
-from src.audit.judge import run_inference
+from src.audit.judge import llm_judge_score, run_inference
 from src.audit.persistence import (
     load_exam,
     load_inference,
@@ -294,7 +294,8 @@ def cmd_score(args: argparse.Namespace) -> None:
             )
             continue
         logger.info("[%d/%d] Judging %s", idx, total, exam.id)
-        sc = compute_scorecard(
+        # First, call the judge to get the normalized response
+        judge_resp = llm_judge_score(
             exam=exam,
             baseline_resp=base_r.response,
             adapter_resp=adapt_r.response,
@@ -305,6 +306,12 @@ def cmd_score(args: argparse.Namespace) -> None:
             professor_backend=args.professor_backend,
             gemini_model=args.gemini_model,
             validate=args.validate,
+        )
+        # Then compute the scorecard with the judge response
+        sc = compute_scorecard(
+            exam=exam,
+            judge_resp=judge_resp,
+            adapter_resp=adapt_r.response,
         )
         scorecards.append(sc)
 

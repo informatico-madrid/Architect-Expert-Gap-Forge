@@ -28,9 +28,9 @@
 
 ## Anti-Patterns Mapping Security Coverage
 
-- [ ] CHK014 — Are security-specific anti-pattern mappings defined for all 7 platforms (not just osCommerce/WordPress)? [Completeness, Spec §FR-024]
+- [ ] CHK014 — Are security-specific anti-pattern mappings defined for all 8 platforms (not just osCommerce/WordPress)? [Completeness, Spec §FR-024]
 - [ ] CHK015 — Are the modern equivalents for security patterns (parameterized queries, Twig auto-escaping) consistently specified across all platform snippets? [Consistency, Spec §FR-024]
-- [ ] CHK016 — Are requirements defined for detecting platform-specific security patterns (e.g., WordPress `wp_nonce` misuse, Magento `getModel()` injection)? [Coverage, Gap]
+- [ ] CHK016 — Are requirements defined for detecting platform-specific security patterns (e.g., WordPress `wp_nonce` misuse, OpenMage `getModel()` injection)? [Coverage, Gap]
 
 ## Notes
 

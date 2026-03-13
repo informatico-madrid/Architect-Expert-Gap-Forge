@@ -23,7 +23,7 @@ adapter = get_adapter("php_legacy")
 ### 2. Run Stage 1 (Discovery) on a PHP Repository
 
 ```python
-from src.discovery.processor import RepoProcessor, ProcessingConfig
+from src.discovery.metadata_enricher import RepoProcessor, ProcessingConfig
 
 config = ProcessingConfig(
     repo_path="data/raw/multi_legacy/oscommerce",
@@ -55,16 +55,12 @@ head -40 data/outputs/oscommerce_bundles/admin_categories.txt
 Stage 2 processes PHP bundles automatically when the Extension Mapper detects `.php` fragments:
 
 ```python
-from src.factory.production_v11 import ProductionPipeline
+from src.factory.pipeline_runner import main_async
+from src.factory.fragment_extractor import parse_bundle, get_v2_fragments
 
-pipeline = ProductionPipeline(
-    blueprint_dir="data/outputs/oscommerce_bundles",
-    taxonomy_path="configs/stage_2_factory/taxonomy/php_legacy/taxonomy.yaml",
-    doctrine_path="configs/stage_2_factory/taxonomy/php_legacy/master_symfony_hex.md",
-)
-
-results = pipeline.run()
-# → Generates training pairs with DEBT_DIAGNOSTIC / MODERN_PROPOSAL / MAPPING_LOGIC
+# Stage 2 now routes .php fragments via Extension Mapper in get_v2_fragments()
+# Configure taxonomy and doctrine paths, then run the pipeline
+# Results: training pairs with DEBT_DIAGNOSTIC / MODERN_PROPOSAL / MAPPING_LOGIC
 ```
 
 ### 5. Run Tests
@@ -89,11 +85,13 @@ pytest -k "php" --cov=src --cov-report=term-missing
 |------|---------|
 | `src/utils/extractors/php_legacy_adapter.py` | ExtractorAdapter implementation |
 | `src/discovery/php_fragmenter.py` | Heuristic block fragmenter |
-| `src/discovery/php_signatures.py` | LEGACY_ACTION pattern engine |
+| `src/discovery/php_signatures.py` | SIGNATURE_CATEGORY pattern engine |
 | `src/discovery/php_include_graph.py` | Include/require dependency graph |
 | `src/discovery/php_platform_profiles.py` | Platform detection |
-| `src/factory/production_v11.py` | Stage 2 (modified: Extension Mapper + generic sections) |
-| `src/discovery/processor.py` | Stage 1 (modified: directory_scan strategy) |
+| `src/factory/fragment_extractor.py` | Stage 2 parse_bundle + get_v2_fragments (Extension Mapper + generic sections) |
+| `src/factory/pipeline_runner.py` | Stage 2 pipeline runner (sample generation) |
+| `src/factory/prompt_builder.py` | Stage 2 prompt construction (build_system_with_blueprint) |
+| `src/discovery/metadata_enricher.py` | Stage 1 RepoProcessor (directory_scan strategy) |
 | `configs/stage_2_factory/taxonomy/php_legacy/` | Prompt templates + doctrine |
 
 ## Configuration
@@ -116,4 +114,4 @@ Un bundle PHP contiene:
 2. `[MODULE_MAP]` — archivos del módulo
 3. `[LEGACY_SIGNATURES]` — anti-patterns detectados
 4. `[INCLUDE_GRAPH]` — dependencias include/require
-5. Fragmentos delimitados por `--- FRAGMENT: <name> (<type>) ---`
+5. Fragmentos delimitados por `--- FILE: <name> (<type>) ---`
