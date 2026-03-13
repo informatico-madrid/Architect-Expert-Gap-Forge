@@ -1,0 +1,10 @@
+- [ ] Update AGENTS_ARCHITECTURE.md to replace "Ralph Loop uses Git Worktrees" with "Factory pipeline implements parallel execution via async task scheduling"
+- [ ] Remove all Git worktree references from AGENTS_ARCHITECTURE.md
+- [ ] Update METHODOLOGY.md to replace "TIPO 5 GOVERNANCE_RULES" with "governance_cache" in all code references
+- [ ] Correct Hybrid Gold-Injection Protocol description in METHODOLOGY.md to match actual implementation logic
+- [ ] Update PHP_MODERNIZATION_FORGE.md to change PHPLegacyDriver status from "NEW" to "PRODUCTION"
+- [ ] Remove "✅ DELIVERED" status from PHPLegacyDriver description in PHP_MODERNIZATION_FORGE.md
+- [ ] Fix legacy pattern detection logic in pipeline_runner.py: correct `if not has_legacy:` to only skip Gold Injection for clean fragments
+- [ ] Validate all case study examples against current implementation in PHP_MODERNIZATION_FORGE.md
+- [ ] Remove all Git worktree references from Ralph Loop documentation in AGENTS_ARCHITECTURE.md
+- [ ] Verify all changes pass `docs/audit/verify_documentation_sync.py` with 100% pass rate
