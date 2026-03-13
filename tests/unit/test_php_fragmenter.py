@@ -553,3 +553,187 @@ function test() {
         fragments = _fragment_by_size("", max_lines=30)
 
         assert fragments == []
+
+
+class TestDetectImplicitDeps:
+    """Unit tests for detect_implicit_deps function (T037)."""
+
+    def test_assigned_var_excluded_unassigned_included(self) -> None:
+        """(a) Locally-assigned vars excluded; unassigned ones ≥3 uses included."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        # $locVar is assigned locally — should NOT appear as dep
+        # $foreignVar is used 3 times but never assigned — should appear
+        source = """<?php
+function process() {
+    $locVar = 10;
+    echo $foreignVar;
+    echo $foreignVar;
+    echo $foreignVar;
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = {d.target_symbol for d in deps}
+
+        assert "$locVar" not in symbols
+        assert "$foreignVar" in symbols
+
+    def test_superglobals_excluded(self) -> None:
+        """(b) PHP superglobals are never reported as implicit deps."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        source = """<?php
+function handler() {
+    $id = $_GET['id'];
+    $name = $_POST['name'];
+    $token = $_SESSION['token'];
+    $method = $_SERVER['REQUEST_METHOD'];
+    $cookie = $_COOKIE['pref'];
+    $all = $GLOBALS['config'];
+    echo $id . $name . $token . $method . $cookie . $all;
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = {d.target_symbol for d in deps}
+
+        for superglobal in ("$_GET", "$_POST", "$_SESSION", "$_SERVER", "$_COOKIE", "$GLOBALS"):
+            assert superglobal not in symbols, f"{superglobal} should not be reported"
+
+    def test_function_params_excluded(self) -> None:
+        """(c) Function parameters are excluded even if param matches a known global."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        # $db is a known global — but when passed as a param it is NOT an implicit dep
+        source = """<?php
+function doQuery($db, $id) {
+    $result = $db->Execute("SELECT * FROM products WHERE id = $id");
+    return $result;
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = {d.target_symbol for d in deps}
+
+        assert "$db" not in symbols, "$db as function param must not be an implicit dep"
+
+    def test_foreach_and_catch_vars_excluded(self) -> None:
+        """(d) foreach loop variables and catch exception variables are excluded."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        source = """<?php
+function process($data) {
+    try {
+        foreach ($data as $key => $item) {
+            echo $item;
+            echo $item;
+            echo $item;
+            echo $key;
+            echo $key;
+            echo $key;
+        }
+    } catch (Exception $ex) {
+        echo $ex->getMessage();
+        echo $ex->getMessage();
+        echo $ex->getMessage();
+    }
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = {d.target_symbol for d in deps}
+
+        assert "$item" not in symbols, "$item is a foreach var"
+        assert "$key" not in symbols, "$key is a foreach key var"
+        assert "$ex" not in symbols, "$ex is a catch var"
+
+    def test_this_property_refs_excluded(self) -> None:
+        """(e) $this is a superglobal — method calls via $this are not reported."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        source = """<?php
+function render() {
+    echo $this->title;
+    echo $this->body;
+    echo $this->footer;
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = {d.target_symbol for d in deps}
+
+        assert "$this" not in symbols, "$this must not appear as an implicit dep"
+
+    def test_known_global_var_confidence_1_0(self) -> None:
+        """(f) Variables from the known-set (_KNOWN_GLOBAL_VARS) get confidence=1.0."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        # $db and $customer_id are in _KNOWN_GLOBAL_VARS
+        source = """<?php
+function getOrders() {
+    $res = $db->Execute("SELECT * FROM orders WHERE customer_id = $customer_id");
+    return $res;
+}
+"""
+        deps = detect_implicit_deps(source)
+        conf_map = {d.target_symbol: d.confidence for d in deps}
+
+        assert "$db" in conf_map, "$db should be detected (known global)"
+        assert conf_map["$db"] == 1.0, "$db must have confidence=1.0"
+        assert "$customer_id" in conf_map, "$customer_id should be detected"
+        assert conf_map["$customer_id"] == 1.0, "$customer_id must have confidence=1.0"
+
+    def test_high_frequency_var_confidence_0_8(self) -> None:
+        """(g) Unknown vars used ≥3 times get confidence=0.8 (frequency heuristic)."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        # $sessionCart is unknown but used 4 times; should be detected with 0.8
+        source = """<?php
+function checkout() {
+    echo $sessionCart->count;
+    echo $sessionCart->total;
+    echo $sessionCart->currency;
+    $sessionCart->save();
+}
+"""
+        deps = detect_implicit_deps(source)
+        conf_map = {d.target_symbol: d.confidence for d in deps}
+
+        assert "$sessionCart" in conf_map, "$sessionCart ≥3 uses → implicit dep"
+        assert conf_map["$sessionCart"] == 0.8, "$sessionCart must have confidence=0.8"
+
+    def test_var_used_less_than_3_times_not_detected(self) -> None:
+        """Vars used <3 times and not in known-set are ignored."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        # $rareVar only used twice — should NOT be detected
+        source = """<?php
+function minimal() {
+    echo $rareVar;
+    echo $rareVar;
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = {d.target_symbol for d in deps}
+
+        assert "$rareVar" not in symbols, "$rareVar used <3 times should not be detected"
+
+    def test_empty_fragment_returns_empty_tuple(self) -> None:
+        """Empty fragment → empty tuple."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        assert detect_implicit_deps("") == ()
+        assert detect_implicit_deps("   ") == ()
+
+    def test_result_sorted_by_symbol(self) -> None:
+        """Result is sorted by target_symbol ascending."""
+        from src.discovery.php_fragmenter import detect_implicit_deps
+
+        # Use multiple known globals to check ordering
+        source = """<?php
+function process() {
+    $z = $template->render($db, $customer_id, $languages_id);
+    return $z;
+}
+"""
+        deps = detect_implicit_deps(source)
+        symbols = [d.target_symbol for d in deps]
+
+        assert symbols == sorted(symbols), "Result must be sorted by target_symbol"
+

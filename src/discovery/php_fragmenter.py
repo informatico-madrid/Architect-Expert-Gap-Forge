@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from src.discovery.php_signatures import LegacySignature
 
 # Runtime import for scan_signatures function
-from src.discovery.php_signatures import scan_signatures
+from src.discovery.php_signatures import format_legacy_signatures_section, scan_signatures
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -1193,6 +1193,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
 
             # Scan for legacy signatures in fragment content
             sigs = tuple(scan_signatures(func_content))
+            impl_deps = detect_implicit_deps(func_content)
 
             # Create the fragment
             fragment = PhpFragment(
@@ -1208,6 +1209,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
                 platform_hints=platform_hints,
                 file_style=file_style,
                 signatures=sigs,
+                implicit_deps=impl_deps,
             )
             fragments.append(fragment)
 
@@ -1225,6 +1227,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
 
             # Scan for legacy signatures in fragment content
             sigs = tuple(scan_signatures(case_content))
+            impl_deps = detect_implicit_deps(case_content)
 
             # Create the fragment
             fragment = PhpFragment(
@@ -1240,6 +1243,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
                 platform_hints=platform_hints,
                 file_style=file_style,
                 signatures=sigs,
+                implicit_deps=impl_deps,
             )
             fragments.append(fragment)
 
@@ -1266,6 +1270,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
 
                 # Scan for legacy signatures in fragment content
                 sigs = tuple(scan_signatures(frag_content))
+                impl_deps = detect_implicit_deps(frag_content)
 
                 fragment = PhpFragment(
                     name=fragment_name,
@@ -1280,6 +1285,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
                     platform_hints=platform_hints,
                     file_style=file_style,
                     signatures=sigs,
+                    implicit_deps=impl_deps,
                 )
                 fragments.append(fragment)
         else:
@@ -1291,6 +1297,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
 
                 # Scan for legacy signatures in preamble content
                 sigs = tuple(scan_signatures(preamble_content))
+                impl_deps_boot = detect_implicit_deps(preamble_content)
 
                 fragment = PhpFragment(
                     name=f"{path.stem}_bootstrap",
@@ -1305,6 +1312,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
                     platform_hints=platform_hints,
                     file_style=file_style,
                     signatures=sigs,
+                    implicit_deps=impl_deps_boot,
                 )
                 fragments.append(fragment)
 
@@ -1327,6 +1335,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
             if not has_bootstrap:
                 # Scan for legacy signatures in preamble content
                 sigs = tuple(scan_signatures(preamble_content))
+                impl_deps_preamble = detect_implicit_deps(preamble_content)
 
                 bootstrap_fragment = PhpFragment(
                     name=f"{path.stem}_bootstrap",
@@ -1341,6 +1350,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
                     platform_hints=platform_hints,
                     file_style=file_style,
                     signatures=sigs,
+                    implicit_deps=impl_deps_preamble,
                 )
                 # Add at the beginning (preamble should come first)
                 fragments.insert(0, bootstrap_fragment)
@@ -1473,7 +1483,7 @@ def format_arch_header(fragment: PhpFragment) -> str:
     return "\n".join(lines)
 
 
-def write_bundle(fragment: PhpFragment, output_dir: Path) -> Path:
+def write_bundle(fragment: PhpFragment, output_dir: Path, include_graph: object = None) -> Path:
     """
     Write a PHP fragment bundle to a .txt file.
 
@@ -1483,6 +1493,8 @@ def write_bundle(fragment: PhpFragment, output_dir: Path) -> Path:
     Args:
         fragment: The PhpFragment to write.
         output_dir: Directory to write the bundle file to.
+        include_graph: Optional IncludeGraph instance. When provided, appends an
+            [INCLUDE_GRAPH] section with edges from fragment's source_file (T045).
 
     Returns:
         Path to the written bundle file.
@@ -1527,14 +1539,30 @@ def write_bundle(fragment: PhpFragment, output_dir: Path) -> Path:
     # Generate header using format_arch_header
     header = format_arch_header(fragment)
 
+    # Build [LEGACY_SIGNATURES] section if fragment has signatures (T033)
+    sigs_section = format_legacy_signatures_section(list(fragment.signatures)) if fragment.signatures else ""
+
+    # Build [INCLUDE_GRAPH] section (T045) — requires include graph, so we
+    # import lazily to avoid circular imports at module level
+    include_graph_section = ""
+    if include_graph is not None:
+        try:
+            from src.discovery.php_include_graph import format_include_graph_section
+            include_graph_section = format_include_graph_section(
+                include_graph, source_file=str(fragment.source_file)
+            )
+        except ImportError:
+            pass
+
     # Format the bundle content using the same delimiter as parse_bundle()
-    # Format: [ARCH_HEADER]\n{header}\n--- FILE: {fragment_name} ({fragment_type}) ---\n{raw_content}
-    bundle_content = (
-        f"[ARCH_HEADER]\n"
-        f"{header}\n"
-        f"--- FILE: {fragment.name} ({fragment.fragment_type}) ---\n"
-        f"{fragment.raw_content}"
-    )
+    parts: list[str] = [f"[ARCH_HEADER]\n{header}"]
+    if sigs_section:
+        parts.append(f"[LEGACY_SIGNATURES]\n{sigs_section}")
+    # [INCLUDE_GRAPH] section inserted when non-empty (T045)
+    if include_graph_section:
+        parts.append(f"[INCLUDE_GRAPH]\n{include_graph_section}")
+    parts.append(f"--- FILE: {fragment.name} ({fragment.fragment_type}) ---\n{fragment.raw_content}")
+    bundle_content = "\n".join(parts)
 
     # Generate output filename: <fragment_name>.txt
     output_filename = f"{fragment.name}.txt"
@@ -1546,3 +1574,124 @@ def write_bundle(fragment: PhpFragment, output_dir: Path) -> Path:
     logger.info("Written bundle to %s", output_path)
 
     return output_path
+
+
+# ---------------------------------------------------------------------------
+# Implicit Dependency Detection (T038)
+# ---------------------------------------------------------------------------
+
+# Known-set for osCommerce/ZenCart global variables (Pass 1)
+_KNOWN_GLOBAL_VARS: frozenset[str] = frozenset({
+    "$db",
+    "$customer_id",
+    "$languages_id",
+    "$currencies",
+    "$orders",
+    "$messageStack",
+    "$languages",
+    "$template",
+    "$breadcrumb",
+    "$application",
+})
+
+# Superglobals / built-ins always excluded
+_SUPERGLOBALS: frozenset[str] = frozenset({
+    "$_GET", "$_POST", "$_SESSION", "$_SERVER", "$_COOKIE",
+    "$_FILES", "$_REQUEST", "$GLOBALS", "$argc", "$argv", "$this",
+})
+
+
+def _build_exclusion_set(source: str) -> frozenset[str]:
+    """
+    Build the exclusion set for implicit dependency detection.
+
+    Excludes: superglobals, PHP built-ins, function params, foreach/catch vars,
+    and locally-assigned vars.
+
+    Args:
+        source: PHP fragment source code.
+
+    Returns:
+        frozenset of variable names (with leading $) to exclude.
+    """
+    excluded: set[str] = set(_SUPERGLOBALS)
+
+    # Function parameters: function name($param1, $param2, ...) or typed ($type $param)
+    for params_str in re.findall(r'function\s+\w+\s*\(([^)]*)\)', source):
+        for token in re.findall(r'\$\w+', params_str):
+            excluded.add(token)
+
+    # foreach vars: foreach ($arr as $val) or foreach ($arr as $key => $val)
+    for match in re.finditer(r'foreach\s*\([^)]+?\s+as\s+(\$\w+)(?:\s*=>\s*(\$\w+))?', source):
+        if match.group(1):
+            excluded.add(match.group(1))
+        if match.group(2):
+            excluded.add(match.group(2))
+
+    # catch vars: catch (ExType $var)
+    for match in re.finditer(r'catch\s*\([^)]+\s+(\$\w+)\)', source):
+        excluded.add(match.group(1))
+
+    # Locally-assigned vars: $var = ... (left-hand side assignments)
+    for match in re.finditer(r'(\$\w+)\s*=(?!=)', source):
+        excluded.add(match.group(1))
+
+    return frozenset(excluded)
+
+
+def detect_implicit_deps(fragment_content: str) -> tuple[ImplicitDependency, ...]:
+    """
+    Detect implicit global variable dependencies in a PHP fragment.
+
+    Uses an 80% heuristic with two passes:
+    - Pass 1: Known-set scan (osCommerce/ZenCart globals) → confidence=1.0
+    - Pass 2: Frequency scan (used ≥3 times) → confidence=0.8
+
+    Exclusion set applied before both passes to filter out locally-defined
+    or parameter-bound variables.
+
+    Args:
+        fragment_content: Raw PHP source code of the fragment.
+
+    Returns:
+        Tuple of ImplicitDependency sorted by target_symbol (unique, deduped
+        by target_symbol — Pass 1 wins over Pass 2 for same symbol).
+
+    Examples:
+        >>> deps = detect_implicit_deps("<?php function f() use ($db) { $db->query(); $db->query(); $db->query(); }")
+        >>> any(d.target_symbol == '$db' for d in deps)
+        True
+    """
+    if not fragment_content:
+        return ()
+
+    exclusion_set = _build_exclusion_set(fragment_content)
+
+    # Collect all variable references (not assignments, not superglobals)
+    all_vars = re.findall(r'\$\w+', fragment_content)
+
+    found: dict[str, ImplicitDependency] = {}
+
+    # Pass 1 — Known-set scan (confidence=1.0)
+    for var in _KNOWN_GLOBAL_VARS:
+        if var in exclusion_set:
+            continue
+        if var in all_vars:
+            found[var] = ImplicitDependency(
+                target_symbol=var,
+                dependency_type="global_var",
+                confidence=1.0,
+            )
+
+    # Pass 2 — Frequency scan: vars referenced ≥3 times (confidence=0.8)
+    from collections import Counter
+    var_counts = Counter(all_vars)
+    for var, count in var_counts.items():
+        if count >= 3 and var not in exclusion_set and var not in found:
+            found[var] = ImplicitDependency(
+                target_symbol=var,
+                dependency_type="global_var",
+                confidence=0.8,
+            )
+
+    return tuple(sorted(found.values(), key=lambda d: d.target_symbol))

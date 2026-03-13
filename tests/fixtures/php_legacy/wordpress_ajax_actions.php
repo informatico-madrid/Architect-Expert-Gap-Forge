@@ -409,7 +409,6 @@ function wpajax_settings_page() {
             </thead>
             <tbody>
                 <?php
-                // EXPECT_SIG: MODULE_LINK_SMELL - function call
                 $activities = wpajax_get_activity_log(10);
 
                 foreach ($activities as $activity) {

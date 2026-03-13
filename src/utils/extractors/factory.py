@@ -27,6 +27,7 @@ _ADAPTER_REGISTRY: Dict[str, str] = {
     "python": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
     "python-ast": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
     "homeassistant": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
+    "php_legacy": "src.utils.extractors.php_legacy_adapter.PhpLegacyAdapter",
     "default": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
 }
 

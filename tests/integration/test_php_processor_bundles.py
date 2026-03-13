@@ -710,3 +710,118 @@ function tep_redirect($url) {
             f"Expected edges: {expected_edges[:10]}...\n"
             f"Graph edges: {[ (e.source_file, e.target_file, e.include_type) for e in graph.edges[:10]]}..."
         )
+
+    def test_sc006_mixed_php_html_business_logic_extraction(
+        self, tmp_path: Path
+    ) -> None:
+        """SC-006: Mixed PHP/HTML fixture → ≥95% business logic signature extraction.
+
+        Creates a synthetic mixed PHP/HTML fixture with a known number of business
+        logic signatures (PERSISTENCE_SMELL: SQL queries, STATE_POLLUTION: globals,
+        MODULE_LINK_SMELL: includes).  Uses strip_html_markup() to extract PHP code
+        and scan_signatures() to detect them.  Asserts ≥95% extraction rate.
+
+        This validates that business logic embedded inside HTML templates is not
+        silently dropped by the HTML-stripping step.
+        """
+        from types import MappingProxyType
+
+        from src.discovery.php_fragmenter import strip_html_markup
+        from src.discovery.php_signatures import scan_signatures
+
+        # ── Build a synthetic mixed fixture with precisely-counted signatures ──
+        # 10 PERSISTENCE_SMELL (SQL queries), 5 STATE_POLLUTION (globals),
+        # 3 MODULE_LINK_SMELL (require/include) — total 18 business-logic sigs
+        MIXED_PHP_HTML = """<!DOCTYPE html>
+<html>
+<head><title>OSC Product Listing</title></head>
+<body>
+
+<?php
+// Module 1: Bootstrap includes (MODULE_LINK_SMELL x3)
+require('includes/application_top.php');
+require_once('includes/functions/general.php');
+include('includes/functions/database.php');
+
+// Module 2: Global state access (STATE_POLLUTION x5)
+global $db;
+global $customer_id;
+global $languages_id;
+global $currencies;
+global $messageStack;
+?>
+
+<div class="nav">
+  <p>Welcome to the store</p>
+</div>
+
+<?php
+// Module 3: SQL Queries (PERSISTENCE_SMELL x5, first batch)
+$query1 = tep_db_query("SELECT * FROM products WHERE products_status = 1");
+$query2 = tep_db_query("SELECT p.products_id FROM products p WHERE p.products_quantity > 0");
+$query3 = tep_db_query("SELECT pd.products_name FROM products_description pd WHERE pd.language_id = " . $languages_id);
+$query4 = tep_db_query("DELETE FROM sessions WHERE expiry < " . time());
+$query5 = tep_db_query("INSERT INTO order_history (orders_id, orders_status_id) VALUES ('1', '1')");;
+?>
+
+<table>
+<tr><th>Product</th><th>Price</th></tr>
+
+<?php while ($row = tep_db_fetch_array($query1)): ?>
+<tr>
+  <td><?php echo htmlspecialchars($row['products_name']); ?></td>
+  <td><?php echo $row['products_price']; ?></td>
+</tr>
+<?php endwhile; ?>
+
+</table>
+
+<div class="footer">
+<?php
+// Module 4: More SQL Queries (PERSISTENCE_SMELL x3, second batch)
+$query6 = tep_db_query("SELECT * FROM categories WHERE parent_id = 1");
+$query7 = tep_db_query("UPDATE products SET products_last_modified = NOW() WHERE products_id = 1");
+$query8 = tep_db_query("SELECT SUM(op.final_price) FROM orders_products op WHERE op.orders_id = 1");
+?>
+</div>
+
+</body>
+</html>
+"""
+
+        # ── Manually-counted business logic signatures ──
+        # MODULE_LINK_SMELL: 3 (require x1, require_once x1, include x1)
+        # STATE_POLLUTION:   5 (global $db, $customer_id, $languages_id, $currencies, $messageStack)
+        # PERSISTENCE_SMELL: 8 (tep_db_query x8)
+        MANUAL_TOTAL = 16
+
+        # ── Step 1: strip HTML to get pure PHP ──
+        php_code = strip_html_markup(MIXED_PHP_HTML)
+
+        # Sanity check: stripping should yield non-empty PHP
+        assert len(php_code) > 0, "strip_html_markup returned empty string on mixed fixture"
+        assert "require(" in php_code or "require_once(" in php_code, (
+            "PHP include statements should survive HTML stripping"
+        )
+
+        # ── Step 2: detect signatures ──
+        detected = scan_signatures(php_code, MappingProxyType({}))
+
+        # Count detected by relevant categories
+        BUSINESS_LOGIC_CATS = frozenset(
+            {"PERSISTENCE_SMELL", "STATE_POLLUTION", "MODULE_LINK_SMELL"}
+        )
+        detected_count = sum(
+            1 for sig in detected if sig.category in BUSINESS_LOGIC_CATS
+        )
+
+        extraction_rate = (detected_count / MANUAL_TOTAL) * 100
+
+        # ── Step 3: assert ≥95% extraction rate ──
+        assert extraction_rate >= 95.0, (
+            f"SC-006 FAILED: Business logic extraction rate is {extraction_rate:.1f}% "
+            f"(required ≥95%).\n"
+            f"Detected {detected_count} out of {MANUAL_TOTAL} manually-counted signatures.\n"
+            f"Detected categories: { {sig.category for sig in detected} }\n"
+            f"PHP after strip_html_markup (first 500 chars): {php_code[:500]}"
+        )

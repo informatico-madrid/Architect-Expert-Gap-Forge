@@ -21,6 +21,7 @@ No import-time side effects.
 """
 
 import ast
+import hashlib
 import logging
 import re
 from pathlib import Path
@@ -225,6 +226,62 @@ def _php_fragment_list(
     ]
 
 
+def resolve_preamble_ref(
+    arch: dict,
+    bundle_cache: dict[str, str],
+) -> str:
+    """
+    Resolve a PREAMBLE_REF SHA-256 hash back to its preamble content (T072 / FR-022 / R-011).
+
+    Reads ``arch.get("PREAMBLE_REF", "")`` (64-char hex SHA-256).  If set,
+    reverses the hash by scanning ``bundle_cache`` values for one whose SHA-256
+    digest matches.  If found and the content is large (token proxy:
+    ``len(content) // 4 > 800``), truncates to first ``800 * 4 = 3200`` chars.
+
+    Args:
+        arch: Parsed ARCH_HEADER dict (from ``parse_bundle``).
+        bundle_cache: Dict mapping bundle keys to raw preamble/bootstrap content.
+
+    Returns:
+        Preamble content string (possibly truncated), or ``""`` when
+        PREAMBLE_REF is absent or the hash cannot be resolved.
+
+    Examples:
+        >>> import hashlib
+        >>> content = "<?php define('VERSION', '2.3');\\n"
+        >>> h = hashlib.sha256(content.encode()).hexdigest()
+        >>> arch = {"PREAMBLE_REF": h}
+        >>> resolve_preamble_ref(arch, {h: content})
+        "<?php define('VERSION', '2.3');\\n"
+
+        >>> resolve_preamble_ref({"PREAMBLE_REF": "deadbeef"}, {})
+        ''
+
+        >>> resolve_preamble_ref({}, {})
+        ''
+    """
+    preamble_ref = arch.get("PREAMBLE_REF", "")
+    if not preamble_ref or len(preamble_ref) != 64:
+        return ""
+
+    # Build reverse-lookup: sha256(value) → value
+    reverse_map = {
+        hashlib.sha256(v.encode()).hexdigest(): v
+        for v in bundle_cache.values()
+    }
+
+    content = reverse_map.get(preamble_ref, "")
+    if not content:
+        return ""
+
+    # Truncate oversized preambles (token proxy: 4 chars ≈ 1 token, cap at 800 tokens)
+    _MAX_TOKENS = 800
+    if len(content) // 4 > _MAX_TOKENS:
+        content = content[:_MAX_TOKENS * 4]
+
+    return content
+
+
 # Extension Mapper: dispatch by file extension to appropriate fragmenter
 _EXTENSION_FRAGMENTERS: Dict[str, Callable[..., List[FragmentTypedDict]]] = {
     ".py": _ast_fragment_list,
@@ -237,6 +294,7 @@ def get_v2_fragments(
     blueprint_cache: Dict[str, str],
     allowed_extensions: Optional[set] = None,
     governance_cache: Optional[Dict[str, str]] = None,
+    bundle_cache: Optional[Dict[str, str]] = None,
 ) -> List[FragmentTypedDict]:
     """Generate training-ready fragment dicts from a V2 parse_bundle result.
 
@@ -247,6 +305,8 @@ def get_v2_fragments(
     """
     if governance_cache is None:
         governance_cache = {}
+    if bundle_cache is None:
+        bundle_cache = {}
 
     btype = bundle["type"]
     if btype in ("MODULE_BLUEPRINT", "GOVERNANCE_RULES"):
@@ -258,6 +318,12 @@ def get_v2_fragments(
     blueprint_content = blueprint_cache.get(module_name, "")
     governance_content = governance_cache.get(repo_prefix, "")
     local_imports_raw = arch.get("LOCAL_IMPORTS", "[]")
+
+    # T035: inject extra_legacy_signatures for Teacher prompt ${legacy_signatures}
+    legacy_signatures_content = bundle.get("extra_legacy_signatures", "")
+
+    # T072: resolve PREAMBLE_REF → preamble content for ${preamble} injection
+    preamble_content = resolve_preamble_ref(arch, bundle_cache)
 
     def _vname(fname: str) -> str:
         return f"{module_name}_{fname}" if module_name else fname
@@ -292,6 +358,8 @@ def get_v2_fragments(
             "local_imports": local_imports_raw,
             "module_name": module_name,
             "governance": governance_content,
+            "legacy_signatures": legacy_signatures_content,
+            "preamble": preamble_content,
         }
 
         # Extension Mapper dispatch
@@ -324,6 +392,8 @@ def get_v2_fragments(
                 "local_imports": local_imports_raw,
                 "module_name": module_name,
                 "governance": governance_content,
+                "legacy_signatures": legacy_signatures_content,
+                "preamble": preamble_content,
             }
             return fragmenter(logic_fname, logic_code, bundle["context"], extra)
 

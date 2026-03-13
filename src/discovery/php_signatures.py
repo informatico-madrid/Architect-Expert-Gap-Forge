@@ -86,12 +86,16 @@ SIGNATURE_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("cookie_access", r"\$_COOKIE\s*\["),
         ("globals_access", r"\$GLOBALS\s*\["),
         ("tep_session_register", r"tep_session_register\s*\("),
+        ("tep_redirect", r"\btep_redirect\s*\("),
+        ("post_access", r"\$_POST\s*\["),
+        ("get_access", r"\$_GET\s*\["),
+        ("request_access", r"\$_REQUEST\s*\["),
     ],
     "MODULE_LINK_SMELL": [
-        ("include", r"include\s*\("),
-        ("include_once", r"include_once\s*\("),
-        ("require", r"require\s*\("),
-        ("require_once", r"require_once\s*\("),
+        ("include", r"\binclude\b(?!_once)"),
+        ("include_once", r"\binclude_once\b"),
+        ("require", r"\brequire\b(?!_once)"),
+        ("require_once", r"\brequire_once\b"),
         ("path_concat_include", r"include\s*\.\s*['\"]"),
     ],
     "SECURITY_VULN": [
@@ -100,6 +104,8 @@ SIGNATURE_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("eval_usage", r"eval\s*\("),
         ("dynamic_include", r"include\s*\$\w+"),
         ("preg_replace_eval", r"preg_replace\s*\([^,]+,\s*/(e|eval)"),
+        ("ajax_referer_no_die", r"\bcheck_ajax_referer\s*\("),
+        ("unescaped_json_error", r"\bwp_send_json_error\s*\("),
     ],
     "CONSTANT_POLLUTION": [
         ("define", r"define\s*\("),
@@ -113,6 +119,10 @@ SIGNATURE_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("class_extends", r"class\s+\w+\s+extends"),
         ("class_implements", r"class\s+\w+\s+implements"),
         ("php8_construct", r"->__construct\s*\("),
+        ("add_action", r"\badd_action\s*\("),
+        ("add_filter", r"\badd_filter\s*\("),
+        ("apply_filters", r"\bapply_filters\s*\("),
+        ("register_hook", r"\bregister_activation_hook\s*\("),
     ],
 }
 
@@ -145,6 +155,10 @@ MODERN_EQUIVALENTS: dict[str, str] = {
     "cookie_access": "Use Symfony Cookie component with secure settings",
     "globals_access": "Avoid $GLOBALS, use proper parameter passing",
     "tep_session_register": "Use Symfony Session or PSR-7 session management",
+    "tep_redirect": "Use Symfony HttpFoundation RedirectResponse",
+    "post_access": "Validate and sanitize $_POST via request object abstraction",
+    "get_access": "Validate and sanitize $_GET via request object abstraction",
+    "request_access": "Validate and sanitize $_REQUEST via PSR-7 ServerRequest",
     # Module links
     "include": "Use PSR-4 autoloading with dependency injection",
     "include_once": "Use PSR-4 autoloading",
@@ -157,6 +171,8 @@ MODERN_EQUIVALENTS: dict[str, str] = {
     "eval_usage": "Never use eval(), redesign the code logic",
     "dynamic_include": "Use dependency injection or service container",
     "preg_replace_eval": "Use preg_replace_callback() instead of /e modifier",
+    "ajax_referer_no_die": "Use check_ajax_referer() with wp_die() or add true as third arg",
+    "unescaped_json_error": "Sanitize error messages before returning to client",
     # Constants
     "define": "Use environment variables (.env) or configuration services",
     "dir_ws_constant": "Use Symfony parameter bag or .env files",
@@ -168,6 +184,10 @@ MODERN_EQUIVALENTS: dict[str, str] = {
     "class_extends": "Consider composition over inheritance",
     "class_implements": "Good - use interfaces for abstraction",
     "php8_construct": "Good - use constructor injection",
+    "add_action": "Good - WordPress hook; consider Symfony EventDispatcher for DI-friendly alternative",
+    "add_filter": "Good - WordPress hook; consider Symfony EventDispatcher for DI-friendly alternative",
+    "apply_filters": "Good - WordPress filter; encapsulate in a service for testability",
+    "register_hook": "Good - activation hook; consider Symfony bundle configuration",
 }
 
 
