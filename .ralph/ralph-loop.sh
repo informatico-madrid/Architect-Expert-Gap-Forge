@@ -103,6 +103,23 @@ except ImportError:
     fi
 }
 
+compute_sha1() {
+    local f="$1"
+    if [[ ! -f "$f" ]]; then
+        echo ""
+        return 0
+    fi
+    if command -v sha1sum >/dev/null 2>&1; then
+        sha1sum "$f" | awk '{print $1}'
+    else
+        python3 - "$f" <<'PY'
+import hashlib,sys
+p=sys.argv[1]
+print(hashlib.sha1(open(p,'rb').read()).hexdigest())
+PY
+    fi
+}
+
 # ============================================================================
 # Help
 # ============================================================================
@@ -1171,6 +1188,33 @@ main() {
         # cd to worktree before running agent (T07)
         [[ "$WORKTREE_ENABLED" == "true" ]] && cd "$WORKTREE_PATH"
 
+        # --- Capture pre-agent git state for diagnostics ---
+        local pre_wt_head pre_wt_status pre_wt_tasks_sha pre_repo_tasks_sha rel_spec worktree_tasks
+        pre_wt_head=""
+        pre_wt_status=""
+        pre_wt_tasks_sha=""
+        pre_repo_tasks_sha=""
+        worktree_tasks=""
+        rel_spec=""
+        if [[ "$WORKTREE_ENABLED" == "true" && -n "$WORKTREE_PATH" ]]; then
+            # derive relative path of spec_dir inside project
+            rel_spec=$(python3 - <<'PY'
+import os,sys
+proj=sys.argv[1]
+spec=sys.argv[2]
+print(os.path.relpath(spec, proj))
+PY
+ "$PROJECT_DIR" "$spec_dir")
+            worktree_tasks="$WORKTREE_PATH/$rel_spec/tasks.md"
+            pre_wt_head=$(git -C "$WORKTREE_PATH" rev-parse --verify HEAD 2>/dev/null || echo "")
+            pre_wt_status=$(git -C "$WORKTREE_PATH" status --porcelain 2>/dev/null || echo "")
+            if [[ -f "$worktree_tasks" ]]; then
+                pre_wt_tasks_sha=$(compute_sha1 "$worktree_tasks")
+            fi
+        fi
+
+        pre_repo_tasks_sha=$(compute_sha1 "$tasks_file")
+
         # Wait for a test slot to avoid saturating RAM/swap with parallel pytest runs
         wait_for_test_slot
 
@@ -1214,6 +1258,46 @@ main() {
 
         # cd back to project dir after agent
         [[ "$WORKTREE_ENABLED" == "true" ]] && cd "$PROJECT_DIR"
+
+        # --- Capture post-agent git state for diagnostics ---
+        local post_wt_head post_wt_status post_wt_tasks_sha post_repo_tasks_sha
+        post_wt_head=""
+        post_wt_status=""
+        post_wt_tasks_sha=""
+        post_repo_tasks_sha=""
+        if [[ "$WORKTREE_ENABLED" == "true" && -n "$WORKTREE_PATH" ]]; then
+            post_wt_head=$(git -C "$WORKTREE_PATH" rev-parse --verify HEAD 2>/dev/null || echo "")
+            post_wt_status=$(git -C "$WORKTREE_PATH" status --porcelain 2>/dev/null || echo "")
+            if [[ -f "$worktree_tasks" ]]; then
+                post_wt_tasks_sha=$(compute_sha1 "$worktree_tasks")
+            fi
+        fi
+        post_repo_tasks_sha=$(compute_sha1 "$tasks_file")
+
+        # Summarize commit activity (concise)
+        if [[ "$WORKTREE_ENABLED" == "true" ]]; then
+            if [[ -n "$pre_wt_head" && -n "$post_wt_head" && "$pre_wt_head" != "$post_wt_head" ]]; then
+                log_info "Worktree branch HEAD changed: $pre_wt_head -> $post_wt_head"
+                git -C "$WORKTREE_PATH" --no-pager log --oneline "$pre_wt_head..$post_wt_head" | sed 's/^/  /' || true
+            else
+                log_info "No new commits in worktree branch ($WORKTREE_BRANCH)"
+            fi
+            if [[ -n "$pre_wt_status" || -n "$post_wt_status" ]]; then
+                log_info "Worktree status (pre/post):"
+                echo "PRE: $pre_wt_status"
+                echo "POST: $post_wt_status"
+            fi
+            if [[ -n "$pre_wt_tasks_sha" || -n "$post_wt_tasks_sha" ]]; then
+                if [[ "$pre_wt_tasks_sha" != "$post_wt_tasks_sha" ]]; then
+                    log_info "Worktree tasks.md changed: $worktree_tasks"
+                fi
+            fi
+        fi
+        if [[ "$pre_repo_tasks_sha" != "$post_repo_tasks_sha" ]]; then
+            log_info "Repo canonical tasks.md changed: $tasks_file"
+            git -C "$PROJECT_DIR" --no-pager log --pretty=oneline -n 5 -- "$tasks_file" | sed 's/^/  /' || true
+        fi
+
         set -e
 
         if [[ $agent_exit -ne 0 ]]; then
@@ -1267,6 +1351,27 @@ main() {
                 exit 0
             else
                 log_warn "Agent claims ALL_TASKS_COMPLETE but $verify_incomplete tasks still incomplete"
+                log_info "DIAGNOSTIC: mismatch at Iteration $global_iter TaskIndex $next_idx (task $task_id)"
+                log_info "Spec dir (state basePath): $spec_dir"
+                log_info "Repo tasks path: $tasks_file"
+                log_info "Repo tasks SHA1 (pre/post): ${pre_repo_tasks_sha:-} / ${post_repo_tasks_sha:-}"
+                if [[ -n "$worktree_tasks" ]]; then
+                    log_info "Worktree tasks path: $worktree_tasks"
+                    log_info "Worktree tasks SHA1 (pre/post): ${pre_wt_tasks_sha:-} / ${post_wt_tasks_sha:-}"
+                else
+                    log_info "No worktree tasks file path computed (rel_spec='$rel_spec')"
+                fi
+                log_info "Worktree HEAD (pre/post): ${pre_wt_head:-} / ${post_wt_head:-}"
+                if [[ -n "$pre_wt_head" && -n "$post_wt_head" && "$pre_wt_head" != "$post_wt_head" ]]; then
+                    log_info "Recent commits in worktree:"
+                    git -C "$WORKTREE_PATH" --no-pager log --oneline "$pre_wt_head..$post_wt_head" | sed 's/^/  /' || true
+                fi
+                log_info "Last commits touching repo tasks.md:"
+                git -C "$PROJECT_DIR" --no-pager log --pretty=oneline -n 5 -- "$tasks_file" | sed 's/^/  /' || true
+                if [[ -f "$tasks_file" && -f "$worktree_tasks" ]]; then
+                    log_info "Short diff (repo vs worktree tasks.md):"
+                    diff -u "$tasks_file" "$worktree_tasks" | sed -n '1,200p' | sed 's/^/  /' || true
+                fi
                 log_warn "Continuing loop to handle remaining tasks"
             fi
         elif check_completion_signal "$agent_output"; then

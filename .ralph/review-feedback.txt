@@ -1,0 +1,30 @@
+
+### Critical Issues (Missing Implementation)
+
+1. **T033 Not Implemented**: `[LEGACY_SIGNATURES]` section is NOT being written to bundles in `write_bundle()` (src/discovery/php_fragmenter.py:1476-1548). The function produces `[ARCH_HEADER]\n{header}\n--- FILE:...` but according to the spec it should produce `[ARCH_HEADER]\n{header}\n[LEGACY_SIGNATURES]\n{sigs}\n--- FILE:...`
+
+2. **T045 Not Implemented**: `[INCLUDE_GRAPH]` section is also missing from `write_bundle()`. Grep shows no matches for `INCLUDE_GRAPH` in php_fragmenter.py.
+
+3. **T072 Not Implemented**: `resolve_preamble_ref()` function is NOT implemented in fragment_extractor.py. Grep shows no matches.
+
+4. **Signature Detection Precision Failure**: Test `test_sc004_signature_detection_precision` fails for WordPress (77.8% vs required 95%). Missing patterns for:
+   - MODULE_LINK_SMELL (expected 3, detected 1)
+   - MODERN_HYBRID (expected 6, detected 0) 
+   - SECURITY_VULN (expected 2, detected 0)
+
+### Pre-existing Issues (Unrelated to PHP Driver)
+
+5. **Test Failures**: 
+   - `test_inference.py::TestGeminiClientWithMock::test_generate_with_retry_succeeds_after_one_failure` - TypeError with GeminiClient
+   - `test_model_evaluator.py::TestCmdScorePhase5::test_fails_back_to_sample_when_no_exam_for_scoring` - Missing config file
+
+6. **Ruff Errors**: 6 errors found, 4 fixable:
+   - Unused imports in `src/curation/curator_pipeline.py`, `src/discovery/file_scanner.py`, `src/factory/agentic_cli.py`, `src/factory/agentic_prompt_builder.py`, `src/factory/agentic_runner.py`
+
+### Test Results Summary
+- **PHP-specific tests**: 224 passed, 4 failed
+- **Failing tests are directly related to missing implementations**:
+  - `test_t036_parsed_bundle_contains_legacy_signatures`
+  - `test_t036_extra_legacy_signatures_contains_persistence_smell`
+  - `test_t036_legacy_signatures_format_matches_contract`
+  - `test_sc004_signature_detection_precision[wordpress_ajax_actions.php-wordpress]`
