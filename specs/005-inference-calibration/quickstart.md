@@ -8,7 +8,7 @@ The Calibration Suite automates the search for optimal sampling parameters for y
 
 1. **vLLM server running** with your SFT model deployed
 2. **Professor Judge configured** (same as Stage 5)
-3. **5-10 investigation prompts** in JSON format
+3. **5-10 investigation prompts** in YAML format (see example prompts below)
 
 ## Installation
 
@@ -18,27 +18,35 @@ No additional installation required. The calibration module is part of the exist
 
 ### 1. Prepare Your Prompts
 
-Create a JSON file with your investigation prompts:
+Create a YAML file with your investigation prompts. Use the example file as template:
 
-```json
-[
-  {
-    "id": "prompt_001",
-    "question": "Explain how to migrate a legacy sensor to HA 2026..."
-  },
-  {
-    "id": "prompt_002", 
-    "question": "How do you implement error recovery for a config flow..."
-  }
-]
+```bash
+# Copy the example prompts
+cp configs/stage_6_calibration/calibration_prompts.example.yaml \
+   configs/stage_6_calibration/calibration_prompts.yaml
+
+# Edit with your custom prompts
+vim configs/stage_6_calibration/calibration_prompts.yaml
 ```
+
+Example prompts are "psychological test" type questions designed to evaluate reasoning depth:
+
+```yaml
+- id: calibration_prompt_001
+  question: |
+    A detective arrives at a crime scene... Analyze each suspect's potential motive.
+  type: investigation
+  expected_reasoning_depth: high
+```
+
+The prompts should require deep reasoning, not simple factual recall.
 
 ### 2. Run Calibration
 
 ```bash
 # Using the CLI
 python -m src.audit.cli calibrate \
-  --prompts /path/to/prompts.json \
+  --prompts configs/stage_6_calibration/calibration_prompts.yaml \
   --output-dir ./calibration_results
 
 # Or import programmatically
@@ -108,7 +116,7 @@ If the calibration is interrupted, it can resume from the last checkpoint:
 
 ```bash
 python -m src.audit.cli calibrate \
-  --prompts /path/to/prompts.json \
+  --prompts configs/stage_6_calibration/calibration_prompts.yaml \
   --output-dir ./calibration_results \
   --resume
 ```

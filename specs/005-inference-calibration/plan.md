@@ -8,6 +8,8 @@
 
 Sistema automatizado de optimización de parámetros de inferencia que utiliza el Professor Judge existente como función de recompensa. El sistema realiza un "Descending Coordinates Sweep" iterando a través de múltiples combinaciones de parámetros de muestreo (temperature, top_k, min_p, repetition_penalty), evalúa cada respuesta con el Judge, y genera archivos de salida optimizados (calibration_report.json y vllm_config.yaml) con los mejores parámetros encontrados. Incluye penalización por respuestas cortas (<200 palabras) para desalentar respuestas lazy.
 
+**Phase 9 (Intelligent Parameter Adjustment)**: Análisis de los campos `parameter_target` y `evaluation_focus` de los prompts de calibración para determinar automáticamente qué parámetros ajustar y cómo, generando recomendaciones en calibration_analysis.json.
+
 ## Technical Context
 
 **Language/Version**: Python 3.11  
@@ -118,6 +120,17 @@ class CalibrationReport:
     statistics: dict[str, Any]
 ```
 
+**CalibrationPrompt** (nuevo dataclass):
+```python
+@dataclass(slots=True, frozen=True)
+class CalibrationPrompt:
+    id: str
+    question: str
+    type: str
+    parameter_target: list[str]
+    evaluation_focus: str
+```
+
 ### Algoritmo de Calibración
 
 1. **Cargar prompts** de entrada (5-10 Investigation prompts)
@@ -131,6 +144,10 @@ class CalibrationReport:
      - Guardar resultado
 4. **Seleccionar mejor perfil** por puntuación agregada
 5. **Generar outputs**: calibration_report.json + vllm_config.yaml
+6. **(Phase 9) Análisis inteligente**: Si --use-prompt-metadata está habilitado:
+   - Parsear parameter_target y evaluation_focus de cada prompt
+   - Crear diccionario de mapeo evaluation_focus → estrategia de ajuste
+   - Generar recomendaciones de ajuste en calibration_analysis.json
 
 ### CLI Integration
 

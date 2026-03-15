@@ -3,7 +3,7 @@
 **Feature Branch**: `005-inference-calibration`  
 **Created**: 2026-03-15  
 **Status**: Draft  
-**Input**: User description: "Inference Calibration Suite (Stage 6) - Automated sampling parameter optimization using LLM-as-Judge"
+**Input**: User description: "Inference Calibration Suite (Stage 6) - Automated sampling parameter optimization using LLM-as-Judge with intelligent parameter_target/evaluation_focus analysis"
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -93,12 +93,17 @@ Como usuario del sistema, quiero recibir archivos de salida estructurados (calib
 - **FR-008**: El sistema DEBE generar un archivo calibration_report.json con estructura definida que incluya todos los perfiles probados, sus puntuaciones, y el perfil ganador.
 - **FR-009**: El sistema DEBE generar un archivo vllm_config.yaml con los parámetros óptimos encontrados.
 - **FR-010**: El sistema DEBE implementar el enfoque de "Descending Coordinates Sweep" (Fase 1: Baseline, Fase 2: Temperature, Fase 3: Vocabulary, Fase 4: Penalties).
+- **FR-011**: El sistema DEBE parsear los campos `parameter_target` y `evaluation_focus` de cada prompt de calibración para identificar qué parámetros afectan qué aspectos del comportamiento del modelo.
+- **FR-012**: El sistema DEBE crear un diccionario de mapeo entre evaluation_focus y estrategias de ajuste de parámetros (ej: "Curiosidad y Exploración" → incrementar top_k y reducir presence_penalty).
+- **FR-013**: El sistema DEBE implementar un algoritmo de refinamiento de parámetros que estreche el espacio de búsqueda basándose en el análisis de evaluation_focus.
+- **FR-014**: El sistema DEBE generar un archivo calibration_analysis.json que contenga recomendaciones de ajuste de parámetros derivadas del análisis de evaluation_focus.
 
 ### Key Entities *(include if feature involves data)*
 
 - **SamplingProfile**: Representa una configuración de parámetros de muestreo. Atributos: temperature (float), top_k (int), min_p (float), repetition_penalty (float), presence_penalty (float, opcional).
 - **CalibrationResult**: Representa el resultado de una iteración de calibración. Atributos: profile (SamplingProfile), exam_id (str), judge_scores (dict), composite_score (float), adjusted_score (float), response_length (int), timestamp (str).
 - **CalibrationReport**: Agrega todos los resultados de la calibración. Atributos: timestamp, total_iterations, best_profile, all_results (list), statistics (dict).
+- **CalibrationPrompt**: Representa un prompt de calibración con metadatos. Atributos: id (str), question (str), type (str), parameter_target (list[str]), evaluation_focus (str).
 
 ## Success Criteria *(mandatory)*
 
