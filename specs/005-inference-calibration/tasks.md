@@ -212,23 +212,23 @@ Esto permite ejecutar la calibración básica y obtener resultados. Las historia
 
 ### Prompt Parser Implementation
 
-- [ ] T036 [US5] Implement CalibrationPrompt dataclass to parse parameter_target and evaluation_focus from prompts in src/audit/calibration_schema.py
-- [ ] T037 [US5] [P] Add prompt loading from YAML with parameter extraction in src/audit/calibration.py
+- [x] T036 [US5] Implement CalibrationPrompt dataclass to parse parameter_target and evaluation_focus from prompts in src/audit/calibration_schema.py
+- [x] T037 [US5] [P] Add prompt loading from YAML with parameter extraction in src/audit/calibration.py
 
 ### Judge Analysis Engine
 
-- [ ] T038 [US5] Implement parameter_target parser (extract target parameters: temperature, top_k, min_p, repetition_penalty, presence_penalty) in src/audit/calibration.py
-- [ ] T039 [US5] Implement evaluation_focus analyzer to map focus areas to parameter adjustments in src/audit/calibration.py
-- [ ] T040 [US5] Create mapping dictionary: evaluation_focus -> parameter adjustment strategy in src/audit/calibration.py
+- [x] T038 [US5] Implement parameter_target parser (extract target parameters: temperature, top_k, min_p, repetition_penalty, presence_penalty) in src/audit/calibration.py
+- [x] T039 [US5] Implement evaluation_focus analyzer to map focus areas to parameter adjustments in src/audit/calibration.py
+- [x] T040 [US5] Create mapping dictionary: evaluation_focus -> parameter adjustment strategy in src/audit/calibration.py
 
 ### Parameter Adjustment Logic
 
-- [ ] T041 [US5] Implement generate_parameter_adjustments() based on evaluation_focus analysis in src/audit/calibration.py
-- [ ] T042 [US5] Implement parameter refinement algorithm (narrow search space based on judge feedback) in src/audit/calibration.py
-- [ ] T043 [US5] Add adaptive grid search that uses evaluation_focus to prioritize parameter combinations in src/audit/calibration.py
+- [x] T041 [US5] Implement generate_parameter_adjustments() based on evaluation_focus analysis in src/audit/calibration.py
+- [x] T042 [US5] Implement parameter refinement algorithm (narrow search space based on judge feedback) in src/audit/calibration.py
+- [x] T043 [US5] Add adaptive grid search that uses evaluation_focus to prioritize parameter combinations in src/audit/calibration.py
 
 ### Integration and Output
 
-- [ ] T044 [US5] Integrate parameter_target/evaluation_focus analysis into calibration report in src/audit/calibration.py
-- [ ] T045 [US5] Generate calibration_analysis.json with parameter adjustment recommendations in src/audit/calibration.py
-- [ ] T046 [US5] Update CLI to support --use-prompt-metadata flag for intelligent calibration in src/audit/cli.py
+- [x] T044 [US5] Integrate parameter_target/evaluation_focus analysis into calibration report in src/audit/calibration.py
+- [x] T045 [US5] Generate calibration_analysis.json with parameter adjustment recommendations in src/audit/calibration.py
+- [x] T046 [US5] Update CLI to support --use-prompt-metadata flag for intelligent calibration in src/audit/cli.py
