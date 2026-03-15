@@ -139,6 +139,11 @@ Phase 9 (US5 - Judge Calibration Analysis)
   └─ T037 → T038 → T039 → T040
   └─ T040 → T041 → T042 → T043
   └─ T043 → T044 → T045 → T046
+
+Phase 10 (US6 - Claude CLI Judge)
+  └─ T046 (complete) → T047 → T048
+  └─ T048 → T049 → T050 → T051
+  └─ T051 → T052 → T053
 ```
 
 ---
@@ -179,7 +184,8 @@ Esto permite ejecutar la calibración básica y obtener resultados. Las historia
 | Phase 7: Polish | 8 | Cross-cutting |
 | Phase 8: Documentation | 3 | Documentation updates |
 | Phase 9: Judge Calibration Analysis | 11 | US5 - Intelligent Parameter Adjustment |
-| **Total** | **46** | **5** |
+| Phase 10: Claude CLI Judge Integration | 7 | US6 - Claude as Judge |
+| **Total** | **53** | **6** |
 
 ---
 
@@ -232,3 +238,26 @@ Esto permite ejecutar la calibración básica y obtener resultados. Las historia
 - [x] T044 [US5] Integrate parameter_target/evaluation_focus analysis into calibration report in src/audit/calibration.py
 - [x] T045 [US5] Generate calibration_analysis.json with parameter adjustment recommendations in src/audit/calibration.py
 - [x] T046 [US5] Update CLI to support --use-prompt-metadata flag for intelligent calibration in src/audit/cli.py
+
+---
+
+## Phase 10: Claude CLI Judge Integration (US6)
+
+**Goal**: Allow using Claude Code CLI as judge instead of vLLM or Gemini
+**Independent Test**: Run calibration with --judge-backend claude and verify judge responses
+
+### Claude Client Implementation
+
+- [ ] T047 [US6] Implement ClaudeClient class in src/audit/inference.py to wrap Claude Code CLI
+- [ ] T048 [US6] [P] Add ClaudeClient to InferenceRouter in src/audit/inference.py
+
+### CLI Integration
+
+- [ ] T049 [US6] Update calibration CLI to support --judge-backend claude in src/audit/cli.py
+- [ ] T050 [US6] Add CLAUDE_MODEL environment variable support in src/audit/cli.py
+- [ ] T051 [US6] Add --claude-model CLI argument in src/audit/cli.py
+
+### Testing
+
+- [ ] T052 [US6] Add test for ClaudeClient in tests/test_inference.py
+- [ ] T053 [US6] Test calibration with Claude as judge end-to-end

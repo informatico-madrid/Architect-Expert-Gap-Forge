@@ -909,6 +909,67 @@ python -m src.audit.calibration \
 
 - `calibration_report.json` — Full results with best profile and statistics
 - `vllm_config.yaml` — Optimal parameters in vLLM-compatible format
+- `calibration_analysis.json` — **Output file** with parameter adjustment recommendations derived from evaluation_focus analysis (Phase 9)
+
+#### Phase 9: Judge Calibration Analysis (Intelligent Parameter Adjustment)
+
+Stage 6 includes an optional intelligent calibration mode that leverages prompt metadata to automatically determine which parameters to adjust.
+
+**Key Features:**
+
+- **Prompt Metadata Parsing**: Extracts `parameter_target` and `evaluation_focus` from calibration prompts
+- **Evaluation Focus Mapping**: Maps focus areas (e.g., "Curiosity and Exploration", "Reasoning and Temperature") to parameter adjustment strategies
+- **Adaptive Grid Search**: Prioritizes parameter combinations based on evaluation_focus analysis
+
+**Example evaluation_focus mappings:**
+
+| Evaluation Focus | Parameter Adjustment |
+|-----------------|---------------------|
+| Curiosity and Exploration | Increase top_k, decrease presence_penalty |
+| Obedience and Repetition | Adjust repetition_penalty, min_p |
+| Reasoning and Temperature | Adjust temperature |
+| Fatigue and Conclusion | Adjust presence_penalty, repetition_penalty |
+| Consistency vs Innovation Balance | Adjust temperature, top_k |
+
+**CLI Usage (Phase 9):**
+
+```bash
+# Run intelligent calibration with prompt metadata
+python -m src.audit.calibration \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --output-dir ./calibration_results \
+    --use-prompt-metadata \
+    --verbose
+
+# Use Claude Code CLI as judge (like ralph-loop.sh)
+python -m src.audit.calibration \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --output-dir ./calibration_results \
+    --judge-backend claude \
+    --claude-model claude-sonnet-4-20250514 \
+    --use-prompt-metadata
+
+# Use Gemini as judge
+python -m src.audit.calibration \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --output-dir ./calibration_results \
+    --judge-backend gemini \
+    --judge-model gemini-2.5-flash \
+    --use-prompt-metadata
+```
+
+**CLI Flags:**
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--use-prompt-metadata` | Enable intelligent parameter adjustment using evaluation_focus analysis | false |
+| `--student-model` | Model to calibrate (student) | qwen3-30b-a3b-thinking-fp8 |
+| `--student-url` | vLLM URL for student model | http://localhost:8000/v1 |
+| `--judge-backend` | Backend for judge: vllm, gemini, or claude | vllm |
+| `--judge-model` | Model to use for judge scoring | gemini-2.5-flash |
+| `--claude-model` | Claude model name (when --judge-backend=claude) | claude-sonnet-4-20250514 |
+
+**Note:** The judge can use a different vLLM instance or model than the student model being calibrated. This allows you to use Claude Code CLI (like ralph-loop.sh) as judge while calibrating a smaller fine-tuned model.
 
 #### Key Classes
 
@@ -917,6 +978,7 @@ python -m src.audit.calibration \
 | `SamplingProfile` | Frozen dataclass with temperature, top_k, min_p, repetition_penalty |
 | `CalibrationResult` | Result for a single prompt/profile combination with scores |
 | `CalibrationReport` | Aggregated results with best profile and statistics |
+| `CalibrationPrompt` | Prompt with parameter_target and evaluation_focus metadata |
 | `CalibrationEngine` | Main engine orchestrating the calibration loop |
 
 See [docs/METHODOLOGY.md](./docs/METHODOLOGY.md#5-stage-6--inference-calibration-suite) for full details.
@@ -1056,7 +1118,8 @@ All three images below belong to the dataset‑generation pipeline: measured thr
 - [x] **Phase 4: Expert SFT.** Deep-scale training of Qwen3-30B-MoE using **RSLoRA** and **Selective Loss Masking** (sm_120 optimized).
 - [x] **Phase 5: Quality Gate.** Automated dual-inference evaluation (`src/audit/cli.py`) comparing base vs adapter on stratified samples.
 - [x] **Phase 5.5: Backtracking Alignment.** Self-correction & backtracking rewriting of `<think>` blocks (`src/curation/rewrite_engine.py`) to close the train/inference distribution gap.
-- [ ] **Phase 6: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
+- [x] **Phase 6: Inference Calibration.** Automated sampling parameter optimization using LLM-as-Judge with intelligent parameter_target/evaluation_focus analysis.
+- [ ] **Phase 7: Validation & Merging.** Local expert-inference auditing and weights merging (FP8/AWQ) for production-ready deployment.
 
 ---
 
