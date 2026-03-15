@@ -1,0 +1,156 @@
+# Quickstart: Inference Calibration Suite (Stage 6)
+
+## Overview
+
+The Calibration Suite automates the search for optimal sampling parameters for your SFT model. It uses the existing Professor Judge as a reward function to evaluate different parameter configurations.
+
+## Prerequisites
+
+1. **vLLM server running** with your SFT model deployed
+2. **Professor Judge configured** (same as Stage 5)
+3. **5-10 investigation prompts** in JSON format
+
+## Installation
+
+No additional installation required. The calibration module is part of the existing `src/audit` package.
+
+## Usage
+
+### 1. Prepare Your Prompts
+
+Create a JSON file with your investigation prompts:
+
+```json
+[
+  {
+    "id": "prompt_001",
+    "question": "Explain how to migrate a legacy sensor to HA 2026..."
+  },
+  {
+    "id": "prompt_002", 
+    "question": "How do you implement error recovery for a config flow..."
+  }
+]
+```
+
+### 2. Run Calibration
+
+```bash
+# Using the CLI
+python -m src.audit.cli calibrate \
+  --prompts /path/to/prompts.json \
+  --output-dir ./calibration_results
+
+# Or import programmatically
+from src.audit.calibration import run_calibration
+
+results = run_calibration(
+    prompts=prompts_list,
+    output_dir="./calibration_results"
+)
+```
+
+### 3. Review Results
+
+After completion, you'll find:
+
+```
+calibration_results/
+├── calibration_report.json   # Full results with all profiles
+├── vllm_config.yaml         # Optimal parameters ready to use
+└── checkpoints/            # Intermediate progress (for resume)
+```
+
+### 4. Apply Optimal Parameters
+
+Edit your vLLM deployment config:
+
+```yaml
+# vllm_config.yaml
+temperature: 0.6
+top_k: 40
+min_p: 0.05
+repetition_penalty: 1.15
+```
+
+## Configuration
+
+### Parameter Grid
+
+The default search space is:
+
+| Parameter | Values |
+|-----------|--------|
+| temperature | 0.5, 0.6, 0.7 |
+| top_k | 20, 40, 50 |
+| min_p | 0.02, 0.05 |
+| repetition_penalty | 1.1, 1.15, 1.2 |
+
+### Custom Grids
+
+You can override the default parameter grid:
+
+```python
+from src.audit.calibration_schema import SamplingProfile, PARAM_GRIDS
+
+# Custom grid
+custom_grid = {
+    "temperature": [0.4, 0.5, 0.6, 0.7, 0.8],
+    "top_k": [10, 20, 40],
+    "min_p": [0.0, 0.05, 0.1],
+    "repetition_penalty": [1.0, 1.1, 1.2]
+}
+```
+
+## Resume Interrupted Runs
+
+If the calibration is interrupted, it can resume from the last checkpoint:
+
+```bash
+python -m src.audit.cli calibrate \
+  --prompts /path/to/prompts.json \
+  --output-dir ./calibration_results \
+  --resume
+```
+
+The system will automatically detect existing checkpoints and continue from where it left off.
+
+## Understanding Results
+
+### Composite Score
+
+The composite score is a weighted average:
+
+| Dimension | Weight |
+|-----------|--------|
+| ha_modernity | 0.30 |
+| reasoning_depth | 0.25 |
+| functionality | 0.25 |
+| completeness | 0.12 |
+| style | 0.08 |
+
+### Length Penalty
+
+Responses shorter than 200 words receive a proportional penalty:
+
+```
+adjusted_score = composite_score × (response_length / 200)
+```
+
+This ensures the model provides substantial responses for investigation tasks.
+
+## Troubleshooting
+
+### Judge Fails to Score
+
+If the Judge fails on a particular response, the system logs the error and continues with the next profile. Check `calibration_report.json` for details.
+
+### Slow Performance
+
+- Reduce the parameter grid size
+- Use fewer prompts
+- Ensure vLLM server has sufficient GPU memory
+
+### Memory Issues
+
+The system processes one prompt at a time to minimize memory usage. If you encounter OOM errors, reduce batch size in the config.
