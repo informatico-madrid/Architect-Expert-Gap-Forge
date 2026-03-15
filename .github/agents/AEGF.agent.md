@@ -95,6 +95,7 @@ configs/
     axolotl/                 ← Trainer configs (.yaml + .yaml.example)
     deepspeed/               ← DeepSpeed ZeRO stage configs (.json)
   stage_5_evaluation/        ← Eval prompts (YAML) + eval pipeline config
+  stage_6_calibration/       ← Sampling parameter grid search & optimization
   taxonomy/
     {domain}/                ← Extended domain-specific taxonomies
 
@@ -113,6 +114,8 @@ src/
     inference.py             ← Strategy pattern: inference backends
     prompt_manager.py        ← YAML prompt loader & formatter
     model_evaluator.py       ← N-stage eval orchestrator
+    calibration.py           ← Stage 6: sampling parameter grid search & optimization
+    calibration_schema.py    ← SamplingProfile, CalibrationResult, CalibrationReport
   research/                  ← Experimental scripts (not imported by core)
   utils/                     ← Cross-cutting: loaders, formatters, shared helpers
     doc_loader.py            ← Master docs loader (DRY canonical)

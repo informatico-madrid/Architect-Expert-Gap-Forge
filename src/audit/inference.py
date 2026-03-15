@@ -72,6 +72,9 @@ class BaseInferenceClient(abc.ABC):
         system_prompt: str | None = None,
         max_tokens: int = 65536,
         temperature: float = 0.6,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        repetition_penalty: float | None = None,
         json_mode: bool = False,
         tools: list[dict[str, Any]] | None = None,
     ) -> str:
@@ -87,6 +90,12 @@ class BaseInferenceClient(abc.ABC):
             Max output tokens.
         temperature : float
             Sampling temperature.
+        top_k : int | None
+            Top-k sampling parameter (vLLM only).
+        min_p : float | None
+            Minimum probability threshold for nucleus sampling (vLLM only).
+        repetition_penalty : float | None
+            Repetition penalty (vLLM only).
         json_mode : bool
             When True, request structured JSON output from the backend.
         """
@@ -98,6 +107,9 @@ class BaseInferenceClient(abc.ABC):
         system_prompt: str | None = None,
         max_tokens: int = 65536,
         temperature: float = 0.6,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        repetition_penalty: float | None = None,
         retries: int = 3,
         retry_delay: float = 5.0,
         json_mode: bool = False,
@@ -117,6 +129,9 @@ class BaseInferenceClient(abc.ABC):
                     system_prompt=system_prompt,
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    top_k=top_k,
+                    min_p=min_p,
+                    repetition_penalty=repetition_penalty,
                     json_mode=json_mode,
                     tools=tools,
                 )
@@ -170,8 +185,14 @@ class GeminiClient(BaseInferenceClient):
         system_prompt: str | None = None,
         max_tokens: int = 65536,
         temperature: float = 0.3,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        repetition_penalty: float | None = None,
         json_mode: bool = False,
+        tools: list[dict[str, Any]] | None = None,
     ) -> str:
+        # Note: Gemini API doesn't support top_k, min_p, or repetition_penalty
+        # These parameters are accepted for API consistency but ignored
         config_kwargs: dict[str, Any] = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,
@@ -219,6 +240,9 @@ class VLLMClient(BaseInferenceClient):
         system_prompt: str | None = None,
         max_tokens: int = 65536,
         temperature: float = 0.6,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        repetition_penalty: float | None = None,
         json_mode: bool = False,
         tools: list[dict[str, Any]] | None = None,
     ) -> str:
@@ -233,6 +257,13 @@ class VLLMClient(BaseInferenceClient):
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        # Add vLLM-specific sampling parameters if provided
+        if top_k is not None:
+            payload["top_k"] = top_k
+        if min_p is not None:
+            payload["min_p"] = min_p
+        if repetition_penalty is not None:
+            payload["repetition_penalty"] = repetition_penalty
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
         # Tools disabled - using text-only inference

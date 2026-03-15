@@ -856,7 +856,74 @@ The evaluator emits a **Final Grade (0–100)** with a verdict: `PASS` (≥80), 
 | `AEGF_MAX_TOKENS` | `4096` | Max generation tokens |
 | `AEGF_TEMPERATURE` | `0.3` | Sampling temperature |
 
-### Stage 6 — Merger (`src/merger/`)
+### Stage 6 — Inference Calibration Suite (`src/audit/calibration.py`)
+**Engine:** `calibration.py`
+
+Stage 6 implements an **Inference Calibration Suite** for automated sampling parameter optimization using LLM-as-Judge. This stage systematically explores the parameter space to discover optimal inference settings that maximize response quality without requiring manual tuning.
+
+#### Overview
+
+The calibration engine performs a **grid search** (Cartesian product) across multiple sampling parameters, evaluating each configuration using the Professor Judge and selecting the optimal combination based on composite quality scores.
+
+#### Parameter Grid
+
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `temperature` | [0.5, 0.6, 0.7] | Controls randomness in sampling |
+| `top_k` | [20, 40, 50] | Limits vocabulary to top-k tokens |
+| `min_p` | [0.02, 0.05] | Minimum probability threshold |
+| `repetition_penalty` | [1.1, 1.15, 1.2] | Penalizes repeated tokens |
+
+**Total combinations:** 3 × 3 × 2 × 3 = **54 profiles** per prompt
+
+#### Scoring Weights
+
+The composite score is calculated using weighted dimensions:
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| `ha_modernity` | 0.30 | Use of modern Home Assistant 2026 APIs |
+| `reasoning_depth` | 0.25 | Quality of reasoning in `<thinking>` blocks |
+| `functionality` | 0.25 | Functional accuracy of solutions |
+| `completeness` | 0.12 | Coverage of all required functions/classes |
+| `style` | 0.08 | Adherence to AEGF structural conventions |
+
+#### CLI Usage
+
+```bash
+# Run calibration with prompts file
+python -m src.audit.calibration \
+    --prompts tests/fixtures/calibration_prompts.json \
+    --output-dir ./calibration_results \
+    --verbose
+
+# Resume interrupted calibration
+python -m src.audit.calibration \
+    --prompts tests/fixtures/calibration_prompts.json \
+    --output-dir ./calibration_results \
+    --resume \
+    --verbose
+```
+
+#### Output Artifacts
+
+- `calibration_report.json` — Full results with best profile and statistics
+- `vllm_config.yaml` — Optimal parameters in vLLM-compatible format
+
+#### Key Classes
+
+| Class | Description |
+|-------|-------------|
+| `SamplingProfile` | Frozen dataclass with temperature, top_k, min_p, repetition_penalty |
+| `CalibrationResult` | Result for a single prompt/profile combination with scores |
+| `CalibrationReport` | Aggregated results with best profile and statistics |
+| `CalibrationEngine` | Main engine orchestrating the calibration loop |
+
+See [docs/METHODOLOGY.md](./docs/METHODOLOGY.md#5-stage-6--inference-calibration-suite) for full details.
+
+---
+
+### Stage 7 — Merger (`src/merger/`)
 **Engine:** `surgical_merge.py`
 
 Low-level `safetensors` weight fusion. A "surgical" fallback approach to ensure model integrity where standard merging fails due to architectural complexity in MoE layers.

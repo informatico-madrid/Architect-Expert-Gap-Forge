@@ -1,0 +1,26 @@
+{
+  "description": "Example prompts file for testing Inference Calibration Suite CLI. These prompts are designed for Home Assistant development tasks and are used with the --prompts flag for the calibrate subcommand.",
+  "version": "1.0.0",
+  "prompts": [
+    {
+      "id": "calib_prompt_001",
+      "text": "You are a Home Assistant expert developer. Write a complete `async def async_setup_entry` function for a custom climate integration that includes: 1) Runtime data with TypedDict, 2) DataUpdateCoordinator with error handling, 3) Config entry validation using entry.data, 4) Proper async context manager for API client. Include type hints and docstrings following HA 2026 standards."
+    },
+    {
+      "id": "calib_prompt_002",
+      "text": "Create a robust EntityComponent subclass for a sensor platform in Home Assistant. Include: 1) __init__ with logger, 2) async_setup_platform with entity validation, 3) entity unique_id generation, 4) state class assignment, 5) device class and unit of measurement handling."
+    },
+    {
+      "id": "calib_prompt_003",
+      "text": "Implement a ConfigFlow handler for a device discovery integration. Include: 1) async_step_dhcp with source IP parsing, 2) async_step_ssdp with device matching, 3) async_step_user with form selection, 4) _async_get_or_create_entry helper, 5) Proper abort conditions for already configured devices."
+    },
+    {
+      "id": "calib_prompt_004",
+      "text": "Write a ServiceCallHandler class that: 1) Registers custom services with hass.services.async_register, 2) Validates service data using vol.Schema, 3) Handles async service logic with proper exception handling, 4) Returns response data using async_set_service_schema for documentation."
+    },
+    {
+      "id": "calib_prompt_005",
+      "text": "Implement a diagnostic sensor entity inheriting from SensorEntity with: 1) device_info linking to a device registry entry, 2) entity_category set to ENTITY_CATEGORY_DIAGNOSTIC, 3) state class STATE_CLASS_TOTAL_INCREASING, 4) unit_of_measurement and device_class configuration, 5) extra state attributes for metadata."
+    }
+  ]
+}

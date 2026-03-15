@@ -67,6 +67,7 @@ from src.audit.persistence import (
 )
 from src.audit.sampling import load_dataset, stratified_sample
 from src.audit.report_writer import generate_report
+from src.audit.calibration import run_calibration
 from src.audit.schema import AuditReport, ExamRecord, PromptGenerationError, SampleRecord, ScoreCard
 from src.audit.scorecard import compute_scorecard
 from src.utils.doc_loader import load_master_docs
@@ -369,6 +370,79 @@ def cmd_full(args: argparse.Namespace) -> None:
     cmd_score(args)
 
 
+def cmd_calibrate(args: argparse.Namespace) -> None:
+    """Run inference parameter calibration (Stage 6)."""
+    import json
+
+    logger.info("=== AEGF Inference Calibration Suite (Stage 6) ===")
+
+    # Load prompts from file or from existing exam/sample
+    prompts: list[dict[str, str]] = []
+
+    if args.prompts:
+        # Load from provided prompts file
+        prompts_path = Path(args.prompts)
+        if not prompts_path.exists():
+            raise SystemExit(f"Prompts file not found: {args.prompts}")
+
+        with open(prompts_path, "r", encoding="utf-8") as f:
+            prompts_data = json.load(f)
+
+        # Handle both formats: list or {"prompts": [...]} or {"prompts": [{"id":..., "text":...}]}
+        if isinstance(prompts_data, dict):
+            prompts = prompts_data.get("prompts", prompts_data.get("samples", []))
+        else:
+            prompts = prompts_data
+
+        logger.info("Loaded %d prompts from %s", len(prompts), args.prompts)
+    else:
+        # Try to load from existing exam or sample
+        try:
+            exam_records = load_exam(args.audit_dir)
+            prompts = [
+                {"id": r.id, "text": r.exam_question or r.user_prompt}
+                for r in exam_records
+            ]
+            logger.info("Loaded %d prompts from existing exam", len(prompts))
+        except FileNotFoundError:
+            try:
+                sample_records = load_persisted_sample(args.audit_dir)
+                prompts = [
+                    {"id": s.id, "text": s.user_prompt}
+                    for s in sample_records
+                ]
+                logger.info("Loaded %d prompts from existing sample", len(prompts))
+            except FileNotFoundError:
+                raise SystemExit(
+                    "No prompts provided (--prompts) and no existing exam/sample found. "
+                    "Run 'sample' or 'generate-exam' first, or provide --prompts file."
+                )
+
+    if not prompts:
+        raise SystemExit("No prompts available for calibration")
+
+    # Determine checkpoint directory for resume functionality
+    checkpoint_dir = args.output_dir if args.resume else None
+
+    # Run calibration
+    report = run_calibration(
+        prompts=prompts,
+        output_dir=args.output_dir,
+        verbose=True,
+        checkpoint_dir=checkpoint_dir,
+        use_prompt_metadata=args.use_prompt_metadata,
+    )
+
+    # Print summary
+    print(f"\n{'=' * 64}")
+    print("  AEGF INFERENCE CALIBRATION — COMPLETE")
+    print(f"  Best Score: {report.best_score:.3f}")
+    print(f"  Best Profile: {report.best_profile}")
+    print(f"  Total Iterations: {report.total_iterations}")
+    print(f"  Output: {args.output_dir}")
+    print(f"{'=' * 64}\n")
+
+
 # ======================================================================
 # ARGUMENT PARSER
 # ======================================================================
@@ -471,6 +545,30 @@ def _shared_parser() -> argparse.ArgumentParser:
     shared.add_argument(
         "-v", "--verbose", action="store_true", help="Enable debug logging"
     )
+
+    # Calibration-specific arguments
+    shared.add_argument(
+        "--prompts",
+        default=None,
+        help="Path to JSON file containing prompts for calibration",
+    )
+    shared.add_argument(
+        "--output-dir",
+        default="./calibration_results",
+        help="Output directory for calibration results (default: ./calibration_results)",
+    )
+    shared.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from checkpoint if available in output directory",
+    )
+    shared.add_argument(
+        "--use-prompt-metadata",
+        action="store_true",
+        default=False,
+        help="Enable intelligent calibration using parameter_target and evaluation_focus from prompts",
+    )
+
     return shared
 
 
@@ -521,6 +619,9 @@ def build_parser() -> argparse.ArgumentParser:
         "score", help="Stage 5: LLM-as-Judge scoring + report", parents=[shared]
     )
     sub.add_parser("full", help="Run all 5 stages end-to-end", parents=[shared])
+    sub.add_parser(
+        "calibrate", help="Stage 6: Inference parameter calibration", parents=[shared]
+    )
 
     return parser
 
@@ -551,6 +652,7 @@ def main() -> None:
         "adapter": cmd_adapter,
         "score": cmd_score,
         "full": cmd_full,
+        "calibrate": cmd_calibrate,
     }
 
     handler = dispatch.get(args.mode)

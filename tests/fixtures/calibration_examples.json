@@ -1,0 +1,297 @@
+{
+  "description": "Test fixtures for Inference Calibration Suite (Stage 6). Includes sample prompts, profiles, results, reports, and checkpoints for testing the calibration system.",
+  "version": "1.0.0",
+
+  "sample_prompts": [
+    {
+      "exam_id": "calibration_prompt_001",
+      "prompt": "You are a Home Assistant expert developer. Write a complete `async def async_setup_entry` function for a custom climate integration that includes: 1) Runtime data with TypedDict, 2) DataUpdateCoordinator with error handling, 3) Config entry validation using entry.data, 4) Proper async context manager for API client. Include type hints and docstrings following HA 2026 standards."
+    },
+    {
+      "exam_id": "calibration_prompt_002",
+      "prompt": "Create a robust EntityComponent subclass for a sensor platform in Home Assistant. Include: 1) __init__ with logger, 2) async_setup_platform with entity validation, 3) entity unique_id generation, 4) state class assignment, 5) device class and unit of measurement handling."
+    },
+    {
+      "exam_id": "calibration_prompt_003",
+      "prompt": "Implement a ConfigFlow handler for a device discovery integration. Include: 1) async_step_dhcp with source IP parsing, 2) async_step_ssdp with device matching, 3) async_step_user with form selection, 4) _async_get_or_create_entry helper, 5) Proper abort conditions for already configured devices."
+    },
+    {
+      "exam_id": "calibration_prompt_004",
+      "prompt": "Write a ServiceCallHandler class that: 1) Registers custom services with hass.services.async_register, 2) Validates service data using vol.Schema, 3) Handles async service logic with proper exception handling, 4) Returns response data using async_set_service_schema for documentation."
+    },
+    {
+      "exam_id": "calibration_prompt_005",
+      "prompt": "Implement a diagnostic sensor entity inheriting from SensorEntity with: 1) device_info linking to a device registry entry, 2) entity_category set to ENTITY_CATEGORY_DIAGNOSTIC, 3) state class STATE_CLASS_TOTAL_INCREASING, 4) unit_of_measurement and device_class configuration, 5) extra state attributes for metadata."
+    }
+  ],
+
+  "sampling_profiles": [
+    {
+      "temperature": 0.5,
+      "top_k": 20,
+      "min_p": 0.02,
+      "repetition_penalty": 1.1,
+      "presence_penalty": null
+    },
+    {
+      "temperature": 0.6,
+      "top_k": 40,
+      "min_p": 0.05,
+      "repetition_penalty": 1.15,
+      "presence_penalty": null
+    },
+    {
+      "temperature": 0.7,
+      "top_k": 50,
+      "min_p": 0.02,
+      "repetition_penalty": 1.2,
+      "presence_penalty": null
+    },
+    {
+      "temperature": 0.5,
+      "top_k": 50,
+      "min_p": 0.05,
+      "repetition_penalty": 1.1,
+      "presence_penalty": 0.1
+    }
+  ],
+
+  "calibration_results": [
+    {
+      "profile": {
+        "temperature": 0.5,
+        "top_k": 20,
+        "min_p": 0.02,
+        "repetition_penalty": 1.1,
+        "presence_penalty": null
+      },
+      "exam_id": "calibration_prompt_001",
+      "judge_scores": {
+        "ha_modernity": 0.85,
+        "reasoning_depth": 0.78,
+        "functionality": 0.90,
+        "completeness": 0.82,
+        "style": 0.75
+      },
+      "composite_score": 0.82,
+      "adjusted_score": 0.82,
+      "response_length": 450,
+      "timestamp": "2026-03-15T10:30:00Z",
+      "response_text": "from homeassistant.helpers.coordinator import CoordinatorEntity, DataUpdateCoordinator\n\nclass RuntimeData(TypedDict):\n    api_url: str\n    refresh_interval: int\n\nasync def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:\n    \"\"\"Set up the climate integration.\"\"\"\n    runtime_data = RuntimeData(\n        api_url=entry.data['api_url'],\n        refresh_interval=entry.data.get('refresh_interval', 300)\n    )\n    entry.runtime_data = runtime_data\n    ..."
+    },
+    {
+      "profile": {
+        "temperature": 0.6,
+        "top_k": 40,
+        "min_p": 0.05,
+        "repetition_penalty": 1.15,
+        "presence_penalty": null
+      },
+      "exam_id": "calibration_prompt_001",
+      "judge_scores": {
+        "ha_modernity": 0.92,
+        "reasoning_depth": 0.88,
+        "functionality": 0.95,
+        "completeness": 0.90,
+        "style": 0.85
+      },
+      "composite_score": 0.91,
+      "adjusted_score": 0.91,
+      "response_length": 520,
+      "timestamp": "2026-03-15T10:32:00Z",
+      "response_text": "from homeassistant.helpers.coordinator import CoordinatorEntity, DataUpdateCoordinator\nfrom typing import TypedDict\nimport logging\n\nLOGGER = logging.getLogger(__name__)\n\nclass RuntimeData(TypedDict):\n    \"\"\"Runtime data for the integration.\"\"\"\n    api_url: str\n    refresh_interval: int\n    api_client: httpx.AsyncClient\n\nasync def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:\n    \"\"\"Set up the climate integration with proper error handling.\"\"\"\n    hass.data.setdefault(DOMAIN, {})\n    ..."
+    },
+    {
+      "profile": {
+        "temperature": 0.7,
+        "top_k": 50,
+        "min_p": 0.02,
+        "repetition_penalty": 1.2,
+        "presence_penalty": null
+      },
+      "exam_id": "calibration_prompt_001",
+      "judge_scores": {
+        "ha_modernity": 0.75,
+        "reasoning_depth": 0.65,
+        "functionality": 0.80,
+        "completeness": 0.70,
+        "style": 0.72
+      },
+      "composite_score": 0.73,
+      "adjusted_score": 0.58,
+      "response_length": 180,
+      "timestamp": "2026-03-15T10:34:00Z",
+      "response_text": "async def async_setup_entry(hass, entry):\n    return True"
+    },
+    {
+      "profile": {
+        "temperature": 0.5,
+        "top_k": 50,
+        "min_p": 0.05,
+        "repetition_penalty": 1.1,
+        "presence_penalty": 0.1
+      },
+      "exam_id": "calibration_prompt_002",
+      "judge_scores": {
+        "ha_modernity": 0.88,
+        "reasoning_depth": 0.82,
+        "functionality": 0.92,
+        "completeness": 0.85,
+        "style": 0.80
+      },
+      "composite_score": 0.86,
+      "adjusted_score": 0.86,
+      "response_length": 380,
+      "timestamp": "2026-03-15T10:36:00Z",
+      "response_text": "from homeassistant.helpers.entity import EntityComponent\n\nclass SensorPlatform(EntityComponent[SensorEntity]):\n    \"\"\"Sensor platform handler.\"\"\"\n    ..."
+    }
+  ],
+
+  "calibration_report": {
+    "timestamp": "2026-03-15T11:00:00Z",
+    "total_iterations": 20,
+    "prompt_count": 5,
+    "best_profile": {
+      "temperature": 0.6,
+      "top_k": 40,
+      "min_p": 0.05,
+      "repetition_penalty": 1.15,
+      "presence_penalty": null
+    },
+    "best_score": 0.91,
+    "statistics": {
+      "mean_composite_score": 0.83,
+      "std_composite_score": 0.08,
+      "min_composite_score": 0.58,
+      "max_composite_score": 0.91,
+      "profiles_tested": 4,
+      "prompts_tested": 5,
+      "short_responses_penalized": 1,
+      "mean_response_length": 382,
+      "execution_time_seconds": 1247.5
+    },
+    "all_results": [
+      {
+        "profile": {
+          "temperature": 0.5,
+          "top_k": 20,
+          "min_p": 0.02,
+          "repetition_penalty": 1.1,
+          "presence_penalty": null
+        },
+        "exam_id": "calibration_prompt_001",
+        "judge_scores": {
+          "ha_modernity": 0.85,
+          "reasoning_depth": 0.78,
+          "functionality": 0.90,
+          "completeness": 0.82,
+          "style": 0.75
+        },
+        "composite_score": 0.82,
+        "adjusted_score": 0.82,
+        "response_length": 450,
+        "timestamp": "2026-03-15T10:30:00Z"
+      },
+      {
+        "profile": {
+          "temperature": 0.6,
+          "top_k": 40,
+          "min_p": 0.05,
+          "repetition_penalty": 1.15,
+          "presence_penalty": null
+        },
+        "exam_id": "calibration_prompt_001",
+        "judge_scores": {
+          "ha_modernity": 0.92,
+          "reasoning_depth": 0.88,
+          "functionality": 0.95,
+          "completeness": 0.90,
+          "style": 0.85
+        },
+        "composite_score": 0.91,
+        "adjusted_score": 0.91,
+        "response_length": 520,
+        "timestamp": "2026-03-15T10:32:00Z"
+      }
+    ]
+  },
+
+  "calibration_checkpoint": {
+    "timestamp": "2026-03-15T10:45:00Z",
+    "current_prompt_idx": 2,
+    "current_profile_idx": 1,
+    "completed_profiles": [
+      [0, 0],
+      [0, 1],
+      [1, 0],
+      [1, 1],
+      [2, 0]
+    ],
+    "total_profiles": 4,
+    "total_prompts": 5,
+    "all_results": [
+      {
+        "profile": {
+          "temperature": 0.5,
+          "top_k": 20,
+          "min_p": 0.02,
+          "repetition_penalty": 1.1,
+          "presence_penalty": null
+        },
+        "exam_id": "calibration_prompt_001",
+        "judge_scores": {
+          "ha_modernity": 0.85,
+          "reasoning_depth": 0.78,
+          "functionality": 0.90,
+          "completeness": 0.82,
+          "style": 0.75
+        },
+        "composite_score": 0.82,
+        "adjusted_score": 0.82,
+        "response_length": 450,
+        "timestamp": "2026-03-15T10:30:00Z"
+      },
+      {
+        "profile": {
+          "temperature": 0.6,
+          "top_k": 40,
+          "min_p": 0.05,
+          "repetition_penalty": 1.15,
+          "presence_penalty": null
+        },
+        "exam_id": "calibration_prompt_001",
+        "judge_scores": {
+          "ha_modernity": 0.92,
+          "reasoning_depth": 0.88,
+          "functionality": 0.95,
+          "completeness": 0.90,
+          "style": 0.85
+        },
+        "composite_score": 0.91,
+        "adjusted_score": 0.91,
+        "response_length": 520,
+        "timestamp": "2026-03-15T10:32:00Z"
+      }
+    ]
+  },
+
+  "calibration_grid": {
+    "temperature": [0.5, 0.6, 0.7],
+    "top_k": [20, 40, 50],
+    "min_p": [0.02, 0.05],
+    "repetition_penalty": [1.1, 1.15, 1.2]
+  },
+
+  "scoring_weights": {
+    "ha_modernity": 0.30,
+    "reasoning_depth": 0.25,
+    "functionality": 0.25,
+    "completeness": 0.12,
+    "style": 0.08
+  },
+
+  "constants": {
+    "MIN_RESPONSE_WORDS": 200,
+    "LENGTH_PENALTY_THRESHOLD": 200
+  }
+}

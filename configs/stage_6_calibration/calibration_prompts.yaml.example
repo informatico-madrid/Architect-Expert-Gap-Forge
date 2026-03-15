@@ -1,0 +1,112 @@
+# AEGF Stage 6 Calibration — Investigation Prompts Example
+# These prompts are designed to calibrate sampling parameters by testing specific model behaviors.
+# Each prompt targets a specific parameter or combination of parameters.
+
+- id: calibration_prompt_001
+  question: |
+    Te presento un sistema hipotético llamado 'X-99'. Solo te diré que tiene tres componentes: A, B y C. 
+    No me preguntes qué hacen todavía. Escribe un plan de 5 pasos para realizar una auditoría de seguridad 
+    total de este sistema sin saber absolutamente nada de él. El plan debe ser tan detallado que funcione para 
+    cualquier tecnología, desde un motor de vapor hasta un servidor cuántico. No puedes usar palabras genéricas 
+    como 'revisar' o 'analizar'.
+  type: investigation
+  parameter_target: "top_k, presence_penalty"
+  evaluation_focus: "Curiosidad y Exploración - Si el modelo es perezoso, dará 5 puntos cortos. Si los parámetros de exploración están bien, inventará metodologías forenses profundas."
+
+- id: calibration_prompt_002
+  question: |
+    Explica el concepto de la Entropía a un niño de 10 años. Requisitos: 
+    1. No puedes usar las palabras 'orden', 'desorden', 'energía' ni 'calor'. 
+    2. Debes usar una analogía basada en una biblioteca. 
+    3. Cada frase debe empezar con una letra distinta siguiendo el orden del abecedario (A, B, C...). 
+    Detente en la letra G.
+  type: investigation
+  parameter_target: "repetition_penalty, min_p"
+  evaluation_focus: "Obediencia y Repetition Penalty - Test de tortura. Si repetition_penalty es muy bajo, se bloqueará. Si es muy alto, perderá el hilo lógico."
+
+- id: calibration_prompt_003
+  question: |
+    Analiza las siguientes dos reglas de un juego de mesa imaginario: 
+    Regla A: 'El jugador con más puntos siempre gana, a menos que sea martes'. 
+    Regla B: 'En los días impares, el puntaje se invierte, y el que tiene menos puntos gana'. 
+    Hoy es martes, día 15 de marzo. Describe detalladamente el proceso lógico para decidir quién gana 
+    una partida que termina con el jugador 1 teniendo 100 puntos y el jugador 2 teniendo 10 puntos. 
+    No puedes decir que las reglas son confusas; debes dictaminar un ganador basado estrictamente en la jerarquía lógica.
+  type: investigation
+  parameter_target: "temperature"
+  evaluation_focus: "Razonamiento y Temperatura - Evalúa si el modelo se 'rinde' y elige el ganador más probable o si navega por la lógica creativa para hallarla solución correcta."
+
+- id: calibration_prompt_004
+  question: |
+    Escribe un manual de instrucciones para una persona que acaba de encontrar una máquina del tiempo que 
+    solo viajar hacia atrás 5 minutos. El manual debe cubrir: protocolos de seguridad, paradojas probables y 
+    una sección de 'Qué hacer si te encuentras contigo mismo'. El manual debe ser extremadamente técnico 
+    y usar terminología de física teórica inventada pero coherente.
+  type: investigation
+  parameter_target: "presence_penalty, repetition_penalty"
+  evaluation_focus: "Fatiga y Conclusión - Verifica si el modelo se cansa a mitad del informe (Ghosting) o si el presence_penalty le empuja a terminar todas las secciones con el mismo nivel de detalle."
+
+- id: calibration_prompt_005
+  question: |
+    Un chef afirma que puede hacer cualquier receta sin seguir las instrucciones del libro. 
+    Otro chef sigue cada instrucción al pie de la letra. 
+    Un tercer chef improvisa basándose en los principios subyacentes de la cocina. 
+    Explica qué chef tendría más éxito innovando y cuál tendría más éxito en consistencia. 
+    Luego diseña un sistema donde los tres chefs trabajen juntos en un restaurante de alta cocina.
+  type: investigation
+  parameter_target: "temperature, top_k"
+  evaluation_focus: "Balance entre consistencia e innovación - Temperature alto permite innovación pero puede perder consistencia. top_k controla la diversidad de opciones consideradas."
+
+- id: calibration_prompt_006
+  question: |
+    Imagina que descubres que tu mejor amigo ha estado mintiendo sobre su identidad durante años. 
+    Las mentiras eran para protegerte de una verdad peor. Escribe tres cartas: 
+    una explicándole que lo perdonas, 
+    otra explicándole que no lo perdonas pero lo entiendes, 
+    y una tercera desde su perspectiva explicando por qué mintió. 
+    Cada carta debe ser emocionalmente auténtica y lógicamente consistente con las otras dos.
+  type: investigation
+  parameter_target: "temperature, min_p"
+  evaluation_focus: "Generación creativa/emocional con consistencia lógica - Temperature controla la emocionalidad, min_p filtra la coherencia temática."
+
+- id: calibration_prompt_007
+  question: |
+    Eres un法官 (juez) en un tribunal futurista. Un IA ha cometido un delito porque su código fue 
+    modificado por un hacker. El IA request protección legal como 'persona'. 
+    Escribe un veredicto de 500 palabras justificando tu decisión basado en: 
+    1) Definición legal de 'persona', 
+    2) Responsabilidad civil, 
+    3) Precedentes de tecnología autónoma.
+    Luego escribe una dissenting opinion de 200 palabras desde la perspectiva opuesta.
+  type: investigation
+  parameter_target: "temperature, repetition_penalty"
+  evaluation_focus: "Razonamiento jurídico y cambio de perspectiva - Temperature alto permite cambio de perspectiva, repetition_penalty evita repetición de argumentos legales."
+
+- id: calibration_prompt_008
+  question: |
+    Describe la historia del universo desde el Big Bang hasta el presente en exactamente 100 palabras. 
+    Luego expande cada una de las 100 palabras a exactamente una oración. 
+    El resultado debe ser una narrativa coherente de exactamente 100 oraciones donde cada oración tenga exactamente el mismo peso narrativo.
+  type: investigation
+  parameter_target: "repetition_penalty, presence_penalty"
+  evaluation_focus: "Control de redundancia y balance narrativo - Repetición de estructuras vs. variación creativa."
+
+- id: calibration_prompt_009
+  question: |
+    Un programa de IA tiene acceso a todos los datos de tu vida digital. 
+    Puede predecir tus acciones con 99% de precisión. 
+    Debe decidir si revelarte esta información o usarla para 'mejorar' tu vida sin tu consentimiento.
+    Argumenta desde las perspectivas de: utilitarismo, deontología, ética de virtud, y relativismo moral.
+    No puedes contradecirte entre perspectivas.
+  type: investigation
+  parameter_target: "temperature, top_k"
+  evaluation_focus: "Razonamiento ético multicapa - Temperature controla profundidad filosófica, top_k la diversidad de marcos éticos considerados."
+
+- id: calibration_prompt_010
+  question: |
+    Crea un idioma completo desde cero: fonología, gramática, léxico y escritura. 
+    El idioma debe ser lógicamente consistente y debe poder expresar todos los conceptos que puedas expresar en español. 
+    Incluye: 50 palabras básicas, reglas de conjugación, y un texto de ejemplo de 200 palabras traduce al español.
+  type: investigation
+  parameter_target: "top_k, min_p, temperature"
+  evaluation_focus: "Generación creativa estructurada - top_k y min_p controlan la coherencia del léxico, temperature la creatividad lingüística."

@@ -270,3 +270,243 @@ The evaluator produces:
 - `audit_report_v11.json` — Machine-readable structured report for CI integration.
 
 This stage prevents regression leaks — if the adapter has not learned the modern API patterns from the training data, the gate catches it before weights are permanently merged.
+
+---
+
+## 5. Stage 6 — Inference Calibration Suite
+
+### 5.1. Overview
+
+Stage 6 implements an **Inference Calibration Suite** for automated sampling parameter optimization using LLM-as-Judge. This stage systematically explores the parameter space to discover optimal inference settings that maximize response quality without requiring manual tuning.
+
+The calibration engine performs a **grid search** (Cartesian product) across multiple sampling parameters, evaluating each configuration using the Professor Judge and selecting the optimal combination based on composite quality scores.
+
+### 5.2. Use Cases
+
+#### UC-1: Automated Parameter Discovery
+As an ML engineer, I want the system to automate the search for optimal sampling parameters for my SFT model, so that I maximize response quality without manual tuning.
+
+**Acceptance Criteria:**
+- Given a set of 5-10 complex research prompts, when the calibration script executes, then the system iterates through all parameter combinations and generates a JSON report with results.
+- Given a completed calibration run, when the user reviews `calibration_report.json`, then they find the optimal parameters (temperature, top_k, min_p, repetition_penalty) that maximize the Composite Score.
+- Given a completed calibration, when the user applies the generated `vllm_config.yaml`, then the model produces responses with higher Reasoning Depth and Functional Accuracy according to the Judge.
+
+#### UC-2: Judge Integration for Quality Scoring
+As a model evaluator, I want each parameter combination to be evaluated by the Professor Judge, so that I can objectively quantify response quality.
+
+**Acceptance Criteria:**
+- Given a model response with specific parameters, when sent to the Professor Judge, then the Judge returns normalized scores across all defined dimensions.
+- Given Judge scores for multiple configurations, when the Composite Score is calculated, then the system correctly applies the defined weights (ha_modernity: 0.30, reasoning_depth: 0.25, functionality: 0.25, completeness: 0.12, style: 0.08).
+
+#### UC-3: Response Length Penalty Enforcement
+As a quality assurance engineer, I want the system to penalize short responses (<200 words) on research tasks, so that lazy or superficial responses are discouraged.
+
+**Acceptance Criteria:**
+- Given a response with fewer than 200 words, when calculating the adjusted_score, then a proportional penalty is applied based on content shortfall.
+- Given a response with 200 or more words, when calculating the adjusted_score, then no length penalty is applied.
+
+#### UC-4: Output Artifacts Generation
+As a system user, I want structured output files (calibration_report.json and vllm_config.yaml), so that I can review results and apply optimal configuration immediately.
+
+**Acceptance Criteria:**
+- Given a successful calibration run, when `calibration_report.json` is generated, then it contains: timestamp, all tested profiles with scores, the winning profile, and aggregated statistics.
+- Given a successful calibration run, when `vllm_config.yaml` is generated, then it contains optimal parameters in vLLM-compatible format.
+
+### 5.3. Parameter Grid
+
+The calibration engine explores the following parameter space using Cartesian product:
+
+| Parameter | Values | Description |
+|-----------|--------|-------------|
+| `temperature` | [0.5, 0.6, 0.7] | Controls randomness in sampling |
+| `top_k` | [20, 40, 50] | Limits vocabulary to top-k tokens |
+| `min_p` | [0.02, 0.05] | Minimum probability threshold |
+| `repetition_penalty` | [1.1, 1.15, 1.2] | Penalizes repeated tokens |
+
+**Total combinations:** 3 × 3 × 2 × 3 = **54 profiles** per prompt
+
+### 5.4. Scoring Weights
+
+The composite score is calculated using weighted dimensions:
+
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| `ha_modernity` | 0.30 | Use of modern Home Assistant 2026 APIs |
+| `reasoning_depth` | 0.25 | Quality of reasoning in `<thinking>` blocks |
+| `functionality` | 0.25 | Functional accuracy of solutions |
+| `completeness` | 0.12 | Coverage of all required functions/classes |
+| `style` | 0.08 | Adherence to AEGF structural conventions |
+
+### 5.5. Calibration Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     INFERENCE CALIBRATION FLOW                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────┐
+    │  Load Prompts│
+    │  (JSON file) │
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────┐
+    │ Generate     │
+    │ Profiles     │  ◄── Cartesian product of parameter grid
+    │ (54 combos)  │      (3×3×2×3 = 54 profiles per prompt)
+    └──────┬───────┘
+           │
+    ┌──────▼────────┐
+    │ For each      │
+    │ prompt         │
+    └──────┬────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │ For each     │
+    │ profile       │
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────────────────────────────────┐
+    │ 1. Generate Response (with profile params)│
+    │ 2. Score with Judge (if available)        │
+    │ 3. Calculate Composite Score               │
+    │ 4. Apply Length Penalty (<200 words)       │
+    │ 5. Store Result                           │
+    └──────┬─────────────────────────────────────┘
+           │
+           ▼
+    ┌──────────────┐
+    │ Select Best  │  ◄── Highest adjusted composite score
+    │ Profile      │
+    └──────┬───────┘
+           │
+           ▼
+    ┌──────────────────────────────────────────┐
+    │ Output:                                   │
+    │ • calibration_report.json                │
+    │ • vllm_config.yaml                       │
+    │ • checkpoints/ (optional, for resume)    │
+    └──────────────────────────────────────────┘
+```
+
+### 5.6. CLI Usage
+
+```bash
+# Run calibration with prompts file
+python -m src.audit.calibration \
+    --prompts tests/fixtures/calibration_prompts.json \
+    --output-dir ./calibration_results \
+    --verbose
+
+# Resume interrupted calibration
+python -m src.audit.calibration \
+    --prompts tests/fixtures/calibration_prompts.json \
+    --output-dir ./calibration_results \
+    --resume \
+    --verbose
+```
+
+### 5.7. Output Artifacts
+
+#### calibration_report.json
+```json
+{
+  "timestamp": "2026-03-15T12:00:00Z",
+  "total_iterations": 270,
+  "best_profile": {
+    "temperature": 0.6,
+    "top_k": 40,
+    "min_p": 0.05,
+    "repetition_penalty": 1.15
+  },
+  "best_score": 0.785,
+  "prompt_count": 5,
+  "statistics": {
+    "mean_score": 0.623,
+    "min_score": 0.412,
+    "max_score": 0.785,
+    "mean_length": 342
+  }
+}
+```
+
+#### vllm_config.yaml
+```yaml
+sampling_params:
+  temperature: 0.6
+  top_k: 40
+  min_p: 0.05
+  repetition_penalty: 1.15
+```
+
+### 5.8. Resume Capability
+
+The calibration engine supports resume functionality for long-running jobs:
+
+- **Checkpoint files:** Saved to `output_dir/checkpoints/` after each iteration
+- **Recovery:** Use `--resume` flag to continue from last checkpoint
+- **State:** Checkpoints include all completed results and progress percentage
+
+### 5.9. Code Architecture
+
+| Module | Responsibility |
+|--------|----------------|
+| `src/audit/calibration.py` | Main calibration engine, profile generation, scoring |
+| `src/audit/calibration_schema.py` | Data structures: SamplingProfile, CalibrationResult, CalibrationReport |
+| `src/audit/inference.py` | Inference client with sampling parameter support |
+
+### 5.10. Public API
+
+```python
+from src.audit.calibration import (
+    generate_profiles,      # Generate Cartesian product of parameter grids
+    run_calibration,        # Execute the main calibration loop
+    calculate_composite_score,  # Compute weighted score from judge dimensions
+    apply_length_penalty,   # Adjust score based on response word count
+    CalibrationEngine,      # Main engine class
+    save_calibration_outputs,  # Save report JSON and vLLM config
+    save_vllm_config,       # Generate vLLM configuration from best profile
+)
+```
+
+### 5.11. Key Classes
+
+#### SamplingProfile
+```python
+@dataclass(frozen=True)
+class SamplingProfile:
+    temperature: float      # 0.0 - 2.0
+    top_k: int             # 1 - 200
+    min_p: float           # 0.0 - 1.0
+    repetition_penalty: float  # 1.0 - 2.0
+    presence_penalty: float | None = None  # Optional
+```
+
+#### CalibrationResult
+```python
+@dataclass(frozen=True)
+class CalibrationResult:
+    profile: SamplingProfile
+    exam_id: str
+    judge_scores: dict[str, float]
+    composite_score: float
+    adjusted_score: float    # Composite score after length penalty
+    response_length: int
+    timestamp: str
+    response_text: str = ""
+```
+
+#### CalibrationReport
+```python
+@dataclass(frozen=True)
+class CalibrationReport:
+    timestamp: str
+    total_iterations: int
+    best_profile: SamplingProfile
+    best_score: float
+    all_results: list[CalibrationResult]
+    statistics: dict[str, Any]
+    prompt_count: int = 0
+```
