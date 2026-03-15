@@ -24,6 +24,9 @@
 #   CLAUDE_CMD           Claude CLI binary (default: claude)
 #   GOOSE_MODEL          Goose model for work phase
 #   GOOSE_PROVIDER       Goose provider for work phase
+#   RALPH_VLLM_URL       vLLM API URL (default: http://localhost:4000)
+#   RALPH_VLLM_MODEL     vLLM model name (default: qwen3-30b-a3b-thinking-fp8)
+#   RALPH_VLLM_API_KEY   vLLM API key (default: EMPTY for local)
 #
 set -euo pipefail
 
@@ -43,6 +46,11 @@ RALPH_YOLO="${RALPH_YOLO:-true}"
 
 # Test concurrency guard: limit how many pytest processes this loop allows
 RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:-1}"
+
+# vLLM local backend configuration (for goose agent)
+RALPH_VLLM_URL="${RALPH_VLLM_URL:-http://localhost:4000}"
+RALPH_VLLM_MODEL="${RALPH_VLLM_MODEL:-qwen3-30b-a3b-thinking-fp8}"
+RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-EMPTY}"
 
 # Worktree mode globals (T01)
 WORKTREE_ENABLED=true
@@ -160,6 +168,17 @@ AGENTS:
     claude   - Claude Code CLI (default)
     goose    - Goose CLI with recipes
     custom   - Set RALPH_CUSTOM_CMD environment variable
+
+VLLM BACKEND (for goose agent):
+    When RALPH_VLLM_URL is set, goose will use the OpenAI-compatible
+    API at that URL instead of external providers.
+    Environment variables:
+    - RALPH_VLLM_URL      vLLM API URL (default: http://localhost:4000)
+    - RALPH_VLLM_MODEL    vLLM model name (default: qwen3-30b-a3b-thinking-fp8)
+    - RALPH_VLLM_API_KEY  API key (default: EMPTY for local)
+
+Example:
+    RALPH_AGENT=goose RALPH_VLLM_URL=http://localhost:4000 .ralph/ralph-loop.sh specs/xxx
 
 EOF
 }
@@ -447,10 +466,22 @@ REVIEW_EOF
             exit_code=$?
             ;;
         goose)
-            review_output=$(GOOSE_PROVIDER="${RALPH_REVIEWER_PROVIDER:-$GOOSE_PROVIDER}" \
-                          GOOSE_MODEL="${RALPH_REVIEWER_MODEL:-$GOOSE_MODEL}" \
-                          goose run --recipe "$RALPH_DIR/recipes/ralph-review.yaml" 2>&1)
-            exit_code=$?
+            # If vLLM is configured, use it for review as well
+            if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
+                log_info "Using vLLM for review: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
+                review_output=$(
+                    OPENAI_HOST="$RALPH_VLLM_URL" \
+                    OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
+                    GOOSE_MODEL="$RALPH_VLLM_MODEL" \
+                    goose run --recipe "$RALPH_DIR/recipes/ralph-review.yaml" 2>&1
+                )
+                exit_code=$?
+            else
+                review_output=$(GOOSE_PROVIDER="${RALPH_REVIEWER_PROVIDER:-$GOOSE_PROVIDER}" \
+                              GOOSE_MODEL="${RALPH_REVIEWER_MODEL:-$GOOSE_MODEL}" \
+                              goose run --recipe "$RALPH_DIR/recipes/ralph-review.yaml" 2>&1)
+                exit_code=$?
+            fi
             ;;
     esac
     set -e
@@ -630,8 +661,22 @@ run_work_agent() {
         goose)
             # Write prompt to task.md for goose recipe
             echo "$prompt" > "$PROJECT_DIR/.goose/ralph/task.md"
-            output=$(goose run --recipe "$RALPH_DIR/recipes/ralph-work.yaml" 2>&1 | tee "$log_file")
-            exit_code=$?
+            
+            # If vLLM is configured, set OpenAI environment variables for goose
+            if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
+                log_info "Using vLLM backend: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
+                # Configure goose to use OpenAI-compatible API with vLLM
+                output=$(
+                    OPENAI_HOST="$RALPH_VLLM_URL" \
+                    OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
+                    GOOSE_MODEL="$RALPH_VLLM_MODEL" \
+                    goose run --recipe "$RALPH_DIR/recipes/ralph-work.yaml" 2>&1 | tee "$log_file"
+                )
+                exit_code=$?
+            else
+                output=$(goose run --recipe "$RALPH_DIR/recipes/ralph-work.yaml" 2>&1 | tee "$log_file")
+                exit_code=$?
+            fi
             ;;
         custom)
             if [[ -z "${RALPH_CUSTOM_CMD:-}" ]]; then
@@ -1081,6 +1126,11 @@ main() {
     echo -e "  ${BLUE}Feature:${NC}      $feature_name"
     echo -e "  ${BLUE}Spec dir:${NC}     $spec_dir"
     echo -e "  ${BLUE}Agent:${NC}        $RALPH_AGENT"
+    # Show vLLM info if configured
+    if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
+        echo -e "  ${BLUE}vLLM URL:${NC}    $RALPH_VLLM_URL"
+        echo -e "  ${BLUE}vLLM Model:${NC}  $RALPH_VLLM_MODEL"
+    fi
     echo -e "  ${BLUE}Max iter:${NC}     $RALPH_MAX_ITER"
     echo -e "  ${BLUE}Review every:${NC} $RALPH_REVIEW_EVERY tasks"
     echo -e "  ${BLUE}Max retries:${NC}  $RALPH_MAX_RETRIES per task"
