@@ -16,6 +16,7 @@ from __future__ import annotations
 import abc
 import logging
 import os
+import subprocess
 import time
 from typing import Any
 from src.schemas.common import InferencePayload, ChatMessage
@@ -26,6 +27,7 @@ __all__ = [
     "BaseInferenceClient",
     "GeminiClient",
     "VLLMClient",
+    "ClaudeClient",
     "InferenceRouter",
 ]
 
@@ -281,6 +283,100 @@ class VLLMClient(BaseInferenceClient):
 
 
 # ---------------------------------------------------------------------------
+# Claude Client (Claude Code CLI wrapper)
+# ---------------------------------------------------------------------------
+
+
+class ClaudeClient(BaseInferenceClient):
+    """Claude Code CLI client wrapper.
+
+    Uses the Claude Code CLI (claude) for inference via subprocess.
+    Supports model selection via CLAUDE_MODEL environment variable or model argument.
+    """
+
+    _backend_name = "Claude"
+
+    def __init__(self, model: str = "MiniMax-M2.5") -> None:
+        self._model = model or os.getenv("CLAUDE_MODEL", "MiniMax-M2.5")
+        self._cli_path = self._find_claude_cli()
+
+    def _find_claude_cli(self) -> str:
+        """Find the Claude CLI executable path."""
+        # Check if running in a specific environment
+        cli_path = os.getenv("CLAUDE_CLI_PATH")
+        if cli_path and os.path.isfile(cli_path):
+            return cli_path
+
+        # Check common paths
+        common_paths = [
+            "/usr/local/bin/claude",
+            "/usr/bin/claude",
+            os.expanduser("~/.local/bin/claude"),
+        ]
+        for path in common_paths:
+            if os.path.isfile(path):
+                return path
+
+        # Fall back to just 'claude' and hope it's in PATH
+        return "claude"
+
+    def generate(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        max_tokens: int = 65536,
+        temperature: float = 0.6,
+        top_k: int | None = None,
+        min_p: float | None = None,
+        repetition_penalty: float | None = None,
+        json_mode: bool = False,
+        tools: list[dict[str, Any]] | None = None,
+    ) -> str:
+        # Build the full prompt with system prompt if provided
+        full_prompt = prompt
+        if system_prompt:
+            full_prompt = f"{system_prompt}\n\n{prompt}"
+
+        # Claude Code CLI doesn't support all the parameters we have
+        # Build the command: claude -p --print < prompt
+        cmd = [self._cli_path, "-p", "--print"]
+
+        # Add model if specified (Claude CLI supports --model flag)
+        if self._model:
+            cmd.extend(["--model", self._model])
+
+        # Add max tokens (Claude CLI uses --max-tokens)
+        if max_tokens:
+            cmd.extend(["--max-tokens", str(max_tokens)])
+
+        # Claude CLI doesn't directly support temperature, top_k, min_p, repetition_penalty
+        # These would need to be handled differently or ignored
+
+        try:
+            result = subprocess.run(
+                cmd,
+                input=full_prompt,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout
+            )
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"Claude CLI failed with code {result.returncode}: {result.stderr}"
+                )
+            return result.stdout
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError("Claude CLI timed out after 300 seconds") from exc
+        except FileNotFoundError:
+            raise RuntimeError(
+                f"Claude CLI not found at {self._cli_path}. "
+                "Please ensure Claude Code CLI is installed and in PATH, "
+                "or set CLAUDE_CLI_PATH environment variable."
+            ) from None
+
+
+# ---------------------------------------------------------------------------
 # Router — resolves the correct client based on configuration
 # ---------------------------------------------------------------------------
 
@@ -304,13 +400,16 @@ class InferenceRouter:
         gemini_model: str = "gemini-2.5-flash",
         vllm_model: str = "qwen3-30b-a3b-thinking-fp8",
         api_url: str = "http://localhost:8000/v1",
+        claude_model: str = "MiniMax-M2.5",
     ) -> BaseInferenceClient:
-        """Resolve the professor/judge client (prefers Gemini to save GPU)."""
+        """Resolve the professor/judge client (prefers Gemini to save GPU, or Claude)."""
         resolved = self._resolve_backend(backend)
-        key = f"professor:{resolved}:{gemini_model if resolved == 'gemini' else vllm_model}"
+        key = f"professor:{resolved}:{gemini_model if resolved == 'gemini' else vllm_model if resolved == 'vllm' else claude_model}"
         if key not in self._cache:
             if resolved == "gemini":
                 self._cache[key] = GeminiClient(model=gemini_model)
+            elif resolved == "claude":
+                self._cache[key] = ClaudeClient(model=claude_model)
             else:
                 self._cache[key] = VLLMClient(api_url=api_url, model=vllm_model)
             logger.info("Professor client: %s (%s)", resolved, key)
@@ -322,12 +421,15 @@ class InferenceRouter:
         gemini_model: str = "gemini-2.5-flash",
         model: str = "qwen3-30b-a3b-thinking-fp8",
         api_url: str = "http://localhost:8000/v1",
+        claude_model: str = "MiniMax-M2.5",
     ) -> BaseInferenceClient:
         """Resolve the student (baseline/adapter) inference client."""
-        key = f"student:{backend}:{model if backend == 'vllm' else gemini_model}"
+        key = f"student:{backend}:{model if backend == 'vllm' else gemini_model if backend == 'gemini' else claude_model}"
         if key not in self._cache:
             if backend == "gemini":
                 self._cache[key] = GeminiClient(model=gemini_model)
+            elif backend == "claude":
+                self._cache[key] = ClaudeClient(model=claude_model)
             else:
                 self._cache[key] = VLLMClient(api_url=api_url, model=model)
             logger.info("Student client: %s (%s)", backend, key)
@@ -340,4 +442,6 @@ class InferenceRouter:
             if _GEMINI_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
                 return "gemini"
             return "vllm"
+        if backend not in ("gemini", "vllm", "claude"):
+            raise ValueError(f"Unknown backend: {backend}. Must be one of: gemini, vllm, claude")
         return backend

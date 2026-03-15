@@ -68,6 +68,7 @@ from src.audit.persistence import (
 from src.audit.sampling import load_dataset, stratified_sample
 from src.audit.report_writer import generate_report
 from src.audit.calibration import run_calibration
+from src.audit.inference import InferenceRouter
 from src.audit.schema import AuditReport, ExamRecord, PromptGenerationError, SampleRecord, ScoreCard
 from src.audit.scorecard import compute_scorecard
 from src.utils.doc_loader import load_master_docs
@@ -424,6 +425,17 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
     # Determine checkpoint directory for resume functionality
     checkpoint_dir = args.output_dir if args.resume else None
 
+    # Create judge client based on judge_backend
+    router = InferenceRouter()
+    judge_client = router.professor(
+        backend=args.judge_backend,
+        gemini_model=args.gemini_model,
+        vllm_model=args.judge_model,
+        api_url=args.api_url,
+        claude_model=args.claude_model,
+    )
+    logger.info("Using judge backend: %s (model: %s)", args.judge_backend, args.claude_model if args.judge_backend == "claude" else args.gemini_model if args.judge_backend == "gemini" else args.judge_model)
+
     # Run calibration
     report = run_calibration(
         prompts=prompts,
@@ -431,6 +443,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         verbose=True,
         checkpoint_dir=checkpoint_dir,
         use_prompt_metadata=args.use_prompt_metadata,
+        judge_client=judge_client,
     )
 
     # Print summary
@@ -567,6 +580,17 @@ def _shared_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Enable intelligent calibration using parameter_target and evaluation_focus from prompts",
+    )
+    shared.add_argument(
+        "--judge-backend",
+        default="auto",
+        choices=["auto", "gemini", "vllm", "claude"],
+        help="Backend for judge calls in calibration (default: auto)",
+    )
+    shared.add_argument(
+        "--claude-model",
+        default="MiniMax-M2.5",
+        help="Claude model name for judge when using --judge-backend claude (default: MiniMax-M2.5)",
     )
 
     return shared

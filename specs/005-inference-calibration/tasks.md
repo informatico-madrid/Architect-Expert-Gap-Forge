@@ -248,16 +248,16 @@ Esto permite ejecutar la calibración básica y obtener resultados. Las historia
 
 ### Claude Client Implementation
 
-- [ ] T047 [US6] Implement ClaudeClient class in src/audit/inference.py to wrap Claude Code CLI
-- [ ] T048 [US6] [P] Add ClaudeClient to InferenceRouter in src/audit/inference.py
+- [x] T047 [US6] Implement ClaudeClient class in src/audit/inference.py to wrap Claude Code CLI
+- [x] T048 [US6] [P] Add ClaudeClient to InferenceRouter in src/audit/inference.py
 
 ### CLI Integration
 
-- [ ] T049 [US6] Update calibration CLI to support --judge-backend claude in src/audit/cli.py
-- [ ] T050 [US6] Add CLAUDE_MODEL environment variable support in src/audit/cli.py
-- [ ] T051 [US6] Add --claude-model CLI argument in src/audit/cli.py
+- [x] T049 [US6] Update calibration CLI to support --judge-backend claude in src/audit/cli.py
+- [x] T050 [US6] Add CLAUDE_MODEL environment variable support in src/audit/cli.py
+- [x] T051 [US6] Add --claude-model CLI argument in src/audit/cli.py
 
 ### Testing
 
-- [ ] T052 [US6] Add test for ClaudeClient in tests/test_inference.py
-- [ ] T053 [US6] Test calibration with Claude as judge end-to-end
+- [x] T052 [US6] Add test for ClaudeClient in tests/test_inference.py
+- [x] T053 [US6] Test calibration with Claude as judge end-to-end

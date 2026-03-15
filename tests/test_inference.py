@@ -21,17 +21,18 @@ Covers:
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
-from unittest.mock import MagicMock, call, patch
+import subprocess
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
 from src.audit.inference import (
     BaseInferenceClient,
+    ClaudeClient,
     InferenceRouter,
     VLLMClient,
-    _GEMINI_AVAILABLE,
 )
 
 # ---------------------------------------------------------------------------
@@ -229,7 +230,6 @@ class TestGeminiClientGuards:
         # Ensure we can exercise the ImportError path even if the SDK is
         # installed in the environment by monkeypatching the module globals.
         import src.audit.inference as inf
-        from unittest.mock import patch as _patch
 
         # Simulate SDK absence
         inf._GEMINI_AVAILABLE = False
@@ -473,3 +473,452 @@ class TestGeminiClientWithMock:
                         client.generate_with_retry(
                             "prompt", retries=2, retry_delay=0.01
                         )
+
+
+# ---------------------------------------------------------------------------
+# ClaudeClient — backend name contract
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestClaudeClientBackendName:
+    def test_claude_client_backend_name(self) -> None:
+        assert ClaudeClient._backend_name == "Claude"
+
+
+# ---------------------------------------------------------------------------
+# ClaudeClient — generate()
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestClaudeClientGenerate:
+    def test_returns_stdout_from_cli(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0, stdout="claude response", stderr=""
+            )
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                result = client.generate("test prompt")
+        assert result == "claude response"
+
+    def test_passes_prompt_to_stdin(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                client.generate("my test prompt")
+        mock_run.assert_called_once()
+        _, kwargs = mock_run.call_args
+        assert kwargs["input"] == "my test prompt"
+
+    def test_uses_print_flag(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                client.generate("prompt")
+        mock_run.assert_called_once()
+        args, _ = mock_run.call_args
+        assert "-p" in args[0]
+        assert "--print" in args[0]
+
+    def test_includes_model_flag_when_specified(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="haiku")
+                client.generate("prompt")
+        args, _ = mock_run.call_args
+        assert "--model" in args[0]
+        assert "haiku" in args[0]
+
+    def test_includes_max_tokens_flag(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                client.generate("prompt", max_tokens=4096)
+        args, _ = mock_run.call_args
+        assert "--max-tokens" in args[0]
+        assert "4096" in args[0]
+
+    def test_adds_system_prompt_to_input(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                client.generate("user prompt", system_prompt="system instruction")
+        _, kwargs = mock_run.call_args
+        assert "system instruction" in kwargs["input"]
+        assert "user prompt" in kwargs["input"]
+
+    def test_raises_on_nonzero_exit_code(self) -> None:
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1, stdout="", stderr="CLI error"
+            )
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                with pytest.raises(RuntimeError, match="CLI error"):
+                    client.generate("prompt")
+
+    def test_raises_on_timeout(self) -> None:
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 300)):
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                with pytest.raises(RuntimeError, match="timed out"):
+                    client.generate("prompt")
+
+    def test_raises_when_cli_not_found(self) -> None:
+        with patch("subprocess.run", side_effect=FileNotFoundError("claude not found")):
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+                client = ClaudeClient(model="sonnet")
+                with pytest.raises(RuntimeError, match="not found"):
+                    client.generate("prompt")
+
+
+# ---------------------------------------------------------------------------
+# ClaudeClient — _find_claude_cli()
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestClaudeClientFindCli:
+    def test_uses_env_cli_path_when_set(self) -> None:
+        with patch.dict(os.environ, {"CLAUDE_CLI_PATH": "/custom/path/claude"}):
+            with patch("os.path.isfile", return_value=True):
+                client = ClaudeClient(model="sonnet")
+                assert client._cli_path == "/custom/path/claude"
+
+    def test_checks_common_paths(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(ClaudeClient, "_find_claude_cli", return_value=os.path.expanduser("~/.local/bin/claude")):
+                client = ClaudeClient(model="sonnet")
+                assert client._cli_path == os.path.expanduser("~/.local/bin/claude")
+
+    def test_falls_back_to_claude_command(self) -> None:
+        with patch.object(ClaudeClient, "_find_claude_cli", return_value="claude"):
+            client = ClaudeClient(model="sonnet")
+            assert client._cli_path == "claude"
+
+
+# ---------------------------------------------------------------------------
+# InferenceRouter — Claude backend paths
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestInferenceRouterClaudePaths:
+    def test_professor_creates_claude_client_when_backend_is_claude(self) -> None:
+        router = InferenceRouter()
+        mock_instance = MagicMock(spec=BaseInferenceClient)
+        with patch(
+            "src.audit.inference.ClaudeClient", return_value=mock_instance
+        ) as MockClaude:
+            client = router.professor(backend="claude", claude_model="sonnet")
+        MockClaude.assert_called_once_with(model="sonnet")
+        assert client is mock_instance
+
+    def test_student_creates_claude_client_when_backend_is_claude(self) -> None:
+        router = InferenceRouter()
+        mock_instance = MagicMock(spec=BaseInferenceClient)
+        with patch(
+            "src.audit.inference.ClaudeClient", return_value=mock_instance
+        ) as MockClaude:
+            client = router.student(backend="claude", claude_model="sonnet")
+        MockClaude.assert_called_once_with(model="sonnet")
+        assert client is mock_instance
+
+    def test_professor_claude_client_is_cached(self) -> None:
+        router = InferenceRouter()
+        mock_instance = MagicMock(spec=BaseInferenceClient)
+        with patch(
+            "src.audit.inference.ClaudeClient", return_value=mock_instance
+        ) as MockClaude:
+            c1 = router.professor(backend="claude", claude_model="sonnet")
+            c2 = router.professor(backend="claude", claude_model="sonnet")
+        MockClaude.assert_called_once()
+        assert c1 is c2
+
+    def test_student_claude_client_is_cached(self) -> None:
+        router = InferenceRouter()
+        mock_instance = MagicMock(spec=BaseInferenceClient)
+        with patch(
+            "src.audit.inference.ClaudeClient", return_value=mock_instance
+        ) as MockClaude:
+            c1 = router.student(backend="claude", claude_model="sonnet")
+            c2 = router.student(backend="claude", claude_model="sonnet")
+        MockClaude.assert_called_once()
+        assert c1 is c2
+
+    def test_resolve_backend_accepts_claude(self) -> None:
+        assert InferenceRouter._resolve_backend("claude") == "claude"
+
+
+# ---------------------------------------------------------------------------
+# End-to-End: Calibration with Claude as Judge
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestCalibrationWithClaudeJudge:
+    """End-to-end test for calibration using Claude as judge backend.
+
+    Tests the integration of ClaudeClient as the judge in the calibration flow.
+    """
+
+    def test_run_calibration_with_claude_judge(self) -> None:
+        """Test that calibration runs successfully with Claude as judge."""
+        from unittest.mock import MagicMock, patch
+
+        from src.audit.calibration import (
+            CalibrationEngine,
+            generate_profiles,
+        )
+        from src.audit.inference import ClaudeClient
+        from src.audit.schema import NormalizedJudgeResponse
+
+        # Create a minimal parameter grid (1 profile for quick testing)
+        test_grid = {
+            "temperature": [0.5],
+            "top_k": [50],
+            "min_p": [0.05],
+            "repetition_penalty": [1.0],
+        }
+        profiles = generate_profiles(test_grid)
+
+        # Create test prompts
+        test_prompts = [
+            {"id": "test_prompt_1", "text": "Explain what is machine learning in one sentence."},
+        ]
+
+        # Mock ClaudeClient for judge
+        mock_judge_client = MagicMock(spec=ClaudeClient)
+        mock_judge_client._model = "MiniMax-M2.5"
+        mock_judge_client._backend_name = "Claude"
+        mock_judge_client.generate_with_retry.return_value = '{"adapter": {"ha_modernity": 0.8, "reasoning_depth": 0.7, "functionality": 0.9, "completeness": 0.75, "style": 0.85}}'
+
+        # Mock student client to return a simple response
+        mock_student_client = MagicMock()
+        mock_student_client.generate_with_retry.return_value = "Machine learning is a type of artificial intelligence that allows computers to learn from data without being explicitly programmed."
+
+        # Mock the llm_judge_score function to avoid needing prompt manager
+        mock_judge_result: NormalizedJudgeResponse = {
+            "adapter": {
+                "ha_modernity": 0.8,
+                "reasoning_depth": 0.7,
+                "functionality": 0.9,
+                "completeness": 0.75,
+                "style": 0.85,
+            },
+            "baseline": {
+                "ha_modernity": 0.0,
+                "reasoning_depth": 0.0,
+                "functionality": 0.0,
+                "completeness": 0.0,
+                "style": 0.0,
+            },
+        }
+
+        # Patch at the module level where calibration.py imports it (inside the function)
+        with patch("src.audit.judge.llm_judge_score", return_value=mock_judge_result) as mock_judge:
+            # Run calibration with mocked clients
+            engine = CalibrationEngine(
+                prompts=test_prompts,
+                profiles=profiles,
+                student_client=mock_student_client,
+                judge_client=mock_judge_client,
+            )
+
+            # Run the calibration
+            report = engine.run(verbose=False)
+
+            # Verify results
+            assert report is not None
+            assert len(report.all_results) > 0
+            assert report.total_iterations == 1  # 1 prompt × 1 profile
+            assert report.best_score >= 0
+
+            # Verify judge was called
+            assert mock_judge.called
+
+    def test_calibration_with_claude_judge_selects_best_profile(self) -> None:
+        """Test that calibration correctly selects the best profile based on judge scores."""
+        from unittest.mock import MagicMock, patch
+
+        from src.audit.calibration import (
+            CalibrationEngine,
+            generate_profiles,
+        )
+        from src.audit.inference import ClaudeClient
+
+        # Create a parameter grid with 2 profiles
+        test_grid = {
+            "temperature": [0.3, 0.7],
+            "top_k": [50],
+            "min_p": [0.05],
+            "repetition_penalty": [1.0],
+        }
+        profiles = generate_profiles(test_grid)
+
+        # Create test prompts
+        test_prompts = [
+            {"id": "test_prompt_1", "text": "What is Python?"},
+            {"id": "test_prompt_2", "text": "What is JavaScript?"},
+        ]
+
+        # Mock judge client
+        mock_judge_client = MagicMock(spec=ClaudeClient)
+        mock_judge_client._model = "MiniMax-M2.5"
+        mock_judge_client._backend_name = "Claude"
+
+        # Mock the llm_judge_score function to return different scores for different profiles
+        call_count = [0]
+
+        def mock_judge_score(*args, **kwargs):
+            call_count[0] += 1
+            # Return higher scores for the second profile iterations
+            if call_count[0] > 2:  # After first 2 prompts
+                return {
+                    "adapter": {
+                        "ha_modernity": 0.9,
+                        "reasoning_depth": 0.9,
+                        "functionality": 0.9,
+                        "completeness": 0.9,
+                        "style": 0.9,
+                    },
+                    "baseline": {
+                        "ha_modernity": 0.0,
+                        "reasoning_depth": 0.0,
+                        "functionality": 0.0,
+                        "completeness": 0.0,
+                        "style": 0.0,
+                    },
+                }
+            return {
+                "adapter": {
+                    "ha_modernity": 0.5,
+                    "reasoning_depth": 0.5,
+                    "functionality": 0.5,
+                    "completeness": 0.5,
+                    "style": 0.5,
+                },
+                "baseline": {
+                    "ha_modernity": 0.0,
+                    "reasoning_depth": 0.0,
+                    "functionality": 0.0,
+                    "completeness": 0.0,
+                    "style": 0.0,
+                },
+            }
+
+        # Mock student client
+        mock_student_client = MagicMock()
+        mock_student_client.generate_with_retry.return_value = "Sample response with enough words to avoid length penalty."
+
+        # Patch at the module level where calibration.py imports it (inside the function)
+        with patch("src.audit.judge.llm_judge_score", side_effect=mock_judge_score):
+            # Run calibration
+            engine = CalibrationEngine(
+                prompts=test_prompts,
+                profiles=profiles,
+                student_client=mock_student_client,
+                judge_client=mock_judge_client,
+            )
+
+            report = engine.run(verbose=False)
+
+            # Verify calibration completed
+            assert report is not None
+            assert report.total_iterations == 4  # 2 prompts × 2 profiles
+
+            # Verify best profile was selected (should be the one with higher scores)
+            assert report.best_profile is not None
+            assert report.best_score > 0
+
+    def test_calibration_resumes_with_claude_judge_when_provided(self) -> None:
+        """Test that calibration respects existing results when resuming."""
+        from unittest.mock import MagicMock, patch
+
+        from src.audit.calibration import (
+            CalibrationEngine,
+            CalibrationResult,
+            generate_profiles,
+        )
+        from src.audit.inference import ClaudeClient
+        from src.audit.schema import NormalizedJudgeResponse
+
+        # Create grid and profiles
+        test_grid = {
+            "temperature": [0.5],
+            "top_k": [50],
+            "min_p": [0.05],
+            "repetition_penalty": [1.0],
+        }
+        profiles = generate_profiles(test_grid)
+
+        test_prompts = [
+            {"id": "test_prompt_1", "text": "What is AI?"},
+        ]
+
+        # Create a mock result that would be loaded from checkpoint
+        mock_existing_result = CalibrationResult(
+            profile=profiles[0],
+            exam_id="test_prompt_1",
+            judge_scores={"ha_modernity": 0.8, "reasoning_depth": 0.8, "functionality": 0.8, "completeness": 0.8, "style": 0.8},
+            composite_score=0.8,
+            adjusted_score=0.8,
+            response_length=250,
+            timestamp="2026-01-01T00:00:00+00:00",
+            response_text="Previous result.",
+        )
+
+        # Mock judge client
+        mock_judge_client = MagicMock(spec=ClaudeClient)
+        mock_judge_client._model = "MiniMax-M2.5"
+
+        # Mock the llm_judge_score function
+        mock_judge_result: NormalizedJudgeResponse = {
+            "adapter": {
+                "ha_modernity": 0.5,
+                "reasoning_depth": 0.5,
+                "functionality": 0.5,
+                "completeness": 0.5,
+                "style": 0.5,
+            },
+            "baseline": {
+                "ha_modernity": 0.0,
+                "reasoning_depth": 0.0,
+                "functionality": 0.0,
+                "completeness": 0.0,
+                "style": 0.0,
+            },
+        }
+
+        # Mock student client
+        mock_student_client = MagicMock()
+        mock_student_client.generate_with_retry.return_value = "New response."
+
+        # Patch at the module level where calibration.py imports it (inside the function)
+        with patch("src.audit.judge.llm_judge_score", return_value=mock_judge_result) as mock_judge_fn:
+            # Create engine with checkpoint that has already completed this iteration
+            engine = CalibrationEngine(
+                prompts=test_prompts,
+                profiles=profiles,
+                student_client=mock_student_client,
+                judge_client=mock_judge_client,
+            )
+
+            # Simulate resume by pre-populating completed profiles
+            engine.results = [mock_existing_result]
+            engine._completed_profiles = [(0, 0)]  # Already completed prompt 0, profile 0
+
+            # Run - should skip the already-completed iteration
+            _ = engine.run(verbose=False)
+
+            # Since the profile was already completed, the judge should NOT be called again
+            # (the existing result should be used)
+            # The mock_judge_fn.call_count should be 0 because the iteration was already done
+            assert mock_judge_fn.call_count == 0
