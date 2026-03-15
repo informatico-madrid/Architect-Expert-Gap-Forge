@@ -59,19 +59,23 @@ SCORING_WEIGHTS: Final[dict[str, float]] = {
     "style": 0.08,
 }
 
-# Parameter grid for calibration (Descending Coordinates Sweep)
-# Values aligned with spec: temperature [0.5, 0.6, 0.7], top_k [20, 40, 50],
-# min_p [0.02, 0.05], repetition_penalty [1.1, 1.15, 1.2]
+# Parameter grid for calibration (Pivot around base model values)
+# Base model values: Temperature=0.6, TopP=0.95, TopK=20, MinP=0
+# Grid pivots around these base values to find optimal settings
+# Expanded grid for broader exploration - noxious filter will prune bad values
 CALIBRATION_GRID: Final[dict[str, list[Any]]] = {
-    "temperature": [0.5, 0.6, 0.7],
-    "top_k": [20, 40, 50],
-    "min_p": [0.02, 0.05],
-    "repetition_penalty": [1.1, 1.15, 1.2],
+    "temperature": [0.3, 0.5, 0.6, 0.7, 0.9, 1.1],          # pivot 0.6
+    "top_p": [0.7, 0.8, 0.9, 0.95, 1.0],                      # pivot 0.9
+    "top_k": [5, 10, 20, 40, 60, 80],                          # pivot 20
+    "min_p": [0.0, 0.02, 0.05, 0.1, 0.15],                    # pivot 0.0
+    "repetition_penalty": [1.0, 1.05, 1.1, 1.15, 1.2],        # pivot 1.0
+    "presence_penalty": [0.0, 0.5, 1.0, 1.5, 2.0],           # pivot 1.0 (range -2 to 2)
 }
 
 # Valid parameter names that can be targeted in calibration prompts
 VALID_PARAMETERS: Final[set[str]] = {
     "temperature",
+    "top_p",
     "top_k",
     "min_p",
     "repetition_penalty",
@@ -93,12 +97,15 @@ class SamplingProfile:
 
     Validation (enforced via __post_init__):
     - temperature: 0.0 <= temperature <= 2.0
+    - top_p: 0.0 <= top_p <= 1.0
     - top_k: 1 <= top_k <= 200
     - min_p: 0.0 <= min_p <= 1.0
     - repetition_penalty: 1.0 <= repetition_penalty <= 2.0
+    - presence_penalty: 0.0 <= presence_penalty <= 2.0
     """
 
     temperature: float
+    top_p: float
     top_k: int
     min_p: float
     repetition_penalty: float
@@ -110,6 +117,12 @@ class SamplingProfile:
         if not (0.0 <= self.temperature <= 2.0):
             raise ValueError(
                 f"temperature must be in range [0.0, 2.0], got {self.temperature}"
+            )
+
+        # top_p validation
+        if not (0.0 <= self.top_p <= 1.0):
+            raise ValueError(
+                f"top_p must be in range [0.0, 1.0], got {self.top_p}"
             )
 
         # top_k validation
@@ -148,6 +161,7 @@ class SamplingProfile:
         """Create a SamplingProfile from a dictionary."""
         return cls(
             temperature=float(data["temperature"]),
+            top_p=float(data.get("top_p", 0.9)),
             top_k=int(data["top_k"]),
             min_p=float(data["min_p"]),
             repetition_penalty=float(data["repetition_penalty"]),

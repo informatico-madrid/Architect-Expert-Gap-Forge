@@ -865,16 +865,35 @@ Stage 6 implements an **Inference Calibration Suite** for automated sampling par
 
 The calibration engine performs a **grid search** (Cartesian product) across multiple sampling parameters, evaluating each configuration using the Professor Judge and selecting the optimal combination based on composite quality scores.
 
-#### Parameter Grid
+#### Parameter Grid (Expanded)
 
 | Parameter | Values | Description |
 |-----------|--------|-------------|
-| `temperature` | [0.5, 0.6, 0.7] | Controls randomness in sampling |
-| `top_k` | [20, 40, 50] | Limits vocabulary to top-k tokens |
-| `min_p` | [0.02, 0.05] | Minimum probability threshold |
-| `repetition_penalty` | [1.1, 1.15, 1.2] | Penalizes repeated tokens |
+| `temperature` | [0.3, 0.5, 0.6, 0.7, 0.9, 1.1] | Controls randomness in sampling |
+| `top_p` | [0.7, 0.8, 0.9, 0.95, 1.0] | Nucleus sampling threshold |
+| `top_k` | [5, 10, 20, 40, 60, 80] | Limits vocabulary to top-k tokens |
+| `min_p` | [0.0, 0.02, 0.05, 0.1, 0.15] | Minimum probability threshold |
+| `repetition_penalty` | [1.0, 1.05, 1.1, 1.15, 1.2] | Penalizes repeated tokens |
+| `presence_penalty` | [0.0, 0.5, 1.0, 1.5, 2.0] | Penalizes repeated tokens (presence) |
 
-**Total combinations:** 3 × 3 × 2 × 3 = **54 profiles** per prompt
+**Default pivot values:** temperature=0.6, top_p=0.9, top_k=20, min_p=0.0, repetition_penalty=1.0, presence_penalty=1.0
+
+**Total combinations:** 6 × 5 × 6 × 5 × 5 × 5 = **18,750 profiles** (use `--use-noxious-filter` to reduce)
+
+#### Noxious Parameter Filter
+
+To reduce iterations from thousands to hundreds, use the **noxious filter** which:
+1. Tests each parameter value individually against the pivot
+2. Discards values that consistently lose (>80% of cases) against the pivot
+3. Reduces the grid to only "good" values
+
+```bash
+# Run with noxious filter (recommended for large grids)
+python -m src.audit.cli calibrate \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --use-noxious-filter \
+    --output-dir ./calibration_results
+```
 
 #### Scoring Weights
 
@@ -882,28 +901,52 @@ The composite score is calculated using weighted dimensions:
 
 | Dimension | Weight | Description |
 |-----------|--------|-------------|
-| `ha_modernity` | 0.30 | Use of modern Home Assistant 2026 APIs |
-| `reasoning_depth` | 0.25 | Quality of reasoning in `<thinking>` blocks |
-| `functionality` | 0.25 | Functional accuracy of solutions |
-| `completeness` | 0.12 | Coverage of all required functions/classes |
-| `style` | 0.08 | Adherence to AEGF structural conventions |
+| `parameter_effectiveness` | - | How well parameters achieve evaluation focus |
+| `task_completion` | - | Quality of task completion |
+| `parameter_alignment` | - | Alignment with target parameters |
+| `coherence` | - | Response coherence |
+| `style` | - | Adherence to style guidelines |
 
 #### CLI Usage
 
 ```bash
-# Run calibration with prompts file
-python -m src.audit.calibration \
-    --prompts tests/fixtures/calibration_prompts.json \
-    --output-dir ./calibration_results \
-    --verbose
+# Basic calibration with prompts file
+python -m src.audit.cli calibrate \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --output-dir ./calibration_results
+
+# With noxious filter (recommended)
+python -m src.audit.cli calibrate \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --use-noxious-filter \
+    --output-dir ./calibration_results
+
+# With intelligent calibration (uses prompt metadata)
+python -m src.audit.cli calibrate \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
+    --use-prompt-metadata \
+    --output-dir ./calibration_results
 
 # Resume interrupted calibration
-python -m src.audit.calibration \
-    --prompts tests/fixtures/calibration_prompts.json \
-    --output-dir ./calibration_results \
+python -m src.audit.cli calibrate \
+    --prompts configs/stage_6_calibration/calibration_prompts.yaml \
     --resume \
-    --verbose
+    --output-dir ./calibration_results
 ```
+
+#### Output Format
+
+Each iteration shows:
+```
+▶ [1/135000] P001 @ temperature=0.3 top_p=0.8 top_k=40 min_p=0.05 repetition_penalty=1.2
+    📊 composite=0.085 adjusted=0.085 ↑ +0.017 | parameter_effectiveness=0.85 task_completion=0.95... | words=892
+    🎯 Target params: top_k, presence_penalty
+    🏆 NEW BEST! Profile: temperature=0.3 top_p=0.8...
+```
+
+- `↑ +0.017` = better than previous iteration
+- `↓ -0.023` = worse than previous iteration
+- `words` = response word count
 
 #### Output Artifacts
 

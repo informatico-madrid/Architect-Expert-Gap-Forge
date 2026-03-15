@@ -1,0 +1,5 @@
+sampling_params:
+  temperature: 0.5
+  top_k: 50
+  min_p: 0.05
+  repetition_penalty: 1.2

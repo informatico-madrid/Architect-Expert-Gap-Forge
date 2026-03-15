@@ -381,13 +381,20 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
     prompts: list[dict[str, str]] = []
 
     if args.prompts:
-        # Load from provided prompts file
+        # Load from provided prompts file (supports both JSON and YAML)
         prompts_path = Path(args.prompts)
         if not prompts_path.exists():
             raise SystemExit(f"Prompts file not found: {args.prompts}")
 
-        with open(prompts_path, "r", encoding="utf-8") as f:
-            prompts_data = json.load(f)
+        # Detect format by file extension
+        import yaml
+        if prompts_path.suffix in [".yaml", ".yml"]:
+            with open(prompts_path, "r", encoding="utf-8") as f:
+                prompts_data = yaml.safe_load(f)
+        else:
+            # Default to JSON
+            with open(prompts_path, "r", encoding="utf-8") as f:
+                prompts_data = json.load(f)
 
         # Handle both formats: list or {"prompts": [...]} or {"prompts": [{"id":..., "text":...}]}
         if isinstance(prompts_data, dict):
@@ -443,6 +450,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         verbose=True,
         checkpoint_dir=checkpoint_dir,
         use_prompt_metadata=args.use_prompt_metadata,
+        use_noxious_filter=args.use_noxious_filter,
         judge_client=judge_client,
     )
 
@@ -580,6 +588,12 @@ def _shared_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Enable intelligent calibration using parameter_target and evaluation_focus from prompts",
+    )
+    shared.add_argument(
+        "--use-noxious-filter",
+        action="store_true",
+        default=False,
+        help="Enable noxious parameter filter to quickly discard values that consistently perform worse than pivot",
     )
     shared.add_argument(
         "--judge-backend",

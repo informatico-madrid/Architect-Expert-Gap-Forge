@@ -1,0 +1,391 @@
+{
+  "timestamp": "2026-03-15T10:17:53.018457+00:00",
+  "total_iterations": 0,
+  "has_focus_data": true,
+  "focus_analysis": {
+    "focused_parameters": [
+      "top_k",
+      "temperature",
+      "min_p",
+      "presence_penalty",
+      "repetition_penalty"
+    ],
+    "evaluation_foci": [
+      "Control de redundancia y balance narrativo - Repetición de estructuras vs. variación creativa.",
+      "Razonamiento ético multicapa - Temperature controla profundidad filosófica, top_k la diversidad de marcos éticos considerados.",
+      "Curiosidad y Exploración - Si el modelo es perezoso, dará 5 puntos cortos. Si los parámetros de exploración están bien, inventará metodologías forenses profundas.",
+      "Balance entre consistencia e innovación - Temperature alto permite innovación pero puede perder consistencia. top_k controla la diversidad de opciones consideradas.",
+      "Fatiga y Conclusión - Verifica si el modelo se cansa a mitad del informe (Ghosting) o si el presence_penalty le empuja a terminar todas las secciones con el mismo nivel de detalle.",
+      "Generación creativa/emocional con consistencia lógica - Temperature controla la emocionalidad, min_p filtra la coherencia temática.",
+      "Generación creativa estructurada - top_k y min_p controlan la coherencia del léxico, temperature la creatividad lingüística.",
+      "Razonamiento jurídico y cambio de perspectiva - Temperature alto permite cambio de perspectiva, repetition_penalty evita repetición de argumentos legales.",
+      "Obediencia y Repetition Penalty - Test de tortura. Si repetition_penalty es muy bajo, se bloqueará. Si es muy alto, perderá el hilo lógico.",
+      "Razonamiento y Temperatura - Evalúa si el modelo se 'rinde' y elige el ganador más probable o si navega por la lógica creativa para hallarla solución correcta."
+    ],
+    "adjustment_strategy": {
+      "increase": [
+        "top_k",
+        "repetition_penalty",
+        "temperature",
+        "presence_penalty",
+        "min_p"
+      ],
+      "decrease": [
+        "temperature"
+      ],
+      "increase_details": {
+        "top_k": 2,
+        "repetition_penalty": 2,
+        "temperature": 3,
+        "presence_penalty": 2,
+        "min_p": 2
+      },
+      "decrease_details": {
+        "presence_penalty": 1,
+        "min_p": 1,
+        "temperature": 3,
+        "top_k": 1,
+        "repetition_penalty": 1
+      }
+    },
+    "prompts_with_focus": 10,
+    "focus_distribution": {
+      "Curiosidad y Exploración - Si el modelo es perezoso, dará 5 puntos cortos. Si los parámetros de exploración están bien, inventará metodologías forenses profundas.": 1,
+      "Obediencia y Repetition Penalty - Test de tortura. Si repetition_penalty es muy bajo, se bloqueará. Si es muy alto, perderá el hilo lógico.": 1,
+      "Razonamiento y Temperatura - Evalúa si el modelo se 'rinde' y elige el ganador más probable o si navega por la lógica creativa para hallarla solución correcta.": 1,
+      "Fatiga y Conclusión - Verifica si el modelo se cansa a mitad del informe (Ghosting) o si el presence_penalty le empuja a terminar todas las secciones con el mismo nivel de detalle.": 1,
+      "Balance entre consistencia e innovación - Temperature alto permite innovación pero puede perder consistencia. top_k controla la diversidad de opciones consideradas.": 1,
+      "Generación creativa/emocional con consistencia lógica - Temperature controla la emocionalidad, min_p filtra la coherencia temática.": 1,
+      "Razonamiento jurídico y cambio de perspectiva - Temperature alto permite cambio de perspectiva, repetition_penalty evita repetición de argumentos legales.": 1,
+      "Control de redundancia y balance narrativo - Repetición de estructuras vs. variación creativa.": 1,
+      "Razonamiento ético multicapa - Temperature controla profundidad filosófica, top_k la diversidad de marcos éticos considerados.": 1,
+      "Generación creativa estructurada - top_k y min_p controlan la coherencia del léxico, temperature la creatividad lingüística.": 1
+    }
+  },
+  "parameter_performance": {},
+  "best_profile": {
+    "temperature": 0.5,
+    "top_k": 50,
+    "min_p": 0.05,
+    "repetition_penalty": 1.2,
+    "presence_penalty": null
+  },
+  "refinement_recommendations": {
+    "parameter_analysis": {},
+    "refined_grid": {
+      "temperature": [
+        0.5,
+        0.6,
+        0.7
+      ],
+      "top_k": [
+        20,
+        40,
+        50
+      ],
+      "min_p": [
+        0.02,
+        0.05
+      ],
+      "repetition_penalty": [
+        1.1,
+        1.15,
+        1.2
+      ]
+    },
+    "recommendations": [],
+    "summary": {
+      "total_results": 0,
+      "average_score": 0,
+      "best_score_overall": 0,
+      "best_profile": null,
+      "parameters_analyzed": []
+    },
+    "base_grid": {
+      "temperature": [
+        0.5,
+        0.6,
+        0.7
+      ],
+      "top_k": [
+        20,
+        40,
+        50
+      ],
+      "min_p": [
+        0.02,
+        0.05
+      ],
+      "repetition_penalty": [
+        1.1,
+        1.15,
+        1.2
+      ]
+    }
+  },
+  "statistics": {},
+  "parameter_adjustments": {
+    "adjusted_grid": {
+      "temperature": [
+        0.5,
+        0.6,
+        0.7
+      ],
+      "top_k": [
+        26,
+        46,
+        56
+      ],
+      "min_p": [
+        0.03,
+        0.06
+      ],
+      "repetition_penalty": [
+        1.12,
+        1.17,
+        1.22
+      ]
+    },
+    "focus_strategy": {
+      "increase": [
+        "top_k",
+        "repetition_penalty",
+        "temperature",
+        "presence_penalty",
+        "min_p"
+      ],
+      "decrease": [
+        "temperature"
+      ],
+      "increase_details": {
+        "top_k": 2,
+        "repetition_penalty": 2,
+        "temperature": 3,
+        "presence_penalty": 2,
+        "min_p": 2
+      },
+      "decrease_details": {
+        "presence_penalty": 1,
+        "min_p": 1,
+        "temperature": 3,
+        "top_k": 1,
+        "repetition_penalty": 1
+      }
+    },
+    "per_prompt_analysis": {
+      "calibration_prompt_001": {
+        "focus_area": "exploración",
+        "parameters_to_increase": [
+          "top_k"
+        ],
+        "parameters_to_decrease": [
+          "presence_penalty"
+        ],
+        "reasoning": "Exploration requires considering diverse options and avoiding topic avoidance.",
+        "matched_keywords": [
+          "curiosidad",
+          "exploración"
+        ],
+        "confidence": 0.06790123456790123
+      },
+      "calibration_prompt_002": {
+        "focus_area": "repetition penalty",
+        "parameters_to_increase": [
+          "repetition_penalty"
+        ],
+        "parameters_to_decrease": [
+          "min_p"
+        ],
+        "reasoning": "Testing how repetition handling affects constraint following.",
+        "matched_keywords": [
+          "obediencia",
+          "repetition penalty"
+        ],
+        "confidence": 0.12949640287769784
+      },
+      "calibration_prompt_003": {
+        "focus_area": "razonamiento",
+        "parameters_to_increase": [
+          "temperature"
+        ],
+        "parameters_to_decrease": [],
+        "reasoning": "Moderate temperature allows creative problem-solving while maintaining logical consistency.",
+        "matched_keywords": [
+          "razonamiento",
+          "lógica",
+          "creativa"
+        ],
+        "confidence": 0.07547169811320754
+      },
+      "calibration_prompt_004": {
+        "focus_area": "conclusión",
+        "parameters_to_increase": [
+          "presence_penalty"
+        ],
+        "parameters_to_decrease": [],
+        "reasoning": "Reaching conclusions benefits from topic development without excessive exploration.",
+        "matched_keywords": [
+          "fatiga",
+          "conclusión"
+        ],
+        "confidence": 0.05555555555555555
+      },
+      "calibration_prompt_005": {
+        "focus_area": "consistencia",
+        "parameters_to_increase": [],
+        "parameters_to_decrease": [
+          "temperature",
+          "top_k"
+        ],
+        "reasoning": "Consistent output requires stricter repetition control and filtering.",
+        "matched_keywords": [
+          "innovación",
+          "consistencia",
+          "balance"
+        ],
+        "confidence": 0.07317073170731707
+      },
+      "calibration_prompt_006": {
+        "focus_area": "consistencia",
+        "parameters_to_increase": [
+          "min_p"
+        ],
+        "parameters_to_decrease": [
+          "temperature"
+        ],
+        "reasoning": "Consistent output requires stricter repetition control and filtering.",
+        "matched_keywords": [
+          "lógica",
+          "creativa",
+          "consistencia",
+          "emocional"
+        ],
+        "confidence": 0.0916030534351145
+      },
+      "calibration_prompt_007": {
+        "focus_area": "razonamiento",
+        "parameters_to_increase": [
+          "temperature"
+        ],
+        "parameters_to_decrease": [
+          "repetition_penalty"
+        ],
+        "reasoning": "Moderate temperature allows creative problem-solving while maintaining logical consistency.",
+        "matched_keywords": [
+          "razonamiento",
+          "perspectiva"
+        ],
+        "confidence": 0.07792207792207792
+      },
+      "calibration_prompt_008": {
+        "focus_area": "redundancia",
+        "parameters_to_increase": [
+          "repetition_penalty",
+          "presence_penalty"
+        ],
+        "parameters_to_decrease": [],
+        "reasoning": "Controlling redundancy requires strict penalty settings while maintaining output quality.",
+        "matched_keywords": [
+          "creativa",
+          "redundancia",
+          "narrativo",
+          "balance"
+        ],
+        "confidence": 0.11702127659574468
+      },
+      "calibration_prompt_009": {
+        "focus_area": "razonamiento",
+        "parameters_to_increase": [
+          "temperature"
+        ],
+        "parameters_to_decrease": [],
+        "reasoning": "Moderate temperature allows creative problem-solving while maintaining logical consistency.",
+        "matched_keywords": [
+          "razonamiento",
+          "ético",
+          "multicapa"
+        ],
+        "confidence": 0.09523809523809523
+      },
+      "calibration_prompt_010": {
+        "focus_area": "estructurada",
+        "parameters_to_increase": [
+          "top_k",
+          "min_p"
+        ],
+        "parameters_to_decrease": [
+          "temperature"
+        ],
+        "reasoning": "Structured output benefits from constrained but coherent token selection.",
+        "matched_keywords": [
+          "creatividad",
+          "creativa",
+          "estructurada"
+        ],
+        "confidence": 0.0967741935483871
+      }
+    },
+    "recommendations": [
+      {
+        "parameter": "temperature",
+        "action": "increase",
+        "reason": "Recommended for increase based on evaluation_focus analysis",
+        "values": [
+          0.5,
+          0.6,
+          0.7
+        ]
+      },
+      {
+        "parameter": "top_k",
+        "action": "increase",
+        "reason": "Recommended for increase based on evaluation_focus analysis",
+        "values": [
+          26,
+          46,
+          56
+        ]
+      },
+      {
+        "parameter": "min_p",
+        "action": "increase",
+        "reason": "Recommended for increase based on evaluation_focus analysis",
+        "values": [
+          0.03,
+          0.06
+        ]
+      },
+      {
+        "parameter": "repetition_penalty",
+        "action": "increase",
+        "reason": "Recommended for increase based on evaluation_focus analysis",
+        "values": [
+          1.12,
+          1.17,
+          1.22
+        ]
+      }
+    ],
+    "base_grid": {
+      "temperature": [
+        0.5,
+        0.6,
+        0.7
+      ],
+      "top_k": [
+        20,
+        40,
+        50
+      ],
+      "min_p": [
+        0.02,
+        0.05
+      ],
+      "repetition_penalty": [
+        1.1,
+        1.15,
+        1.2
+      ]
+    }
+  }
+}

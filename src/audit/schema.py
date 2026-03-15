@@ -44,6 +44,16 @@ SCORING_WEIGHTS: Final[dict[str, float]] = {
     "style": 0.08,
 }
 
+# Weights for Stage 6: Calibration (direct evaluation)
+# These weights prioritize parameter effectiveness over general quality
+CALIBRATION_SCORING_WEIGHTS: Final[dict[str, float]] = {
+    "parameter_effectiveness": 0.30,
+    "task_completion": 0.20,
+    "parameter_alignment": 0.25,
+    "coherence": 0.15,
+    "style": 0.10,
+}
+
 # ---------------------------------------------------------------------------
 # TypedDicts (immutable structured data contracts)
 # ---------------------------------------------------------------------------

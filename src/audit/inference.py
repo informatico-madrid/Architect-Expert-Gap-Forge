@@ -311,7 +311,7 @@ class ClaudeClient(BaseInferenceClient):
         common_paths = [
             "/usr/local/bin/claude",
             "/usr/bin/claude",
-            os.expanduser("~/.local/bin/claude"),
+            os.path.expanduser("~/.local/bin/claude"),
         ]
         for path in common_paths:
             if os.path.isfile(path):
@@ -338,17 +338,13 @@ class ClaudeClient(BaseInferenceClient):
         if system_prompt:
             full_prompt = f"{system_prompt}\n\n{prompt}"
 
-        # Claude Code CLI doesn't support all the parameters we have
-        # Build the command: claude -p --print < prompt
-        cmd = [self._cli_path, "-p", "--print"]
+        # Claude Code CLI: use -p for prompt mode (like ralph-loop.sh)
+        # Don't use --print or --max-tokens as they may not be supported
+        cmd = [self._cli_path, "-p"]
 
         # Add model if specified (Claude CLI supports --model flag)
         if self._model:
             cmd.extend(["--model", self._model])
-
-        # Add max tokens (Claude CLI uses --max-tokens)
-        if max_tokens:
-            cmd.extend(["--max-tokens", str(max_tokens)])
 
         # Claude CLI doesn't directly support temperature, top_k, min_p, repetition_penalty
         # These would need to be handled differently or ignored
@@ -442,6 +438,8 @@ class InferenceRouter:
             if _GEMINI_AVAILABLE and os.getenv("GOOGLE_API_KEY"):
                 return "gemini"
             return "vllm"
-        if backend not in ("gemini", "vllm", "claude"):
+        # Normalize to lowercase for comparison
+        backend_lower = backend.lower()
+        if backend_lower not in ("gemini", "vllm", "claude"):
             raise ValueError(f"Unknown backend: {backend}. Must be one of: gemini, vllm, claude")
-        return backend
+        return backend_lower

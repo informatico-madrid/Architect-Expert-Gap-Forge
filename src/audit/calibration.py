@@ -40,6 +40,7 @@ Public API
 - ``generate_calibration_analysis`` — Generate calibration analysis with parameter adjustment recommendations.
 - ``save_calibration_analysis`` — Save calibration analysis JSON with parameter adjustment recommendations.
 - ``generate_profiles`` — Generate Cartesian product of parameter grids.
+- ``filter_noxious_parameter_values`` — Filter out noxious parameter values using quick evaluation.
 - ``run_calibration`` — Execute the main calibration loop.
 - ``calculate_composite_score`` — Compute weighted score from judge dimensions.
 - ``apply_length_penalty`` — Adjust score based on response word count.
@@ -736,6 +737,7 @@ def generate_adaptive_profiles(
         try:
             profile = SamplingProfile(
                 temperature=profile_dict["temperature"],
+                top_p=profile_dict.get("top_p", 0.9),
                 top_k=profile_dict["top_k"],
                 min_p=profile_dict["min_p"],
                 repetition_penalty=profile_dict.get("repetition_penalty", 1.0),
@@ -946,7 +948,7 @@ def refine_parameter_space(
     --------
     >>> results = [
     ...     CalibrationResult(
-    ...         profile=SamplingProfile(temperature=0.5, top_k=20, min_p=0.02, repetition_penalty=1.1),
+    ...         profile=SamplingProfile(temperature=0.5, top_p=0.9, top_k=20, min_p=0.02, repetition_penalty=1.1),
     ...         exam_id="p1", judge_scores={"ha_modernity": 0.8, "reasoning_depth": 0.7, "functionality": 0.8, "completeness": 0.7, "style": 0.8},
     ...         composite_score=0.77, adjusted_score=0.77, response_length=250, timestamp="2026-01-01T00:00:00Z"
     ...     ),
@@ -1374,9 +1376,11 @@ def generate_profiles(
         try:
             profile = SamplingProfile(
                 temperature=profile_dict["temperature"],
+                top_p=profile_dict["top_p"],
                 top_k=profile_dict["top_k"],
                 min_p=profile_dict["min_p"],
                 repetition_penalty=profile_dict["repetition_penalty"],
+                presence_penalty=profile_dict.get("presence_penalty"),
             )
             profiles.append(profile)
         except ValueError as e:
@@ -1390,28 +1394,38 @@ def generate_profiles(
 # ======================================================================
 
 
-def calculate_composite_score(judge_scores: dict[str, float]) -> float:
+def calculate_composite_score(
+    judge_scores: dict[str, float],
+    weights: dict[str, float] | None = None,
+) -> float:
     """Calculate composite score from judge dimension scores.
 
-    Uses SCORING_WEIGHTS to compute weighted average of:
-    - ha_modernity (0.30)
-    - reasoning_depth (0.25)
-    - functionality (0.25)
-    - completeness (0.12)
-    - style (0.08)
+    Uses provided weights or defaults to SCORING_WEIGHTS (Stage 5: HA evaluation).
+    For Stage 6 calibration, use CALIBRATION_SCORING_WEIGHTS.
 
     Parameters
     ----------
     judge_scores : dict[str, float]
         Dictionary of judge dimension scores.
+    weights : dict[str, float] | None
+        Optional weights to use. If None, uses SCORING_WEIGHTS.
 
     Returns
     -------
     float
         Weighted composite score (0.0 to 1.0).
     """
+    from src.audit.schema import CALIBRATION_SCORING_WEIGHTS
+
+    # Use calibration weights if the judge scores contain calibration dimensions
+    if weights is None:
+        if "response_quality" in judge_scores:
+            weights = CALIBRATION_SCORING_WEIGHTS
+        else:
+            weights = SCORING_WEIGHTS
+
     composite = 0.0
-    for dimension, weight in SCORING_WEIGHTS.items():
+    for dimension, weight in weights.items():
         score = judge_scores.get(dimension, 0.0)
         composite += score * weight
 
@@ -1640,18 +1654,33 @@ class CalibrationEngine:
         total_iterations = total_prompts * total_profiles
 
         if verbose:
-            logger.info(
-                "Starting calibration: %d prompts × %d profiles = %d iterations",
-                total_prompts,
-                total_profiles,
-                total_iterations,
-            )
+            logger.info("")
+            logger.info("╔" + "═" * 72 + "╗")
+            logger.info("║" + " 🔬 INFERENCE PARAMETER CALIBRATION ".center(72) + "║")
+            logger.info("╠" + "═" * 72 + "╣")
+            logger.info("║  Prompts: %-60d║" % total_prompts)
+            logger.info("║  Profiles: %-58d║" % total_profiles)
+            logger.info("║  Total iterations: %-53d║" % total_iterations)
+            logger.info("╠" + "═" * 72 + "╣")
+            # Show parameter grid being used
+            logger.info("║  Parameter Grid (sample):".ljust(72) + "║")
+            for i, profile in enumerate(self.profiles[:3]):  # Show first 3
+                line = f"║    {i+1}: t={profile.temperature:.1f} tp={profile.top_p:.2f} k={profile.top_k} min={profile.min_p:.2f} rep={profile.repetition_penalty:.2f}".ljust(72) + "║"
+                logger.info(line)
+            if len(self.profiles) > 3:
+                line = f"║    ... and {len(self.profiles) - 3} more profiles".ljust(72) + "║"
+                logger.info(line)
+            logger.info("╚" + "═" * 72 + "╝")
+            logger.info("")
 
         iteration = 0
+        best_result: CalibrationResult | None = None  # Track best result for logging
+        previous_score: float = 0.0  # Track previous score for comparison
 
         for prompt_idx, prompt in enumerate(self.prompts):
             prompt_id = prompt.get("id", f"prompt_{prompt_idx}")
-            prompt_text = prompt.get("text", prompt.get("prompt", ""))
+            # Support multiple field names: text, prompt, or question
+            prompt_text = prompt.get("text", prompt.get("prompt", prompt.get("question", "")))
 
             if not prompt_text:
                 logger.warning("Skipping empty prompt at index %d", prompt_idx)
@@ -1673,14 +1702,29 @@ class CalibrationEngine:
 
                 iteration += 1
 
-                if verbose:
-                    logger.info(
-                        "[%d/%d] Prompt %s with %s",
-                        iteration,
-                        total_iterations,
-                        prompt_id,
-                        profile,
-                    )
+                # Show what prompt is being tested - START line
+                prompt_short = prompt_id.replace("calibration_prompt_", "P")
+                presence = f" presence_penalty={profile.presence_penalty}" if profile.presence_penalty else ""
+                profile_short = f"temperature={profile.temperature} top_p={profile.top_p} top_k={profile.top_k} min_p={profile.min_p} repetition_penalty={profile.repetition_penalty}{presence}"
+
+                # Show progress header every 50 iterations
+                if iteration % 50 == 1:
+                    pct = (iteration / total_iterations) * 100
+                    best_score_val = best_result.adjusted_score if best_result else 0.0
+                    logger.info("")
+                    logger.info("┌" + "─" * 70 + "┐")
+                    logger.info(f"│ 🔄 CALIBRATION PROGRESS: {iteration}/{total_iterations} ({pct:.1f}%)".ljust(71) + "│")
+                    logger.info(f"│ 🏆 Best so far: score={best_score_val:.3f}".ljust(71) + "│")
+                    logger.info("└" + "─" * 70 + "┘")
+                    logger.info("")
+
+                logger.info(
+                    "▶ [%d/%d] %s @ %s",
+                    iteration,
+                    total_iterations,
+                    prompt_short,
+                    profile_short,
+                )
 
                 try:
                     # Generate response with profile parameters
@@ -1696,11 +1740,13 @@ class CalibrationEngine:
                     # Score with judge if available
                     judge_scores: dict[str, float] = {}
                     if self.judge_client:
-                        # For calibration, we use a simplified scoring approach
-                        # since we don't have baseline vs adapter comparison
-                        # We'll use the judge's evaluation dimensions directly
+                        # For calibration, we use the direct evaluation approach
+                        # with parameter_target and evaluation_focus from the prompt
+                        parameter_target = prompt.get("parameter_target", "")
+                        evaluation_focus = prompt.get("evaluation_focus", "")
                         judge_scores = self._get_judge_scores(
-                            prompt_text, response_text, prompt_id
+                            prompt_text, response_text, prompt_id,
+                            parameter_target, evaluation_focus
                         )
 
                     # Calculate composite score
@@ -1726,16 +1772,59 @@ class CalibrationEngine:
                     self.results.append(result)
                     self._completed_profiles.append((prompt_idx, profile_idx))
 
+                    # Update best result tracking
+                    if best_result is None or adjusted_score > best_result.adjusted_score:
+                        best_result = result
+
                     # Save checkpoint after each iteration
                     if self.checkpoint_dir:
                         self._save_checkpoint(prompt_idx, profile_idx)
 
-                    if verbose:
+                    # Show result with scores - ALWAYS show best so far
+                    # Show full judge dimensions (not abbreviated)
+                    if judge_scores:
+                        judge_details = " | ".join(f"{k}={v:.2f}" for k, v in judge_scores.items())
+                    else:
+                        judge_details = "no judge scores"
+
+                    # Calculate best score so far
+                    current_best = best_result.adjusted_score if best_result else 0.0
+                    is_best = adjusted_score > current_best
+
+                    # Compare with previous iteration
+                    diff = adjusted_score - previous_score
+                    if diff > 0:
+                        diff_marker = f"↑ +{diff:.3f}"
+                    elif diff < 0:
+                        diff_marker = f"↓ {diff:.3f}"
+                    else:
+                        diff_marker = "="
+                    previous_score = adjusted_score
+
+                    # Better formatted output with full details
+                    logger.info(
+                        "    📊 composite=%.3f adjusted=%.3f %s | %s | words=%d",
+                        composite_score,
+                        adjusted_score,
+                        diff_marker,
+                        judge_details,
+                        response_length,
+                    )
+
+                    # Show why this score - parameter target from prompt
+                    param_target = prompt.get("parameter_target", "")
+                    eval_focus = prompt.get("evaluation_focus", "")
+                    if param_target:
+                        logger.info(f"    🎯 Target params: {param_target}")
+                    if eval_focus and len(eval_focus) < 100:
+                        logger.info(f"    💡 Focus: {eval_focus[:100]}")
+
+                    # Show why this score (if it's a new best)
+                    if is_best and best_result:
+                        best_profile = best_result.profile if best_result else profile
+                        presence = f" presence_penalty={best_profile.presence_penalty}" if best_profile.presence_penalty else ""
                         logger.info(
-                            "  → score=%.3f (adjusted=%.3f), words=%d",
-                            composite_score,
-                            adjusted_score,
-                            response_length,
+                            f"    🏆 NEW BEST! Profile: temperature={best_profile.temperature} top_p={best_profile.top_p} top_k={best_profile.top_k} min_p={best_profile.min_p} repetition_penalty={best_profile.repetition_penalty}{presence}"
                         )
 
                 except Exception as e:
@@ -1782,12 +1871,13 @@ class CalibrationEngine:
         prompt: str,
         response: str,
         exam_id: str,
+        parameter_target: str = "",
+        evaluation_focus: str = "",
     ) -> dict[str, float]:
-        """Get judge scores for a response.
+        """Get judge scores for a response using direct calibration evaluation.
 
-        Integrates with the llm_judge_score function from judge.py to evaluate
-        response quality using the Professor Judge. For calibration, we create
-        a synthetic exam record with the prompt as the question.
+        Uses the new professor_judge_calibration prompt that evaluates
+        response quality directly without baseline comparison.
 
         Parameters
         ----------
@@ -1797,89 +1887,89 @@ class CalibrationEngine:
             The generated response.
         exam_id : str
             Identifier for the evaluation.
+        parameter_target : str
+            The parameter target from calibration prompt (e.g., "temperature, top_k").
+        evaluation_focus : str
+            The evaluation focus from calibration prompt (what to evaluate).
 
         Returns
         -------
         dict[str, float]
             Judge scores for each dimension.
         """
-        # Create a synthetic exam record for calibration evaluation
-        # Use default criteria and patterns since we don't have structured exams
-        exam = ExamRecord(
-            id=exam_id,
-            example_type="calibration",
-            evol_difficulty="medium",
-            fragment_name="calibration",
-            source_file="calibration",
-            user_prompt=prompt,
-            reference_response="",
-            gold_injected=False,
-            ldi=0.0,
-            exam_question=prompt,
-            eval_criteria=[
-                "Response demonstrates modern AI/ML practices",
-                "Response shows deep reasoning and problem-solving",
-                "Response provides functional and working solutions",
-                "Response is complete and thorough",
-                "Response follows good coding style and best practices",
-            ],
-            target_patterns=[],
-        )
+        import json
+        import re
+        from src.audit.config import _get_prompt_manager
 
         try:
-            # Import here to avoid circular imports
-            from src.audit.judge import llm_judge_score
+            # Get the prompt manager for calibration-specific prompts
+            pm = _get_prompt_manager()
 
-            # Get judge model from config
-            from src.audit.config import DEFAULT_PROFESSOR_BACKEND
-
-            # Call the judge with empty baseline (calibration scenario)
-            # The judge will score our response against "no response"
-            # This gives us absolute quality scores for the calibration
-            judge_result = llm_judge_score(
-                exam=exam,
-                baseline_resp="",  # Empty baseline for calibration
-                adapter_resp=response,
-                judge_model=self.judge_client._model if self.judge_client else "default",
-                professor_backend=DEFAULT_PROFESSOR_BACKEND,
+            # Use the new calibration-specific judge prompt
+            user_msg = pm.format(
+                "professor_judge_calibration",
+                calibration_question=prompt,
+                parameter_target=parameter_target or "general",
+                evaluation_focus=evaluation_focus or "General response quality",
+                model_response=response,
             )
 
-            # Extract adapter scores (our response scores)
-            adapter_scores = judge_result.get("adapter", {})
+            # Get the judge client
+            client = self.judge_client
+
+            # Call the judge for direct evaluation
+            raw = client.generate_with_retry(
+                prompt=user_msg,
+                system_prompt=pm.system("professor_judge_calibration"),
+                max_tokens=8192,
+                temperature=0.0,  # Deterministic scoring
+                retries=3,
+                retry_delay=5.0,
+                json_mode=True,
+            )
+            raw = raw.strip()
+
+            # Clean markdown fences
+            cleaned = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
+            cleaned = re.sub(r"```\s*$", "", cleaned, flags=re.MULTILINE).strip()
+
+            # Parse JSON response
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError as exc:
+                logger.warning(
+                    "Judge produced invalid JSON for %s: %s - raw: %s",
+                    exam_id, exc, raw[:200]
+                )
+                return self._neutral_scores()
+
+            # Map the new calibration dimensions to our standard format for composite score
+            # These are specifically designed for parameter evaluation
             return {
-                "ha_modernity": adapter_scores.get("ha_modernity", 0.5),
-                "reasoning_depth": adapter_scores.get("reasoning_depth", 0.5),
-                "functionality": adapter_scores.get("functionality", 0.5),
-                "completeness": adapter_scores.get("completeness", 0.5),
-                "style": adapter_scores.get("style", 0.5),
+                "parameter_effectiveness": parsed.get("parameter_effectiveness", 0.5),
+                "task_completion": parsed.get("task_completion", 0.5),
+                "parameter_alignment": parsed.get("parameter_alignment", 0.5),
+                "coherence": parsed.get("coherence", 0.5),
+                "style": parsed.get("style", 0.5),
             }
 
-        except PromptGenerationError as e:
+        except Exception as e:
             logger.warning(
                 "Judge scoring failed for %s: %s - returning neutral scores",
                 exam_id,
                 e,
             )
-            return {
-                "ha_modernity": 0.5,
-                "reasoning_depth": 0.5,
-                "functionality": 0.5,
-                "completeness": 0.5,
-                "style": 0.5,
-            }
-        except Exception as e:
-            logger.warning(
-                "Unexpected error in judge scoring for %s: %s - returning neutral scores",
-                exam_id,
-                e,
-            )
-            return {
-                "ha_modernity": 0.5,
-                "reasoning_depth": 0.5,
-                "functionality": 0.5,
-                "completeness": 0.5,
-                "style": 0.5,
-            }
+            return self._neutral_scores()
+
+    def _neutral_scores(self) -> dict[str, float]:
+        """Return neutral scores for error cases."""
+        return {
+            "parameter_effectiveness": 0.5,
+            "task_completion": 0.5,
+            "parameter_alignment": 0.5,
+            "coherence": 0.5,
+            "style": 0.5,
+        }
 
     def _select_best_profile(self) -> CalibrationResult | None:
         """Select the best profile based on adjusted scores.
@@ -2020,6 +2110,223 @@ class CalibrationEngine:
 # ======================================================================
 
 
+# Pivot values for quick filter - these are the "safe" defaults
+PARAMETER_PIVOTS: dict[str, Any] = {
+    "temperature": 0.6,
+    "top_p": 0.9,
+    "top_k": 20,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "presence_penalty": 1.0,
+}
+
+
+def filter_noxious_parameter_values(
+    grid: dict[str, list[Any]],
+    prompts: list[dict[str, str]],
+    student_client: Any,
+    judge_client: Any,
+    loss_threshold: float = 0.15,
+    verbose: bool = True,
+) -> dict[str, list[Any]]:
+    """Filter out noxious parameter values using quick evaluation.
+
+    This function evaluates each parameter value individually (with other params at pivot)
+    to identify values that consistently perform worse than the pivot. Values that lose
+    by more than loss_threshold are discarded.
+
+    Algorithm:
+    1. For each parameter, create test profiles varying only that parameter
+    2. Compare each value vs pivot across all prompts
+    3. If value loses in >80% of cases by >loss_threshold, discard it
+    4. Return reduced grid
+
+    Parameters
+    ----------
+    grid : dict[str, list[Any]]
+        Full parameter grid to filter.
+    prompts : list[dict[str, str]]
+        Prompts to evaluate.
+    student_client : Any
+        Inference client for student model.
+    judge_client : Any
+        Inference client for judge model.
+    loss_threshold : float
+        Minimum score difference to consider a value as "losing" (default: 0.15).
+    verbose : bool
+        Whether to log progress.
+
+    Returns
+    -------
+    dict[str, list[Any]]
+        Filtered grid with noxious values removed.
+    """
+    from src.audit.judge import run_inference
+
+    filtered_grid: dict[str, list[Any]] = {}
+    pivot_values = PARAMETER_PIVOTS
+
+    if verbose:
+        original_combos = 1
+        for values in grid.values():
+            original_combos *= len(values)
+        logger.info("")
+        logger.info("=" * 60)
+        logger.info("🚀 NOXIOUS PARAMETER FILTER")
+        logger.info("=" * 60)
+        logger.info(f"  Original grid: {original_combos} combinations")
+        logger.info(f"  Prompts to test: {len(prompts)}")
+        logger.info(f"  Loss threshold: {loss_threshold}")
+        logger.info("")
+
+    for param_name, param_values in grid.items():
+        if param_name not in pivot_values:
+            filtered_grid[param_name] = param_values
+            continue
+
+        pivot = pivot_values[param_name]
+        if pivot not in param_values:
+            # Pivot not in grid, use first value as pivot
+            pivot = param_values[len(param_values) // 2]
+            if verbose:
+                logger.warning("  ⚠️  Pivot %s not in grid for %s, using %s", pivot, param_name, pivot)
+
+        if verbose:
+            logger.info("")
+            logger.info(f"  📊 Testing parameter: {param_name}")
+            logger.info(f"     Values: {param_values}")
+            logger.info(f"     Pivot: {pivot}")
+
+        # Test each value vs pivot
+        value_scores: dict[Any, list[float]] = {v: [] for v in param_values}
+
+        for prompt in prompts:
+            # Get prompt text
+            prompt_text = prompt.get("question", prompt.get("text", prompt.get("prompt", "")))
+            if not prompt_text:
+                continue
+
+            # Generate with pivot profile
+            pivot_profile = SamplingProfile(
+                temperature=pivot_values.get("temperature", 0.6),
+                top_p=pivot_values.get("top_p", 0.9),
+                top_k=pivot_values.get("top_k", 20),
+                min_p=pivot_values.get("min_p", 0.0),
+                repetition_penalty=pivot_values.get("repetition_penalty", 1.0),
+                presence_penalty=pivot_values.get("presence_penalty"),
+            )
+
+            try:
+                pivot_response = run_inference(
+                    client=student_client,
+                    prompt=prompt_text,
+                    config=pivot_profile.to_dict(),
+                )
+                pivot_score = pivot_response.get("score", 0.5)
+            except Exception:
+                pivot_score = 0.5
+
+            # Test each value of this parameter
+            for value in param_values:
+                if value == pivot:
+                    value_scores[value].append(pivot_score)
+                    continue
+
+                # Create profile with this value
+                test_profile_dict = dict(pivot_values)
+                test_profile_dict[param_name] = value
+
+                try:
+                    test_profile = SamplingProfile(
+                        temperature=test_profile_dict.get("temperature", 0.6),
+                        top_p=test_profile_dict.get("top_p", 0.9),
+                        top_k=test_profile_dict.get("top_k", 20),
+                        min_p=test_profile_dict.get("min_p", 0.0),
+                        repetition_penalty=test_profile_dict.get("repetition_penalty", 1.0),
+                        presence_penalty=test_profile_dict.get("presence_penalty"),
+                    )
+                    test_response = run_inference(
+                        client=student_client,
+                        prompt=prompt_text,
+                        config=test_profile.to_dict(),
+                    )
+                    test_score = test_response.get("score", 0.5)
+                except Exception:
+                    test_score = 0.5
+
+                value_scores[value].append(test_score)
+
+        # Analyze results: count how often each value loses to pivot
+        good_values = [pivot]
+        for value, scores in value_scores.items():
+            if value == pivot:
+                continue
+
+            if not scores or not value_scores[pivot]:
+                # No data, keep value
+                good_values.append(value)
+                continue
+
+            pivot_avg = sum(value_scores[pivot]) / len(value_scores[pivot])
+            value_avg = sum(scores) / len(scores)
+
+            # Count how many times value lost to pivot
+            losses = 0
+            for i in range(min(len(scores), len(value_scores[pivot]))):
+                if value_scores[pivot][i] - scores[i] > loss_threshold:
+                    losses += 1
+
+            loss_rate = losses / min(len(scores), len(value_scores[pivot])) if scores else 0
+
+            # Discard if loses >80% of the time
+            if loss_rate > 0.8:
+                if verbose:
+                    # Calculate current combinations
+                    current_combos = len(good_values)
+                    for p_name, p_vals in filtered_grid.items():
+                        if p_name == param_name:
+                            current_combos *= len(good_values)
+                            break
+                        else:
+                            current_combos *= len(p_vals)
+                    logger.info(f"  ❌ NOXIOUS: {param_name}={value} - loss_rate={loss_rate:.0%} (avg: value={value_avg:.3f} vs pivot={pivot_avg:.3f})")
+            else:
+                good_values.append(value)
+
+        filtered_grid[param_name] = good_values
+
+    if verbose:
+        total_combinations = 1
+        for values in filtered_grid.values():
+            total_combinations *= len(values)
+        original = _calc_combinations(grid)
+        reduction = ((original - total_combinations) / original) * 100 if original > 0 else 0
+
+        logger.info("")
+        logger.info("=" * 60)
+        logger.info("✅ NOXIOUS FILTER COMPLETE")
+        logger.info("=" * 60)
+        logger.info(f"  Original grid: {original} combinations")
+        logger.info(f"  Filtered grid: {total_combinations} combinations")
+        logger.info(f"  Reduction: {reduction:.1f}%")
+        logger.info("")
+        logger.info("  Final parameter values:")
+        for param, values in filtered_grid.items():
+            logger.info(f"    {param}: {values}")
+        logger.info("=" * 60)
+        logger.info("")
+
+    return filtered_grid
+
+
+def _calc_combinations(grid: dict[str, list[Any]]) -> int:
+    """Calculate total combinations in a grid."""
+    result = 1
+    for values in grid.values():
+        result *= len(values)
+    return result
+
+
 def run_calibration(
     prompts: list[dict[str, str]],
     output_dir: str | None = None,
@@ -2029,6 +2336,7 @@ def run_calibration(
     verbose: bool = True,
     checkpoint_dir: str | None = None,
     use_prompt_metadata: bool = False,
+    use_noxious_filter: bool = False,
 ) -> CalibrationReport:
     """Run calibration with the given prompts.
 
@@ -2054,12 +2362,33 @@ def run_calibration(
         Enable intelligent calibration using parameter_target and evaluation_focus
         from prompts. When True, uses adaptive profile generation that prioritizes
         parameter combinations based on the evaluation focus. (default: False)
+    use_noxious_filter : bool
+        Enable noxious parameter filter to quickly identify and remove values that
+        consistently perform worse than the pivot. This runs a quick evaluation of
+        each parameter value individually before the full grid search, dramatically
+        reducing iterations for large grids. (default: False)
 
     Returns
     -------
     CalibrationReport
         Complete calibration results.
     """
+    # Apply noxious filter if enabled
+    if use_noxious_filter and grid and student_client is not None:
+        if verbose:
+            logger.info("Applying noxious parameter filter...")
+        try:
+            grid = filter_noxious_parameter_values(
+                grid=grid,
+                prompts=prompts,
+                student_client=student_client,
+                judge_client=judge_client,
+                verbose=verbose,
+            )
+        except Exception as e:
+            if verbose:
+                logger.warning("Noxious filter failed: %s, continuing with full grid", e)
+
     # Generate profiles - use adaptive generation if prompt metadata is enabled
     if use_prompt_metadata:
         # Convert prompts to CalibrationPrompt for adaptive profile generation
@@ -2154,9 +2483,11 @@ def generate_calibration_analysis(
     param_performance = analyze_parameter_performance(report.all_results)
 
     # Get refinement recommendations
+    # Get the original grid from report statistics if available
+    base_grid = report.statistics.get("grid") if report.statistics else None
     refinement_recs = get_refinement_recommendations(
         param_performance,
-        report.best_profile,
+        base_grid,
     )
 
     # Build comprehensive analysis

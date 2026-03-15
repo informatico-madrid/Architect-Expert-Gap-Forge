@@ -48,6 +48,48 @@ Notas rápidas:
 
 ---
 
+### [ ] STAGE 6: Optimización de Paralelismo para Calibración
+
+**Contexto actual**: La calibración secuencialmente:
+1. Envía prompt → inferencia → respuesta
+2. Envía respuesta → judge → score
+3. Decide siguiente parámetro basado en score
+
+**Limitaciones**:
+- ~30-60 segundos por iteración (inferencia + judge)
+- 540 iteraciones = ~4-8 horas
+- GPU/CPU subutilizada durante espera
+
+**Oportunidades de Paralelismo**:
+
+1. **Paralelismo de Inferencia + Judge (FÁCIL - bajo riesgo)**
+   - Qué: Ejecutar inferencia y judge en paralelo para el mismo prompt
+   - Cómo: Usar `asyncio.gather()` o threads
+   - Riesgo: Bajo - son operaciones independientes
+   - Speedup: ~1.5-2x
+
+2. **Batch de Mismos Perfiles (MEDIO - riesgo bajo)**
+   - Qué: Si el mismo perfil se evalúa contra múltiples prompts, hacer en batch
+   - Cómo: Agrupar por profile, enviar múltiples prompts a la vez
+   - Riesgo: Medio - requiere gestión de memoria
+   - Speedup: ~2-3x
+
+3. **Pipeline Paralelo (AVANZADO - mayor riesgo)**
+   - Qué: Mientras se evalúa el profile N+1, ya preparar el profile N+2
+   - Cómo: Usar cola de trabajo con workers
+   - Riesgo: Alto - complejas condiciones de carrera
+   - Speedup: ~3-4x
+
+**Notas de Implementación Segura**:
+- Mantener checkpointing frecuente
+- Límite de concurrencia: 2-3 requests paralelos máximo
+- Fallback secuencial si paralelo falla
+- Tests de stress con mock server antes de producción
+
+**ROI Estimado**: Implementación fácil (opción 1): 2 días → 50% tiempo ejecución
+
+---
+
 ### [ ] INFRA: Dynamic Context Router para Master Documents (Post-Merge Ralph)
 - **Contexto**: Actualmente se inyectan ~53k tokens de $changelog en cada prompt, saturando la atención del modelo y consumiendo VRAM innecesaria.
 - **Objetivo**: Implementar un sistema de ruteo dinámico de contexto que segmente el Master Guide y el Changelog.
