@@ -741,6 +741,7 @@ def generate_adaptive_profiles(
                 top_k=profile_dict["top_k"],
                 min_p=profile_dict["min_p"],
                 repetition_penalty=profile_dict.get("repetition_penalty", 1.0),
+                presence_penalty=profile_dict.get("presence_penalty"),
             )
             profiles.append(profile)
         except (ValueError, KeyError) as e:
@@ -1417,9 +1418,9 @@ def calculate_composite_score(
     """
     from src.audit.schema import CALIBRATION_SCORING_WEIGHTS
 
-    # Use calibration weights if the judge scores contain calibration dimensions
+    # Detect Stage 6 calibration dimensions vs Stage 5 HA dimensions
     if weights is None:
-        if "response_quality" in judge_scores:
+        if "parameter_effectiveness" in judge_scores:
             weights = CALIBRATION_SCORING_WEIGHTS
         else:
             weights = SCORING_WEIGHTS
@@ -1539,6 +1540,7 @@ def generate_response_with_profile(
         top_k=profile.top_k,
         min_p=profile.min_p,
         repetition_penalty=profile.repetition_penalty,
+        presence_penalty=profile.presence_penalty,
         retries=retries,
         retry_delay=retry_delay,
     )
@@ -1581,6 +1583,9 @@ class CalibrationEngine:
         student_client: Any | None = None,
         judge_client: Any | None = None,
         checkpoint_dir: str | None = None,
+        use_noxious_filter: bool = False,
+        noxious_loss_threshold: float = 0.15,
+        noxious_aggressiveness: float = 0.5,
     ) -> None:
         """Initialize the calibration engine.
 
@@ -1596,12 +1601,22 @@ class CalibrationEngine:
             Inference client for judge model. Created if not provided.
         checkpoint_dir : str | None
             Directory to save checkpoints for resume capability.
+        use_noxious_filter : bool
+            Whether to enable noxious parameter filter for early pruning.
         """
         self.prompts = prompts
         self.profiles = profiles if profiles is not None else generate_profiles()
         self.results: list[CalibrationResult] = []
         self.checkpoint_dir = checkpoint_dir
-        self._completed_profiles: list[tuple[int, int]] = []
+        self._completed_profiles: set[tuple[int, int]] = set()
+        
+        # Dynamic noxious filter: track discarded parameter values
+        self._discarded_params: dict[str, set[Any]] = {}  # {param: {discarded_values}}
+        self._use_noxious_filter = use_noxious_filter
+        self._noxious_loss_threshold = noxious_loss_threshold
+        # Aggressiveness controls fraction of worst values to drop during
+        # pre-resume aggregation (0.0-1.0). Default 0.5 => drop worst 50%.
+        self._noxious_aggressiveness = max(0.0, min(1.0, float(noxious_aggressiveness)))
 
         # Initialize clients
         router = InferenceRouter()
@@ -1615,11 +1630,42 @@ class CalibrationEngine:
             if self._loaded_checkpoint:
                 # Restore state from checkpoint
                 self.results = list(self._loaded_checkpoint.all_results)
-                self._completed_profiles = list(self._loaded_checkpoint.completed_profiles)
+                self._completed_profiles = {
+                    tuple(p) for p in self._loaded_checkpoint.completed_profiles
+                }
+                # Restore persisted discarded params if present
+                try:
+                    if getattr(self._loaded_checkpoint, "discarded_params", None):
+                        self._discarded_params = {
+                            k: set(v) for k, v in self._loaded_checkpoint.discarded_params.items()
+                        }
+                        logger.info(
+                            "Restored %d discarded parameter sets from checkpoint",
+                            len(self._discarded_params),
+                        )
+                except Exception:
+                    logger.debug("Failed to restore discarded_params from checkpoint", exc_info=True)
                 logger.info(
                     "Resuming from checkpoint: %d iterations already completed (%.1f%%)",
                     len(self._completed_profiles),
                     self._loaded_checkpoint.progress_percentage,
+                )
+                # Re-derive discarded params from restored results so the noxious filter
+                # is active immediately (not just after the first new prompt sweep).
+                if self._use_noxious_filter and self.results:
+                    self._update_discarded_params(self._noxious_loss_threshold)
+                    logger.info(
+                        "Noxious filter re-derived from checkpoint: %d param(s) with discarded values",
+                        len(self._discarded_params),
+                    )
+
+            # Enrich _discarded_params from the noxious pre-filter checkpoint.
+            # This provides much richer signal (multi-prompt per-value averages)
+            # than the few calibration results in self.results, allowing the
+            # dynamic skip to work immediately on --resume.
+            if self._use_noxious_filter:
+                self._derive_discards_from_noxious_checkpoint(
+                    checkpoint_dir, self._noxious_loss_threshold
                 )
 
     def run(
@@ -1689,14 +1735,17 @@ class CalibrationEngine:
             for profile_idx, profile in enumerate(self.profiles):
                 # Skip if already completed in previous run (resume capability)
                 if (prompt_idx, profile_idx) in self._completed_profiles:
-                    if verbose:
-                        logger.info(
-                            "[%d/%d] Prompt %s with %s - SKIPPED (already completed)",
-                            iteration + 1,
-                            total_iterations,
-                            prompt_id,
-                            profile,
-                        )
+                    # Suppressed to avoid log spam on massive resumes
+                    iteration += 1
+                    continue
+
+                # Skip profiles whose parameter values have been dynamically discarded
+                if self._use_noxious_filter and self._is_profile_noxious(profile):
+                    logger.debug(
+                        "⏭ [%d/%d] Skipping noxious profile (discarded values active)",
+                        iteration + 1,
+                        total_iterations,
+                    )
                     iteration += 1
                     continue
 
@@ -1704,27 +1753,90 @@ class CalibrationEngine:
 
                 # Show what prompt is being tested - START line
                 prompt_short = prompt_id.replace("calibration_prompt_", "P")
-                presence = f" presence_penalty={profile.presence_penalty}" if profile.presence_penalty else ""
-                profile_short = f"temperature={profile.temperature} top_p={profile.top_p} top_k={profile.top_k} min_p={profile.min_p} repetition_penalty={profile.repetition_penalty}{presence}"
+                presence = " presence_penalty=%s" % profile.presence_penalty if profile.presence_penalty is not None else ""
+                profile_short = "temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s" % (
+                    profile.temperature, profile.top_p, profile.top_k, profile.min_p, profile.repetition_penalty, presence
+                )
+                
+                # Calc dynamically how many profiles are actually alive
+                if self._use_noxious_filter:
+                    alive_profiles = sum(1 for p in self.profiles if not self._is_profile_noxious(p))
+                    active_total = total_prompts * alive_profiles
+                else:
+                    active_total = total_iterations
 
                 # Show progress header every 50 iterations
-                if iteration % 50 == 1:
-                    pct = (iteration / total_iterations) * 100
+                run_index = len(self.results) + 1  # How many we have actually processed/completed
+                if run_index % 50 == 1:
+                    pct = (run_index / max(1, active_total)) * 100
                     best_score_val = best_result.adjusted_score if best_result else 0.0
                     logger.info("")
                     logger.info("┌" + "─" * 70 + "┐")
-                    logger.info(f"│ 🔄 CALIBRATION PROGRESS: {iteration}/{total_iterations} ({pct:.1f}%)".ljust(71) + "│")
-                    logger.info(f"│ 🏆 Best so far: score={best_score_val:.3f}".ljust(71) + "│")
+                    logger.info("│ 🔄 CALIBRATION PROGRESS: %d/%d activas (%.1f%%)".ljust(71) + "│", run_index, active_total, pct)
+                    logger.info("│ 🏆 Best so far: score=%.3f".ljust(71) + "│", best_score_val)
                     logger.info("└" + "─" * 70 + "┘")
                     logger.info("")
 
+                # Build effective grid FROM the actual profiles we're iterating.
+                # This prevents a mismatch where the canonical CALIBRATION_GRID
+                # contains values that are not present in `self.profiles`
+                # (for example when a pre-filter reduced the profile set).
+                params = [
+                    "temperature",
+                    "top_p",
+                    "top_k",
+                    "min_p",
+                    "repetition_penalty",
+                    "presence_penalty",
+                ]
+
+                # Collect values present in the generated profiles
+                profile_values: dict[str, set[Any]] = {p: set() for p in params}
+                for p in self.profiles:
+                    profile_values["temperature"].add(p.temperature)
+                    profile_values["top_p"].add(p.top_p)
+                    profile_values["top_k"].add(p.top_k)
+                    profile_values["min_p"].add(p.min_p)
+                    profile_values["repetition_penalty"].add(p.repetition_penalty)
+                    if p.presence_penalty is not None:
+                        profile_values["presence_penalty"].add(p.presence_penalty)
+
+                # Remove discarded values (if any) and sort for consistent display
+                effective_grid: dict[str, list[Any]] = {}
+                for param, vals in profile_values.items():
+                    discarded = self._discarded_params.get(param, set())
+                    remaining = [v for v in sorted(vals) if v not in discarded]
+                    effective_grid[param] = remaining
+
+                # Compact formatting for display and include simple counts for diagnostics
+                grid_parts: list[str] = []
+                for p, vals in effective_grid.items():
+                    vals_str = ",".join(str(x) for x in vals)
+                    grid_parts.append(f"{p}=[{vals_str}]")
+                grid_str = " | ".join(grid_parts)
+
+                # Diagnostic: counts per parameter value (short) at DEBUG level
+                try:
+                    diag_parts: list[str] = []
+                    for p, vals in effective_grid.items():
+                        # build simple count map from existing results to aid debugging
+                        counts = {}
+                        for v in vals:
+                            counts[v] = sum(1 for r in self.results if getattr(r.profile, p) == v)
+                        counts_str = ",".join(f"{k}:{counts[k]}" for k in counts)
+                        diag_parts.append(f"{p}={{ {counts_str} }}")
+                    logger.debug("Active-value counts: %s", " | ".join(diag_parts))
+                except Exception:
+                    logger.debug("Failed to compute active-value diagnostic counts", exc_info=True)
+
                 logger.info(
-                    "▶ [%d/%d] %s @ %s",
-                    iteration,
-                    total_iterations,
+                    "▶ [Efectivo %d/%d] %s @ %s",
+                    run_index,
+                    active_total,
                     prompt_short,
                     profile_short,
                 )
+                logger.info("    🔎 Active grid: %s", grid_str)
 
                 try:
                     # Generate response with profile parameters
@@ -1770,7 +1882,11 @@ class CalibrationEngine:
                     )
 
                     self.results.append(result)
-                    self._completed_profiles.append((prompt_idx, profile_idx))
+                    self._completed_profiles.add((prompt_idx, profile_idx))
+
+                    # Calculate best score so far (BEFORE updating best_result)
+                    current_best = best_result.adjusted_score if best_result else 0.0
+                    is_best = adjusted_score > current_best
 
                     # Update best result tracking
                     if best_result is None or adjusted_score > best_result.adjusted_score:
@@ -1783,13 +1899,11 @@ class CalibrationEngine:
                     # Show result with scores - ALWAYS show best so far
                     # Show full judge dimensions (not abbreviated)
                     if judge_scores:
-                        judge_details = " | ".join(f"{k}={v:.2f}" for k, v in judge_scores.items())
+                        judge_details = " | ".join(
+                            "%s=%.2f" % (k, v) for k, v in judge_scores.items()
+                        )
                     else:
                         judge_details = "no judge scores"
-
-                    # Calculate best score so far
-                    current_best = best_result.adjusted_score if best_result else 0.0
-                    is_best = adjusted_score > current_best
 
                     # Compare with previous iteration
                     diff = adjusted_score - previous_score
@@ -1815,16 +1929,18 @@ class CalibrationEngine:
                     param_target = prompt.get("parameter_target", "")
                     eval_focus = prompt.get("evaluation_focus", "")
                     if param_target:
-                        logger.info(f"    🎯 Target params: {param_target}")
+                        logger.info("    🎯 Target params: %s", param_target)
                     if eval_focus and len(eval_focus) < 100:
-                        logger.info(f"    💡 Focus: {eval_focus[:100]}")
+                        logger.info("    💡 Focus: %s", eval_focus[:100])
 
                     # Show why this score (if it's a new best)
                     if is_best and best_result:
-                        best_profile = best_result.profile if best_result else profile
-                        presence = f" presence_penalty={best_profile.presence_penalty}" if best_profile.presence_penalty else ""
+                        best_profile = best_result.profile
                         logger.info(
-                            f"    🏆 NEW BEST! Profile: temperature={best_profile.temperature} top_p={best_profile.top_p} top_k={best_profile.top_k} min_p={best_profile.min_p} repetition_penalty={best_profile.repetition_penalty}{presence}"
+                            "    🏆 NEW BEST! Profile: temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s",
+                            best_profile.temperature, best_profile.top_p, best_profile.top_k,
+                            best_profile.min_p, best_profile.repetition_penalty,
+                            " presence_penalty=%s" % best_profile.presence_penalty if best_profile.presence_penalty is not None else "",
                         )
 
                 except Exception as e:
@@ -1836,6 +1952,11 @@ class CalibrationEngine:
                     )
                     # Continue with next profile
                     continue
+
+            # After each prompt sweep, analyse accumulated scores and discard
+            # noxious parameter values so the remaining profiles are skipped.
+            if self._use_noxious_filter:
+                self._update_discarded_params(self._noxious_loss_threshold)
 
         # Select best profile
         best_result = self._select_best_profile()
@@ -1971,6 +2092,369 @@ class CalibrationEngine:
             "style": 0.5,
         }
 
+    def _is_profile_noxious(self, profile: "SamplingProfile") -> bool:
+        """Return True if any of the profile's parameter values have been discarded.
+
+        Checks ``self._discarded_params`` which is populated by
+        ``_update_discarded_params`` after each prompt sweep.
+        """
+        if not self._discarded_params:
+            return False
+
+        # Map parameters to their values and collect triggers
+        param_map: dict[str, Any] = {
+            "temperature": profile.temperature,
+            "top_p": profile.top_p,
+            "top_k": profile.top_k,
+            "min_p": profile.min_p,
+            "repetition_penalty": profile.repetition_penalty,
+            "presence_penalty": profile.presence_penalty,
+        }
+
+        triggers: list[str] = []
+        for param, discarded_values in self._discarded_params.items():
+            val = param_map.get(param)
+            if val is not None and val in discarded_values:
+                triggers.append(f"{param}={val}")
+
+        if triggers:
+            # Keep this at DEBUG level to avoid spamming the user's console during
+            # large resumes; set logging to DEBUG to inspect triggers when needed.
+            logger.debug("⏭ Skipping noxious profile -> triggers: %s", ", ".join(triggers))
+            return True
+
+        return False
+
+    def _update_discarded_params(self, loss_threshold: float = 0.15) -> None:
+        """Analyse accumulated results and discard consistently bad parameter values.
+
+        Called after each prompt sweep.  For every tracked parameter, computes
+        the average adjusted score per value.  Any value whose average is more
+        than ``loss_threshold`` below the current best average for that parameter
+        is added to ``self._discarded_params``, causing future profiles that
+        contain it to be skipped via ``_is_profile_noxious``.
+
+        Parameters
+        ----------
+        loss_threshold : float
+            Minimum score gap to consider a value noxious (default 0.15).
+        """
+        if not self.results:
+            return
+
+        param_names = [
+            "temperature", "top_p", "top_k",
+            "min_p", "repetition_penalty", "presence_penalty",
+        ]
+        # Accumulate per-parameter-value scores from all results so far
+        # {param: {value: [adjusted_scores]}}
+        value_scores: dict[str, dict[Any, list[float]]] = {p: {} for p in param_names}
+        for result in self.results:
+            p = result.profile
+            val_map: dict[str, Any] = {
+                "temperature": p.temperature,
+                "top_p": p.top_p,
+                "top_k": p.top_k,
+                "min_p": p.min_p,
+                "repetition_penalty": p.repetition_penalty,
+                "presence_penalty": p.presence_penalty,
+            }
+            for param_name, val in val_map.items():
+                if val is None:
+                    continue
+                bucket = value_scores[param_name]
+                if val not in bucket:
+                    bucket[val] = []
+                bucket[val].append(result.adjusted_score)
+
+        newly_discarded = 0
+        for param_name, buckets in value_scores.items():
+            if len(buckets) < 2:
+                # Not enough diversity to judge
+                continue
+            # Only consider values that have at least 5 samples to avoid noisy early eliminations
+            valid_buckets = {v: s for v, s in buckets.items() if len(s) >= 5}
+            if len(valid_buckets) < 2:
+                continue
+            
+            avg_by_val = {v: sum(s) / len(s) for v, s in valid_buckets.items()}
+            best_avg = max(avg_by_val.values())
+            
+            # Sort values from worst to best
+            sorted_vals = sorted(avg_by_val.items(), key=lambda x: x[1])
+            total_vals = len(sorted_vals)
+            if total_vals < 2: continue
+            
+            # Algoritmo de supresion agresiva (Proporcional):
+            # Eliminamos una fracción de los peores (controlada por
+            # self._noxious_aggressiveness), siempre que la diferencia con el
+            # mejor sea > 0.015 o si superan el threshold absoluto
+            # (loss_threshold). Esto fuerza la reducción en resume.
+            num_to_discard = max(1, int(total_vals * self._noxious_aggressiveness))
+            
+            for i, (val, avg) in enumerate(sorted_vals):
+                is_already_discarded = val in self._discarded_params.get(param_name, set())
+                if is_already_discarded:
+                    continue
+                    
+                diff = best_avg - avg
+                # Descartar si excede el threshold estricto, O si está entre los peores rankeados
+                if diff > loss_threshold or (diff > 0.015 and i < num_to_discard):
+                    self._discarded_params.setdefault(param_name, set()).add(val)
+                    newly_discarded += 1
+                    logger.info(
+                        "🚫 Noxious filter agresivo: %s=%s descartado "
+                        "(avg=%.4f vs best=%.4f, delta=%.4f, rank=%d/%d)",
+                        param_name, val, avg, best_avg, diff, i+1, total_vals
+                    )
+
+            # Guardrail: never discard all candidate values for a parameter.
+            # If aggressive rules would remove every candidate, restore the
+            # best value so at least one remains available.
+            candidate_vals = [v for v, _ in sorted_vals]
+            discarded_in_candidates = [v for v in self._discarded_params.get(param_name, set()) if v in candidate_vals]
+            if len(discarded_in_candidates) >= len(candidate_vals):
+                # Determine best candidate by avg (if available) and keep it
+                try:
+                    best_val = max(avg_by_val.items(), key=lambda x: x[1])[0]
+                    self._discarded_params[param_name].discard(best_val)
+                    logger.info(
+                        "⚠️ Guardrail: retenido %s=%s para evitar eliminar todas las opciones",
+                        param_name,
+                        best_val,
+                    )
+                except Exception:
+                    # Fallback: clear all discards for this param (conservative)
+                    self._discarded_params.pop(param_name, None)
+                    logger.info(
+                        "⚠️ Guardrail: no fue posible elegir mejor valor para %s, se restauran opciones",
+                        param_name,
+                    )
+
+        if newly_discarded:
+            skipped_count = sum(
+                1 for prof in self.profiles if self._is_profile_noxious(prof)
+            )
+            logger.info(
+                "🧹 %d value(s) newly discarded -> %d/%d profiles will be skipped going forward",
+                newly_discarded, skipped_count, len(self.profiles),
+            )
+
+    def _derive_discards_from_noxious_checkpoint(
+        self,
+        checkpoint_dir: str,
+        loss_threshold: float,
+    ) -> None:
+        """Populate ``_discarded_params`` from the noxious pre-filter checkpoint.
+
+        Reads ``noxious_filter_checkpoint.json`` from *checkpoint_dir* and
+        applies the same average-delta criterion as ``_update_discarded_params``
+        to identify parameter values whose average score is significantly below
+        the best average for their parameter.
+
+        This is **critical for ``--resume`` flows**: the pre-filter data (6+
+        prompts × all values) provides far richer signal than the handful of
+        calibration results accumulated so far, so noxious profiles can be
+        skipped from the very first new iteration.
+
+        Parameters
+        ----------
+        checkpoint_dir : str
+            Directory that may contain ``noxious_filter_checkpoint.json``.
+        loss_threshold : float
+            Delta between the best per-parameter average and a value's average
+            above which the value is considered noxious and discarded.
+        """
+        # Strategy: aggregate all available historic data from the
+        # checkpoint directory (latest.json + checkpoint_*.json files)
+        # and also apply the dedicated noxious pre-filter if present.
+        # This ensures resume uses ALL past evaluations (not just a single
+        # latest file) to derive which parameter *values* are bad.
+
+        aggregated_results: list[dict[str, Any]] = []
+
+        # 1) Load latest.json if present
+        latest_path = os.path.join(checkpoint_dir, "latest.json")
+        if os.path.isfile(latest_path):
+            try:
+                with open(latest_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    aggregated_results.extend(data.get("all_results", []))
+            except Exception:
+                logger.debug("Could not read latest.json for aggregation", exc_info=True)
+
+        # 2) Load any checkpoint_*.json files (these may be incremental)
+        try:
+            for fname in os.listdir(checkpoint_dir):
+                if not fname.startswith("checkpoint_") or not fname.endswith(".json"):
+                    continue
+                full = os.path.join(checkpoint_dir, fname)
+                try:
+                    with open(full, "r", encoding="utf-8") as f:
+                        ck = json.load(f)
+                        aggregated_results.extend(ck.get("all_results", []))
+                except Exception:
+                    logger.debug("Failed reading %s for aggregation", full, exc_info=True)
+        except OSError:
+            # directory may not exist or be readable
+            logger.debug("Checkpoint directory not readable: %s", checkpoint_dir, exc_info=True)
+
+        # 3) Optionally use the specialized noxious filter checkpoint for
+        #     stronger per-value per-prompt signal (it contains 'prompt_data').
+        checkpoint_file = os.path.join(checkpoint_dir, "noxious_filter_checkpoint.json")
+        if os.path.isfile(checkpoint_file):
+            try:
+                with open(checkpoint_file, "r", encoding="utf-8") as f:
+                    nf = json.load(f)
+            except Exception:
+                nf = None
+                logger.debug("Failed to load noxious_filter_checkpoint.json", exc_info=True)
+
+            if nf:
+                prompt_data: dict[str, Any] = nf.get("prompt_data", {})
+                newly_discarded_pf = 0
+                for param, prompts in prompt_data.items():
+                    pivot_val: Any = PARAMETER_PIVOTS.get(param)
+                    collected: dict[Any, list[float]] = {}
+                    for _prompt_key, pdict in prompts.items():
+                        pivot_score = pdict.get("pivot_score")
+                        if pivot_score is not None and pivot_val is not None:
+                            collected.setdefault(pivot_val, []).append(float(pivot_score))
+                        for key, score in pdict.items():
+                            if key == "pivot_score":
+                                continue
+                            try:
+                                v_float = float(key)
+                                v: Any = (
+                                    int(v_float)
+                                    if v_float == int(v_float) and "." not in key
+                                    else v_float
+                                )
+                            except (ValueError, TypeError):
+                                v = key
+                            collected.setdefault(v, []).append(float(score))
+
+                    if len(collected) < 2:
+                        continue
+
+                    avg_by_val = {v: sum(lst) / len(lst) for v, lst in collected.items() if lst}
+                    if not avg_by_val:
+                        continue
+                    best_avg = max(avg_by_val.values())
+                    for val, avg in avg_by_val.items():
+                        if val == pivot_val:
+                            continue
+                        if best_avg - avg > loss_threshold:
+                            if val not in self._discarded_params.get(param, set()):
+                                self._discarded_params.setdefault(param, set()).add(val)
+                                newly_discarded_pf += 1
+                                logger.info(
+                                    "🚫 Pre-filter derived discard: %s=%s "
+                                    "(avg=%.3f vs best=%.3f, delta=%.3f > threshold=%.3f)",
+                                    param,
+                                    val,
+                                    avg,
+                                    best_avg,
+                                    best_avg - avg,
+                                    loss_threshold,
+                                )
+
+                if newly_discarded_pf:
+                    skipped = sum(1 for p in self.profiles if self._is_profile_noxious(p))
+                    logger.info(
+                        "🧹 Pre-filter checkpoint: %d value(s) derived -> %d/%d profiles will be skipped from now on",
+                        newly_discarded_pf,
+                        skipped,
+                        len(self.profiles),
+                    )
+
+        # 4) If we have aggregated historic results, run a proportional
+        #    discard pass over them so resume learns from *all* past runs.
+        if aggregated_results:
+            param_names = [
+                "temperature",
+                "top_p",
+                "top_k",
+                "min_p",
+                "repetition_penalty",
+                "presence_penalty",
+            ]
+
+            value_scores: dict[str, dict[Any, list[float]]] = {p: {} for p in param_names}
+            for r in aggregated_results:
+                # Support both dict-based results (from checkpoint) and objects
+                # If object-like, attempt attribute access defensively.
+                try:
+                    prof = r.get("profile", {}) if isinstance(r, dict) else getattr(r, "profile", {})
+                except Exception:
+                    prof = {}
+                score = 0.0
+                if isinstance(r, dict):
+                    score = r.get("adjusted_score", r.get("composite_score", 0.0))
+                else:
+                    score = getattr(r, "adjusted_score", getattr(r, "composite_score", 0.0))
+
+                for param in param_names:
+                    val = None
+                    if isinstance(prof, dict):
+                        val = prof.get(param)
+                    else:
+                        val = getattr(prof, param, None)
+                    if val is None:
+                        continue
+                    bucket = value_scores[param]
+                    bucket.setdefault(val, []).append(float(score))
+
+            newly_discarded = 0
+            for param_name, buckets in value_scores.items():
+                valid_buckets = {v: s for v, s in buckets.items() if len(s) >= 2}
+                if len(valid_buckets) < 2:
+                    continue
+                avg_by_val = {v: sum(s) / len(s) for v, s in valid_buckets.items()}
+                best_avg = max(avg_by_val.values())
+                sorted_vals = sorted(avg_by_val.items(), key=lambda x: x[1])
+                total_vals = len(sorted_vals)
+                num_to_discard = max(1, int(total_vals * self._noxious_aggressiveness))
+                for i, (val, avg) in enumerate(sorted_vals):
+                    if val in self._discarded_params.get(param_name, set()):
+                        continue
+                    diff = best_avg - avg
+                    if diff > loss_threshold or (diff > 0.015 and i < num_to_discard):
+                        self._discarded_params.setdefault(param_name, set()).add(val)
+                        newly_discarded += 1
+                        logger.info(
+                            "🧹 Pre-resume aggregate discard: %s=%s discarded (avg=%.4f vs best=%.4f, delta=%.4f, rank=%d/%d)",
+                            param_name, val, avg, best_avg, diff, i + 1, total_vals,
+                        )
+
+                # Guardrail: ensure we do not discard every candidate for a param
+                candidate_vals = [v for v, _ in sorted_vals]
+                discarded_in_candidates = [v for v in self._discarded_params.get(param_name, set()) if v in candidate_vals]
+                if len(discarded_in_candidates) >= len(candidate_vals):
+                    try:
+                        best_val = max(avg_by_val.items(), key=lambda x: x[1])[0]
+                        self._discarded_params[param_name].discard(best_val)
+                        logger.info(
+                            "⚠️ Guardrail pre-resume: retenido %s=%s para evitar eliminar todas las opciones",
+                            param_name,
+                            best_val,
+                        )
+                    except Exception:
+                        self._discarded_params.pop(param_name, None)
+                        logger.info(
+                            "⚠️ Guardrail pre-resume: no fue posible elegir mejor valor para %s, se restauran opciones",
+                            param_name,
+                        )
+
+            if newly_discarded:
+                skipped = sum(1 for p in self.profiles if self._is_profile_noxious(p))
+                logger.info(
+                    "🧹 Pre-resume aggregate: %d value(s) derived -> %d/%d profiles will be skipped from now on",
+                    newly_discarded,
+                    skipped,
+                    len(self.profiles),
+                )
+
     def _select_best_profile(self) -> CalibrationResult | None:
         """Select the best profile based on adjusted scores.
 
@@ -2031,10 +2515,11 @@ class CalibrationEngine:
             timestamp=datetime.now(timezone.utc).isoformat(),
             current_prompt_idx=current_prompt_idx,
             current_profile_idx=current_profile_idx,
-            completed_profiles=self._completed_profiles.copy(),
+            completed_profiles=list(self._completed_profiles),
             all_results=self.results.copy(),
             total_profiles=len(self.profiles),
             total_prompts=len(self.prompts),
+            discarded_params={k: list(v) for k, v in self._discarded_params.items()},
         )
 
         # Generate filename based on prompt and profile for easy lookup
@@ -2127,7 +2612,9 @@ def filter_noxious_parameter_values(
     student_client: Any,
     judge_client: Any,
     loss_threshold: float = 0.15,
+    sample_size: int | None = None,
     verbose: bool = True,
+    checkpoint_dir: str | None = None,
 ) -> dict[str, list[Any]]:
     """Filter out noxious parameter values using quick evaluation.
 
@@ -2140,6 +2627,9 @@ def filter_noxious_parameter_values(
     2. Compare each value vs pivot across all prompts
     3. If value loses in >80% of cases by >loss_threshold, discard it
     4. Return reduced grid
+
+    Supports checkpointing: if checkpoint_dir is provided, saves progress after each
+    parameter evaluation and resumes from checkpoint if available.
 
     Parameters
     ----------
@@ -2155,16 +2645,101 @@ def filter_noxious_parameter_values(
         Minimum score difference to consider a value as "losing" (default: 0.15).
     verbose : bool
         Whether to log progress.
+    checkpoint_dir : str | None
+        Directory to save checkpoint for resume capability.
 
     Returns
     -------
     dict[str, list[Any]]
         Filtered grid with noxious values removed.
     """
-    from src.audit.judge import run_inference
+    from src.audit.config import _get_prompt_manager
+
+    import json
+    import re
+    import random
 
     filtered_grid: dict[str, list[Any]] = {}
     pivot_values = PARAMETER_PIVOTS
+
+    # Get prompt manager for judge prompts
+    pm = _get_prompt_manager()
+
+    # Checkpoint handling for noxious filter
+    checkpoint_data: dict[str, Any] = {}
+    checkpoint_file = None
+    if checkpoint_dir:
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        checkpoint_file = os.path.join(checkpoint_dir, "noxious_filter_checkpoint.json")
+        if os.path.exists(checkpoint_file):
+            try:
+                with open(checkpoint_file, "r") as f:
+                    checkpoint_data = json.load(f)
+                if verbose:
+                    logger.info("🔄 Resuming noxious filter from checkpoint...")
+                    for param, data in checkpoint_data.get("param_scores", {}).items():
+                        scored_count = sum(len(v) for v in data.values()) if data else 0
+                        logger.info("   %s: %d scores loaded", param, scored_count)
+            except Exception as e:
+                if verbose:
+                    logger.warning("Failed to load checkpoint: %s", e)
+                checkpoint_data = {}
+
+    def save_noxious_checkpoint():
+        """Save current noxious filter progress to checkpoint."""
+        if checkpoint_file and checkpoint_data:
+            try:
+                with open(checkpoint_file, "w") as f:
+                    json.dump(checkpoint_data, f)
+            except Exception as e:
+                if verbose:
+                    logger.warning("Failed to save checkpoint: %s", e)
+
+    def get_judge_score(prompt_text: str, response: str, prompt_meta: dict) -> float:
+        """Get judge score for a response using the judge client."""
+        parameter_target = prompt_meta.get("parameter_target", "")
+        evaluation_focus = prompt_meta.get("evaluation_focus", "General response quality")
+        
+        try:
+            user_msg = pm.format(
+                "professor_judge_calibration",
+                calibration_question=prompt_text,
+                parameter_target=parameter_target or "general",
+                evaluation_focus=evaluation_focus or "General response quality",
+                model_response=response,
+            )
+            
+            raw = judge_client.generate_with_retry(
+                prompt=user_msg,
+                system_prompt=pm.system("professor_judge_calibration"),
+                max_tokens=8192,
+                temperature=0.0,
+                retries=3,
+                retry_delay=5.0,
+                json_mode=True,
+            )
+            
+            # Clean and parse JSON
+            cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.MULTILINE)
+            cleaned = re.sub(r"```\s*$", "", cleaned, flags=re.MULTILINE).strip()
+            parsed = json.loads(cleaned)
+            
+            # Calculate composite score from judge dimensions
+            weights = {
+                "parameter_effectiveness": 0.2,
+                "task_completion": 0.25,
+                "parameter_alignment": 0.2,
+                "coherence": 0.2,
+                "style": 0.15,
+            }
+            composite = sum(
+                parsed.get(dim, 0.5) * weight 
+                for dim, weight in weights.items()
+            )
+            return composite
+        except Exception as e:
+            logger.debug("Judge scoring failed: %s", e)
+            return 0.5  # Neutral score on failure
 
     if verbose:
         original_combos = 1
@@ -2172,11 +2747,14 @@ def filter_noxious_parameter_values(
             original_combos *= len(values)
         logger.info("")
         logger.info("=" * 60)
-        logger.info("🚀 NOXIOUS PARAMETER FILTER")
+        logger.info("🚀 NOXIOUS PARAMETER FILTER (with Judge)")
         logger.info("=" * 60)
-        logger.info(f"  Original grid: {original_combos} combinations")
-        logger.info(f"  Prompts to test: {len(prompts)}")
-        logger.info(f"  Loss threshold: {loss_threshold}")
+        logger.info("  Original grid: %d combinations", original_combos)
+        logger.info("  Prompts to test: %d", len(prompts))
+        if sample_size and sample_size > 0 and sample_size < len(prompts):
+            logger.info("  Sampling %d/%d prompts for pre-filter (faster)", sample_size, len(prompts))
+        logger.info("  Loss threshold: %s", loss_threshold)
+        logger.info("  Using real judge for scoring")
         logger.info("")
 
     for param_name, param_values in grid.items():
@@ -2193,48 +2771,129 @@ def filter_noxious_parameter_values(
 
         if verbose:
             logger.info("")
-            logger.info(f"  📊 Testing parameter: {param_name}")
-            logger.info(f"     Values: {param_values}")
-            logger.info(f"     Pivot: {pivot}")
+            logger.info("  📊 Testing parameter: %s", param_name)
+            logger.info("     Values: %s", param_values)
+            logger.info("     Pivot: %s", pivot)
 
-        # Test each value vs pivot
+        # Test each value vs pivot - load from checkpoint if available
         value_scores: dict[Any, list[float]] = {v: [] for v in param_values}
 
-        for prompt in prompts:
-            # Get prompt text
+        # Calculate total iterations for this parameter for progress display
+        _noxious_total = len(prompts) * len(param_values)
+        _noxious_done = 0
+
+        # Load from checkpoint if available
+        param_checkpoint = checkpoint_data.get("param_scores", {}).get(param_name, {})
+        if param_checkpoint and verbose:
+            logger.info("     📂 Loaded %d scores from checkpoint", sum(len(v) for v in param_checkpoint.values()))
+        
+        # Convert checkpoint data to value_scores format
+        # JSON keys are always str, so match against str(v) for numeric values
+        for ckpt_key, prompt_scores in param_checkpoint.items():
+            for v in param_values:
+                if str(v) == ckpt_key:
+                    value_scores[v] = prompt_scores
+                    break
+
+        # Determine which prompt indices to evaluate (supports sampling)
+        prompt_indices = list(range(len(prompts)))
+        if sample_size and sample_size > 0 and sample_size < len(prompts):
+            prompt_indices = random.sample(prompt_indices, sample_size)
+
+        for prompt_idx in prompt_indices:
+            prompt = prompts[prompt_idx]
+            # Get prompt text and ID
+            prompt_id = prompt.get("id", f"prompt_{prompt_idx}")
             prompt_text = prompt.get("question", prompt.get("text", prompt.get("prompt", "")))
             if not prompt_text:
                 continue
 
-            # Generate with pivot profile
-            pivot_profile = SamplingProfile(
-                temperature=pivot_values.get("temperature", 0.6),
-                top_p=pivot_values.get("top_p", 0.9),
-                top_k=pivot_values.get("top_k", 20),
-                min_p=pivot_values.get("min_p", 0.0),
-                repetition_penalty=pivot_values.get("repetition_penalty", 1.0),
-                presence_penalty=pivot_values.get("presence_penalty"),
-            )
-
-            try:
-                pivot_response = run_inference(
-                    client=student_client,
-                    prompt=prompt_text,
-                    config=pivot_profile.to_dict(),
+            # Check if this prompt was already evaluated for all values in checkpoint
+            prompt_key = f"prompt_{prompt_idx}"
+            param_prompt_data = checkpoint_data.get("prompt_data", {}).get(param_name, {}).get(prompt_key, {})
+            
+            # Load pivot score from checkpoint if available
+            if "pivot_score" in param_prompt_data:
+                pivot_score = param_prompt_data["pivot_score"]
+                if verbose:
+                    logger.info(
+                        "     [P%d/%d] %-20s pivot=%-5s → score=%.3f  (cached)",
+                        prompt_idx + 1, len(prompts), prompt_id, pivot, pivot_score,
+                    )
+            else:
+                # Generate with pivot profile
+                if verbose:
+                    logger.info(
+                        "     [P%d/%d] %-20s pivot=%-5s → generating...",
+                        prompt_idx + 1, len(prompts), prompt_id, pivot,
+                    )
+                pivot_profile = SamplingProfile(
+                    temperature=pivot_values.get("temperature", 0.6),
+                    top_p=pivot_values.get("top_p", 0.9),
+                    top_k=pivot_values.get("top_k", 20),
+                    min_p=pivot_values.get("min_p", 0.0),
+                    repetition_penalty=pivot_values.get("repetition_penalty", 1.0),
+                    presence_penalty=pivot_values.get("presence_penalty"),
                 )
-                pivot_score = pivot_response.get("score", 0.5)
-            except Exception:
-                pivot_score = 0.5
+
+                try:
+                    pivot_response = generate_response_with_profile(
+                        client=student_client,
+                        prompt=prompt_text,
+                        profile=pivot_profile,
+                    )
+                    # Use judge for real quality assessment
+                    pivot_score = get_judge_score(prompt_text, pivot_response, prompt)
+                except Exception:
+                    pivot_score = 0.5
+
+                if verbose:
+                    logger.info(
+                        "     [P%d/%d] %-20s pivot=%-5s → score=%.3f",
+                        prompt_idx + 1, len(prompts), prompt_id, pivot, pivot_score,
+                    )
+
+                # Save to checkpoint
+                if checkpoint_dir:
+                    if "prompt_data" not in checkpoint_data:
+                        checkpoint_data["prompt_data"] = {}
+                    if param_name not in checkpoint_data["prompt_data"]:
+                        checkpoint_data["prompt_data"][param_name] = {}
+                    checkpoint_data["prompt_data"][param_name][prompt_key] = {"pivot_score": pivot_score}
+                    save_noxious_checkpoint()
 
             # Test each value of this parameter
             for value in param_values:
+                _noxious_done += 1
+                _pct = _noxious_done * 100 / _noxious_total if _noxious_total else 0
+
                 if value == pivot:
-                    value_scores[value].append(pivot_score)
+                    if len(value_scores[value]) <= prompt_idx:
+                        value_scores[value].append(pivot_score)
+                    continue
+
+                # Check if this value was already evaluated for this prompt
+                value_key = str(value)
+                if value_key in param_prompt_data:
+                    test_score = param_prompt_data[value_key]
+                    if len(value_scores[value]) <= prompt_idx:
+                        value_scores[value].append(test_score)
+                    if verbose:
+                        logger.info(
+                            "     [%5.1f%%] %s=%-5s  P%d  score=%.3f  (cached)",
+                            _pct, param_name, value, prompt_idx + 1, test_score,
+                        )
                     continue
 
                 # Create profile with this value
                 test_profile_dict = dict(pivot_values)
                 test_profile_dict[param_name] = value
+
+                if verbose:
+                    logger.info(
+                        "     [%5.1f%%] %s=%-5s  P%d  generating...",
+                        _pct, param_name, value, prompt_idx + 1,
+                    )
 
                 try:
                     test_profile = SamplingProfile(
@@ -2245,16 +2904,35 @@ def filter_noxious_parameter_values(
                         repetition_penalty=test_profile_dict.get("repetition_penalty", 1.0),
                         presence_penalty=test_profile_dict.get("presence_penalty"),
                     )
-                    test_response = run_inference(
+                    test_response = generate_response_with_profile(
                         client=student_client,
                         prompt=prompt_text,
-                        config=test_profile.to_dict(),
+                        profile=test_profile,
                     )
-                    test_score = test_response.get("score", 0.5)
+                    # Use judge for real quality assessment
+                    test_score = get_judge_score(prompt_text, test_response, prompt)
                 except Exception:
                     test_score = 0.5
 
-                value_scores[value].append(test_score)
+                if verbose:
+                    logger.info(
+                        "     [%5.1f%%] %s=%-5s  P%d  score=%.3f",
+                        _pct, param_name, value, prompt_idx + 1, test_score,
+                    )
+
+                # Save to checkpoint
+                if checkpoint_dir:
+                    if "prompt_data" not in checkpoint_data:
+                        checkpoint_data["prompt_data"] = {}
+                    if param_name not in checkpoint_data["prompt_data"]:
+                        checkpoint_data["prompt_data"][param_name] = {}
+                    if prompt_key not in checkpoint_data["prompt_data"][param_name]:
+                        checkpoint_data["prompt_data"][param_name][prompt_key] = {"pivot_score": pivot_score}
+                    checkpoint_data["prompt_data"][param_name][prompt_key][value_key] = test_score
+                    save_noxious_checkpoint()
+
+                if len(value_scores[value]) <= prompt_idx:
+                    value_scores[value].append(test_score)
 
         # Analyze results: count how often each value loses to pivot
         good_values = [pivot]
@@ -2289,7 +2967,10 @@ def filter_noxious_parameter_values(
                             break
                         else:
                             current_combos *= len(p_vals)
-                    logger.info(f"  ❌ NOXIOUS: {param_name}={value} - loss_rate={loss_rate:.0%} (avg: value={value_avg:.3f} vs pivot={pivot_avg:.3f})")
+                    logger.info(
+                        "  ❌ NOXIOUS: %s=%s - loss_rate=%.0f%% (avg: value=%.3f vs pivot=%.3f)",
+                        param_name, value, loss_rate * 100, value_avg, pivot_avg,
+                    )
             else:
                 good_values.append(value)
 
@@ -2306,13 +2987,13 @@ def filter_noxious_parameter_values(
         logger.info("=" * 60)
         logger.info("✅ NOXIOUS FILTER COMPLETE")
         logger.info("=" * 60)
-        logger.info(f"  Original grid: {original} combinations")
-        logger.info(f"  Filtered grid: {total_combinations} combinations")
-        logger.info(f"  Reduction: {reduction:.1f}%")
+        logger.info("  Original grid: %d combinations", original)
+        logger.info("  Filtered grid: %d combinations", total_combinations)
+        logger.info("  Reduction: %.1f%%", reduction)
         logger.info("")
         logger.info("  Final parameter values:")
         for param, values in filtered_grid.items():
-            logger.info(f"    {param}: {values}")
+            logger.info("    %s: %s", param, values)
         logger.info("=" * 60)
         logger.info("")
 
@@ -2337,6 +3018,9 @@ def run_calibration(
     checkpoint_dir: str | None = None,
     use_prompt_metadata: bool = False,
     use_noxious_filter: bool = False,
+    noxious_loss_threshold: float = 0.15,
+    noxious_sample_size: int | None = None,
+    noxious_aggressiveness: float = 0.5,
 ) -> CalibrationReport:
     """Run calibration with the given prompts.
 
@@ -2373,21 +3057,30 @@ def run_calibration(
     CalibrationReport
         Complete calibration results.
     """
-    # Apply noxious filter if enabled
-    if use_noxious_filter and grid and student_client is not None:
+    # Resolve effective grid, applying static noxious pre-filter when requested.
+    # This eliminates obviously bad parameter values BEFORE generating the full
+    # profile list, which dramatically reduces iterations for large grids.
+    # CalibrationEngine.run() additionally applies a dynamic mid-run filter
+    # (updating _discarded_params after each prompt sweep).
+    effective_grid: dict[str, list[Any]] = (
+        dict(grid) if grid is not None else dict(CALIBRATION_GRID)
+    )
+    if use_noxious_filter and student_client is not None and judge_client is not None:
         if verbose:
-            logger.info("Applying noxious parameter filter...")
-        try:
-            grid = filter_noxious_parameter_values(
-                grid=grid,
-                prompts=prompts,
-                student_client=student_client,
-                judge_client=judge_client,
-                verbose=verbose,
+            logger.info(
+                "Running noxious pre-filter on grid (%d combinations) ...",
+                _calc_combinations(effective_grid),
             )
-        except Exception as e:
-            if verbose:
-                logger.warning("Noxious filter failed: %s, continuing with full grid", e)
+        effective_grid = filter_noxious_parameter_values(
+            grid=effective_grid,
+            prompts=prompts,
+            student_client=student_client,
+            judge_client=judge_client,
+            loss_threshold=noxious_loss_threshold,
+            sample_size=(noxious_sample_size if noxious_sample_size and noxious_sample_size > 0 else None),
+            checkpoint_dir=checkpoint_dir,
+            verbose=verbose,
+        )
 
     # Generate profiles - use adaptive generation if prompt metadata is enabled
     if use_prompt_metadata:
@@ -2424,15 +3117,15 @@ def run_calibration(
                     "Using adaptive profile generation with %d prompts having focus metadata",
                     len(calibration_prompts),
                 )
-            profiles = generate_adaptive_profiles(prompts=calibration_prompts, grid=grid)
+            profiles = generate_adaptive_profiles(prompts=calibration_prompts, grid=effective_grid)
         else:
             if verbose:
                 logger.info(
                     "No prompt metadata found, using standard profile generation"
                 )
-            profiles = generate_profiles(grid)
+            profiles = generate_profiles(effective_grid)
     else:
-        profiles = generate_profiles(grid)
+        profiles = generate_profiles(effective_grid)
 
     engine = CalibrationEngine(
         prompts=prompts,
@@ -2440,6 +3133,9 @@ def run_calibration(
         student_client=student_client,
         judge_client=judge_client,
         checkpoint_dir=checkpoint_dir,
+        use_noxious_filter=use_noxious_filter,
+        noxious_loss_threshold=noxious_loss_threshold,
+        noxious_aggressiveness=noxious_aggressiveness,
     )
 
     report = engine.run(verbose=verbose, checkpoint_dir=checkpoint_dir)
@@ -2479,16 +3175,16 @@ def generate_calibration_analysis(
     # Extract focus analysis from prompts
     focus_analysis = extract_focus_analysis(prompts)
 
-    # Analyze parameter performance from results
-    param_performance = analyze_parameter_performance(report.all_results)
-
     # Get refinement recommendations
     # Get the original grid from report statistics if available
     base_grid = report.statistics.get("grid") if report.statistics else None
     refinement_recs = get_refinement_recommendations(
-        param_performance,
+        report.all_results,
         base_grid,
     )
+
+    # Analyze parameter performance from results (for the analysis report)
+    param_performance = analyze_parameter_performance(report.all_results)
 
     # Build comprehensive analysis
     analysis = {

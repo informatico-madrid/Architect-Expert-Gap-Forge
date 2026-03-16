@@ -77,6 +77,7 @@ class BaseInferenceClient(abc.ABC):
         top_k: int | None = None,
         min_p: float | None = None,
         repetition_penalty: float | None = None,
+        presence_penalty: float | None = None,
         json_mode: bool = False,
         tools: list[dict[str, Any]] | None = None,
     ) -> str:
@@ -112,6 +113,7 @@ class BaseInferenceClient(abc.ABC):
         top_k: int | None = None,
         min_p: float | None = None,
         repetition_penalty: float | None = None,
+        presence_penalty: float | None = None,
         retries: int = 3,
         retry_delay: float = 5.0,
         json_mode: bool = False,
@@ -134,6 +136,7 @@ class BaseInferenceClient(abc.ABC):
                     top_k=top_k,
                     min_p=min_p,
                     repetition_penalty=repetition_penalty,
+                    presence_penalty=presence_penalty,
                     json_mode=json_mode,
                     tools=tools,
                 )
@@ -190,11 +193,12 @@ class GeminiClient(BaseInferenceClient):
         top_k: int | None = None,
         min_p: float | None = None,
         repetition_penalty: float | None = None,
+        presence_penalty: float | None = None,
         json_mode: bool = False,
         tools: list[dict[str, Any]] | None = None,
     ) -> str:
-        # Note: Gemini API doesn't support top_k, min_p, or repetition_penalty
-        # These parameters are accepted for API consistency but ignored
+        # Note: Gemini API doesn't support top_k, min_p, repetition_penalty,
+        # or presence_penalty — accepted for API consistency but ignored
         config_kwargs: dict[str, Any] = {
             "max_output_tokens": max_tokens,
             "temperature": temperature,
@@ -245,6 +249,7 @@ class VLLMClient(BaseInferenceClient):
         top_k: int | None = None,
         min_p: float | None = None,
         repetition_penalty: float | None = None,
+        presence_penalty: float | None = None,
         json_mode: bool = False,
         tools: list[dict[str, Any]] | None = None,
     ) -> str:
@@ -266,6 +271,8 @@ class VLLMClient(BaseInferenceClient):
             payload["min_p"] = min_p
         if repetition_penalty is not None:
             payload["repetition_penalty"] = repetition_penalty
+        if presence_penalty is not None:
+            payload["presence_penalty"] = presence_penalty
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
         # Tools disabled - using text-only inference
@@ -330,6 +337,7 @@ class ClaudeClient(BaseInferenceClient):
         top_k: int | None = None,
         min_p: float | None = None,
         repetition_penalty: float | None = None,
+        presence_penalty: float | None = None,
         json_mode: bool = False,
         tools: list[dict[str, Any]] | None = None,
     ) -> str:

@@ -57,6 +57,10 @@ class InferencePayload(TypedDict, total=False):
     messages: List[ChatMessage]
     max_tokens: NotRequired[int]
     temperature: NotRequired[float]
+    top_k: NotRequired[int]
+    min_p: NotRequired[float]
+    repetition_penalty: NotRequired[float]
+    presence_penalty: NotRequired[float]
     response_format: NotRequired[Dict[str, Any]]
 
 

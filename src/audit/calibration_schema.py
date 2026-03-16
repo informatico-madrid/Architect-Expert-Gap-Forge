@@ -283,6 +283,7 @@ class CalibrationCheckpoint:
     all_results: list[CalibrationResult]
     total_profiles: int
     total_prompts: int
+    discarded_params: dict[str, list[Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         """Controlled serialization for JSON persistence."""
@@ -294,6 +295,7 @@ class CalibrationCheckpoint:
             "all_results": [r.to_dict() for r in self.all_results],
             "total_profiles": self.total_profiles,
             "total_prompts": self.total_prompts,
+            "discarded_params": self.discarded_params,
         }
 
     @classmethod
@@ -309,6 +311,7 @@ class CalibrationCheckpoint:
             ],
             total_profiles=data["total_profiles"],
             total_prompts=data["total_prompts"],
+            discarded_params=data.get("discarded_params", {}),
         )
 
     @property

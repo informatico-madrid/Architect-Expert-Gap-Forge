@@ -68,3 +68,4 @@ skills-lock.json
 
 # --- LEGACY (contiene API keys) ---
 legacy/
+calibration_results/noxious_filter_checkpoint.json

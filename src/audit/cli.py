@@ -79,6 +79,11 @@ from src.utils.doc_loader import load_master_docs
 
 logger = logging.getLogger(__name__)
 
+
+class CLIError(Exception):
+    """Domain exception for CLI validation and runtime errors."""
+
+
 # Lazy config accessor
 CFG = _get_config()
 
@@ -98,7 +103,7 @@ def cmd_sample(args: argparse.Namespace) -> None:
         samples = load_persisted_sample(args.audit_dir)
     else:
         if not args.dataset:
-            raise SystemExit("--dataset is required for 'sample' mode")
+            raise CLIError("--dataset is required for 'sample' mode")
         records = load_dataset(args.dataset)
 
         gap_dir = Path(args.gap_dir)
@@ -136,7 +141,7 @@ def cmd_sample(args: argparse.Namespace) -> None:
                 except PromptGenerationError as exc:
                     # Propagated from generate_gap_analysis; tested via mock failure
                     logger.error("Gap analysis generation failed for %s: %s", s.id, exc)
-                    raise SystemExit(
+                    raise CLIError(
                         f"Gap analysis generation failed for {s.id}: {exc}"
                     ) from exc
             enriched.append(s_enriched)
@@ -166,7 +171,7 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
     ]
     if missing:
         logger.error("Persisted sample has records missing HA metadata: %s", missing)
-        raise SystemExit(
+        raise CLIError(
             "Persisted sample validation failed: all records must include reference_standards and gap_analysis."
         )
 
@@ -200,7 +205,7 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
         except PromptGenerationError as exc:
             # Propagated from generate_exam_question; tested via mock failure
             logger.error("Exam generation failed for %s: %s", sample.id, exc)
-            raise SystemExit(f"Exam generation failed for {sample.id}: {exc}") from exc
+            raise CLIError(f"Exam generation failed for {sample.id}: {exc}") from exc
         exam_records.append(record)
 
     persist_exam(exam_records, args.audit_dir)
@@ -384,7 +389,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         # Load from provided prompts file (supports both JSON and YAML)
         prompts_path = Path(args.prompts)
         if not prompts_path.exists():
-            raise SystemExit(f"Prompts file not found: {args.prompts}")
+            raise CLIError(f"Prompts file not found: {args.prompts}")
 
         # Detect format by file extension
         import yaml
@@ -421,19 +426,31 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
                 ]
                 logger.info("Loaded %d prompts from existing sample", len(prompts))
             except FileNotFoundError:
-                raise SystemExit(
+                raise CLIError(
                     "No prompts provided (--prompts) and no existing exam/sample found. "
                     "Run 'sample' or 'generate-exam' first, or provide --prompts file."
                 )
 
     if not prompts:
-        raise SystemExit("No prompts available for calibration")
+        raise CLIError("No prompts available for calibration")
 
     # Determine checkpoint directory for resume functionality
-    checkpoint_dir = args.output_dir if args.resume else None
+    # Always save checkpoint (for resume on interrupt), but only load if --resume is set
+    checkpoint_dir = args.output_dir
 
-    # Create judge client based on judge_backend
+    # Create router for inference clients
     router = InferenceRouter()
+
+    # Create student client (for generating responses with different parameters)
+    # Student always uses vLLM to support sampling parameter calibration
+    student_client = router.student(
+        backend="vllm",  # Always vLLM for parameter control
+        gemini_model=args.gemini_model,
+        model=args.judge_model,  # The model being calibrated
+        api_url=args.api_url,
+    )
+
+    # Create judge client (for evaluating responses)
     judge_client = router.professor(
         backend=args.judge_backend,
         gemini_model=args.gemini_model,
@@ -441,7 +458,9 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         api_url=args.api_url,
         claude_model=args.claude_model,
     )
-    logger.info("Using judge backend: %s (model: %s)", args.judge_backend, args.claude_model if args.judge_backend == "claude" else args.gemini_model if args.judge_backend == "gemini" else args.judge_model)
+    logger.info("Calibration: student=vLLM(model=%s), judge=%s(model=%s)", 
+                args.judge_model, args.judge_backend,
+                args.claude_model if args.judge_backend == "claude" else args.gemini_model if args.judge_backend == "gemini" else args.judge_model)
 
     # Run calibration
     report = run_calibration(
@@ -451,6 +470,10 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         checkpoint_dir=checkpoint_dir,
         use_prompt_metadata=args.use_prompt_metadata,
         use_noxious_filter=args.use_noxious_filter,
+        noxious_loss_threshold=args.noxious_loss_threshold,
+        noxious_sample_size=(args.noxious_sample_size if args.noxious_sample_size > 0 else None),
+        noxious_aggressiveness=args.noxious_aggressiveness,
+        student_client=student_client,
         judge_client=judge_client,
     )
 
@@ -596,6 +619,24 @@ def _shared_parser() -> argparse.ArgumentParser:
         help="Enable noxious parameter filter to quickly discard values that consistently perform worse than pivot",
     )
     shared.add_argument(
+        "--noxious-loss-threshold",
+        type=float,
+        default=0.15,
+        help="Loss threshold used by the noxious pre-filter (default: 0.15)",
+    )
+    shared.add_argument(
+        "--noxious-sample-size",
+        type=int,
+        default=0,
+        help="If >0, sample this many prompts per parameter during pre-filter (faster). 0 = use all prompts",
+    )
+    shared.add_argument(
+        "--noxious-aggressiveness",
+        type=float,
+        default=0.5,
+        help="Fraction [0.0-1.0] of worst values to discard per-parameter during resume aggregation (default: 0.5)",
+    )
+    shared.add_argument(
         "--judge-backend",
         default="auto",
         choices=["auto", "gemini", "vllm", "claude"],
@@ -695,7 +736,11 @@ def main() -> None:
 
     handler = dispatch.get(args.mode)
     if handler:
-        handler(args)
+        try:
+            handler(args)
+        except CLIError as exc:
+            logger.error("%s", exc)
+            sys.exit(1)
     else:
         parser.print_help()
         sys.exit(1)
