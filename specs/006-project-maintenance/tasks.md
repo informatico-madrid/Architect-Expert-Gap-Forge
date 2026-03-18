@@ -19,8 +19,8 @@ This file contains all implementation tasks for the project maintenance feature.
 | Phase 3 | US1 | 4 | Formatting tooling |
 | Phase 4 | US2 | 3 | Backend configuration |
 | Phase 5 | US3 | 6 | Merger scripts organization |
-| Phase 6 | US4 | 6 | Rapid experimentation pipeline |
-| **Total** | | **29** | |
+| Phase 6 | US4 | 7 | Rapid experimentation pipeline |
+| **Total** | | **30** | |
 
 ## Dependencies
 
@@ -149,6 +149,7 @@ This file contains all implementation tasks for the project maintenance feature.
 - [ ] T027 [US4] Create docs/experiments.md documenting rapid experimentation workflow
 - [ ] T028 [US4] Create configs/stage_4_training/axolotl/README.md with tokenizer compatibility guidance
 - [ ] T029 [US4] Implement results registration in TSV/DB for experiment tracking
+- [ ] T030 [US4] Document this spec in specs/006-project-maintenance/spec.md with user scenarios and acceptance criteria
 
 ---
 
