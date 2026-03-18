@@ -13,10 +13,12 @@ This module provides:
 - Disk space validation before expensive operations
 - Experiment run coordination and tracking
 - Checkpoint management for long-running tasks
+- Results registration in TSV format for experiment tracking
 """
 
 from __future__ import annotations
 
+import csv
 import logging
 import os
 import shutil
@@ -177,12 +179,14 @@ class ExperimentOrchestrator:
     - Disk space validation before expensive operations
     - Experiment directory management
     - Checkpoint tracking for resumable operations
+    - Results registration in TSV format
     """
 
     def __init__(
         self,
         experiment_dir: str | Path | None = None,
         min_disk_space_gb: float = MIN_DISK_SPACE_GB,
+        results_dir: str | Path | None = None,
     ) -> None:
         """Initialize the experiment orchestrator.
 
@@ -193,12 +197,29 @@ class ExperimentOrchestrator:
             or "experiments".
         min_disk_space_gb : float
             Minimum required disk space in GB.
+        results_dir : str | Path | None
+            Directory for results TSV file. Defaults to experiment_dir.
         """
         self.experiment_dir = Path(
             experiment_dir or os.getenv("AEGF_EXPERIMENT_DIR", "experiments")
         )
         self.min_disk_space_gb = min_disk_space_gb
+        self.results_dir = results_dir or self.experiment_dir
         self._ensure_experiment_dir()
+        self._results_registry: ResultsRegistry | None = None
+
+    @property
+    def results_registry(self) -> ResultsRegistry:
+        """Get or create the results registry.
+
+        Returns
+        -------
+        ResultsRegistry
+            Results registry instance.
+        """
+        if self._results_registry is None:
+            self._results_registry = ResultsRegistry(results_dir=self.results_dir)
+        return self._results_registry
 
     def _ensure_experiment_dir(self) -> None:
         """Create experiment directory if it doesn't exist."""
@@ -368,6 +389,346 @@ class ExperimentReport:
     evaluation_results: dict[str, Any] = field(default_factory=dict)
     artifacts: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
+
+
+# ======================================================================
+# RESULTS REGISTRY (TSV/DB)
+# ======================================================================
+
+
+class ResultsRegistry:
+    """Registry for experiment results stored in TSV format.
+
+    This class provides:
+    - TSV-based storage for experiment results
+    - Metadata tracking for each experiment variant
+    - Query and export capabilities
+    """
+
+    DEFAULT_RESULTS_FILE = "experiment_results.tsv"
+
+    def __init__(self, results_dir: str | Path | None = None) -> None:
+        """Initialize the results registry.
+
+        Parameters
+        ----------
+        results_dir : str | Path | None
+            Directory for storing results. Defaults to AEGF_RESULTS_DIR
+            or "experiments".
+        """
+        self.results_dir = Path(
+            results_dir or os.getenv("AEGF_RESULTS_DIR", "experiments")
+        )
+        self.results_dir.mkdir(parents=True, exist_ok=True)
+        self.results_file = self.results_dir / self.DEFAULT_RESULTS_FILE
+        self._init_results_file()
+
+    def _init_results_file(self) -> None:
+        """Initialize the results TSV file with headers if it doesn't exist."""
+        if not self.results_file.exists():
+            headers = [
+                "experiment_name",
+                "variant",
+                "fast_mode",
+                "status",
+                "start_time",
+                "end_time",
+                "duration_seconds",
+                "val_bpb",
+                "peak_vram_mb",
+                "mfu_percent",
+                "total_tokens_M",
+                "num_epochs",
+                "batch_size",
+                "learning_rate",
+                "max_steps",
+                "train_samples",
+                "eval_samples",
+                "checkpoint_path",
+                "error",
+            ]
+            with open(self.results_file, "w", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=headers, delimiter="\t")
+                writer.writeheader()
+
+    def register_result(
+        self,
+        experiment_name: str,
+        variant: str,
+        fast_mode: bool,
+        status: str,
+        start_time: datetime,
+        end_time: datetime | None = None,
+        metrics: dict[str, Any] | None = None,
+        config: dict[str, Any] | None = None,
+        checkpoint_path: str | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Register an experiment result in the TSV file.
+
+        Parameters
+        ----------
+        experiment_name : str
+            Name of the experiment.
+        variant : str
+            Model variant tested.
+        fast_mode : bool
+            Whether fast mode was used.
+        status : str
+            Experiment status (completed, failed, running).
+        start_time : datetime
+            Experiment start time.
+        end_time : datetime | None
+            Experiment end time.
+        metrics : dict | None
+            Evaluation metrics (val_bpb, peak_vram_mb, mfu_percent, etc.).
+        config : dict | None
+            Training configuration used.
+        checkpoint_path : str | None
+            Path to model checkpoint.
+        error : str | None
+            Error message if failed.
+        """
+        # Calculate duration
+        duration_seconds: float | None = None
+        if end_time and start_time:
+            duration_seconds = (end_time - start_time).total_seconds()
+
+        # Extract metrics with defaults
+        val_bpb = None
+        peak_vram_mb = None
+        mfu_percent = None
+        total_tokens_M = None
+        if metrics:
+            val_bpb = metrics.get("val_bpb")
+            peak_vram_mb = metrics.get("peak_vram_mb")
+            mfu_percent = metrics.get("mfu_percent")
+            total_tokens_M = metrics.get("total_tokens_M")
+
+        # Extract config with defaults
+        num_epochs = None
+        batch_size = None
+        learning_rate = None
+        max_steps = None
+        train_samples = None
+        eval_samples = None
+        if config:
+            num_epochs = config.get("num_epochs")
+            batch_size = config.get("batch_size")
+            learning_rate = config.get("learning_rate")
+            max_steps = config.get("max_steps")
+            train_samples = config.get("train_samples")
+            eval_samples = config.get("eval_samples")
+
+        row = {
+            "experiment_name": experiment_name,
+            "variant": variant,
+            "fast_mode": str(fast_mode),
+            "status": status,
+            "start_time": start_time.isoformat() if start_time else "",
+            "end_time": end_time.isoformat() if end_time else "",
+            "duration_seconds": duration_seconds if duration_seconds is not None else "",
+            "val_bpb": val_bpb if val_bpb is not None else "",
+            "peak_vram_mb": peak_vram_mb if peak_vram_mb is not None else "",
+            "mfu_percent": mfu_percent if mfu_percent is not None else "",
+            "total_tokens_M": total_tokens_M if total_tokens_M is not None else "",
+            "num_epochs": num_epochs if num_epochs is not None else "",
+            "batch_size": batch_size if batch_size is not None else "",
+            "learning_rate": learning_rate if learning_rate is not None else "",
+            "max_steps": max_steps if max_steps is not None else "",
+            "train_samples": train_samples if train_samples is not None else "",
+            "eval_samples": eval_samples if eval_samples is not None else "",
+            "checkpoint_path": checkpoint_path if checkpoint_path else "",
+            "error": error if error else "",
+        }
+
+        with open(self.results_file, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=row.keys(), delimiter="\t")
+            writer.writerow(row)
+
+        logger.info("Registered result for experiment: %s", experiment_name)
+
+    def register_experiment_report(self, report: ExperimentReport) -> None:
+        """Register an experiment report result.
+
+        Parameters
+        ----------
+        report : ExperimentReport
+            The experiment report to register.
+        """
+        # Extract metrics from evaluation results
+        metrics = report.evaluation_results.get("metrics", {})
+
+        # Extract config from training run
+        config = None
+        if report.training_run:
+            config = report.training_run.metrics
+
+        self.register_result(
+            experiment_name=report.experiment_name,
+            variant=report.variant,
+            fast_mode=report.fast_mode,
+            status=report.status,
+            start_time=report.start_time,
+            end_time=report.end_time,
+            metrics=metrics,
+            config=config,
+            checkpoint_path=report.artifacts.get("checkpoint") if report.artifacts else None,
+            error=report.error,
+        )
+
+    def register_training_run(self, run: TrainingRun) -> None:
+        """Register a training run result.
+
+        Parameters
+        ----------
+        run : TrainingRun
+            The training run to register.
+        """
+        self.register_result(
+            experiment_name=run.variant,
+            variant=run.variant,
+            fast_mode=run.fast_mode,
+            status=run.status,
+            start_time=run.start_time,
+            end_time=run.end_time,
+            metrics=run.metrics,
+            config=run.metrics,
+            checkpoint_path=run.checkpoint_path,
+            error=run.error,
+        )
+
+    def query_results(
+        self,
+        variant: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query experiment results from the TSV file.
+
+        Parameters
+        ----------
+        variant : str | None
+            Filter by variant name.
+        status : str | None
+            Filter by status.
+        limit : int | None
+            Maximum number of results to return.
+
+        Returns
+        -------
+        list[dict]
+            List of experiment result dictionaries.
+        """
+        if not self.results_file.exists():
+            return []
+
+        results = []
+        with open(self.results_file, "r", newline="") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            for row in reader:
+                # Apply filters
+                if variant and row.get("variant") != variant:
+                    continue
+                if status and row.get("status") != status:
+                    continue
+                results.append(row)
+
+        # Apply limit
+        if limit:
+            results = results[-limit:]
+
+        return results
+
+    def get_best_result(
+        self,
+        variant: str | None = None,
+        metric: str = "val_bpb",
+    ) -> dict[str, Any] | None:
+        """Get the best result based on a metric.
+
+        Parameters
+        ----------
+        variant : str | None
+            Filter by variant name.
+        metric : str
+            Metric to optimize (default: val_bpb).
+
+        Returns
+        -------
+        dict | None
+            Best result dictionary or None if no results found.
+        """
+        results = self.query_results(variant=variant, status="completed")
+
+        if not results:
+            return None
+
+        # Find best result (lowest for val_bpb, highest for others)
+        best_result = None
+        best_value = float("inf") if metric == "val_bpb" else float("-inf")
+
+        for result in results:
+            value_str = result.get(metric, "")
+            if not value_str:
+                continue
+            try:
+                value = float(value_str)
+                if metric == "val_bpb":
+                    if value < best_value:
+                        best_value = value
+                        best_result = result
+                else:
+                    if value > best_value:
+                        best_value = value
+                        best_result = result
+            except ValueError:
+                continue
+
+        return best_result
+
+    def export_to_csv(self, output_path: str | Path) -> None:
+        """Export results to a CSV file.
+
+        Parameters
+        ----------
+        output_path : str | Path
+            Path to output CSV file.
+        """
+        output_path = Path(output_path)
+
+        if not self.results_file.exists():
+            logger.warning("No results file to export")
+            return
+
+        with open(self.results_file, "r") as infile:
+            content = infile.read()
+
+        # Convert tab-separated to comma-separated
+        content = content.replace("\t", ",")
+
+        with open(output_path, "w") as outfile:
+            outfile.write(content)
+
+        logger.info("Exported results to: %s", output_path)
+
+
+def create_results_registry(
+    results_dir: str | Path | None = None,
+) -> ResultsRegistry:
+    """Create a results registry instance.
+
+    Parameters
+    ----------
+    results_dir : str | Path | None
+        Directory for storing results.
+
+    Returns
+    -------
+    ResultsRegistry
+        Configured results registry.
+    """
+    return ResultsRegistry(results_dir=results_dir)
 
 
 # ======================================================================
@@ -598,6 +959,13 @@ def run_experiment(
 
     report.status = "completed"
     report.end_time = datetime.now()
+
+    # Register results in TSV
+    try:
+        registry = ResultsRegistry(results_dir=experiment_dir)
+        registry.register_experiment_report(report)
+    except Exception as e:
+        logger.warning("Failed to register results: %s", e)
 
     logger.info(
         "Experiment completed: name=%s, variant=%s, status=%s",

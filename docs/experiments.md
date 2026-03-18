@@ -96,6 +96,66 @@ print(f"Mean BPB: {metrics['mean']:.4f}")
 
 See `configs/stage_4_training/axolotl/README.md` for detailed Axolotl setup instructions.
 
+## Results Registration
+
+Experiment results are automatically registered in TSV format for tracking and comparison.
+
+### TSV Results File
+
+Results are stored in `experiments/experiment_results.tsv` with the following columns:
+
+| Column | Description |
+|--------|-------------|
+| experiment_name | Unique experiment identifier |
+| variant | Model variant tested |
+| fast_mode | Whether fast mode was used |
+| status | Experiment status (completed, failed, running) |
+| start_time | Experiment start timestamp |
+| end_time | Experiment end timestamp |
+| duration_seconds | Total duration |
+| val_bpb | Validation bits-per-byte score |
+| peak_vram_mb | Peak VRAM usage in MB |
+| mfu_percent | Model FLOPs utilization percentage |
+| total_tokens_M | Total tokens processed (millions) |
+| num_epochs | Number of training epochs |
+| batch_size | Training batch size |
+| learning_rate | Learning rate used |
+| max_steps | Maximum training steps |
+| train_samples | Number of training samples |
+| eval_samples | Number of evaluation samples |
+| checkpoint_path | Path to model checkpoint |
+| error | Error message if failed |
+
+### Using the Results Registry
+
+```python
+from src.research.experiment_orchestrator import ResultsRegistry, ExperimentOrchestrator
+
+# Create registry manually
+registry = ResultsRegistry(results_dir="experiments")
+
+# Query results
+results = registry.query_results(variant="phi-2", status="completed")
+
+# Get best result by val_bpb
+best = registry.get_best_result(metric="val_bpb")
+
+# Export to CSV
+registry.export_to_csv("results.csv")
+
+# Using orchestrator (auto-registers results)
+orch = ExperimentOrchestrator(experiment_dir="experiments")
+report = orch.run_experiment("my_exp", "phi-2", fast_mode=True)
+# Results are automatically registered
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| AEGF_RESULTS_DIR | Results directory | "experiments" |
+| AEGF_EXPERIMENT_DIR | Experiment directory | "experiments" |
+
 ## Troubleshooting
 
 ### Common Issues
@@ -105,6 +165,7 @@ See `configs/stage_4_training/axolotl/README.md` for detailed Axolotl setup inst
 | API connection failed | Check `api_url` in config and ensure vLLM is running |
 | Missing HA metadata | Ensure GAP files are properly formatted |
 | Out of memory | Reduce batch size in config |
+| Results not saving | Check write permissions on results directory |
 
 ### Debug Mode
 
