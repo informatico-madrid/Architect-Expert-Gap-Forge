@@ -15,7 +15,7 @@ judge_model: null                            # null → inherit base_model
 gemini_model: "gemini-2.5-flash"           # when using Gemini backend
 
 # --- Backends ---
-professor_backend: "auto"                  # auto | gemini | vllm
+professor_backend: "vllm"                  # auto | gemini | vllm
 inference_backend: "vllm"                  # vllm | gemini
 
 # --- Inference parameters ---
