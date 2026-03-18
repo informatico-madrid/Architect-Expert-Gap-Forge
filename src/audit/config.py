@@ -21,7 +21,7 @@ from typing import Any
 
 import yaml
 
-from src.audit.inference import InferenceRouter
+from src.audit.inference import _GEMINI_AVAILABLE, InferenceRouter
 from src.audit.prompt_manager import PromptManager
 
 # ======================================================================
@@ -147,3 +147,55 @@ DEFAULT_INFERENCE_MAX_TOKENS: int = 65536
 # model output (empirical max ~22 K); 32 K gives ample headroom while capping
 # clearly degenerate runaway generations (>100 K).
 JUDGE_RESPONSE_TRUNCATION_LIMIT: int = 65536
+
+
+# ======================================================================
+# ERROR MESSAGES & VALIDATION
+# ======================================================================
+
+GEMINI_API_KEY_MISSING_ERROR = """Missing required environment variable: GOOGLE_API_KEY
+
+The Gemini backend requires a Google AI API key to function.
+To resolve this issue:
+
+1. Obtain an API key from: https://aistudio.google.com/app/apikey
+2. Set the environment variable:
+   - Linux/macOS: export GOOGLE_API_KEY="your-api-key-here"
+   - Windows (PowerShell): $env:GOOGLE_API_KEY="your-api-key-here"
+
+Alternatively, use the vllm backend which does not require an API key:
+   --professor-backend vllm
+   --inference-backend vllm
+"""
+
+
+def validate_gemini_api_key() -> bool:
+    """Validate that GOOGLE_API_KEY is set when Gemini backend is used.
+
+    Returns:
+        True if GOOGLE_API_KEY is set or gemini is not available.
+
+    Raises:
+        EnvironmentError: If Gemini backend is requested but GOOGLE_API_KEY is missing.
+    """
+    if not _GEMINI_AVAILABLE:
+        return True
+
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if api_key is None:
+        return False
+
+    if not api_key.strip():
+        return False
+
+    return True
+
+
+def require_gemini_api_key() -> None:
+    """Raise an error if GOOGLE_API_KEY is not available for Gemini backend.
+
+    Raises:
+        EnvironmentError: If Gemini backend is requested but GOOGLE_API_KEY is missing.
+    """
+    if not validate_gemini_api_key():
+        raise EnvironmentError(GEMINI_API_KEY_MISSING_ERROR)

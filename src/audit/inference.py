@@ -449,5 +449,26 @@ class InferenceRouter:
         # Normalize to lowercase for comparison
         backend_lower = backend.lower()
         if backend_lower not in ("gemini", "vllm", "claude"):
-            raise ValueError(f"Unknown backend: {backend}. Must be one of: gemini, vllm, claude")
+            raise ValueError(
+                f"Unknown backend: {backend}. Must be one of: gemini, vllm, claude"
+            )
+        # Validate Gemini API key when explicitly requested
+        if backend_lower == "gemini":
+            if not _GEMINI_AVAILABLE:
+                raise EnvironmentError(
+                    "Gemini backend is not available. Install google-genai: pip install google-genai"
+                )
+            if not os.getenv("GOOGLE_API_KEY"):
+                raise EnvironmentError(
+                    "Missing required environment variable: GOOGLE_API_KEY\n\n"
+                    "The Gemini backend requires a Google AI API key to function.\n"
+                    "To resolve this issue:\n\n"
+                    "1. Obtain an API key from: https://aistudio.google.com/app/apikey\n"
+                    "2. Set the environment variable:\n"
+                    "   - Linux/macOS: export GOOGLE_API_KEY=\"your-api-key-here\"\n"
+                    "   - Windows (PowerShell): $env:GOOGLE_API_KEY=\"your-api-key-here\"\n\n"
+                    "Alternatively, use the vllm backend:\n"
+                    "   --professor-backend vllm\n"
+                    "   --inference-backend vllm"
+                )
         return backend_lower
