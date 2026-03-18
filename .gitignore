@@ -69,3 +69,8 @@ skills-lock.json
 # --- LEGACY (contiene API keys) ---
 legacy/
 calibration_results/noxious_filter_checkpoint.json
+
+calibration_results/checkpoint_*.json
+calibration_results/calibration_report.json
+calibration_results/latest.json
+calibration_results/vllm_config.yaml

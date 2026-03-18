@@ -50,6 +50,7 @@ Given that feature description, do this:
       - Specs directories: Check for directories matching `specs/[0-9]+-<short-name>`
 
    c. Determine the next available number:
+      - consider spec numeration in specs/ directory as well, as some branches may not have been pushed yet
       - Extract all numbers from all three sources
       - Find the highest number N
       - Use N+1 for the new branch number
