@@ -1,0 +1,23 @@
+# Minimal mock eval_config for CI tests
+api_url: "http://localhost:8000/v1"
+audit_dir: "data/audit"
+gap_dir: "data/Gap"
+professor_backend: "vllm"
+
+# Master docs filenames used by test fixtures
+master_docs:
+  master_guide: "HA_MASTER_GUIDE_2026.md"
+  technical_changelog: "technical_changelog_2026.md"
+  jinja_yaml_guide: "HA_JINJA_YAML_GUIDE_2026.md"
+
+# Ensure formatting labels so tests that assert for 'MASTER_GUIDE' pass
+master_docs_formatting:
+  master_guide:
+    label: "MASTER_GUIDE"
+    truncate_at: 8000
+  technical_changelog:
+    label: "TECHNICAL_CHANGELOG"
+    truncate_at: 8000
+  jinja_yaml_guide:
+    label: "JINJA_YAML_GUIDE"
+    truncate_at: 4000

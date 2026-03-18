@@ -31,6 +31,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.audit.cli import (
+    CLIError,
     cmd_adapter,
     cmd_baseline,
     cmd_generate_exam,
@@ -276,10 +277,10 @@ class TestCmdSamplePhase1:
         persisted = load_persisted_sample(str(audit_dir))
         assert persisted[0].id == "cached-001"
 
-    def test_raises_systemexit_when_dataset_missing(self, tmp_path: Path) -> None:
+    def test_raises_cli_error_when_dataset_missing(self, tmp_path: Path) -> None:
         """--dataset is mandatory when no persisted sample exists."""
         args = _default_args(tmp_path, dataset=None, force=True)
-        with pytest.raises(SystemExit):
+        with pytest.raises(CLIError, match="--dataset is required"):
             cmd_sample(args)
 
 
@@ -353,7 +354,7 @@ class TestCmdGenerateExamPhase2:
         _ps(samples, args := _default_args(tmp_path).audit_dir)
         args_ns = _default_args(tmp_path)
 
-        with pytest.raises(SystemExit, match="Persisted sample validation failed"):
+        with pytest.raises(CLIError, match="Persisted sample validation failed"):
             cmd_generate_exam(args_ns)
 
 
