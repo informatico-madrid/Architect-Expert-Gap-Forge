@@ -170,8 +170,8 @@ class TrajectoryGenerator:
         turn_index += 1
 
         # Action turn
-        action_template = self._templates.get("action", {}).get("template", "Action: {tool_name}")
-        action_content = action_template.format(tool_name="async_setup_entry")
+        action_template = self._templates.get("action", {}).get("template", "Action: {tool_name}({tool_args})")
+        action_content = action_template.format(tool_name="async_setup_entry", tool_args="entry=config_entry")
         turns.append(Turn(
             turn_index=turn_index,
             turn_type=TurnType.ACTION,
@@ -190,8 +190,8 @@ class TrajectoryGenerator:
 
             if is_cascade:
                 # Add another action turn (that will fail)
-                action2_template = self._templates.get("action", {}).get("template", "Action: {tool_name}")
-                action2_content = action2_template.format(tool_name="get_coordinator_data")
+                action2_template = self._templates.get("action", {}).get("template", "Action: {tool_name}({tool_args})")
+                action2_content = action2_template.format(tool_name="get_coordinator_data", tool_args="entity_id=light.living_room")
                 turns.append(Turn(
                     turn_index=turn_index,
                     turn_type=TurnType.ACTION,
@@ -201,9 +201,10 @@ class TrajectoryGenerator:
                 turn_index += 1
 
                 # Error turn - cascade failure
-                error_template = self._templates.get("error", {}).get("template", "Error: {error_description}")
+                error_template = self._templates.get("error", {}).get("template", "Error: {error_description}\\nDetalles: {error_details}")
                 error_content = error_template.format(
-                    error_description="Tool failed, then returned wrong data - cascade failure"
+                    error_description="Tool failed, then returned wrong data - cascade failure",
+                    error_details="El primer error fue de conexión, el segundo retornó datos vacíos"
                 )
                 turns.append(Turn(
                     turn_index=turn_index,
@@ -222,9 +223,10 @@ class TrajectoryGenerator:
                 turn_index += 1
             else:
                 # Simple error (tool_failure)
-                error_template = self._templates.get("error", {}).get("template", "Error: {error_description}")
+                error_template = self._templates.get("error", {}).get("template", "Error: {error_description}\\nDetalles: {error_details}")
                 error_content = error_template.format(
-                    error_description="Tool failed to execute: ConfigEntryNotReady"
+                    error_description="Tool failed to execute: ConfigEntryNotReady",
+                    error_details="La configuración no está lista para cargar"
                 )
                 turns.append(Turn(
                     turn_index=turn_index,
@@ -243,9 +245,10 @@ class TrajectoryGenerator:
                 turn_index += 1
 
             # Correct turn (mandatory after error)
-            correct_template = self._templates.get("correct", {}).get("template", "Correct: {corrective_action}")
+            correct_template = self._templates.get("correct", {}).get("template", "Corrección: {corrective_action}\\nRazón: {correction_reason}")
             correct_content = correct_template.format(
-                corrective_action="Corregido el error usando el patrón correcto de HA 2026"
+                corrective_action="Corregido el error usando el patrón correcto de HA 2026",
+                correction_reason="El patrón async_setup_entry requiere await en el entry"
             )
             turns.append(Turn(
                 turn_index=turn_index,
@@ -256,9 +259,10 @@ class TrajectoryGenerator:
 
         # Verify turn (optional, adds depth)
         if len(turns) < 10 and random.random() < 0.5:
-            verify_template = self._templates.get("verify", {}).get("template", "Verify: {result}")
+            verify_template = self._templates.get("verify", {}).get("template", "Verificación: {verification_result}\\nEstado: {final_state}")
             verify_content = verify_template.format(
-                verification_result="Verificación completada exitosamente"
+                verification_result="Verificación completada exitosamente",
+                final_state="Todos los checks pasaron correctamente"
             )
             turns.append(Turn(
                 turn_index=turn_index,
