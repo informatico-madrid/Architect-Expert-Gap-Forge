@@ -17,6 +17,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
+import yaml
+
+from src.utils.exceptions import ConfigValidationError
+
 # ======================================================================
 # LOGGING
 # ======================================================================
@@ -238,3 +242,207 @@ OUTPUT_POISON_DETECTORS = [
     # Hallucinated private helper: _private_macro() not defined in fragment
     (r"\{\{-?\s*_\w+\s*\(", "Output calls undefined private helper (_helper())"),
 ]
+
+
+# ======================================================================
+# TEACHER MODEL CONFIG (T005)
+# ======================================================================
+
+
+@dataclass(slots=True, frozen=True)
+class TeacherModelConfig:
+    """Configuration for the external Teacher model API.
+
+    Supports OpenAI-compatible, Anthropic, and Google Gemini providers.
+    """
+
+    provider: str = "openai"
+    model_name: str = "gpt-4o"
+    api_key_env: str = "OPENAI_API_KEY"
+    base_url: str | None = None
+    request_delay_ms: int = 500
+    max_retries: int = 5
+    backoff_factor: int = 2
+    request_timeout_seconds: int = 120
+    checkpoint_path: str = "data/checkpoints/trajectories.json"
+
+
+@dataclass(slots=True, frozen=True)
+class TrajectoryConfig:
+    """Configuration for trajectory generation parameters."""
+
+    min_turns: int = 3
+    max_turns: int = 10
+    error_probability: float = 0.7
+    cascade_probability: float = 0.3
+    tool_format: str = "auto"
+
+
+@dataclass(slots=True, frozen=True)
+class HardQueryConfig:
+    """Configuration for hard query mode."""
+
+    enabled: bool = False
+    ratio: float = 0.2
+
+
+@dataclass(slots=True, frozen=True)
+class DatasetConfig:
+    """Configuration for dataset generation and output."""
+
+    use_case: str = "home_assistant"
+    target_specialized_records: int = 12000
+    target_total_records: int = 40000
+    output_path: str = "data/stage_2_output/trajectories.jsonl"
+    taxonomy_path: str = "configs/stage_2_factory/taxonomy/home_assistant/agentic_taxonomy.yaml"
+    trajectory: TrajectoryConfig = field(default_factory=TrajectoryConfig)
+    hard_query: HardQueryConfig = field(default_factory=HardQueryConfig)
+
+
+@dataclass(slots=True, frozen=True)
+class OutputConfig:
+    """Configuration for output behavior."""
+
+    verbose: bool = True
+    progress_interval: int = 100
+    dry_run: bool = False
+
+
+@dataclass(slots=True, frozen=True)
+class FactoryConfig:
+    """Complete factory configuration combining all sections."""
+
+    teacher_model: TeacherModelConfig = field(default_factory=TeacherModelConfig)
+    dataset: DatasetConfig = field(default_factory=DatasetConfig)
+    output: OutputConfig = field(default_factory=OutputConfig)
+
+
+def load_teacher_config(path: Path) -> TeacherModelConfig:
+    """Load teacher model configuration from a YAML file.
+
+    Args:
+        path: Path to the configuration YAML file.
+
+    Returns:
+        TeacherModelConfig populated from the YAML file.
+
+    Raises:
+        ConfigValidationError: If the config file is missing or invalid.
+    """
+    if not path.exists():
+        raise ConfigValidationError(f"Config file not found: {path}")
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ConfigValidationError(f"Invalid YAML in config file {path}: {e}") from e
+
+    if data is None:
+        raise ConfigValidationError(f"Config file is empty: {path}")
+
+    teacher_model_data = data.get("teacher_model", {})
+    return TeacherModelConfig(
+        provider=teacher_model_data.get("provider", "openai"),
+        model_name=teacher_model_data.get("model_name", "gpt-4o"),
+        api_key_env=teacher_model_data.get("api_key_env", "OPENAI_API_KEY"),
+        base_url=teacher_model_data.get("base_url"),
+        request_delay_ms=teacher_model_data.get("request_delay_ms", 500),
+        max_retries=teacher_model_data.get("max_retries", 5),
+        backoff_factor=teacher_model_data.get("backoff_factor", 2),
+        request_timeout_seconds=teacher_model_data.get("request_timeout_seconds", 120),
+        checkpoint_path=teacher_model_data.get(
+            "checkpoint_path", "data/checkpoints/trajectories.json"
+        ),
+    )
+
+
+def load_dataset_config(path: Path) -> DatasetConfig:
+    """Load dataset configuration from a YAML file.
+
+    Args:
+        path: Path to the configuration YAML file.
+
+    Returns:
+        DatasetConfig populated from the YAML file.
+
+    Raises:
+        ConfigValidationError: If the config file is missing or invalid.
+    """
+    if not path.exists():
+        raise ConfigValidationError(f"Config file not found: {path}")
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except yaml.YAMLError as e:
+        raise ConfigValidationError(f"Invalid YAML in config file {path}: {e}") from e
+
+    if data is None:
+        raise ConfigValidationError(f"Config file is empty: {path}")
+
+    dataset_data = data.get("dataset", {})
+    trajectory_data = dataset_data.get("trajectory", {})
+    hard_query_data = dataset_data.get("hard_query", {})
+
+    return DatasetConfig(
+        use_case=dataset_data.get("use_case", "home_assistant"),
+        target_specialized_records=dataset_data.get("target_specialized_records", 12000),
+        target_total_records=dataset_data.get("target_total_records", 40000),
+        output_path=dataset_data.get(
+            "output_path", "data/stage_2_output/trajectories.jsonl"
+        ),
+        taxonomy_path=dataset_data.get(
+            "taxonomy_path",
+            "configs/stage_2_factory/taxonomy/home_assistant/agentic_taxonomy.yaml",
+        ),
+        trajectory=TrajectoryConfig(
+            min_turns=trajectory_data.get("min_turns", 3),
+            max_turns=trajectory_data.get("max_turns", 10),
+            error_probability=trajectory_data.get("error_probability", 0.7),
+            cascade_probability=trajectory_data.get("cascade_probability", 0.3),
+            tool_format=trajectory_data.get("tool_format", "auto"),
+        ),
+        hard_query=HardQueryConfig(
+            enabled=hard_query_data.get("enabled", False),
+            ratio=hard_query_data.get("ratio", 0.2),
+        ),
+    )
+
+
+def load_factory_config(path: Path) -> FactoryConfig:
+    """Load complete factory configuration from a YAML file.
+
+    Args:
+        path: Path to the configuration YAML file.
+
+    Returns:
+        FactoryConfig populated from the YAML file.
+
+    Raises:
+        ConfigValidationError: If the config file is missing or invalid.
+    """
+    teacher_config = load_teacher_config(path)
+    dataset_config = load_dataset_config(path)
+
+    output_data = {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if data:
+            output_data = data.get("output", {})
+    except yaml.YAMLError:
+        pass  # Use defaults if output section is missing
+
+    output_config = OutputConfig(
+        verbose=output_data.get("verbose", True),
+        progress_interval=output_data.get("progress_interval", 100),
+        dry_run=output_data.get("dry_run", False),
+    )
+
+    return FactoryConfig(
+        teacher_model=teacher_config,
+        dataset=dataset_config,
+        output=output_config,
+    )
+
