@@ -26,6 +26,7 @@ from src.audit.gap_generator import generate_gap_analysis
 from src.audit.exam_builder import generate_exam_question
 from src.audit.judge import llm_judge_score
 from src.audit.schema import PromptGenerationError, SampleRecord, ExamRecord
+from src.audit.cli import CLIError
 from tests.fixtures import golden_sample, golden_exam
 
 
@@ -276,7 +277,7 @@ class TestCmdGenerateGapErrorCases:
                             from src.audit.cli import cmd_sample
 
                             with pytest.raises(
-                                SystemExit, match="Gap analysis generation failed"
+                                CLIError, match="Gap analysis generation failed"
                             ):
                                 cmd_sample(args)
 
@@ -325,5 +326,5 @@ class TestCmdGenerateExamErrorCases:
                     # Import and call the function
                     from src.audit.cli import cmd_generate_exam
 
-                    with pytest.raises(SystemExit, match="Exam generation failed"):
+                    with pytest.raises(CLIError, match="Exam generation failed"):
                         cmd_generate_exam(args)
