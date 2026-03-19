@@ -36,9 +36,9 @@ description: "Task list for improving code coverage to 90%+"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Create fixture file for eval_bpb tests at tests/fixtures/eval_bpb_examples.json
-- [ ] T005 Create fixture file for anchor_dataset tests at tests/fixtures/anchor_dataset_examples.json
-- [ ] T006 Create fixture file for format_normalizer tests at tests/fixtures/format_normalizer_examples.json
+- [x] T004 Create fixture file for eval_bpb tests at tests/fixtures/eval_bpb_examples.json
+- [x] T005 Create fixture file for anchor_dataset tests at tests/fixtures/anchor_dataset_examples.json
+- [x] T006 Create fixture file for format_normalizer tests at tests/fixtures/format_normalizer_examples.json
 - [ ] T007 Create fixture file for dedup_and_validate tests at tests/fixtures/dedup_examples.json
 - [ ] T008 Create fixture file for dataset_mixer tests at tests/fixtures/dataset_mixer_examples.json
 - [ ] T009 [P] Create mock utilities for HuggingFace Hub at tests/fixtures/hf_hub_mock.py
