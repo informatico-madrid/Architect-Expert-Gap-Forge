@@ -16,7 +16,6 @@ import json
 import logging
 import random
 from pathlib import Path
-from typing import Any
 
 import pytest
 import tiktoken
@@ -184,14 +183,14 @@ class TestTokenProportion:
         anchor_tokens = 7200
         total = specialized_tokens + anchor_tokens
         specialized_pct = (specialized_tokens / total) * 100
-        assert specialized_pct == 28.0
+        assert specialized_pct == pytest.approx(28.0)
 
         # Test 32% boundary
         specialized_tokens = 3200
         anchor_tokens = 6800
         total = specialized_tokens + anchor_tokens
         specialized_pct = (specialized_tokens / total) * 100
-        assert specialized_pct == 32.0
+        assert specialized_pct == pytest.approx(32.0)
 
 
 class TestDeterminismWithSeed:
@@ -578,14 +577,10 @@ class TestMixingWorkflow:
         self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
     ) -> None:
         """Test mixing with token-based subsampling."""
-        # Target: 30% specialized, 70% anchor
-        target_specialized_pct = 30.0
-
-        # Current proportions
+        # Calculate current tokens in specialized
         specialized_tokens = sum(
             r.metadata.get("token_count", 0) for r in specialized_records
         )
-        anchor_tokens = sum(r.metadata.get("token_count", 0) for r in anchor_records)
 
         # Calculate what anchor subsample should be to achieve 30/70
         # specialized_tokens / (specialized_tokens + anchor_sample) = 0.30
