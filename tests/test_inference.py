@@ -691,7 +691,6 @@ class TestCalibrationWithClaudeJudge:
             generate_profiles,
         )
         from src.audit.inference import ClaudeClient
-        from src.audit.schema import NormalizedJudgeResponse
 
         # Create a minimal parameter grid (1 profile for quick testing)
         test_grid = {
@@ -720,28 +719,15 @@ class TestCalibrationWithClaudeJudge:
         mock_student_client = MagicMock()
         mock_student_client.generate_with_retry.return_value = "Machine learning is a type of artificial intelligence that allows computers to learn from data without being explicitly programmed."
 
-        # Mock the llm_judge_score function to avoid needing prompt manager
-        mock_judge_result: NormalizedJudgeResponse = {
-            "adapter": {
-                "ha_modernity": 0.8,
-                "reasoning_depth": 0.7,
-                "functionality": 0.9,
-                "completeness": 0.75,
-                "style": 0.85,
-            },
-            "baseline": {
-                "ha_modernity": 0.0,
-                "reasoning_depth": 0.0,
-                "functionality": 0.0,
-                "completeness": 0.0,
-                "style": 0.0,
-            },
-        }
+        # Mock the prompt manager to avoid needing the config file
+        mock_pm = MagicMock()
+        mock_pm.format.return_value = "Judge this response: {model_response}"
+        mock_pm.system.return_value = "You are a helpful judge."
 
-        # Patch at the module level where calibration.py imports it (inside the function)
+        # Run calibration with mocked clients and mocked prompt manager
         with patch(
-            "src.audit.judge.llm_judge_score", return_value=mock_judge_result
-        ) as mock_judge:
+            "src.audit.config._get_prompt_manager", return_value=mock_pm
+        ):
             # Run calibration with mocked clients
             engine = CalibrationEngine(
                 prompts=test_prompts,
@@ -759,8 +745,8 @@ class TestCalibrationWithClaudeJudge:
             assert report.total_iterations == 1  # 1 prompt × 1 profile
             assert report.best_score >= 0
 
-            # Verify judge was called
-            assert mock_judge.called
+            # Verify judge client was called
+            assert mock_judge_client.generate_with_retry.called
 
     def test_calibration_with_claude_judge_selects_best_profile(self) -> None:
         """Test that calibration correctly selects the best profile based on judge scores."""
@@ -787,50 +773,20 @@ class TestCalibrationWithClaudeJudge:
             {"id": "test_prompt_2", "text": "What is JavaScript?"},
         ]
 
-        # Mock judge client
+        # Mock judge client to return different scores for different profiles
+        call_count = [0]
+
+        def mock_generate_with_retry(*args, **kwargs):
+            call_count[0] += 1
+            # Return higher scores for later calls (simulating different profiles)
+            if call_count[0] > 2:
+                return '{"parameter_effectiveness": 0.9, "task_completion": 0.9, "parameter_alignment": 0.9, "coherence": 0.9, "style": 0.9}'
+            return '{"parameter_effectiveness": 0.5, "task_completion": 0.5, "parameter_alignment": 0.5, "coherence": 0.5, "style": 0.5}'
+
         mock_judge_client = MagicMock(spec=ClaudeClient)
         mock_judge_client._model = "MiniMax-M2.5"
         mock_judge_client._backend_name = "Claude"
-
-        # Mock the llm_judge_score function to return different scores for different profiles
-        call_count = [0]
-
-        def mock_judge_score(*args, **kwargs):
-            call_count[0] += 1
-            # Return higher scores for the second profile iterations
-            if call_count[0] > 2:  # After first 2 prompts
-                return {
-                    "adapter": {
-                        "ha_modernity": 0.9,
-                        "reasoning_depth": 0.9,
-                        "functionality": 0.9,
-                        "completeness": 0.9,
-                        "style": 0.9,
-                    },
-                    "baseline": {
-                        "ha_modernity": 0.0,
-                        "reasoning_depth": 0.0,
-                        "functionality": 0.0,
-                        "completeness": 0.0,
-                        "style": 0.0,
-                    },
-                }
-            return {
-                "adapter": {
-                    "ha_modernity": 0.5,
-                    "reasoning_depth": 0.5,
-                    "functionality": 0.5,
-                    "completeness": 0.5,
-                    "style": 0.5,
-                },
-                "baseline": {
-                    "ha_modernity": 0.0,
-                    "reasoning_depth": 0.0,
-                    "functionality": 0.0,
-                    "completeness": 0.0,
-                    "style": 0.0,
-                },
-            }
+        mock_judge_client.generate_with_retry.side_effect = mock_generate_with_retry
 
         # Mock student client
         mock_student_client = MagicMock()
@@ -838,8 +794,13 @@ class TestCalibrationWithClaudeJudge:
             "Sample response with enough words to avoid length penalty."
         )
 
-        # Patch at the module level where calibration.py imports it (inside the function)
-        with patch("src.audit.judge.llm_judge_score", side_effect=mock_judge_score):
+        # Mock the prompt manager to avoid needing the config file
+        mock_pm = MagicMock()
+        mock_pm.format.return_value = "Judge this response: {model_response}"
+        mock_pm.system.return_value = "You are a helpful judge."
+
+        # Run calibration with mocked clients and mocked prompt manager
+        with patch("src.audit.config._get_prompt_manager", return_value=mock_pm):
             # Run calibration
             engine = CalibrationEngine(
                 prompts=test_prompts,

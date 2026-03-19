@@ -433,36 +433,43 @@ class TestCmdScoreBatchProcessing:
                 with patch("src.audit.cli.load_inference") as mock_load_inf:
                     with patch("src.audit.cli.compute_scorecard") as mock_score:
                         with patch("src.audit.cli.generate_report") as mock_report:
-                            mock_load_exam.return_value = exams
-                            # Make generate_report return the new (Path, AuditReport) tuple
-                            mock_report.return_value = (
-                                Path(args.audit_dir) / "audit_report_v11.md",
-                                AuditReport(),
-                            )
+                            with patch("src.audit.cli.llm_judge_score") as mock_judge:
+                                # Mock llm_judge_score to return a valid NormalizedJudgeResponse
+                                mock_judge.return_value = {
+                                    "baseline": {"ha_modernity": 0.8},
+                                    "adapter": {"ha_modernity": 0.9},
+                                    "reasoning": "mock",
+                                }
+                                mock_load_exam.return_value = exams
+                                # Make generate_report return the new (Path, AuditReport) tuple
+                                mock_report.return_value = (
+                                    Path(args.audit_dir) / "audit_report_v11.md",
+                                    AuditReport(),
+                                )
 
-                            # Set up load_inference side effect
-                            def load_inference_side_effect(backend, audit_dir_arg):
-                                if backend == "baseline":
-                                    return baseline_results
-                                elif backend == "adapter":
-                                    return adapter_results
+                                # Set up load_inference side effect
+                                def load_inference_side_effect(backend, audit_dir_arg):
+                                    if backend == "baseline":
+                                        return baseline_results
+                                    elif backend == "adapter":
+                                        return adapter_results
 
-                            mock_load_inf.side_effect = load_inference_side_effect
+                                mock_load_inf.side_effect = load_inference_side_effect
 
-                            # Mock scorecard creation - include sample_id for generate_report compatibility
-                            mock_score.return_value = ScoreCard(
-                                record_id="exam_00",
-                                sample_id="exam_00",  # Required by generate_report
-                                example_type="code_quality",
-                                fragment_name="test",
-                                ha_modernity=0.8,
-                                delta_vs_baseline=0.2,
-                                composite_score=0.75,
-                                notes=["test fragment", "reasoning"],
-                            )
+                                # Mock scorecard creation - include sample_id for generate_report compatibility
+                                mock_score.return_value = ScoreCard(
+                                    record_id="exam_00",
+                                    sample_id="exam_00",  # Required by generate_report
+                                    example_type="code_quality",
+                                    fragment_name="test",
+                                    ha_modernity=0.8,
+                                    delta_vs_baseline=0.2,
+                                    composite_score=0.75,
+                                    notes=["test fragment", "reasoning"],
+                                )
 
-                            # Execute cmd_score
-                            cmd_score(args)
+                                # Execute cmd_score
+                                cmd_score(args)
 
                             # Verify loop processed all 3 exams
                             assert mock_score.call_count == 3
