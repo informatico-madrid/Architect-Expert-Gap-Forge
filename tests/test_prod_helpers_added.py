@@ -40,33 +40,53 @@ def test_detect_legacy_patterns_jinja() -> None:
 
 
 def test_load_taxonomy_and_prompt(tmp_path: Path) -> None:
-    taxonomy = {
-        "ha_error_templates": [],
-        "legacy_2023_patterns": [],
-        "jinja_ha_error_templates": [],
-        "jinja_legacy_2023_patterns": [],
-        "theory_question_templates": [],
-        "tools_definition": [],
-        "prompts": {
-            "system": {
-                "python": {
-                    "base": "BASE $tools_json $master $changelog",
-                    "nominal_suffix": "NOM",
-                    "contrast_suffix": "CON",
-                    "error_recovery_suffix": "ERR",
-                }
-            }
-        },
+    # Save original globals to restore after test
+    originals = {
+        "_TAX": dict(pb_module._TAX),
+        "HA_ERROR_TEMPLATES": list(pb_module.HA_ERROR_TEMPLATES),
+        "LEGACY_2023_PATTERNS": list(pb_module.LEGACY_2023_PATTERNS),
+        "JINJA_HA_ERROR_TEMPLATES": list(pb_module.JINJA_HA_ERROR_TEMPLATES),
+        "JINJA_LEGACY_2023_PATTERNS": list(pb_module.JINJA_LEGACY_2023_PATTERNS),
+        "THEORY_QUESTION_TEMPLATES": list(pb_module.THEORY_QUESTION_TEMPLATES),
+        "TOOLS_DEFINITION": list(pb_module.TOOLS_DEFINITION),
     }
-    p = tmp_path / "tax.yaml"
-    p.write_text(json.dumps(taxonomy))
+    try:
+        taxonomy = {
+            "ha_error_templates": [],
+            "legacy_2023_patterns": [],
+            "jinja_ha_error_templates": [],
+            "jinja_legacy_2023_patterns": [],
+            "theory_question_templates": [],
+            "tools_definition": [],
+            "prompts": {
+                "system": {
+                    "python": {
+                        "base": "BASE $tools_json $master $changelog",
+                        "nominal_suffix": "NOM",
+                        "contrast_suffix": "CON",
+                        "error_recovery_suffix": "ERR",
+                    }
+                }
+            },
+        }
+        p = tmp_path / "tax.yaml"
+        p.write_text(json.dumps(taxonomy))
 
-    pb_module.load_taxonomy(p)
-    assert "prompts" in pb_module._TAX
+        pb_module.load_taxonomy(p)
+        assert "prompts" in pb_module._TAX
 
-    master, changelog = "MASTER", "CHANGELOG"
-    out = build_system_nominal(master, changelog)
-    assert "BASE" in out
+        master, changelog = "MASTER", "CHANGELOG"
+        out = build_system_nominal(master, changelog)
+        assert "BASE" in out
+    finally:
+        # Restore original globals
+        pb_module._TAX = originals["_TAX"]
+        pb_module.HA_ERROR_TEMPLATES = originals["HA_ERROR_TEMPLATES"]
+        pb_module.LEGACY_2023_PATTERNS = originals["LEGACY_2023_PATTERNS"]
+        pb_module.JINJA_HA_ERROR_TEMPLATES = originals["JINJA_HA_ERROR_TEMPLATES"]
+        pb_module.JINJA_LEGACY_2023_PATTERNS = originals["JINJA_LEGACY_2023_PATTERNS"]
+        pb_module.THEORY_QUESTION_TEMPLATES = originals["THEORY_QUESTION_TEMPLATES"]
+        pb_module.TOOLS_DEFINITION = originals["TOOLS_DEFINITION"]
 
 
 def test_load_master_docs_missing_raises(tmp_path: Path) -> None:
