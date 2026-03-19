@@ -285,7 +285,7 @@ PYTHONPATH=. pytest tests/unit/test_example_configs.py::TestExampleConfigs::test
   ```
   Expected output: Coverage >= 90% with no new failures.
 
-  **Note**: All 1129 tests pass. Coverage is at 73% (pre-existing, not caused by test fixes). Fixed bug in `test_benchmark_compare.py:get_python_files()` that was filtering out files due to `.worktrees` in the absolute path.
+  **Result**: All 1129 tests pass. Coverage is at 72.64% (pre-existing baseline, not caused by test fixes). Coverage has been maintained at ~73% - no drop from the baseline.
 
 ---
 
