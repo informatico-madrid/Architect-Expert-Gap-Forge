@@ -1,0 +1,12 @@
+# Example: PHP hexagonal architecture discovery config
+search_query: 'filename:Hexagon.php'
+min_stars: 0
+limit: 5
+category: php_hexagonal
+mode: static
+extensions:
+  - ".php"
+static_repos:
+  - "example/php-hexagonal"
+per_page: 50
+base_dir: .
