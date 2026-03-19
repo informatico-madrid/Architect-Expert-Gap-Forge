@@ -752,7 +752,6 @@ def generate_adaptive_profiles(
         try:
             profile = SamplingProfile(
                 temperature=profile_dict["temperature"],
-                top_p=profile_dict.get("top_p", 0.9),
                 top_k=profile_dict["top_k"],
                 min_p=profile_dict["min_p"],
                 repetition_penalty=profile_dict.get("repetition_penalty", 1.0),
@@ -978,7 +977,7 @@ def refine_parameter_space(
     --------
     >>> results = [
     ...     CalibrationResult(
-    ...         profile=SamplingProfile(temperature=0.5, top_p=0.9, top_k=20, min_p=0.02, repetition_penalty=1.1),
+    ...         profile=SamplingProfile(temperature=0.5, top_k=20, min_p=0.02, repetition_penalty=1.1),
     ...         exam_id="p1", judge_scores={"ha_modernity": 0.8, "reasoning_depth": 0.7, "functionality": 0.8, "completeness": 0.7, "style": 0.8},
     ...         composite_score=0.77, adjusted_score=0.77, response_length=250, timestamp="2026-01-01T00:00:00Z"
     ...     ),
@@ -1424,7 +1423,6 @@ def generate_profiles(
         try:
             profile = SamplingProfile(
                 temperature=profile_dict["temperature"],
-                top_p=profile_dict["top_p"],
                 top_k=profile_dict["top_k"],
                 min_p=profile_dict["min_p"],
                 repetition_penalty=profile_dict["repetition_penalty"],
@@ -1764,7 +1762,7 @@ class CalibrationEngine:
             logger.info("║  Parameter Grid (sample):".ljust(72) + "║")
             for i, profile in enumerate(self.profiles[:3]):  # Show first 3
                 line = (
-                    f"║    {i + 1}: t={profile.temperature:.1f} tp={profile.top_p:.2f} k={profile.top_k} min={profile.min_p:.2f} rep={profile.repetition_penalty:.2f}".ljust(
+                    f"║    {i + 1}: t={profile.temperature:.1f} k={profile.top_k} min={profile.min_p:.2f} rep={profile.repetition_penalty:.2f}".ljust(
                         72
                     )
                     + "║"
@@ -1821,10 +1819,9 @@ class CalibrationEngine:
                     else ""
                 )
                 profile_short = (
-                    "temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s"
+                    "temperature=%s top_k=%s min_p=%s repetition_penalty=%s%s"
                     % (
                         profile.temperature,
-                        profile.top_p,
                         profile.top_k,
                         profile.min_p,
                         profile.repetition_penalty,
@@ -1869,7 +1866,6 @@ class CalibrationEngine:
                 # (for example when a pre-filter reduced the profile set).
                 params = [
                     "temperature",
-                    "top_p",
                     "top_k",
                     "min_p",
                     "repetition_penalty",
@@ -1880,7 +1876,6 @@ class CalibrationEngine:
                 profile_values: dict[str, set[Any]] = {p: set() for p in params}
                 for p in self.profiles:
                     profile_values["temperature"].add(p.temperature)
-                    profile_values["top_p"].add(p.top_p)
                     profile_values["top_k"].add(p.top_k)
                     profile_values["min_p"].add(p.min_p)
                     profile_values["repetition_penalty"].add(p.repetition_penalty)
@@ -2034,9 +2029,8 @@ class CalibrationEngine:
                     if is_best and best_result:
                         best_profile = best_result.profile
                         logger.info(
-                            "    🏆 NEW BEST! Profile: temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s",
+                            "    🏆 NEW BEST! Profile: temperature=%s top_k=%s min_p=%s repetition_penalty=%s%s",
                             best_profile.temperature,
-                            best_profile.top_p,
                             best_profile.top_k,
                             best_profile.min_p,
                             best_profile.repetition_penalty,
@@ -2208,7 +2202,6 @@ class CalibrationEngine:
         # Map parameters to their values and collect triggers
         param_map: dict[str, Any] = {
             "temperature": profile.temperature,
-            "top_p": profile.top_p,
             "top_k": profile.top_k,
             "min_p": profile.min_p,
             "repetition_penalty": profile.repetition_penalty,
@@ -2250,7 +2243,6 @@ class CalibrationEngine:
 
         param_names = [
             "temperature",
-            "top_p",
             "top_k",
             "min_p",
             "repetition_penalty",
@@ -2263,7 +2255,6 @@ class CalibrationEngine:
             p = result.profile
             val_map: dict[str, Any] = {
                 "temperature": p.temperature,
-                "top_p": p.top_p,
                 "top_k": p.top_k,
                 "min_p": p.min_p,
                 "repetition_penalty": p.repetition_penalty,
@@ -2512,7 +2503,6 @@ class CalibrationEngine:
         if aggregated_results:
             param_names = [
                 "temperature",
-                "top_p",
                 "top_k",
                 "min_p",
                 "repetition_penalty",
@@ -2755,7 +2745,6 @@ class CalibrationEngine:
 # Pivot values for quick filter - these are the "safe" defaults
 PARAMETER_PIVOTS: dict[str, Any] = {
     "temperature": 0.6,
-    "top_p": 0.9,
     "top_k": 20,
     "min_p": 0.0,
     "repetition_penalty": 1.0,
@@ -3012,7 +3001,6 @@ def filter_noxious_parameter_values(
                     )
                 pivot_profile = SamplingProfile(
                     temperature=pivot_values.get("temperature", 0.6),
-                    top_p=pivot_values.get("top_p", 0.9),
                     top_k=pivot_values.get("top_k", 20),
                     min_p=pivot_values.get("min_p", 0.0),
                     repetition_penalty=pivot_values.get("repetition_penalty", 1.0),
@@ -3094,7 +3082,6 @@ def filter_noxious_parameter_values(
                 try:
                     test_profile = SamplingProfile(
                         temperature=test_profile_dict.get("temperature", 0.6),
-                        top_p=test_profile_dict.get("top_p", 0.9),
                         top_k=test_profile_dict.get("top_k", 20),
                         min_p=test_profile_dict.get("min_p", 0.0),
                         repetition_penalty=test_profile_dict.get(
