@@ -531,7 +531,6 @@ class TestClaudeClientGenerate:
                 client.generate("prompt")
         mock_run.assert_called_once()
         args, _ = mock_run.call_args
-        assert "-p" in args[0]
         assert "--print" in args[0]
 
     def test_includes_model_flag_when_specified(self) -> None:

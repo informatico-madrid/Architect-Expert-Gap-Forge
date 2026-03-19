@@ -346,13 +346,16 @@ class ClaudeClient(BaseInferenceClient):
         if system_prompt:
             full_prompt = f"{system_prompt}\n\n{prompt}"
 
-        # Claude Code CLI: use -p for prompt mode (like ralph-loop.sh)
-        # Don't use --print or --max-tokens as they may not be supported
-        cmd = [self._cli_path, "-p"]
+        # Claude Code CLI: use --print for prompt mode
+        cmd = [self._cli_path, "--print"]
 
         # Add model if specified (Claude CLI supports --model flag)
         if self._model:
             cmd.extend(["--model", self._model])
+
+        # Add max tokens if specified
+        if max_tokens is not None:
+            cmd.extend(["--max-tokens", str(max_tokens)])
 
         # Claude CLI doesn't directly support temperature, top_k, min_p, repetition_penalty
         # These would need to be handled differently or ignored
