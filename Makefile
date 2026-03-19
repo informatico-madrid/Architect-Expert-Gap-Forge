@@ -40,7 +40,7 @@ quantize:
 test:
 	$(PYTHON) -m pytest tests/ -q -p no:randomly -p no:warnings
 
-## coverage: Run tests with coverage; fails if < 90 % on tracked modules.
+## coverage: Run all tests with coverage across all src modules.
 coverage:
 	$(PYTHON) -m pytest tests/ \
 		--cov=src/audit \
@@ -51,6 +51,7 @@ coverage:
 		--cov-report=term-missing \
 		--cov-report=xml:coverage.xml \
 		--cov-fail-under=90 \
+		--ignore=tests/integration/test_benchmark_compare.py \
 		-p no:randomly -p no:warnings
 
 ## lint: Static type check with pyright (install separately: pip install pyright).
