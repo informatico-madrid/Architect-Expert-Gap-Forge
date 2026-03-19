@@ -1,0 +1,70 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# SPDX-License-Identifier: Apache-2.0
+
+---
+# PHP Hexagonal Architecture Profile Configuration Example
+#
+# This configuration file defines the profile for processing PHP repositories
+# using hexagonal architecture patterns.
+
+# Profile name
+profile: php_hexagonal
+
+# Profile display name
+display_name: "PHP Hexagonal Architecture Expert"
+
+# Profile description
+description: "Profile for processing PHP repositories with hexagonal architecture patterns"
+
+# Extractor configuration
+extractor:
+  # Language adapter to use
+  adapter: php_ast_adapter
+
+  # Policy for handling parse errors
+  # Options:
+  #   - abort: Abort processing and mark file as needing manual review (default)
+  #   - skip: Skip the file and continue processing
+  #   - fallback: Attempt fallback parsing (regex-based for PHP)
+  on_parse_error: skip
+
+  # File extensions to process
+  extensions:
+    - .php
+    - .md
+
+  # Ignore patterns (directories/files to skip)
+  ignore_patterns:
+    - .git
+    - __pycache__
+    - venv
+    - node_modules
+    - .tox
+    - vendor
+    - .pytest_cache
+    - tests
+    - test
+    - dist
+    - build
+
+# Module discovery strategy
+# Options:
+#   - manifest: Discover modules via manifest.json files
+#   - init: Discover modules via __init__.py files
+#   - directory: Discover modules by directory structure
+#   - filesystem: Discover modules by directory structure (PHP standard)
+#   - manual_mapping: Use manually defined module mappings
+module_discovery:
+  strategy: filesystem
+  anchor_filenames:
+    - composer.json
+    - src
+    - Domain
+    - Application
+    - Infrastructure
+    - Ports
+    - Adapters
