@@ -59,6 +59,9 @@ class CompositionReport(BaseModel):
     type_distribution: dict[str, int] = Field(
         default_factory=dict, description="Distribution by record type"
     )
+    format_distribution: dict[str, int] = Field(
+        default_factory=dict, description="Distribution by tool format (json/xml/none)"
+    )
     discarded_count: int = Field(default=0, description="Number of discarded records")
     discarded_reasons: dict[str, int] = Field(
         default_factory=dict, description="Reasons for discards"

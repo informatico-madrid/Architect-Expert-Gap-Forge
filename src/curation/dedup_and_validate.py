@@ -41,6 +41,20 @@ TOOL_CALL_PATTERNS = [
     re.compile(r'"name"\s*:\s*"[^"]+"\s*,\s*"arguments"', re.IGNORECASE),
 ]
 
+# Patterns to detect XML format tool calls
+XML_TOOL_CALL_PATTERNS = [
+    re.compile(r"<tool_call>", re.IGNORECASE),
+    re.compile(r"<tool_name>", re.IGNORECASE),
+    re.compile(r"<tool_args>", re.IGNORECASE),
+]
+
+# Patterns to detect JSON format tool calls
+JSON_TOOL_CALL_PATTERNS = [
+    re.compile(r'"tool_calls"\s*:', re.IGNORECASE),
+    re.compile(r'"name"\s*:\s*"[^"]+"\s*,\s*"arguments"', re.IGNORECASE),
+    re.compile(r'{"name"\s*:\s*"[^"]+",\s*"arguments"\s*:', re.IGNORECASE),
+]
+
 
 def _normalize_for_hash(message_content: str) -> str:
     """Normalize message content for hashing.
@@ -107,6 +121,68 @@ def _contains_tool_call(content: str) -> bool:
     return False
 
 
+def _contains_xml_tool_call(content: str) -> bool:
+    """Check if content contains XML format tool calls.
+
+    Args:
+        content: Message content string to check.
+
+    Returns:
+        True if XML tool call patterns are found, False otherwise.
+    """
+    for pattern in XML_TOOL_CALL_PATTERNS:
+        if pattern.search(content):
+            return True
+    return False
+
+
+def _contains_json_tool_call(content: str) -> bool:
+    """Check if content contains JSON format tool calls.
+
+    Args:
+        content: Message content string to check.
+
+    Returns:
+        True if JSON tool call patterns are found, False otherwise.
+    """
+    for pattern in JSON_TOOL_CALL_PATTERNS:
+        if pattern.search(content):
+            return True
+    return False
+
+
+def detect_tool_format(messages: list[dict[str, Any]]) -> str:
+    """Detect the tool format used in a record's messages.
+
+    Analyzes all messages in a record to determine if they contain
+    tool calls in XML format, JSON format, or no tool calls at all.
+
+    Args:
+        messages: List of message dicts with 'role' and 'content' keys.
+
+    Returns:
+        'xml' if XML tool calls are detected, 'json' if JSON tool calls
+        are detected but not XML, 'none' if no tool calls are found.
+    """
+    has_xml = False
+    has_json = False
+
+    for msg in messages:
+        content = msg.get("content", "")
+
+        if _contains_xml_tool_call(content):
+            has_xml = True
+        elif _contains_json_tool_call(content):
+            has_json = True
+
+    if has_xml:
+        return "xml"
+    elif has_json:
+        return "json"
+    else:
+        return "none"
+
+
 class DedupAndValidate:
     """Deduplication and validation for DatasetRecord objects.
 
@@ -123,12 +199,14 @@ class DedupAndValidate:
         self._seen_hashes: set[str] = set()
         self._discarded_count: int = 0
         self._discard_reasons: dict[str, int] = {}
+        self._format_distribution: dict[str, int] = {"json": 0, "xml": 0, "none": 0}
 
     def reset(self) -> None:
         """Reset internal state for new processing run."""
         self._seen_hashes.clear()
         self._discarded_count = 0
         self._discard_reasons.clear()
+        self._format_distribution = {"json": 0, "xml": 0, "none": 0}
 
     @property
     def discarded_count(self) -> int:
@@ -139,6 +217,11 @@ class DedupAndValidate:
     def discard_reasons(self) -> dict[str, int]:
         """Get counts of discards by reason."""
         return self._discard_reasons.copy()
+
+    @property
+    def format_distribution(self) -> dict[str, int]:
+        """Get distribution of tool formats across processed records."""
+        return self._format_distribution.copy()
 
     def _log_discard(self, reason: str, record: DatasetRecord) -> None:
         """Log a record discard with reason.
@@ -210,6 +293,11 @@ class DedupAndValidate:
             The original record if it passes validation and is unique,
             None if it was discarded.
         """
+        # Track format distribution for all processed records
+        messages_data = [{"role": m.role, "content": m.content} for m in record.messages]
+        tool_format = detect_tool_format(messages_data)
+        self._format_distribution[tool_format] = self._format_distribution.get(tool_format, 0) + 1
+
         # First validate (check for tool calls)
         if not self.validate_record(record):
             logger.debug("Record rejected: contains tool call artifacts")

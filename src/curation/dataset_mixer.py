@@ -267,6 +267,7 @@ class DatasetMixer:
         records: list[DatasetRecord],
         discarded_count: int = 0,
         discarded_reasons: dict[str, int] | None = None,
+        format_distribution: dict[str, int] | None = None,
     ) -> CompositionReport:
         """Generate composition report for the mixed dataset.
 
@@ -274,6 +275,7 @@ class DatasetMixer:
             records: List of DatasetRecord objects.
             discarded_count: Number of discarded records.
             discarded_reasons: Dictionary of discard reasons and counts.
+            format_distribution: Dictionary of tool format distribution (json/xml/none).
 
         Returns:
             CompositionReport with dataset composition statistics.
@@ -282,6 +284,18 @@ class DatasetMixer:
         records_by_origin: dict[str, int] = {}
         type_distribution: dict[str, int] = {}
         token_counts_by_origin: dict[str, int] = {}
+
+        # Calculate format distribution if not provided
+        if format_distribution is None:
+            from src.curation.dedup_and_validate import detect_tool_format
+
+            format_distribution = {"json": 0, "xml": 0, "none": 0}
+            for record in records:
+                messages_data = [
+                    {"role": m.role, "content": m.content} for m in record.messages
+                ]
+                tool_format = detect_tool_format(messages_data)
+                format_distribution[tool_format] = format_distribution.get(tool_format, 0) + 1
 
         for record in records:
             origin = record.metadata.get("origin", "unknown")
@@ -312,6 +326,7 @@ class DatasetMixer:
             records_by_origin=records_by_origin,
             token_pct_by_origin=token_pct_by_origin,
             type_distribution=type_distribution,
+            format_distribution=format_distribution or {},
             discarded_count=discarded_count,
             discarded_reasons=discarded_reasons or {},
         )
