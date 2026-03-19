@@ -39,6 +39,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = [
     "-v",
     "--tb=short",
