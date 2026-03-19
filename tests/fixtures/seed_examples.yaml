@@ -1,0 +1,170 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright 2026 - SPDX-License-Identifier: Apache-2.0
+#
+# Seed examples for Home Assistant agentic trajectory generation
+# Extracted from configs/stage_2_factory/taxonomy/home_assistant/hacs_expert/plugin_architecture.yaml
+# Prerequisite for T007 and T008 (test fixtures)
+
+# Seed examples represent diverse Home Assistant integration patterns
+# Each seed contains:
+#   seed_id: unique identifier for tracking/generation
+#   category: architectural pattern category
+#   context: background code/reference for the task
+#   question: the user's request
+#   complexity: nominal_easy | nominal_medium | nominal_hard | contrast | error_recovery
+seeds:
+  - seed_id: "ha_seed_001"
+    category: "dual_mode_integration"
+    complexity: "nominal_hard"
+    context: |
+      # Dual-mode (LAN + Cloud) integration pattern
+      # XRegistry pattern: cloud auth + local fallback + Store cache
+      # async_forward_entry_setups for multiple platforms
+      # ConfigEntryAuthFailed for OAuth expiry, ConfigEntryNotReady for connection failures
+    question: |
+      Diseña async_setup_entry para una integración dual-mode (LAN + Cloud) que gestione refrigeradores Xiaomi con sensores de temperatura y notificaciones de puerta abierta. La API cloud usa OAuth2 y la LAN requiere mDNS discovery.
+    expected_patterns:
+      - "async_forward_entry_setups"
+      - "DataUpdateCoordinator"
+      - "ConfigEntryAuthFailed"
+      - "ConfigEntryNotReady"
+      - "Store"  # for cache
+      - "async_add_executor_job"
+
+  - seed_id: "ha_seed_002"
+    category: "bluetooth_coordinator"
+    complexity: "nominal_medium"
+    context: |
+      # ActiveBluetoothDataUpdateCoordinator pattern
+      # needs_poll_method + poll_method for conditional polling
+      # Generic[_T] type hints, TypeVar bound to dataclass
+      # Debouncer with cooldown for throttling
+      # BleakError handling with retry
+    question: |
+      Implementa un coordinator Bluetooth activo para termómetros Govee que reciben temperatura via advertisements pasivos pero requieren polling cada 60s para batería. Usa Generic[_T] y maneja BleakError con backoff exponencial.
+    expected_patterns:
+      - "ActiveBluetoothDataUpdateCoordinator"
+      - "needs_poll_method"
+      - "TypeVar"
+      - "BleakError"
+      - "debouncer"
+
+  - seed_id: "ha_seed_003"
+    category: "rest_api_coordinator"
+    complexity: "nominal_medium"
+    context: |
+      # REST API coordinator with pagination + circuit breaker
+      # cached_property (propcache.api) for computed values
+      # retry_after handling in UpdateFailed
+      # Protocol for API client interface
+    question: |
+      Diseña un DataUpdateCoordinator genérico para APIs RESTful con paginación automática, rate-limit handling (retry_after), y circuit breaker pattern. Usa TypeVar para data type, cached_property para computed values, y Protocol para API client interface.
+    expected_patterns:
+      - "DataUpdateCoordinator"
+      - "retry_after"
+      - "circuit_breaker"
+      - "Protocol"
+      - "cached_property"
+      - "UpdateFailed"
+
+  - seed_id: "ha_seed_004"
+    category: "protocol_based_entities"
+    complexity: "nominal_hard"
+    context: |
+      # Protocol pattern for duck-typing (no inheritance)
+      # @runtime_checkable + TypeGuard for type narrowing
+      # contextvars.ContextVar for implicit config passing
+      # frame.report_usage for deprecation warnings
+    question: |
+      Diseña un sistema de entities registrable con Protocol (sin herencia) que soporte múltiples coordinators por entity, lazy initialization via ContextVar, y frame introspection para deprecation warnings. Incluye tests que verifiquen Protocol compliance sin clases concretas.
+    expected_patterns:
+      - "@runtime_checkable"
+      - "Protocol"
+      - "TypeGuard"
+      - "ContextVar"
+      - "frame.report_usage"
+
+  - seed_id: "ha_seed_005"
+    category: "websocket_coordinator"
+    complexity: "nominal_medium"
+    context: |
+      # WebSocket manager with exponential backoff reconnect
+      # aiohttp.ClientWebSocketResponse for async iteration
+      # JSONDecodeError handling, message type filtering
+      # asyncio.Task for background reconnection loop
+    question: |
+      Implementa un WebSocketCoordinator con reconnect automático usando exponential backoff (max 30s), manejo de mensajes JSON con error recovery, y limpieza de recursos en EVENT_HOMEASSISTANT_STOP. Usa aiohttp y asyncio.
+    expected_patterns:
+      - "ws_connect"
+      - "exponential backoff"
+      - "JSONDecodeError"
+      - "EVENT_HOMEASSISTANT_STOP"
+      - "async_get_clientsession"
+
+  - seed_id: "ha_seed_006"
+    category: "config_flow_migration"
+    complexity: "error_recovery"
+    context: |
+      # Config flow with version migration
+      # async_step_migrate for config schema updates
+      # OptionsFlow for runtime configuration changes
+      # ConfigEntryNotReady vs ConfigEntryAuthFailed distinction
+    question: |
+      Tengo este error en Home Assistant al actualizar mi integración desde la versión 1.x a 2.x:
+      `KeyError: 'api_token'` en async_setup_entry
+      Mi código usa hass.data[DOMAIN] pero el nuevo formato usa entry.runtime_data.
+      ¿Puedes diagnosticar qué está mal y generar la versión corregida?
+    expected_patterns:
+      - "async_step_migrate"
+      - "runtime_data"
+      - "ConfigEntryNotReady"
+      - "entry.options"
+      - "config_entry"
+
+  - seed_id: "ha_seed_007"
+    category: "legacy_to_modern"
+    complexity: "contrast"
+    context: |
+      # Legacy patterns to modernize:
+      # hass.data (dict) -> entry.runtime_data (dataclass)
+      # platform: template -> template: (root)
+      # async_setup -> async_forward_entry_setups (plural)
+      # string literals -> SensorDeviceClass enums
+    question: |
+      Tengo esta integración que funciona en Home Assistant 2023 pero quiero migrarla a 2026.1:
+      - Usa `hass.data[DOMAIN][entry.entry_id] = data` (no typed)
+      - Usa `platform: template` en lugar de `template:` raíz
+      - Usa strings para device_class ("temperature")
+      ¿Puedes completar la implementación migrada al estándar 2026?
+    expected_patterns:
+      - "runtime_data"
+      - "template:"
+      - "SensorDeviceClass"
+      - "async_forward_entry_setups"
+      - "__slots__"
+
+  - seed_id: "ha_seed_008"
+    category: "sensor_entity_advanced"
+    complexity: "nominal_easy"
+    context: |
+      # Sensor entity with advanced state handling
+      # EntityCategory for diagnostic/config entities
+      # native_unit_of_measurement + device_class
+      # extra_state_attributes for rich metadata
+    question: |
+      Implementa un sensor para mostrar el consumo eléctrico de un dispositivo. El sensor debe:
+      - Usar SensorDeviceClass.POWER y UnitOfPower.WATT
+      - Mostrar estado unavailable si el dispositivo está offline
+      - Incluir atributos extra con last_update timestamp
+    expected_patterns:
+      - "SensorDeviceClass"
+      - "UnitOfPower"
+      - "native_unit_of_measurement"
+      - "extra_state_attributes"
+      - "available"  # property
+
+# Metadata
+version: "1.0.0"
+use_case: "home_assistant"
+total_seeds: 8
+source_taxonomy: "configs/stage_2_factory/taxonomy/home_assistant/hacs_expert/plugin_architecture.yaml"

@@ -19,6 +19,7 @@ from typing import Any
 
 import yaml
 
+from src.factory.hard_query_builder import HardQueryBuilder
 from src.factory.schema import (
     AgenticTrajectory,
     SimulatedError,
@@ -106,6 +107,7 @@ class TrajectoryGenerator:
         error_probability: float = 0.7,
         cascade_failure_probability: float = 0.3,
         templates_path: Path | str | None = None,
+        hard_query_templates_path: Path | str | None = None,
         seed: int | None = None,
     ) -> None:
         """Initialize the trajectory generator.
@@ -115,7 +117,8 @@ class TrajectoryGenerator:
             mode: Trajectory generation mode
             error_probability: Probability of error injection (default 0.7)
             cascade_failure_probability: Probability of cascade_failure (default 0.3)
-            templates_path: Optional path to templates YAML
+            templates_path: Optional path to trajectory templates YAML
+            hard_query_templates_path: Optional path to hard query templates YAML
             seed: Optional random seed for reproducibility
         """
         self.use_case = use_case
@@ -124,6 +127,15 @@ class TrajectoryGenerator:
         self.cascade_failure_probability = cascade_failure_probability
         self._loader = PromptLoader(templates_path)
         self._templates = self._loader.load_templates()
+
+        # Initialize HardQueryBuilder for hard_query mode
+        self._hard_query_builder: HardQueryBuilder | None = None
+        if mode == TrajectoryMode.HARD_QUERY:
+            self._hard_query_builder = HardQueryBuilder(
+                use_case=use_case,
+                templates_path=hard_query_templates_path,
+                seed=seed,
+            )
 
         if seed is not None:
             random.seed(seed)
@@ -144,17 +156,27 @@ class TrajectoryGenerator:
         turns: list[Turn] = []
         errors: list[SimulatedError] = []
 
-        # Generate base trajectory (observation, reasoning, action)
+        # Generate base trajectory (observation/reasoning/action or hard_query based)
         turn_index = 0
 
-        # Observation turn
-        obs_template = self._templates.get("observation", {}).get("template", "Obs: {question}")
-        obs_content = obs_template.format(question=question, context=context)
-        turns.append(Turn(
-            turn_index=turn_index,
-            turn_type=TurnType.OBSERVATION,
-            content=obs_content,
-        ))
+        # First turn: use HardQueryBuilder if mode is hard_query, otherwise use observation template
+        if self.mode == TrajectoryMode.HARD_QUERY and self._hard_query_builder is not None:
+            # Generate hard query prompt (abstract objective without tool names)
+            first_content = self._hard_query_builder.build(seed_data)
+            turns.append(Turn(
+                turn_index=turn_index,
+                turn_type=TurnType.OBSERVATION,
+                content=first_content,
+            ))
+        else:
+            # Standard observation turn with explicit template
+            obs_template = self._templates.get("observation", {}).get("template", "Obs: {question}")
+            obs_content = obs_template.format(question=question, context=context)
+            turns.append(Turn(
+                turn_index=turn_index,
+                turn_type=TurnType.OBSERVATION,
+                content=obs_content,
+            ))
         turn_index += 1
 
         # Reasoning turn

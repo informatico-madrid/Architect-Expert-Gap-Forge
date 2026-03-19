@@ -19,6 +19,8 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -28,6 +30,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 from src.schemas.common import FragmentTypedDict
+from src.utils.exceptions import CheckpointError
 
 logger = logging.getLogger(__name__)
 
@@ -262,3 +265,118 @@ class ProgressTracker:
             ]
         lines.append(f"{'=' * 60}")
         return "\n".join(lines)
+
+
+# ======================================================================
+# GENERATION CHECKPOINT (Stage 1 & 2)
+# ======================================================================
+
+
+class GenerationCheckpoint:
+    """Checkpoint for tracking completed seed generations with atomic persistence.
+
+    Provides methods to mark seeds as done, check completion status, and
+    persist/resume checkpoint state from disk. Uses atomic write-then-rename
+    pattern to ensure consistency across crashes.
+    """
+
+    def __init__(self, done_seeds: set[str] | None = None) -> None:
+        """Initialize the generation checkpoint.
+
+        Args:
+            done_seeds: Set of already completed seed IDs. Defaults to empty set.
+        """
+        self._done_seeds: set[str] = done_seeds if done_seeds is not None else set()
+
+    def mark_done(self, seed_id: str) -> None:
+        """Mark a seed as completed.
+
+        Args:
+            seed_id: Unique identifier for the seed to mark as done.
+        """
+        self._done_seeds.add(seed_id)
+
+    def is_done(self, seed_id: str) -> bool:
+        """Check if a seed has been completed.
+
+        Args:
+            seed_id: Unique identifier for the seed to check.
+
+        Returns:
+            True if the seed has been marked as done, False otherwise.
+        """
+        return seed_id in self._done_seeds
+
+    @classmethod
+    def resume_from(cls, path: Path) -> "GenerationCheckpoint":
+        """Load checkpoint state from disk.
+
+        Args:
+            path: Path to the checkpoint JSON file.
+
+        Returns:
+            New GenerationCheckpoint instance with loaded state.
+
+        Raises:
+            CheckpointError: If the checkpoint file cannot be read or is corrupted.
+        """
+        if not path.exists():
+            # Return empty checkpoint if no file exists (first run)
+            return cls()
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            done_seeds = set(data.get("done_seeds", []))
+            return cls(done_seeds)
+        except json.JSONDecodeError as e:
+            raise CheckpointError(
+                f"Corrupted checkpoint file at {path}: {e}"
+            ) from e
+        except OSError as e:
+            raise CheckpointError(
+                f"Failed to read checkpoint file at {path}: {e}"
+            ) from e
+
+    def save(self, path: Path) -> None:
+        """Save checkpoint state to disk atomically.
+
+        Uses write-then-rename pattern to ensure atomicity. First writes to
+        a temporary file, then renames it to the target path.
+
+        Args:
+            path: Path to save the checkpoint JSON file.
+
+        Raises:
+            CheckpointError: If the checkpoint cannot be written.
+        """
+        data = {"done_seeds": list(self._done_seeds)}
+        tmp_path = None
+        try:
+            # Write to temporary file in the same directory for atomic rename
+            fd, tmp_path = tempfile.mkstemp(
+                suffix=".json", prefix="checkpoint_", dir=path.parent
+            )
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+
+            # Atomic rename (on POSIX systems)
+            os.replace(tmp_path, path)
+            logger.debug("Checkpoint saved to %s with %d done seeds", path, len(self._done_seeds))
+        except OSError as e:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+            raise CheckpointError(f"Failed to save checkpoint to {path}: {e}") from e
+
+    def __len__(self) -> int:
+        """Return the number of completed seeds.
+
+        Returns:
+            Number of seeds marked as done.
+        """
+        return len(self._done_seeds)
