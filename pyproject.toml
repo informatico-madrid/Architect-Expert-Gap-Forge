@@ -28,6 +28,7 @@ dev = [
     "pytest>=9.0",
     "pytest-cov>=7.0",
     "pytest-randomly>=3.0",
+    "pytest-asyncio>=0.24",
     "psutil>=5.9",
 ]
 
@@ -39,6 +40,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 addopts = [
     "-v",
     "--tb=short",
