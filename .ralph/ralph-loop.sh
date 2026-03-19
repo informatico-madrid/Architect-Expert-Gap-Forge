@@ -235,7 +235,15 @@ parse_args() {
 # ============================================================================
 # State Management
 # ============================================================================
-STATE_FILE="$PROJECT_DIR/.ralph/state.json"
+
+# Extract SLUG from SPEC_DIR for per-spec state files
+# NOTE: SLUG, STATE_FILE, LOCK_FILE are defined after parse_args() in main()
+extract_slug() {
+    local spec_dir="$1"
+    local basename
+    basename=$(basename "$spec_dir")
+    echo "$basename"
+}
 
 read_state() {
     local key="$1"
@@ -1024,8 +1032,36 @@ run_clean() {
 main() {
     parse_args "$@"
 
+    # Generate per-spec SLUG, STATE_FILE, and LOCK_FILE after args are parsed
+    if [[ -n "$SPEC_DIR" ]]; then
+        SLUG="$(extract_slug "$SPEC_DIR")"
+        STATE_FILE="$PROJECT_DIR/.ralph/state-${SLUG}.json"
+        LOCK_FILE="/tmp/ralph-lock-${SLUG}.lock"
+        
+        # Check if we should resume from existing per-spec state file
+        if [[ "$RESUME_MODE" == "true" && -f "$STATE_FILE" ]]; then
+            log_info "Resuming from existing state: $STATE_FILE"
+        elif [[ "$RESUME_MODE" == "true" && -f "$PROJECT_DIR/.ralph/state.json" ]]; then
+            # Backward compatibility: migrate from old state.json to per-spec file
+            log_info "Migrating from legacy state.json to $STATE_FILE"
+            cp "$PROJECT_DIR/.ralph/state.json" "$STATE_FILE"
+        fi
+    elif [[ "$RESUME_MODE" == "true" && -f "$PROJECT_DIR/.ralph/state.json" ]]; then
+        # Backward compatibility: extract slug from old state.json
+        SLUG="$(python3 -c "import json; print(json.load(open('$PROJECT_DIR/.ralph/state.json'))['name'])" 2>/dev/null || echo "legacy")"
+        STATE_FILE="$PROJECT_DIR/.ralph/state-${SLUG}.json"
+        LOCK_FILE="/tmp/ralph-lock-${SLUG}.lock"
+        log_info "Migrating legacy state.json to $STATE_FILE"
+        cp "$PROJECT_DIR/.ralph/state.json" "$STATE_FILE"
+    else
+        # Fallback for --clean or other modes without SPEC_DIR
+        SLUG=""
+        STATE_FILE="$PROJECT_DIR/.ralph/state.json"
+        LOCK_FILE="/tmp/ralph-test.lock"
+    fi
+
     # Trap EXIT for cleanup
-    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp"' EXIT
+    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp" rm -f "$LOCK_FILE" 2>/dev/null || true' EXIT
 
     # Convert relative SPEC_DIR to absolute path
     if [[ -n "$SPEC_DIR" && "$SPEC_DIR" != /* ]]; then
@@ -1275,9 +1311,9 @@ main() {
         # Log memory before agent execution
         log_memory "before_agent"
 
-        # Acquire test lock to serialize test-heavy agent runs initiated by this loop
+        # Acquire per-spec lock to serialize test-heavy agent runs
         if (( RALPH_TEST_CONCURRENCY > 0 )); then
-            exec 9>/tmp/ralph-test.lock
+            exec 9>"$LOCK_FILE"
             flock -x 9
             agent_output=$(run_work_agent "$work_prompt" "$iter_log")
             agent_exit=$?

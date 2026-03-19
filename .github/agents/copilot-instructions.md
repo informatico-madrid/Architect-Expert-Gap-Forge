@@ -15,6 +15,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-08
 - Files (safetensors, JSON, YAML configs) (006-project-maintenance)
 - Python 3.11+ + Pydantic V2, PyYAML, python-dotenv, requests (008-fix-ingestor-cli-execution)
 - File system (YAML configs, Git repositories) (008-fix-ingestor-cli-execution)
+- Python 3.11 + pytest 9.0, dataclasses, unittest.mock, PyYAML (011-fix-failing-tests)
+- YAML config files, JSON test fixtures (011-fix-failing-tests)
 
 - Python 3.12 (existing repo uses 3.12+) + PyYAML, pydantic, requests, pytest, ruff. Optional: `tree-sitter` (for future adapters). (001-stage1-discovery)
 
@@ -34,9 +36,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.12 (existing repo uses 3.12+): Follow standard conventions
 
 ## Recent Changes
+- 011-fix-failing-tests: Added Python 3.11 + pytest 9.0, dataclasses, unittest.mock, PyYAML
 - 008-fix-ingestor-cli-execution: Added Python 3.11+ + Pydantic V2, PyYAML, python-dotenv, requests
 - 006-project-maintenance: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 006-project-maintenance: Added Python 3.11+ + PyYAML>=6.0, pydantic>=2.0, pytest>=9.0, google-genai>=1.0, vllm, ruff>=0.9
 
 
 <!-- MANUAL ADDITIONS START -->
