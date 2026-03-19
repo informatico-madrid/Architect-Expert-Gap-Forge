@@ -12,6 +12,7 @@ Copyright 2026 AEGF
 
 from __future__ import annotations
 
+import json
 import logging
 import random
 from pathlib import Path
@@ -22,6 +23,8 @@ import yaml
 from src.factory.hard_query_builder import HardQueryBuilder
 from src.factory.schema import (
     AgenticTrajectory,
+    serialize_tool_call_xml,
+    should_use_xml_format,
     SimulatedError,
     SimulatedErrorType,
     TrajectoryMode,
@@ -109,6 +112,7 @@ class TrajectoryGenerator:
         templates_path: Path | str | None = None,
         hard_query_templates_path: Path | str | None = None,
         seed: int | None = None,
+        tool_format: str = "auto",
     ) -> None:
         """Initialize the trajectory generator.
 
@@ -120,11 +124,14 @@ class TrajectoryGenerator:
             templates_path: Optional path to trajectory templates YAML
             hard_query_templates_path: Optional path to hard query templates YAML
             seed: Optional random seed for reproducibility
+            tool_format: Tool call format for action turns (json|xml|auto).
+                auto: uses XML for large args (>500 bytes in JSON) via schema.should_use_xml_format
         """
         self.use_case = use_case
         self.mode = mode
         self.error_probability = error_probability
         self.cascade_failure_probability = cascade_failure_probability
+        self.tool_format = tool_format
         self._loader = PromptLoader(templates_path)
         self._templates = self._loader.load_templates()
 
@@ -140,6 +147,38 @@ class TrajectoryGenerator:
         if seed is not None:
             random.seed(seed)
 
+    def _get_tool_format_for_trajectory(self, sample_args: dict) -> str:
+        """Determine the tool format to use for this trajectory.
+
+        Args:
+            sample_args: Sample tool arguments to determine format in auto mode.
+
+        Returns:
+            "xml" or "json" - the format to use for all action turns.
+        """
+        if self.tool_format == "auto":
+            return "xml" if should_use_xml_format(sample_args) else "json"
+        return self.tool_format
+
+    def _serialize_tool_call(
+        self, tool_name: str, tool_args: dict, use_xml: bool
+    ) -> str:
+        """Serialize a tool call to the appropriate format.
+
+        Args:
+            tool_name: Name of the tool
+            tool_args: Tool arguments dictionary
+            use_xml: Whether to use XML format
+
+        Returns:
+            Serialized tool call string
+        """
+        if use_xml:
+            return serialize_tool_call_xml(tool_name, tool_args)
+        # JSON format: tool_name(args)
+        args_str = json.dumps(tool_args)
+        return f"{tool_name}({args_str})"
+
     async def generate(self, seed_data: dict[str, Any]) -> AgenticTrajectory:
         """Generate a trajectory for the given seed.
 
@@ -152,6 +191,10 @@ class TrajectoryGenerator:
         seed_id = seed_data.get("seed_id", "unknown")
         question = seed_data.get("question", "")
         context = seed_data.get("context", "")
+
+        # Sample tool args to determine format for this trajectory (in auto mode)
+        sample_tool_args = seed_data.get("tool_args", {"sample": "data"})
+        use_xml = self._get_tool_format_for_trajectory(sample_tool_args) == "xml"
 
         turns: list[Turn] = []
         errors: list[SimulatedError] = []
@@ -192,14 +235,15 @@ class TrajectoryGenerator:
         turn_index += 1
 
         # Action turn
-        action_template = self._templates.get("action", {}).get("template", "Action: {tool_name}({tool_args})")
-        action_content = action_template.format(tool_name="async_setup_entry", tool_args="entry=config_entry")
+        tool_name = "async_setup_entry"
+        tool_args = {"entry": "config_entry"}
+        action_content = self._serialize_tool_call(tool_name, tool_args, use_xml)
         turns.append(Turn(
             turn_index=turn_index,
             turn_type=TurnType.ACTION,
             content=action_content,
-            tool_name="async_setup_entry",
-            tool_args={"entry": "config_entry"},
+            tool_name=tool_name,
+            tool_args=tool_args,
         ))
         turn_index += 1
 
@@ -211,14 +255,16 @@ class TrajectoryGenerator:
             is_cascade = random.random() < self.cascade_failure_probability
 
             if is_cascade:
-                # Add another action turn (that will fail)
-                action2_template = self._templates.get("action", {}).get("template", "Action: {tool_name}({tool_args})")
-                action2_content = action2_template.format(tool_name="get_coordinator_data", tool_args="entity_id=light.living_room")
+                # Add another action turn (that will fail) - use same format as first action
+                tool2_name = "get_coordinator_data"
+                tool2_args = {"entity_id": "light.living_room"}
+                action2_content = self._serialize_tool_call(tool2_name, tool2_args, use_xml)
                 turns.append(Turn(
                     turn_index=turn_index,
                     turn_type=TurnType.ACTION,
                     content=action2_content,
-                    tool_name="get_coordinator_data",
+                    tool_name=tool2_name,
+                    tool_args=tool2_args,
                 ))
                 turn_index += 1
 

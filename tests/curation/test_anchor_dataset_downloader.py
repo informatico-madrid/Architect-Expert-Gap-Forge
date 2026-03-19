@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 import pytest
 import tiktoken
 
+from src.curation.anchor_dataset_downloader import AnchorDatasetConfig, AnchorDatasetDownloader
 from src.utils.schema import DatasetRecord, Message
 
 logger = logging.getLogger(__name__)
@@ -501,27 +502,63 @@ class TestAnchorDatasetDownloaderInterface:
 
     def test_downloader_has_download_method(self) -> None:
         """Test that AnchorDatasetDownloader has a download method."""
-        # Placeholder - implementation should have:
-        # def download(self, config: AnchorDatasetConfig) -> list[dict]: ...
-        pass
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+        assert hasattr(downloader, "download")
+        assert callable(downloader.download)
 
     def test_downloader_has_parse_method(self) -> None:
         """Test that AnchorDatasetDownloader has a parse method."""
-        # Placeholder - implementation should have:
-        # def parse(self, data: list[dict], format: str) -> list[DatasetRecord]: ...
-        pass
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+        assert hasattr(downloader, "parse")
+        assert callable(downloader.parse)
 
     def test_downloader_has_subsample_method(self) -> None:
         """Test that AnchorDatasetDownloader has a subsample method."""
-        # Placeholder - implementation should have:
-        # def subsample(self, records: list[DatasetRecord], token_budget: int) -> list[DatasetRecord]: ...
-        pass
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+        assert hasattr(downloader, "subsample")
+        assert callable(downloader.subsample)
 
     def test_downloader_has_export_method(self) -> None:
         """Test that AnchorDatasetDownloader has an export method."""
-        # Placeholder - implementation should have:
-        # def export(self, records: list[DatasetRecord], output_path: Path) -> None: ...
-        pass
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+        assert hasattr(downloader, "export")
+        assert callable(downloader.export)
+
+    def test_downloader_has_configs_property(self) -> None:
+        """Test that AnchorDatasetDownloader has a configs property."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+        assert hasattr(downloader, "configs")
+        assert downloader.configs == [config]
 
 
 class TestDatasetIntegration:

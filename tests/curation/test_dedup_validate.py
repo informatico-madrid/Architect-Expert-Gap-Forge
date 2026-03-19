@@ -18,6 +18,7 @@ from typing import Any
 
 import pytest
 
+from src.curation.dedup_and_validate import DedupAndValidate
 from src.utils.schema import DatasetRecord, Message, CompositionReport
 
 logger = logging.getLogger(__name__)
@@ -664,20 +665,49 @@ class TestDedupValidateInterface:
     They will pass once T022 (implementation) is completed.
     """
 
-    def test_dedup_has_deduplicate_method(self) -> None:
-        """Test that DedupAndValidate has a deduplicate method."""
-        # Placeholder - implementation should have:
-        # def deduplicate(self, records: list[DatasetRecord]) -> list[DatasetRecord]: ...
-        pass
+    def test_dedup_has_validate_record_method(self) -> None:
+        """Test that DedupAndValidate has a validate_record method."""
+        dedup = DedupAndValidate()
+        assert hasattr(dedup, "validate_record")
+        assert callable(dedup.validate_record)
 
-    def test_dedup_has_validate_nocall_method(self) -> None:
-        """Test that DedupAndValidate has a validate_nocall method."""
-        # Placeholder - implementation should have:
-        # def validate_nocall(self, records: list[DatasetRecord]) -> list[DatasetRecord]: ...
-        pass
+    def test_dedup_has_reset_method(self) -> None:
+        """Test that DedupAndValidate has a reset method."""
+        dedup = DedupAndValidate()
+        assert hasattr(dedup, "reset")
+        assert callable(dedup.reset)
 
-    def test_dedup_has_get_discard_logs_method(self) -> None:
-        """Test that DedupAndValidate has a get_discard_logs method."""
-        # Placeholder - implementation should have:
-        # def get_discard_logs(self) -> list[dict[str, Any]]: ...
-        pass
+    def test_dedup_discarded_count_property(self) -> None:
+        """Test that DedupAndValidate has discarded_count property."""
+        dedup = DedupAndValidate()
+        assert hasattr(dedup, "discarded_count")
+        assert isinstance(dedup.discarded_count, int)
+
+    def test_dedup_discard_reasons_property(self) -> None:
+        """Test that DedupAndValidate has discard_reasons property."""
+        dedup = DedupAndValidate()
+        assert hasattr(dedup, "discard_reasons")
+        assert isinstance(dedup.discard_reasons, dict)
+
+    def test_dedup_format_distribution_property(self) -> None:
+        """Test that DedupAndValidate has format_distribution property."""
+        dedup = DedupAndValidate()
+        assert hasattr(dedup, "format_distribution")
+        assert isinstance(dedup.format_distribution, dict)
+
+    def test_validate_record_valid(self) -> None:
+        """Test validate_record returns True for valid record."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[Message(role="user", content="Hello"), Message(role="assistant", content="Hi")],
+            metadata={}
+        )
+        result = dedup.validate_record(record)
+        assert result is True
+
+    def test_reset_clears_state(self) -> None:
+        """Test reset clears the internal state."""
+        dedup = DedupAndValidate()
+        dedup.reset()
+        assert dedup.discarded_count == 0
+        assert dedup.discard_reasons == {}

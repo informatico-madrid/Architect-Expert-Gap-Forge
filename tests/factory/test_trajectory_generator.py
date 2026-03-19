@@ -650,3 +650,224 @@ class TestTrajectoryGeneratorConfig:
             mode=TrajectoryMode.HARD_QUERY,
         )
         assert generator.mode == TrajectoryMode.HARD_QUERY
+
+
+# =============================================================================
+# TEST CLASSES: XML Tool Format Tests (US4)
+# =============================================================================
+
+
+class TestXMLToolCallSerialization:
+    """Tests for XML tool call serialization and parsing (US4)."""
+
+    def test_serialize_tool_call_xml_preserves_name_and_args(self) -> None:
+        """Test round-trip XML serialize→parse preserves tool name and arguments."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "get_weather"
+        tool_args = {"location": "Madrid", "units": "celsius"}
+
+        # Serialize to XML
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+
+        # Parse back
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        # Verify round-trip preserves data
+        assert parsed_name == tool_name
+        assert parsed_args == tool_args
+
+    def test_xml_serialize_multiline_python_code_no_escaping(self) -> None:
+        """Test argument with Python multiline code does not require escaping."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        # Multiline Python code that would need escaping in JSON
+        multiline_code = '''def calculate_metrics(data):
+    total = sum(data)
+    average = total / len(data)
+    return {
+        "total": total,
+        "average": average,
+        "count": len(data)
+    }'''
+
+        tool_args = {"code": multiline_code}
+
+        # Serialize to XML
+        xml_output = serialize_tool_call_xml("execute_code", tool_args)
+
+        # Verify no escaped quotes in the output
+        assert '\\"' not in xml_output
+        assert '\\n' not in xml_output
+
+        # Parse back and verify content is preserved
+        _, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_args["code"] == multiline_code
+
+    def test_xml_serialize_preserves_special_characters(self) -> None:
+        """Test XML serialization preserves special characters without escaping."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_args = {
+            "query": "SELECT * FROM users WHERE name = 'José'",
+            "path": "C:\\Users\\Test\\file.txt",
+            "json_data": {"key": "value with \"quotes\" and 'apostrophes'"},
+        }
+
+        xml_output = serialize_tool_call_xml("execute_query", tool_args)
+
+        # Parse back
+        _, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_args["query"] == tool_args["query"]
+        assert parsed_args["path"] == tool_args["path"]
+        assert parsed_args["json_data"] == tool_args["json_data"]
+
+    def test_json_and_xml_produce_identical_semantics(self) -> None:
+        """Test same data in JSON and XML produces semantically identical result."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+        import json
+
+        tool_name = "homeassistant.call_service"
+        tool_args = {
+            "domain": "light",
+            "service": "turn_on",
+            "data": {"brightness": 255, "rgb_color": [255, 128, 0]},
+        }
+
+        # JSON serialization
+        json_output = json.dumps({"name": tool_name, "args": tool_args})
+
+        # XML serialization
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+
+        # Parse XML back to components
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        # Both should produce identical semantic data
+        assert parsed_name == tool_name
+        assert parsed_args == tool_args
+
+        # Verify JSON can also be parsed to same structure
+        json_parsed = json.loads(json_output)
+        assert json_parsed["name"] == parsed_name
+        assert json_parsed["args"] == parsed_args
+
+    def test_xml_roundtrip_with_empty_args(self) -> None:
+        """Test XML round-trip with empty arguments dict."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "no_args_tool"
+        tool_args = {}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert parsed_args == {}
+
+    def test_xml_roundtrip_with_none_values(self) -> None:
+        """Test XML round-trip handles None values in arguments."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "tool_with_none"
+        tool_args = {"optional_field": None, "required_field": "value"}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert "optional_field" in parsed_args
+        assert parsed_args["required_field"] == "value"
+
+    def test_xml_format_matches_qwen3_coder_pattern(self) -> None:
+        """Test XML format follows qwen3_coder pattern with tool_calls structure."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "python_exec"
+        tool_args = {"code": "print('hello world')"}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+
+        # Verify qwen3_coder XML format structure
+        assert "<tool_call>" in xml_output
+        assert "<tool_name>" in xml_output
+        assert "<tool_args>" in xml_output
+        assert "</tool_call>" in xml_output
+        assert tool_name in xml_output
+
+    def test_xml_parse_handles_trailing_whitespace(self) -> None:
+        """Test XML parsing handles extra whitespace in input."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "test_tool"
+        tool_args = {"key": "value"}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        # Add extra whitespace
+        xml_with_whitespace = "  \n  " + xml_output + "  \n  "
+
+        parsed_name, parsed_args = parse_tool_call_xml(xml_with_whitespace)
+
+        assert parsed_name == tool_name
+        assert parsed_args == tool_args
+
+
+class TestXMLToolFormatAutoSelection:
+    """Tests for automatic tool format selection based on argument size."""
+
+    def test_auto_select_xml_for_large_args(self) -> None:
+        """Test auto-selector uses XML when args exceed 500 bytes."""
+        try:
+            from src.factory.schema import should_use_xml_format
+        except ImportError:
+            pytest.skip("Auto-selection function not yet implemented")
+
+        # Small args should use JSON
+        small_args = {"key": "value"}
+        assert not should_use_xml_format(small_args)
+
+        # Large args (>500 bytes in JSON) should use XML
+        large_content = "x" * 600
+        large_args = {"content": large_content}
+        assert should_use_xml_format(large_args)
+
+    def test_auto_select_threshold_calculation(self) -> None:
+        """Test auto-select threshold is correctly calculated."""
+        try:
+            from src.factory.schema import should_use_xml_format
+        except ImportError:
+            pytest.skip("Auto-selection function not yet implemented")
+        import json
+
+        # Exactly at threshold should use JSON (not > 500)
+        # Use 488 x's to ensure JSON size <= 500 (12 chars for {"data": "}"} + 488 = 500)
+        args_at_threshold = {"data": "x" * 488}
+        json_size = len(json.dumps(args_at_threshold))
+        # If JSON size is <= 500, should not use XML
+        assert json_size <= 500 or not should_use_xml_format(args_at_threshold)

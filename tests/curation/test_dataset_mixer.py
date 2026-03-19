@@ -20,6 +20,7 @@ from pathlib import Path
 import pytest
 import tiktoken
 
+from src.curation.dataset_mixer import DatasetMixer, DatasetMixerConfig
 from src.utils.schema import CompositionReport, DatasetRecord, Message
 
 logger = logging.getLogger(__name__)
@@ -699,19 +700,42 @@ class TestDatasetMixerInterface:
 
     def test_mixer_has_mix_method(self) -> None:
         """Test that DatasetMixer has a mix method."""
-        # Placeholder - implementation should have:
-        # def mix(self, specialized: list[DatasetRecord], anchor: list[DatasetRecord],
-        #         seed: int, target_specialized_pct: float) -> list[DatasetRecord]: ...
-        pass
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+        assert hasattr(mixer, "mix")
+        assert callable(mixer.mix)
 
     def test_mixer_has_export_method(self) -> None:
         """Test that DatasetMixer has an export method."""
-        # Placeholder - implementation should have:
-        # def export(self, records: list[DatasetRecord], output_path: Path) -> None: ...
-        pass
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+        assert hasattr(mixer, "export")
+        assert callable(mixer.export)
 
     def test_mixer_has_generate_report_method(self) -> None:
         """Test that DatasetMixer has a generate_report method."""
-        # Placeholder - implementation should have:
-        # def generate_report(self, records: list[DatasetRecord]) -> CompositionReport: ...
-        pass
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+        assert hasattr(mixer, "generate_report")
+        assert callable(mixer.generate_report)
+
+    def test_mixer_has_config_property(self) -> None:
+        """Test that DatasetMixer has a config property."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+        assert hasattr(mixer, "config")
+        assert mixer.config == config
+
+    def test_mixer_mix_with_empty_lists(self) -> None:
+        """Test mix with empty lists returns empty list."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+        result = mixer.mix([], [])
+        assert result == []
+
+    def test_mixer_config_attributes(self) -> None:
+        """Test DatasetMixerConfig has expected attributes."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        assert config.specialized_pct == 30.0
+        assert config.anchor_pct == 70.0
+        assert config.shuffle_seed == 42

@@ -36,6 +36,11 @@ from src.curation import dedup_filter
 from src.curation.dedup_filter import exact_dedup, semantic_dedup
 from src.curation import quality_filter
 from src.curation.quality_filter import structural_quality_filter
+from src.curation.dataset_mixer import (
+    DatasetMixer,
+    DatasetMixerConfig,
+    load_specialized_records,
+)
 
 # Re-export defaults for CLI
 DEFAULT_MIN_WORDS = curator_pipeline.DEFAULT_MIN_WORDS
@@ -84,8 +89,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     io = parser.add_argument_group("I/O")
-    io.add_argument("--input", required=True, help="Source JSONL file.")
-    io.add_argument("--output", required=True, help="Output JSONL file.")
+    io.add_argument("--input", help="Source JSONL file.")
+    io.add_argument("--output", help="Output JSONL file.")
     io.add_argument(
         "--reports-dir",
         default=DEFAULT_REPORTS_DIR,
@@ -198,6 +203,60 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Character shingle size (default: {DEFAULT_SHINGLE_K}).",
     )
 
+    # Mix datasets command arguments
+    mx = parser.add_argument_group("Mix datasets (Stage 3)")
+    mx.add_argument(
+        "--mix-datasets",
+        dest="do_mix_datasets",
+        action="store_true",
+        help="Run mix-datasets command to combine specialized and anchor datasets.",
+    )
+    mx.add_argument(
+        "--specialized-jsonl",
+        type=str,
+        help="Path to specialized dataset JSONL file.",
+    )
+    mx.add_argument(
+        "--anchor-configs",
+        type=str,
+        help="Path to anchor dataset configs YAML file.",
+    )
+    mx.add_argument(
+        "--output-jsonl",
+        dest="output_jsonl",
+        type=str,
+        help="Output path for mixed JSONL file.",
+    )
+    mx.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for deterministic shuffling (default: 42).",
+    )
+    mx.add_argument(
+        "--target-records",
+        type=int,
+        default=None,
+        help="Target total number of records after mixing.",
+    )
+    mx.add_argument(
+        "--report",
+        type=str,
+        help="Output path for composition report JSON.",
+    )
+    mx.add_argument(
+        "--specialized-pct",
+        type=float,
+        default=30.0,
+        help="Target percentage for specialized dataset tokens (default: 30.0).",
+    )
+    mx.add_argument(
+        "--anchor-pct",
+        type=float,
+        default=70.0,
+        help="Target percentage for anchor dataset tokens (default: 70.0).",
+    )
+
     return parser
 
 
@@ -210,12 +269,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    # Handle mix-datasets command separately
+    if args.do_mix_datasets:
+        return _run_mix_datasets(args, parser)
+
+    # Validate arguments for regular pipeline phases
     if not any(
         [args.do_exact_dedup, args.do_filter, args.do_structural, args.do_dedup]
     ):
         parser.error(
-            "At least one phase required: --exact-dedup / --filter / --structural / --dedup"
+            "At least one phase required: --exact-dedup / --filter / --structural / --dedup / --mix-datasets"
         )
+
+    # Validate required I/O for regular phases
+    if not args.input:
+        parser.error("--input is required for pipeline phases")
+    if not args.output:
+        parser.error("--output is required for pipeline phases")
 
     if not os.path.exists(args.input):
         logger.error("Input file not found: %s", args.input)
@@ -445,6 +515,106 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info("Report saved: %s", report_path)
 
     return 0
+
+
+# =============================================================================
+# Mix Datasets Command
+# =============================================================================
+
+
+def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Run the mix-datasets command.
+
+    Args:
+        args: Parsed command-line arguments.
+        parser: ArgumentParser for error reporting.
+
+    Returns:
+        Exit code (0 for success, 1 for error).
+    """
+    from pathlib import Path
+
+    # Validate required arguments
+    if not args.specialized_jsonl:
+        parser.error("--specialized-jsonl is required for --mix-datasets")
+    if not args.anchor_configs:
+        parser.error("--anchor-configs is required for --mix-datasets")
+    if not args.output_jsonl:
+        parser.error("--output-jsonl is required for --mix-datasets")
+
+    specialized_path = Path(args.specialized_jsonl)
+    anchor_configs_path = Path(args.anchor_configs)
+    output_path = Path(args.output_jsonl)
+    report_path = Path(args.report) if args.report else None
+
+    # Validate input files exist
+    if not specialized_path.exists():
+        logger.error("Specialized JSONL not found: %s", specialized_path)
+        return 1
+    if not anchor_configs_path.exists():
+        logger.error("Anchor configs not found: %s", anchor_configs_path)
+        return 1
+
+    logger.info(
+        "Running mix-datasets: specialized=%s, anchors=%s, output=%s",
+        specialized_path,
+        anchor_configs_path,
+        output_path,
+    )
+
+    try:
+        # Create mixer and load data
+        config = DatasetMixerConfig(
+            specialized_pct=args.specialized_pct,
+            anchor_pct=args.anchor_pct,
+            shuffle_seed=args.seed,
+            target_records=args.target_records,
+        )
+        mixer = DatasetMixer(config)
+
+        # Load specialized records
+        specialized_records = load_specialized_records(specialized_path)
+        logger.info("Loaded %d specialized records", len(specialized_records))
+
+        # Load anchor configs and download
+        from src.curation.anchor_dataset_downloader import (
+            AnchorDatasetDownloader,
+            load_anchor_configs,
+        )
+
+        anchor_configs = load_anchor_configs(anchor_configs_path)
+        downloader = AnchorDatasetDownloader(anchor_configs)
+        anchor_records = downloader.download_all()
+        logger.info("Downloaded %d anchor records", len(anchor_records))
+
+        # Mix datasets
+        mixed_records = mixer.mix(specialized_records, anchor_records)
+        logger.info("Mixed dataset has %d records", len(mixed_records))
+
+        # Export to JSONL
+        mixer.export(mixed_records, output_path)
+        logger.info("Exported mixed dataset to %s", output_path)
+
+        # Generate and export report
+        report = mixer.generate_report(mixed_records)
+        logger.info(
+            "Composition report: records_by_origin=%s, token_pct_by_origin=%s",
+            report.records_by_origin,
+            report.token_pct_by_origin,
+        )
+
+        if report_path:
+            mixer.export_report(report, report_path)
+            logger.info("Exported composition report to %s", report_path)
+
+        return 0
+
+    except Exception as e:
+        logger.error("Error running mix-datasets: %s", e)
+        import traceback
+
+        traceback.print_exc()
+        return 1
 
 
 # For backwards compatibility

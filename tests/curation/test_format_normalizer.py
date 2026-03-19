@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 
+from src.curation.format_normalizer import FormatNormalizer
 from src.utils.exceptions import NormalizationError
 from src.utils.schema import DatasetRecord, Message
 
@@ -530,18 +531,44 @@ class TestFormatNormalizerInterface:
 
     def test_normalizer_has_convert_method(self) -> None:
         """Test that FormatNormalizer has a convert method."""
-        # Placeholder - implementation should have:
-        # def convert(self, record: dict[str, Any]) -> DatasetRecord: ...
-        pass
+        normalizer = FormatNormalizer()
+        assert hasattr(normalizer, "convert")
+        assert callable(normalizer.convert)
 
     def test_normalizer_has_detect_format_method(self) -> None:
         """Test that FormatNormalizer has detect_format method."""
-        # Placeholder - implementation should have:
-        # def detect_format(self, record: dict[str, Any]) -> str: ...
-        pass
+        normalizer = FormatNormalizer()
+        assert hasattr(normalizer, "detect_format")
+        assert callable(normalizer.detect_format)
 
     def test_normalizer_raises_normalization_error_on_invalid_input(self) -> None:
         """Test that FormatNormalizer raises NormalizationError for invalid input."""
-        # Placeholder - implementation should raise NormalizationError
-        # for records that cannot be normalized
-        pass
+        normalizer = FormatNormalizer()
+        with pytest.raises(NormalizationError):
+            normalizer.convert({})
+
+    def test_detect_format_alpaca(self) -> None:
+        """Test detect_format identifies Alpaca format."""
+        normalizer = FormatNormalizer()
+        record = {"instruction": "test", "output": "result"}
+        assert normalizer.detect_format(record) == "alpaca"
+
+    def test_detect_format_sharegpt(self) -> None:
+        """Test detect_format identifies ShareGPT format."""
+        normalizer = FormatNormalizer()
+        record = {"conversations": [{"from": "human", "value": "test"}]}
+        assert normalizer.detect_format(record) == "sharegpt"
+
+    def test_detect_format_openai_messages(self) -> None:
+        """Test detect_format identifies OpenAI messages format."""
+        normalizer = FormatNormalizer()
+        record = {"messages": [{"role": "user", "content": "test"}]}
+        assert normalizer.detect_format(record) == "openai_messages"
+
+    def test_convert_alpaca_format(self) -> None:
+        """Test convert processes Alpaca format."""
+        normalizer = FormatNormalizer()
+        record = {"instruction": "test question", "output": "test answer"}
+        result = normalizer.convert(record)
+        assert isinstance(result, DatasetRecord)
+        assert len(result.messages) >= 2
