@@ -45,7 +45,7 @@ legacy/
 # --- IDE ---
 .vscode/
 untitled:plan-*.prompt.md
-.ralph/state.json
+.ralph/state*.json
 progress.txt
 .goose/ralph/.ralph-complete
 .goose/ralph/review-result.txt
