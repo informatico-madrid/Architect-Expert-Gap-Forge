@@ -99,7 +99,7 @@ pushed:>2026-01-01 language:python topic:home-assistant
 #### CLI Reference
 
 ```
-python src/discovery/ingestor.py --config <path> [--dry-run]
+python3 -m src.discovery.ingestor --config <path> [--dry-run]
 ```
 
 | Argument | Description |
@@ -114,15 +114,15 @@ python src/discovery/ingestor.py --config <path> [--dry-run]
 1. Create or edit a config: `configs/stage_1_discovery/<your_domain>.yaml`
 2. Run (static mode, no token needed):
 ```bash
-python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml
+python3 -m src.discovery.ingestor --config configs/stage_1_discovery/homeassistant.yaml
 ```
 3. Preview without cloning (dry-run):
 ```bash
-python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml --dry-run
+python3 -m src.discovery.ingestor --config configs/stage_1_discovery/homeassistant.yaml --dry-run
 ```
 4. With GitHub token for dynamic mode:
 ```bash
-GITHUB_TOKEN=ghp_xxx python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml
+GITHUB_TOKEN=ghp_xxx python3 -m src.discovery.ingestor --config configs/stage_1_discovery/homeassistant.yaml
 ```
 
 **Note:** Static/manual ingestion is preferred to avoid low-signal bulk crawling and reduce architectural hallucinations at the source.
@@ -187,7 +187,7 @@ Operational Flow (examples):
 
 Run Ingestion (Stage 1):
 ```
-python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml
+python3 -m src.discovery.ingestor --config configs/stage_1_discovery/homeassistant.yaml
 ```
 
 Run Processing (Stage 1.5):
