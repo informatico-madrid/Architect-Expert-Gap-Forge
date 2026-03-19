@@ -39,8 +39,9 @@ def get_python_files(repo_path: Path) -> list[Path]:
     """Get all Python files from a repository."""
     python_files = []
     for path in repo_path.rglob("*.py"):
-        # Skip __pycache__ and hidden directories
-        if "__pycache__" in path.parts or any(p.startswith(".") for p in path.parts):
+        # Skip __pycache__ and hidden directories within the repo
+        rel_parts = path.relative_to(repo_path).parts
+        if "__pycache__" in rel_parts or any(p.startswith(".") for p in rel_parts):
             continue
         python_files.append(path)
     return python_files
