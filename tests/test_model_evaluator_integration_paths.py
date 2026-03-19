@@ -24,6 +24,7 @@ import pytest
 from src.audit.judge import run_inference
 from src.audit.scorecard import compute_scorecard
 from src.audit.cli import (
+    CLIError,
     cmd_sample,
     cmd_generate_exam,
     cmd_baseline,
@@ -228,7 +229,7 @@ class TestCmdSampleProcessing:
             )
 
             # Should raise SystemExit when dataset is required but missing
-            with pytest.raises(SystemExit, match="--dataset is required"):
+            with pytest.raises(CLIError, match="--dataset is required"):
                 cmd_sample(args)
 
     def test_cmd_sample_skips_existing_sample_without_force(
@@ -369,7 +370,7 @@ class TestCmdGenerateExamLoop:
                 mock_load.return_value = [bad_sample]
 
                 # Should raise SystemExit due to missing metadata
-                with pytest.raises(SystemExit, match="validation failed"):
+                with pytest.raises(CLIError, match="validation failed"):
                     cmd_generate_exam(args)
 
 
@@ -904,7 +905,7 @@ class TestCmdGenerateExamErrorPropagation:
                     )
 
                     # Should raise SystemExit with error message
-                    with pytest.raises(SystemExit, match="Exam generation failed"):
+                    with pytest.raises(CLIError, match="Exam generation failed"):
                         cmd_generate_exam(args)
 
 

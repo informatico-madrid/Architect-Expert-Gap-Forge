@@ -556,7 +556,16 @@ class TestCmdScorePhase5:
         mock_report_path.parent.mkdir(parents=True, exist_ok=True)
         mock_report_path.write_text("# Report", encoding="utf-8")
 
+        mock_judge_resp = {
+            "baseline": {"ha_modernity": 0.8},
+            "adapter": {"ha_modernity": 0.9},
+            "reasoning": "mock",
+        }
         with (
+            patch(
+                "src.audit.cli.llm_judge_score",
+                return_value=mock_judge_resp,
+            ) as mock_judge,
             patch(
                 "src.audit.cli.compute_scorecard",
                 return_value=mock_sc,
@@ -568,6 +577,7 @@ class TestCmdScorePhase5:
         ):
             cmd_score(args)
 
+        assert mock_judge.call_count == 4
         assert mock_score.call_count == 4
         mock_report.assert_called_once()
 
@@ -614,7 +624,16 @@ class TestCmdScorePhase5:
         mock_report_path = Path(args.audit_dir) / "report.md"
         mock_report_path.write_text("# Report", encoding="utf-8")
 
+        mock_judge_resp = {
+            "baseline": {"ha_modernity": 0.8},
+            "adapter": {"ha_modernity": 0.9},
+            "reasoning": "mock",
+        }
         with (
+            patch(
+                "src.audit.cli.llm_judge_score",
+                return_value=mock_judge_resp,
+            ),
             patch("src.audit.cli.compute_scorecard", return_value=mock_sc),
             patch(
                 "src.audit.cli.generate_report",

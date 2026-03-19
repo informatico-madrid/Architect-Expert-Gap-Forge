@@ -281,7 +281,9 @@ class TestInferenceRouterResolveBackend:
         assert result == "vllm"
 
     def test_explicit_gemini_passes_through(self) -> None:
-        assert InferenceRouter._resolve_backend("gemini") == "gemini"
+        with patch("src.audit.inference._GEMINI_AVAILABLE", True):
+            with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-ci-key"}):
+                assert InferenceRouter._resolve_backend("gemini") == "gemini"
 
     def test_explicit_vllm_passes_through(self) -> None:
         assert InferenceRouter._resolve_backend("vllm") == "vllm"
@@ -342,31 +344,37 @@ class TestInferenceRouterGeminiPaths:
     def test_professor_creates_gemini_client_when_backend_is_gemini(self) -> None:
         router = InferenceRouter()
         mock_instance = MagicMock(spec=BaseInferenceClient)
-        with patch(
-            "src.audit.inference.GeminiClient", return_value=mock_instance
-        ) as MockGemini:
-            client = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
+        with patch("src.audit.inference._GEMINI_AVAILABLE", True):
+            with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-ci-key"}):
+                with patch(
+                    "src.audit.inference.GeminiClient", return_value=mock_instance
+                ) as MockGemini:
+                    client = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
         MockGemini.assert_called_once_with(model="gemini-2.5-flash")
         assert client is mock_instance
 
     def test_student_creates_gemini_client_when_backend_is_gemini(self) -> None:
         router = InferenceRouter()
         mock_instance = MagicMock(spec=BaseInferenceClient)
-        with patch(
-            "src.audit.inference.GeminiClient", return_value=mock_instance
-        ) as MockGemini:
-            client = router.student(backend="gemini", gemini_model="gemini-2.5-flash")
+        with patch("src.audit.inference._GEMINI_AVAILABLE", True):
+            with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-ci-key"}):
+                with patch(
+                    "src.audit.inference.GeminiClient", return_value=mock_instance
+                ) as MockGemini:
+                    client = router.student(backend="gemini", gemini_model="gemini-2.5-flash")
         MockGemini.assert_called_once_with(model="gemini-2.5-flash")
         assert client is mock_instance
 
     def test_professor_gemini_client_is_cached(self) -> None:
         router = InferenceRouter()
         mock_instance = MagicMock(spec=BaseInferenceClient)
-        with patch(
-            "src.audit.inference.GeminiClient", return_value=mock_instance
-        ) as MockGemini:
-            c1 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
-            c2 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
+        with patch("src.audit.inference._GEMINI_AVAILABLE", True):
+            with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-ci-key"}):
+                with patch(
+                    "src.audit.inference.GeminiClient", return_value=mock_instance
+                ) as MockGemini:
+                    c1 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
+                    c2 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
         MockGemini.assert_called_once()
         assert c1 is c2
 
@@ -399,8 +407,9 @@ class TestGeminiClientWithMock:
         genai_client_mock.models.generate_content.return_value = response_mock
         mock_genai.Client.return_value = genai_client_mock
 
-        with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-ci-key"}):
-            client = GeminiClient(model="gemini-test")
+        with patch("src.audit.inference._GEMINI_AVAILABLE", True):
+            with patch.dict(os.environ, {"GOOGLE_API_KEY": "fake-ci-key"}):
+                client = GeminiClient(model="gemini-test")
         return client, genai_client_mock
 
     def test_init_creates_sdk_client_with_api_key(self) -> None:
@@ -409,8 +418,9 @@ class TestGeminiClientWithMock:
         with patch("src.audit.inference._genai") as mock_genai:
             with patch("src.audit.inference._genai_types"):
                 mock_genai.Client.return_value = MagicMock()
-                with patch.dict(os.environ, {"GOOGLE_API_KEY": "my-key"}):
-                    c = GeminiClient(model="gemini-test")
+                with patch("src.audit.inference._GEMINI_AVAILABLE", True):
+                    with patch.dict(os.environ, {"GOOGLE_API_KEY": "my-key"}):
+                        c = GeminiClient(model="gemini-test")
         mock_genai.Client.assert_called_once_with(api_key="my-key")
         assert c._model == "gemini-test"
 
