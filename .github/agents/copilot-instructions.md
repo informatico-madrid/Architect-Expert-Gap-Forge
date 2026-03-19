@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-08
 - Local filesystem — `data/raw/`, `data/outputs/*_bundles/`, `needs_manual_review.json`, bundle cache for preambles. (004-php-legacy-driver)
 - Python 3.11+ + PyYAML>=6.0, pydantic>=2.0, pytest>=9.0, google-genai>=1.0, vllm, ruff>=0.9 (006-project-maintenance)
 - Files (safetensors, JSON, YAML configs) (006-project-maintenance)
+- Python 3.11+ + Pydantic V2, PyYAML, python-dotenv, requests (008-fix-ingestor-cli-execution)
+- File system (YAML configs, Git repositories) (008-fix-ingestor-cli-execution)
 
 - Python 3.12 (existing repo uses 3.12+) + PyYAML, pydantic, requests, pytest, ruff. Optional: `tree-sitter` (for future adapters). (001-stage1-discovery)
 
@@ -32,9 +34,9 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.12 (existing repo uses 3.12+): Follow standard conventions
 
 ## Recent Changes
+- 008-fix-ingestor-cli-execution: Added Python 3.11+ + Pydantic V2, PyYAML, python-dotenv, requests
+- 006-project-maintenance: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 006-project-maintenance: Added Python 3.11+ + PyYAML>=6.0, pydantic>=2.0, pytest>=9.0, google-genai>=1.0, vllm, ruff>=0.9
-- 004-php-legacy-driver: Added Python 3.11 + Python standard library (concurrent.futures, dataclasses, typing, pathlib, re, hashlib), `pytest` for tests; optional local vLLM/judge for Validation Judge (sampling).
-- 004-php-legacy-driver: Added Python 3.11+ + re (stdlib), pathlib (stdlib), dataclasses (stdlib), pydantic (existente en proyecto)
 
 
 <!-- MANUAL ADDITIONS START -->
