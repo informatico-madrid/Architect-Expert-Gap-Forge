@@ -1,0 +1,18 @@
+# Anchor datasets for stage 3 curation
+# These datasets serve as quality anchors for the final training corpus
+
+anchors:
+  - hf_id: "Salesforce/xlam-function-calling-60k"
+    split: "train"
+    format: "alpaca"
+    token_budget_pct: 30.0
+
+  - hf_id: "FineTome-100k"
+    split: "train"
+    format: "sharegpt"
+    token_budget_pct: 40.0
+
+  - hf_id: "Magicoder"
+    split: "train"
+    format: "sharegpt"
+    token_budget_pct: 30.0
