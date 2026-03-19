@@ -163,6 +163,93 @@ seeds:
       - "extra_state_attributes"
       - "available"  # property
 
+# PHP Legacy seed examples for compatibility testing (T034)
+# These seeds represent PHP legacy migration scenarios
+php_legacy_seeds:
+  - seed_id: "php_legacy_seed_001"
+    category: "database_migration"
+    complexity: "nominal_medium"
+    context: |
+      # Legacy: mysql_query() direct database calls
+      # Modern: Doctrine DBAL with Entity Repository pattern
+      # Uses SQL injection vulnerable patterns in legacy
+    question: |
+      Migra esta conexión PHP legacy a Symfony con Doctrine:
+      $result = mysql_query("SELECT * FROM users WHERE id = $userId");
+    expected_patterns:
+      - "Entity"
+      - "Repository"
+      - "Doctrine"
+      - "EntityManager"
+
+  - seed_id: "php_legacy_seed_002"
+    category: "session_management"
+    complexity: "nominal_easy"
+    context: |
+      # Legacy: $_SESSION global superglobal
+      # Modern: Symfony Session Interface with dependency injection
+    question: |
+      Convierte este manejo de sesiones PHP legacy a Symfony:
+      $_SESSION['user_id'] = $userId;
+      if ($_SESSION['is_logged_in']) { ... }
+    expected_patterns:
+      - "SessionInterface"
+      - "TokenStorageInterface"
+      - "Dependency Injection"
+
+  - seed_id: "php_legacy_seed_003"
+    category: "global_variables"
+    complexity: "nominal_hard"
+    context: |
+      # Legacy: global $db, global $logger
+      # Modern: Constructor injection of services
+    question: |
+      Refactoriza esta función PHP con globales a Symfony:
+      function get_user($id) {
+          global $db, $logger;
+          $result = mysqli_query($db, "SELECT * FROM users WHERE id = $id");
+          $logger->log("Fetched user: $id");
+          return mysqli_fetch_assoc($result);
+      }
+    expected_patterns:
+      - "Dependency Injection"
+      - "Constructor Injection"
+      - "Service"
+      - "LoggerInterface"
+
+  - seed_id: "php_legacy_seed_004"
+    category: "include_chains"
+    complexity: "nominal_medium"
+    context: |
+      # Legacy: require_once 'config.php', include 'header.php'
+      # Modern: Service autowiring and Twig templates
+    question: |
+      Transforma esta estructura de includes PHP a servicios Symfony:
+      require_once 'config.php';
+      require_once 'functions.php';
+      require_once 'header.php';
+      include 'products.php';
+    expected_patterns:
+      - "services.yaml"
+      - "autowire"
+      - "Twig"
+
+  - seed_id: "php_legacy_seed_005"
+    category: "constant_definition"
+    complexity: "nominal_easy"
+    context: |
+      # Legacy: define('DB_HOST', 'localhost')
+      # Modern: .env + ParameterBag
+    question: |
+      Migra estas constantes PHP a configuración Symfony:
+      define('DB_HOST', 'localhost');
+      define('DB_USER', 'root');
+      define('DEBUG', true);
+    expected_patterns:
+      - ".env"
+      - "ParameterBag"
+      - "services.yaml"
+
 # Metadata
 version: "1.0.0"
 use_case: "home_assistant"

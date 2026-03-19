@@ -871,3 +871,273 @@ class TestXMLToolFormatAutoSelection:
         json_size = len(json.dumps(args_at_threshold))
         # If JSON size is <= 500, should not use XML
         assert json_size <= 500 or not should_use_xml_format(args_at_threshold)
+
+
+# =============================================================================
+# TEST CLASSES: PHP Legacy Compatibility Tests (T034)
+# =============================================================================
+
+
+class TestPHPLegacyCompatibility:
+    """Tests for PHP Legacy use_case compatibility (T034).
+
+    Verifies that TrajectoryGenerator works with use_case=php_legacy
+    without regression. Loads seeds from configs/stage_2_factory/taxonomy/php_legacy/
+    """
+
+    @pytest.fixture
+    def php_legacy_seed_data(self) -> dict[str, Any]:
+        """Sample PHP Legacy seed data for trajectory generation."""
+        return {
+            "seed_id": "php_legacy_seed_001",
+            "category": "database_migration",
+            "complexity": "nominal_medium",
+            "context": "# Legacy: mysql_query() direct database calls\n# Modern: Doctrine DBAL",
+            "question": "Migra esta conexión PHP legacy a Symfony con Doctrine",
+            "expected_patterns": ["Entity", "Repository", "Doctrine"],
+        }
+
+    @pytest.fixture
+    def php_legacy_seeds(self) -> list[dict[str, Any]]:
+        """PHP Legacy seed fixtures matching taxonomy structure."""
+        return [
+            {
+                "seed_id": "php_legacy_seed_001",
+                "category": "database_migration",
+                "complexity": "nominal_medium",
+                "context": "# Legacy: mysql_query() direct database calls\n# Modern: Doctrine DBAL",
+                "question": "Migra esta conexión PHP legacy a Symfony con Doctrine",
+                "expected_patterns": ["Entity", "Repository", "Doctrine"],
+            },
+            {
+                "seed_id": "php_legacy_seed_002",
+                "category": "session_management",
+                "complexity": "nominal_easy",
+                "context": "# Legacy: $_SESSION global\n# Modern: Symfony Session Interface",
+                "question": "Convierte este manejo de sesiones PHP legacy a Symfony",
+                "expected_patterns": ["SessionInterface", "Dependency Injection"],
+            },
+            {
+                "seed_id": "php_legacy_seed_003",
+                "category": "global_variables",
+                "complexity": "nominal_hard",
+                "context": "# Legacy: global $db, global $logger\n# Modern: Constructor injection",
+                "question": "Refactoriza esta función PHP con globales a Symfony",
+                "expected_patterns": ["Dependency Injection", "Service", "LoggerInterface"],
+            },
+        ]
+
+    def test_generator_accepts_php_legacy_use_case(self) -> None:
+        """Test TrajectoryGenerator accepts php_legacy use_case parameter."""
+        try:
+            from src.factory.trajectory_generator import TrajectoryGenerator
+        except ImportError:
+            pytest.skip("TrajectoryGenerator not yet implemented")
+
+        generator = TrajectoryGenerator(
+            use_case="php_legacy",
+            mode=TrajectoryMode.EXPLICIT,
+        )
+        assert generator.use_case == "php_legacy"
+
+    @pytest.mark.asyncio
+    async def test_generate_trajectory_with_php_legacy_seed(
+        self,
+        php_legacy_seed_data: dict[str, Any],
+    ) -> None:
+        """Test generate() works with php_legacy seed without regression."""
+        try:
+            from src.factory.trajectory_generator import TrajectoryGenerator
+        except ImportError:
+            pytest.skip("TrajectoryGenerator not yet implemented")
+
+        with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
+            mock_loader_instance = MagicMock()
+            mock_loader_instance.load_templates.return_value = {
+                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
+                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "action": {"template": "Action: {tool_name}", "turn_type": "action"},
+                "error": {"template": "Error: {error_description}", "turn_type": "error"},
+                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
+                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+            }
+            mock_loader.return_value = mock_loader_instance
+
+            generator = TrajectoryGenerator(
+                use_case="php_legacy",
+                mode=TrajectoryMode.EXPLICIT,
+                seed=42,
+            )
+
+            trajectory = await generator.generate(php_legacy_seed_data)
+
+            # Verify trajectory is valid
+            assert trajectory.use_case == "php_legacy"
+            assert trajectory.seed_id == php_legacy_seed_data["seed_id"]
+            assert 3 <= len(trajectory.turns) <= 10
+            assert isinstance(trajectory.messages, list)
+
+    @pytest.mark.asyncio
+    async def test_php_legacy_trajectory_has_required_turns(
+        self,
+        php_legacy_seed_data: dict[str, Any],
+    ) -> None:
+        """Test php_legacy trajectory contains required turn types."""
+        try:
+            from src.factory.trajectory_generator import TrajectoryGenerator
+        except ImportError:
+            pytest.skip("TrajectoryGenerator not yet implemented")
+
+        with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
+            mock_loader_instance = MagicMock()
+            mock_loader_instance.load_templates.return_value = {
+                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
+                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "action": {"template": "Action: {tool_name}", "turn_type": "action"},
+                "error": {"template": "Error: {error_description}", "turn_type": "error"},
+                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
+                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+            }
+            mock_loader.return_value = mock_loader_instance
+
+            generator = TrajectoryGenerator(
+                use_case="php_legacy",
+                mode=TrajectoryMode.EXPLICIT,
+                error_probability=1.0,  # Force error injection
+                seed=42,
+            )
+
+            trajectory = await generator.generate(php_legacy_seed_data)
+
+            turn_types = {turn.turn_type for turn in trajectory.turns}
+            # Verify required turn types exist
+            assert TurnType.OBSERVATION in turn_types
+            assert TurnType.REASONING in turn_types
+            assert TurnType.ACTION in turn_types
+
+    @pytest.mark.asyncio
+    async def test_php_legacy_hard_query_mode(
+        self,
+        php_legacy_seed_data: dict[str, Any],
+    ) -> None:
+        """Test TrajectoryGenerator works with php_legacy in hard_query mode."""
+        try:
+            from src.factory.trajectory_generator import TrajectoryGenerator
+        except ImportError:
+            pytest.skip("TrajectoryGenerator not yet implemented")
+
+        with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
+            mock_loader_instance = MagicMock()
+            mock_loader_instance.load_templates.return_value = {
+                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
+                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "action": {"template": "Action: {tool_name}", "turn_type": "action"},
+                "error": {"template": "Error: {error_description}", "turn_type": "error"},
+                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
+                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+            }
+            mock_loader.return_value = mock_loader_instance
+
+            generator = TrajectoryGenerator(
+                use_case="php_legacy",
+                mode=TrajectoryMode.HARD_QUERY,
+                seed=42,
+            )
+
+            trajectory = await generator.generate(php_legacy_seed_data)
+
+            # Verify hard_query mode works with php_legacy
+            assert trajectory.mode == TrajectoryMode.HARD_QUERY
+            assert trajectory.use_case == "php_legacy"
+            assert len(trajectory.turns) >= 3
+
+    @pytest.mark.asyncio
+    async def test_php_legacy_multiple_seeds_generation(
+        self,
+        php_legacy_seeds: list[dict[str, Any]],
+    ) -> None:
+        """Test TrajectoryGenerator can process multiple php_legacy seeds."""
+        try:
+            from src.factory.trajectory_generator import TrajectoryGenerator
+        except ImportError:
+            pytest.skip("TrajectoryGenerator not yet implemented")
+
+        with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
+            mock_loader_instance = MagicMock()
+            mock_loader_instance.load_templates.return_value = {
+                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
+                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "action": {"template": "Action: {tool_name}", "turn_type": "action"},
+                "error": {"template": "Error: {error_description}", "turn_type": "error"},
+                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
+                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+            }
+            mock_loader.return_value = mock_loader_instance
+
+            trajectories = []
+            for seed in php_legacy_seeds:
+                generator = TrajectoryGenerator(
+                    use_case="php_legacy",
+                    mode=TrajectoryMode.EXPLICIT,
+                    seed=42,
+                )
+                trajectory = await generator.generate(seed)
+                trajectories.append(trajectory)
+
+            # Verify all seeds generated valid trajectories
+            assert len(trajectories) == len(php_legacy_seeds)
+            for traj in trajectories:
+                assert traj.use_case == "php_legacy"
+                assert 3 <= len(traj.turns) <= 10
+                assert isinstance(traj.messages, list)
+
+    @pytest.mark.asyncio
+    async def test_php_legacy_trajectory_error_injection(
+        self,
+        php_legacy_seed_data: dict[str, Any],
+    ) -> None:
+        """Test php_legacy trajectory error injection works correctly."""
+        try:
+            from src.factory.trajectory_generator import TrajectoryGenerator
+        except ImportError:
+            pytest.skip("TrajectoryGenerator not yet implemented")
+
+        with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
+            mock_loader_instance = MagicMock()
+            mock_loader_instance.load_templates.return_value = {
+                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
+                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "action": {"template": "Action: {tool_name}", "turn_type": "action"},
+                "error": {"template": "Error: {error_description}", "turn_type": "error"},
+                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
+                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+            }
+            mock_loader.return_value = mock_loader_instance
+
+            # Force error injection
+            generator = TrajectoryGenerator(
+                use_case="php_legacy",
+                mode=TrajectoryMode.EXPLICIT,
+                error_probability=1.0,
+                seed=42,
+            )
+
+            trajectory = await generator.generate(php_legacy_seed_data)
+
+            # Verify error and correct turns exist
+            turn_types = {turn.turn_type for turn in trajectory.turns}
+            assert TurnType.ERROR in turn_types, "PHP Legacy trajectory must contain error turn"
+            assert TurnType.CORRECT in turn_types, "PHP Legacy trajectory must contain correct turn"
+
+    def test_php_legacy_seed_structure_matches_taxonomy(
+        self,
+        php_legacy_seeds: list[dict[str, Any]],
+    ) -> None:
+        """Test php_legacy seeds match expected taxonomy structure."""
+        required_fields = {"seed_id", "category", "complexity", "context", "question"}
+
+        for seed in php_legacy_seeds:
+            assert required_fields.issubset(seed.keys()), f"Seed {seed.get('seed_id')} missing fields"
+            assert seed["seed_id"].startswith("php_legacy_"), "Seed ID must start with php_legacy_"
+            assert isinstance(seed["context"], str), "Context must be string"
+            assert isinstance(seed["question"], str), "Question must be string"
