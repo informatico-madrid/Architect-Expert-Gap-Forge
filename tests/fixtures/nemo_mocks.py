@@ -13,6 +13,8 @@ availability flags at import time.
 
 from __future__ import annotations
 
+import importlib.machinery
+import importlib.util
 import sys
 import types
 from typing import List
@@ -33,6 +35,10 @@ def enable_fake_nemo() -> None:
 
     # ---- datasketch ----
     datasketch = types.ModuleType("datasketch")
+    # Add __spec__ so importlib.util.find_spec() doesn't fail
+    datasketch.__spec__ = importlib.machinery.ModuleSpec(
+        "datasketch", datasketch, origin="datasketch.py"
+    )
 
     class MinHash:
         def __init__(self, num_perm: int = 128):
