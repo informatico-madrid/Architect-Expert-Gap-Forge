@@ -379,7 +379,7 @@ class TestCLIEntryPointWithMonkeypatch:
 class TestLoadMasterDocsIntegration:
     """Test load_master_docs file loading."""
 
-    def test_load_master_docs_file_reading(self, tmp_path) -> None:
+    def test_load_master_docs_file_reading(self, tmp_path, monkeypatch) -> None:
         """load_master_docs must read master, changelog, and jinja files."""
         from src.utils.doc_loader import load_master_docs
 
@@ -396,6 +396,11 @@ class TestLoadMasterDocsIntegration:
             changelog_content, encoding="utf-8"
         )
         (gap_dir / "syntax_guide.md").write_text(jinja_content, encoding="utf-8")
+
+        # Set env vars so the env-var tier of the cascade resolves the tmp_path files
+        monkeypatch.setenv("AEGF_DOC_1", "reference_guide.md")
+        monkeypatch.setenv("AEGF_DOC_2", "technical_changelog.md")
+        monkeypatch.setenv("AEGF_DOC_3", "syntax_guide.md")
 
         master, changelog, jinja_guide = load_master_docs(gap_dir=str(gap_dir))
 
