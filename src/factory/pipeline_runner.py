@@ -76,7 +76,9 @@ logger = logging.getLogger(__name__)
 # ======================================================================
 
 _PHP_BINARY: Optional[str] = shutil.which("php")
-_REQUIRED_SECTIONS = frozenset(["[DEBT_DIAGNOSTIC]", "[MODERN_PROPOSAL]", "[MAPPING_LOGIC]"])
+_REQUIRED_SECTIONS = frozenset(
+    ["[DEBT_DIAGNOSTIC]", "[MODERN_PROPOSAL]", "[MAPPING_LOGIC]"]
+)
 _PHP_CODE_BLOCK_RE = re.compile(r"```php\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
@@ -138,7 +140,9 @@ def validate_php_output(
                     stderr = (result.stderr or result.stdout).strip()
                     failures.append(f"php_syntax_block_{idx}:{stderr[:200]}")
             except subprocess.TimeoutExpired:
-                logger.debug("php -l timed out on block %d for %s", idx, frag.get("name"))
+                logger.debug(
+                    "php -l timed out on block %d for %s", idx, frag.get("name")
+                )
             except Exception as exc:
                 logger.debug("php lint error on block %d: %s", idx, exc)
             finally:
@@ -148,7 +152,9 @@ def validate_php_output(
                     except Exception:
                         pass
     else:
-        logger.debug("PHP binary not found — skipping syntax lint for %s", frag.get("name"))
+        logger.debug(
+            "PHP binary not found — skipping syntax lint for %s", frag.get("name")
+        )
 
     # --- Log failures ---
     if failures:
@@ -363,14 +369,14 @@ async def generate_sample_async(
     elif is_template:
         # Template-specific prompt builders for Jinja/YAML
         if example_type == "nominal":
-            system_prompt = build_system_nominal_jinja( jinja_guide)
-            user_msg = build_user_nominal_jinja( frag, evol_difficulty)
+            system_prompt = build_system_nominal_jinja(jinja_guide)
+            user_msg = build_user_nominal_jinja(frag, evol_difficulty)
         elif example_type == "contrast":
-            system_prompt = build_system_contrast_jinja( jinja_guide)
-            user_msg = build_user_contrast_jinja( frag)
+            system_prompt = build_system_contrast_jinja(jinja_guide)
+            user_msg = build_user_contrast_jinja(frag)
         else:  # error_recovery
-            system_prompt = build_system_error_recovery_jinja( jinja_guide)
-            user_msg = build_user_error_recovery_jinja( frag)
+            system_prompt = build_system_error_recovery_jinja(jinja_guide)
+            user_msg = build_user_error_recovery_jinja(frag)
     else:
         # Python prompt builders — inject blueprint/governance context when available
         _governance = frag.get("governance", "")
@@ -437,9 +443,13 @@ async def generate_sample_async(
                 # === PHP VALIDATION JUDGE — Level 1 (T063) ===
                 if frag.get("type") == "php":
                     _failures_log = OUTPUT_DIR / "validation_failures.jsonl"
-                    php_failures = validate_php_output(generated_code, frag, _failures_log)
+                    php_failures = validate_php_output(
+                        generated_code, frag, _failures_log
+                    )
                     if php_failures:
-                        poison_patterns = list(poison_patterns) + [f"php_validation:{r}" for r in php_failures]
+                        poison_patterns = list(poison_patterns) + [
+                            f"php_validation:{r}" for r in php_failures
+                        ]
 
                 # === CONDITIONAL GOLD INJECTION ===
                 # If fragment has legacy patterns, do NOT inject gold
@@ -943,6 +953,7 @@ async def main_async(args):
     # Load taxonomy for prompt building
     # Check if taxonomy is already loaded (e.g., by conftest)
     from src.factory import prompt_builder as _pb
+
     if _pb._TAX:
         # Taxonomy already loaded, skip loading
         taxonomy_loaded = True
@@ -959,7 +970,9 @@ async def main_async(args):
                 pass  # Use fallback if loading fails
         elif taxonomy_path.is_dir():
             # It's a directory - look for .yaml or .example files
-            yaml_files = list(taxonomy_path.glob("**/*.yaml")) + list(taxonomy_path.glob("**/*.example"))
+            yaml_files = list(taxonomy_path.glob("**/*.yaml")) + list(
+                taxonomy_path.glob("**/*.example")
+            )
             if yaml_files:
                 # Use the first taxonomy file found
                 try:
@@ -1054,8 +1067,7 @@ async def main_async(args):
             expanded_frags = [
                 tf
                 for tf in expanded_frags
-                if make_checkpoint_key(tf, tf.get("_rep"))
-                not in done_keys
+                if make_checkpoint_key(tf, tf.get("_rep")) not in done_keys
             ]
             logger.info(
                 "RESUME: %d already processed, %d pending (of %d total) [%d checkpoint keys loaded]",
@@ -1264,9 +1276,7 @@ async def main_async(args):
         done_keys = load_checkpoint(resume_path, resume_rejected)
         before = len(all_fragments)
         all_fragments = [
-            f
-            for f in all_fragments
-            if make_checkpoint_key(f, None) not in done_keys
+            f for f in all_fragments if make_checkpoint_key(f, None) not in done_keys
         ]
         logger.info(
             "RESUME: %d already processed, %d pending (of %d total) [%d checkpoint keys loaded]",

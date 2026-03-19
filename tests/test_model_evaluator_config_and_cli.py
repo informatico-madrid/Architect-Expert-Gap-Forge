@@ -30,6 +30,7 @@ class TestConfigFileLoadingWithIOPatching:
         """_load_config must parse YAML when file exists."""
         # Reset config cache first
         import src.audit.config
+
         src.audit.config._config_cache = None
         yaml_content = """
 api_url: "http://custom:9000"
@@ -56,6 +57,7 @@ professor_backend: "custom"
         """_load_config must return empty dict when file doesn't exist."""
         # Reset config cache first
         import src.audit.config
+
         src.audit.config._config_cache = None
         with patch("pathlib.Path.exists") as mock_exists:
             with patch("src.audit.config.logger") as mock_logger:
@@ -389,15 +391,11 @@ class TestLoadMasterDocsIntegration:
         gap_dir = tmp_path / "gap_audit"
         gap_dir.mkdir()
         # Use default filenames expected by doc_loader
-        (gap_dir / "reference_guide.md").write_text(
-            master_content, encoding="utf-8"
-        )
+        (gap_dir / "reference_guide.md").write_text(master_content, encoding="utf-8")
         (gap_dir / "technical_changelog.md").write_text(
             changelog_content, encoding="utf-8"
         )
-        (gap_dir / "syntax_guide.md").write_text(
-            jinja_content, encoding="utf-8"
-        )
+        (gap_dir / "syntax_guide.md").write_text(jinja_content, encoding="utf-8")
 
         master, changelog, jinja_guide = load_master_docs(gap_dir=str(gap_dir))
 

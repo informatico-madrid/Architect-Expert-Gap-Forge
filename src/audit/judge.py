@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 # UTILITIES
 # ======================================================================
 
+
 def _extract_code_blocks(text: str) -> str:
     """Extract all code from fenced blocks (markdown)."""
     blocks: list[str] = []
@@ -228,6 +229,7 @@ def llm_judge_score(
                 # Use a simple path approach since we don't have DEFAULT_AUDIT_DIR here
                 raw_path = f"data/audit/judge_raw_{exam.id}.txt"
                 import os
+
                 os.makedirs(os.path.dirname(raw_path), exist_ok=True)
                 with open(raw_path, "w", encoding="utf-8") as f:
                     f.write(raw)
@@ -262,7 +264,9 @@ def llm_judge_score(
         )
         # At INFO level, log a sanitized summary of reasoning if needed
         if logger.isEnabledFor(logging.INFO):
-            reasoning_summary = _sanitize_for_logging(normalized.get("reasoning", ""), max_length=100)
+            reasoning_summary = _sanitize_for_logging(
+                normalized.get("reasoning", ""), max_length=100
+            )
             if reasoning_summary:
                 logger.info("  Judge reasoning (sanitized): %s", reasoning_summary)
 

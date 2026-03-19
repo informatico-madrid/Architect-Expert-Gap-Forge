@@ -128,10 +128,10 @@ def extract_think_block(content: str) -> tuple[str, str]:
 def replace_think_block(content: str, new_think: str) -> str:
     """Replace the think portion while preserving everything after ``</think>``.
 
-    Sacred constraint: bytes after ``
-</think>
+        Sacred constraint: bytes after ``
+    </think>
 
-`` are never touched.
+    `` are never touched.
     """
     _, rest = extract_think_block(content)
     return f"{new_think}{_THINK_CLOSE_TAG}{rest}"

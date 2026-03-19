@@ -17,7 +17,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -94,7 +93,11 @@ class ProgressTracker:
         self.total = total
         self.accepted = 0
         self.rejected = 0
-        self.by_type: Dict[str, int] = {"nominal": 0, "contrast": 0, "error_recovery": 0}
+        self.by_type: Dict[str, int] = {
+            "nominal": 0,
+            "contrast": 0,
+            "error_recovery": 0,
+        }
         self.by_difficulty: Dict[str, int] = {"easy": 0, "medium": 0, "hard": 0}
         self.legacy_detected = 0
         self.gold_injected = 0

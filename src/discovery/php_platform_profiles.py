@@ -38,9 +38,18 @@ if TYPE_CHECKING:
 # osCommerce profile - classic e-commerce platform
 OSCOMMERCE_PROFILE = {
     "name": "oscommerce",
-    "marker_files": ("includes/application_top.php", "admin/includes/application_top.php"),
+    "marker_files": (
+        "includes/application_top.php",
+        "admin/includes/application_top.php",
+    ),
     "marker_patterns": (r"tep_db_query", r"tep_session_register", r"DIR_WS_INCLUDES"),
-    "exclude_dirs": ("vendor/", "node_modules/", "cache/", "images/", "includes/languages/"),
+    "exclude_dirs": (
+        "vendor/",
+        "node_modules/",
+        "cache/",
+        "images/",
+        "includes/languages/",
+    ),
     "snippet_path": "configs/stage_2_factory/taxonomy/php_legacy/snippets/oscommerce.md",
     "signature_patterns": {
         "PERSISTENCE_SMELL": [
@@ -133,7 +142,12 @@ OPENMAGE_PROFILE = {
 PRESTASHOP_PROFILE = {
     "name": "prestashop",
     "marker_files": ("config/config.inc.php",),
-    "marker_patterns": (r"PS_VERSION", r"Db::getInstance", r"Context::getContext", r"Tools::"),
+    "marker_patterns": (
+        r"PS_VERSION",
+        r"Db::getInstance",
+        r"Context::getContext",
+        r"Tools::",
+    ),
     "exclude_dirs": ("vendor/", "node_modules/", "cache/", "modules/"),
     "snippet_path": "configs/stage_2_factory/taxonomy/php_legacy/snippets/prestashop.md",
     "signature_patterns": {
@@ -256,7 +270,9 @@ class PlatformProfile:
         # Coerce signature_patterns dict to MappingProxyType for immutability at runtime
         # Using object.__setattr__ to bypass frozen dataclass restriction
         if not isinstance(self.signature_patterns, MappingProxyType):
-            object.__setattr__(self, 'signature_patterns', MappingProxyType(self.signature_patterns))
+            object.__setattr__(
+                self, "signature_patterns", MappingProxyType(self.signature_patterns)
+            )
 
     @property
     def has_marker_files(self) -> bool:
@@ -349,7 +365,9 @@ def detect_platform(repo_path: Path) -> PlatformProfile:
         logger.warning("Could not scan for PHP files in %s: %s", repo_path, e)
 
     # Convert to relative paths for marker file detection
-    php_files_relative: list[str] = [str(p.relative_to(repo_path)) for p in php_file_paths]
+    php_files_relative: list[str] = [
+        str(p.relative_to(repo_path)) for p in php_file_paths
+    ]
 
     # First pass: check for marker files
     for platform_name, profile_dict in PLATFORM_REGISTRY.items():
@@ -374,7 +392,9 @@ def detect_platform(repo_path: Path) -> PlatformProfile:
 
         # Sort by file size (smallest first) to get consistent results
         # and take top 20
-        sorted_files = sorted(php_file_paths, key=lambda p: p.stat().st_size if p.exists() else 0)
+        sorted_files = sorted(
+            php_file_paths, key=lambda p: p.stat().st_size if p.exists() else 0
+        )
         files_to_scan = sorted_files[:20]
 
         match_count = 0

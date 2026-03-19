@@ -68,9 +68,7 @@ _domain_patterns_cache: dict[str, Any] | None = None
 
 def _composite(scores: dict[str, float]) -> float:
     """Compute weighted composite score from dimension scores."""
-    return sum(
-        scores.get(dim, 0.0) * weight for dim, weight in SCORING_WEIGHTS.items()
-    )
+    return sum(scores.get(dim, 0.0) * weight for dim, weight in SCORING_WEIGHTS.items())
 
 
 def _grade_label(score: float) -> str:
@@ -185,10 +183,12 @@ def compute_scorecard(
     if adapter_code:
         _patterns = _load_domain_patterns()
         _legacy = [
-            (e["pattern"], e["description"]) for e in _patterns.get("legacy_patterns", [])
+            (e["pattern"], e["description"])
+            for e in _patterns.get("legacy_patterns", [])
         ]
         _modern = [
-            (e["pattern"], e["description"]) for e in _patterns.get("modern_patterns", [])
+            (e["pattern"], e["description"])
+            for e in _patterns.get("modern_patterns", [])
         ]
         for pat, desc in _legacy:
             if re.search(pat, adapter_code):

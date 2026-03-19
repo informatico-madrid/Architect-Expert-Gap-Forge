@@ -1,0 +1,22 @@
+{
+  "include": ["src"],
+  "exclude": ["src/factory/deprecated"],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.11",
+  "reportUnknownMemberType": false,
+  "reportPossiblyUnboundVariable": false,
+  "reportAttributeAccessIssue": false,
+  "reportTypedDictNotRequiredAccess": false,
+  "reportReturnType": false,
+  "reportArgumentType": false,
+  "reportCallIssue": false,
+  "reportAssignmentType": false,
+  "reportOperatorIssue": false,
+  "reportOptionalMemberAccess": false,
+  "reportGeneralTypeIssues": false,
+  "reportRedeclaration": false,
+  "reportIndexIssue": false,
+  "reportUnsupportedDunderAll": false
+}

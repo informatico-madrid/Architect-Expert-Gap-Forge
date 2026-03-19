@@ -18,8 +18,18 @@ from typing import Any, Dict, List
 import pytest
 import yaml
 
-from src.factory.checkpoint import AsyncFileWriter, ProgressTracker, load_checkpoint, make_checkpoint_key
-from src.factory.fragment_extractor import get_file_chunks, get_fragments, get_v2_fragments, parse_bundle
+from src.factory.checkpoint import (
+    AsyncFileWriter,
+    ProgressTracker,
+    load_checkpoint,
+    make_checkpoint_key,
+)
+from src.factory.fragment_extractor import (
+    get_file_chunks,
+    get_fragments,
+    get_v2_fragments,
+    parse_bundle,
+)
 from src.factory.ldi_validator import assign_example_type, validate_ldi
 from src.factory.pipeline_runner import parse_raw_response
 from src.factory.prompt_builder import (
@@ -343,9 +353,7 @@ class TestAssignExampleType:
     def test_assigns_nominal_when_clean(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(random, "random", lambda: 0.25)
         monkeypatch.setattr(random, "choice", lambda seq: "medium")
-        _result = assign_example_type(
-            _make_fragment(), has_legacy=False
-        )
+        _result = assign_example_type(_make_fragment(), has_legacy=False)
         example_type, difficulty = _result.example_type, _result.difficulty
         assert example_type == "nominal"
         assert difficulty == "medium"

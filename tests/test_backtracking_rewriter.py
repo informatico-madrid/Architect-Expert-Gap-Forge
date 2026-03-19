@@ -334,9 +334,7 @@ class TestApplyBacktrackingRewrite:
         mock_client.generate.side_effect = RuntimeError("vLLM down")
 
         # Patch asyncio.sleep so retry back-off does not slow the test suite
-        with patch(
-            "src.curation.rewrite_engine.asyncio.sleep", new_callable=AsyncMock
-        ):
+        with patch("src.curation.rewrite_engine.asyncio.sleep", new_callable=AsyncMock):
             result = asyncio.run(
                 apply_backtracking_rewrite(
                     record,

@@ -48,9 +48,7 @@ class TestPhpProcessorBundles:
     @pytest.fixture
     def oscommerce_fixture_path(self) -> Path:
         """Path to the osCommerce categories.php fixture."""
-        return Path(
-            "tests/fixtures/php_legacy/oscommerce_categories.php"
-        )
+        return Path("tests/fixtures/php_legacy/oscommerce_categories.php")
 
     @pytest.fixture
     def temp_output_dir(self, tmp_path: Path) -> Path:
@@ -165,9 +163,16 @@ class TestPhpProcessorBundles:
         bundle_type = parsed.get("type", "")
         arch = parsed.get("arch", {})
         fragment_type = arch.get("FRAGMENT_TYPE", "")
-        has_valid_type = (
-            bundle_type in ("FUNCTIONAL_UNIT", "LOGIC_ONLY", "MODULE_BLUEPRINT", "GOVERNANCE_RULES")
-            or fragment_type in ("FUNCTIONAL_UNIT", "LOGIC_ONLY", "MODULE_BLUEPRINT", "GOVERNANCE_RULES")
+        has_valid_type = bundle_type in (
+            "FUNCTIONAL_UNIT",
+            "LOGIC_ONLY",
+            "MODULE_BLUEPRINT",
+            "GOVERNANCE_RULES",
+        ) or fragment_type in (
+            "FUNCTIONAL_UNIT",
+            "LOGIC_ONLY",
+            "MODULE_BLUEPRINT",
+            "GOVERNANCE_RULES",
         )
         assert has_valid_type, (
             f"Expected valid bundle type, got type='{bundle_type}', FRAGMENT_TYPE='{fragment_type}'"
@@ -376,7 +381,9 @@ class TestPhpProcessorBundles:
         # Assert
         assert len(bundle_paths) > 0, "Expected bundle files to be created"
 
-        max_fragment_lines = 500  # Default from _fragment_by_size() in php_fragmenter.py
+        max_fragment_lines = (
+            500  # Default from _fragment_by_size() in php_fragmenter.py
+        )
         violations = []
 
         for bundle_path in bundle_paths:
@@ -436,13 +443,13 @@ class TestPhpProcessorBundles:
         # Read the source file and extract expected signature categories
         source_content = fixture_path.read_text()
         # Match lines like: // EXPECT_SIG: PERSISTENCE_SMELL or // EXPECT_SIG: STATE_POLLUTION - some context
-        expected_sigs = re.findall(r'//\s*EXPECT_SIG:\s*(\S+)', source_content)
+        expected_sigs = re.findall(r"//\s*EXPECT_SIG:\s*(\S+)", source_content)
 
         # Count expected signatures per category
         expected_sig_counts: dict[str, int] = {}
         for sig_cat in expected_sigs:
             # Extract just the category name (first word)
-            category = sig_cat.split('-')[0].strip()
+            category = sig_cat.split("-")[0].strip()
             expected_sig_counts[category] = expected_sig_counts.get(category, 0) + 1
 
         total_expected = sum(expected_sig_counts.values())
@@ -489,7 +496,9 @@ class TestPhpProcessorBundles:
 
             # Parse signature categories from the section
             # Format: CATEGORY: <category_name>
-            detected_cats = re.findall(r'^CATEGORY:\s*(\S+)$', legacy_sigs_section, re.MULTILINE)
+            detected_cats = re.findall(
+                r"^CATEGORY:\s*(\S+)$", legacy_sigs_section, re.MULTILINE
+            )
             bundle_signatures.extend(detected_cats)
 
         # Calculate detection rate using direct scan on source
@@ -551,71 +560,71 @@ class TestPhpProcessorBundles:
 
         # Create PHP files with known include relationships
         # File 1: index.php - includes application_top and other files
-        index_content = '''<?php
+        index_content = """<?php
 // Entry point file
 require("includes/application_top.php");
 require("includes/classes/category.php");
 require("includes/functions/categories.php");
 require("includes/functions/general.php");
 echo "Hello";
-'''
+"""
         (repo_root / "index.php").write_text(index_content)
 
         # File 2: admin/categories.php - includes more files
         admin_dir = repo_root / "admin"
         admin_dir.mkdir(parents=True)
-        admin_content = '''<?php
+        admin_content = """<?php
 // Admin categories
 require("../includes/application_top.php");
 require("../includes/classes/order.php");
 require("../includes/functions/categories.php");
-'''
+"""
         (admin_dir / "categories.php").write_text(admin_content)
 
         # File 3: includes/application_top.php - core bootstrap
-        app_top_content = '''<?php
+        app_top_content = """<?php
 // Application top - core bootstrap
 define("DIR_WS_INCLUDES", "includes/");
 define("DIR_WS_CLASSES", "includes/classes/");
 define("DIR_WS_FUNCTIONS", "includes/functions/");
 // Database connection would go here
-'''
+"""
         (includes_dir / "application_top.php").write_text(app_top_content)
 
         # File 4: includes/classes/category.php
-        category_content = '''<?php
+        category_content = """<?php
 // Category class
 class Category {
     public function __construct() {}
 }
-'''
+"""
         (classes_dir / "category.php").write_text(category_content)
 
         # File 5: includes/classes/order.php
-        order_content = '''<?php
+        order_content = """<?php
 // Order class
 class Order {
     public function __construct() {}
 }
-'''
+"""
         (classes_dir / "order.php").write_text(order_content)
 
         # File 6: includes/functions/categories.php
-        categories_func_content = '''<?php
+        categories_func_content = """<?php
 // Categories functions
 function tep_get_category_name($id) {
     return "Category " . $id;
 }
-'''
+"""
         (functions_dir / "categories.php").write_text(categories_func_content)
 
         # File 7: includes/functions/general.php
-        general_func_content = '''<?php
+        general_func_content = """<?php
 // General functions
 function tep_redirect($url) {
     header("Location: " . $url);
 }
-'''
+"""
         (functions_dir / "general.php").write_text(general_func_content)
 
         # Now also include the osCommerce fixture to add more complex includes
@@ -640,9 +649,17 @@ function tep_redirect($url) {
             ("index.php", "includes/functions/categories.php", IncludeType.REQUIRE),
             ("index.php", "includes/functions/general.php", IncludeType.REQUIRE),
             # oscommerce fixture - only simple includes are detected (no constants defined in fixture)
-            ("oscommerce_categories.php", "includes/application_top.php", IncludeType.REQUIRE),
+            (
+                "oscommerce_categories.php",
+                "includes/application_top.php",
+                IncludeType.REQUIRE,
+            ),
             # zencart fixture - only simple includes are detected
-            ("zencart_customers.php", "includes/application_top.php", IncludeType.REQUIRE),
+            (
+                "zencart_customers.php",
+                "includes/application_top.php",
+                IncludeType.REQUIRE,
+            ),
         ]
 
         # Now scan the repo and build the include graph
@@ -696,7 +713,9 @@ function tep_redirect($url) {
 
         # Calculate edge detection rate
         total_expected = len(expected_edges)
-        detection_rate = (matched_edges / total_expected) * 100 if total_expected > 0 else 0
+        detection_rate = (
+            (matched_edges / total_expected) * 100 if total_expected > 0 else 0
+        )
 
         # Also print diagnostic info
         actual_edge_count = graph.edge_count
@@ -708,7 +727,7 @@ function tep_redirect($url) {
             f"Matched {matched_edges} out of {total_expected} expected edges.\n"
             f"Graph has {actual_edge_count} total edges.\n"
             f"Expected edges: {expected_edges[:10]}...\n"
-            f"Graph edges: {[ (e.source_file, e.target_file, e.include_type) for e in graph.edges[:10]]}..."
+            f"Graph edges: {[(e.source_file, e.target_file, e.include_type) for e in graph.edges[:10]]}..."
         )
 
     def test_sc006_mixed_php_html_business_logic_extraction(
@@ -799,7 +818,9 @@ $query8 = tep_db_query("SELECT SUM(op.final_price) FROM orders_products op WHERE
         php_code = strip_html_markup(MIXED_PHP_HTML)
 
         # Sanity check: stripping should yield non-empty PHP
-        assert len(php_code) > 0, "strip_html_markup returned empty string on mixed fixture"
+        assert len(php_code) > 0, (
+            "strip_html_markup returned empty string on mixed fixture"
+        )
         assert "require(" in php_code or "require_once(" in php_code, (
             "PHP include statements should survive HTML stripping"
         )

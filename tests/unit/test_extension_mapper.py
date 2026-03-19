@@ -104,9 +104,7 @@ class TestExtensionMapperDispatch:
                 "LANGUAGE": "unknown",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test_module.unknown": "some content"
-            },
+            "files": {"test_module.unknown": "some content"},
         }
 
         # With allowed_extensions set, unknown extensions should return empty
@@ -132,9 +130,7 @@ class TestExtensionMapperDispatch:
                 "LANGUAGE": "text",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test_module.txt": "some content"
-            },
+            "files": {"test_module.txt": "some content"},
         }
 
         # Without allowed_extensions, unknown extensions fallback to AST
@@ -156,9 +152,7 @@ class TestExtensionMapperDispatch:
                 "LANGUAGE": "python",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test_module.PY": "def test():\n    pass"
-            },
+            "files": {"test_module.PY": "def test():\n    pass"},
         }
 
         fragments = get_v2_fragments(bundle_py_upper, {})
@@ -179,9 +173,7 @@ class TestExtensionMapperDispatch:
                 "LANGUAGE": "php",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test.php": "<?php echo 'test'; ?>"
-            },
+            "files": {"test.php": "<?php echo 'test'; ?>"},
         }
 
         fragments = get_v2_fragments(bundle, {})
@@ -209,9 +201,7 @@ class TestExtensionMapperDispatch:
                 "LANGUAGE": "python",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test.py": "def test():\n    pass\n\nclass Test:\n    pass"
-            },
+            "files": {"test.py": "def test():\n    pass\n\nclass Test:\n    pass"},
         }
 
         fragments = get_v2_fragments(bundle, {})
@@ -237,9 +227,7 @@ class TestExtensionMapperDispatch:
                 "PLATFORM": "wordpress",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test.php": "<?php function test() {} ?>"
-            },
+            "files": {"test.php": "<?php function test() {} ?>"},
             "extra_legacy_signatures": "PERSISTENCE_SMELL: mysql_query",
         }
 
@@ -294,9 +282,7 @@ class TestExtensionMapperModuleBlueprint:
                 "LANGUAGE": "php",
                 "LOCAL_IMPORTS": "[]",
             },
-            "files": {
-                "test.php": "<?php class Test {} ?>"
-            },
+            "files": {"test.php": "<?php class Test {} ?>"},
         }
 
         fragments = get_v2_fragments(bundle, {})

@@ -39,7 +39,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="header.php",
             include_type=IncludeType.INCLUDE,
-            line_number=10
+            line_number=10,
         )
         assert edge.source_file == "index.php"
         assert edge.target_file == "header.php"
@@ -53,7 +53,7 @@ class TestIncludeEdge:
                 source_file="index.php",
                 target_file="header.php",
                 include_type="invalid",
-                line_number=10
+                line_number=10,
             )
 
     def test_invalid_line_number_raises(self) -> None:
@@ -63,7 +63,7 @@ class TestIncludeEdge:
                 source_file="index.php",
                 target_file="header.php",
                 include_type=IncludeType.INCLUDE,
-                line_number=0
+                line_number=0,
             )
 
     def test_is_unresolved_with_variable(self) -> None:
@@ -72,7 +72,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="$path . '/header.php'",
             include_type=IncludeType.INCLUDE,
-            line_number=10
+            line_number=10,
         )
         assert edge.is_unresolved is True
 
@@ -82,7 +82,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="DIR_WS_INCLUDES . 'header.php'",
             include_type=IncludeType.INCLUDE,
-            line_number=10
+            line_number=10,
         )
         assert edge.is_unresolved is True
 
@@ -92,7 +92,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="includes/header.php",
             include_type=IncludeType.INCLUDE,
-            line_number=10
+            line_number=10,
         )
         assert edge.is_unresolved is False
 
@@ -102,7 +102,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="header.php",
             include_type=IncludeType.INCLUDE_ONCE,
-            line_number=10
+            line_number=10,
         )
         assert edge.is_once is True
 
@@ -112,7 +112,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="header.php",
             include_type=IncludeType.REQUIRE_ONCE,
-            line_number=10
+            line_number=10,
         )
         assert edge.is_once is True
 
@@ -122,7 +122,7 @@ class TestIncludeEdge:
             source_file="index.php",
             target_file="header.php",
             include_type=IncludeType.INCLUDE,
-            line_number=10
+            line_number=10,
         )
         assert edge.is_once is False
 
@@ -160,9 +160,7 @@ class TestIncludeGraph:
 
     def test_neighbors_no_matches(self) -> None:
         """Test neighbors method with no matches."""
-        edges = (
-            IncludeEdge("a.php", "b.php", IncludeType.INCLUDE, 1),
-        )
+        edges = (IncludeEdge("a.php", "b.php", IncludeType.INCLUDE, 1),)
         graph = IncludeGraph(edges=edges, entry_points=())
         neighbors = list(graph.neighbors("nonexistent.php"))
         assert neighbors == []
@@ -371,9 +369,7 @@ class TestBuildIncludeGraph:
 
     def test_single_file(self) -> None:
         """Test building graph from single file."""
-        file_map = {
-            Path("index.php"): "<?php include('header.php'); ?>"
-        }
+        file_map = {Path("index.php"): "<?php include('header.php'); ?>"}
         graph = build_include_graph(file_map)
         assert graph.edge_count == 1
 
@@ -401,9 +397,7 @@ class TestBuildIncludeGraph:
     def test_with_constants(self) -> None:
         """Test building graph with known constants."""
         # Test with a pre-resolved path (constant replaced before parsing)
-        file_map = {
-            Path("index.php"): "<?php include('includes/header.php'); ?>"
-        }
+        file_map = {Path("index.php"): "<?php include('includes/header.php'); ?>"}
         constants = {"DIR_WS_INCLUDES": "includes/"}
         graph = build_include_graph(file_map, constants)
         assert graph.edge_count == 1
@@ -509,9 +503,7 @@ class TestFormatIncludeGraphSection:
 
     def test_filter_returns_empty_for_no_match(self) -> None:
         """Test filtering returns empty when no edges match."""
-        edges = (
-            IncludeEdge("a.php", "b.php", IncludeType.INCLUDE, 1),
-        )
+        edges = (IncludeEdge("a.php", "b.php", IncludeType.INCLUDE, 1),)
         graph = IncludeGraph(edges=edges, entry_points=())
         result = format_include_graph_section(graph, source_file="nonexistent.php")
         assert result == ""

@@ -267,9 +267,7 @@ class TestCmdGenerateGapErrorCases:
                     mock_strat.return_value = [sample_without_gap]
 
                     # Mock load_master_docs to avoid I/O
-                    with patch(
-                        "src.audit.cli.load_master_docs"
-                    ) as mock_docs:
+                    with patch("src.audit.cli.load_master_docs") as mock_docs:
                         mock_docs.return_value = ("master", "changelog", "jinja")
 
                         # Mock persist_sample to avoid I/O

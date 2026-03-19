@@ -413,6 +413,7 @@ def mock_api_response_error() -> dict:
 def temp_json_file(tmp_path: Path) -> Path:
     """Create a temporary JSON file for testing file I/O."""
     import json
+
     data = {"key": "value", "number": 42}
     file_path = tmp_path / "test.json"
     file_path.write_text(json.dumps(data), encoding="utf-8")
@@ -428,9 +429,16 @@ PHP_LEGACY_FIXTURES_DIR = Path(__file__).parent / "fixtures" / "php_legacy"
 
 def pytest_configure(config):
     """Register custom pytest marks for PHP legacy driver tests."""
-    config.addinivalue_line("markers", "php_legacy: marks tests for PHP legacy driver functionality")
-    config.addinivalue_line("markers", "php_legacy_unit: marks unit tests for PHP legacy driver")
-    config.addinivalue_line("markers", "php_legacy_integration: marks integration tests for PHP legacy driver")
+    config.addinivalue_line(
+        "markers", "php_legacy: marks tests for PHP legacy driver functionality"
+    )
+    config.addinivalue_line(
+        "markers", "php_legacy_unit: marks unit tests for PHP legacy driver"
+    )
+    config.addinivalue_line(
+        "markers",
+        "php_legacy_integration: marks integration tests for PHP legacy driver",
+    )
 
 
 @pytest.fixture
@@ -507,6 +515,7 @@ switch ($action) {
 def php_legacy_oscommerce_fixture() -> str:
     """Load the osCommerce categories fixture for integration tests."""
     from tests.fixtures.php_legacy import load_php_fixture
+
     try:
         return load_php_fixture("oscommerce_categories.php")
     except FileNotFoundError:
@@ -518,6 +527,7 @@ def php_legacy_oscommerce_fixture() -> str:
 def php_legacy_wordpress_fixture() -> str:
     """Load the WordPress ajax actions fixture for integration tests."""
     from tests.fixtures.php_legacy import load_php_fixture
+
     try:
         return load_php_fixture("wordpress_ajax_actions.php")
     except FileNotFoundError:
@@ -528,6 +538,7 @@ def php_legacy_wordpress_fixture() -> str:
 def php_legacy_zencart_fixture() -> str:
     """Load the ZenCart customers fixture for integration tests."""
     from tests.fixtures.php_legacy import load_php_fixture
+
     try:
         return load_php_fixture("zencart_customers.php")
     except FileNotFoundError:

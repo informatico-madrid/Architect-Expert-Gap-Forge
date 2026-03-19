@@ -35,7 +35,10 @@ if TYPE_CHECKING:
     from src.discovery.php_signatures import LegacySignature
 
 # Runtime import for scan_signatures function
-from src.discovery.php_signatures import format_legacy_signatures_section, scan_signatures
+from src.discovery.php_signatures import (
+    format_legacy_signatures_section,
+    scan_signatures,
+)
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -199,8 +202,7 @@ class PhpFragment:
         valid_styles = {"LEGACY_PURE", "LEGACY_MODERNIZED", "HYBRID"}
         if self.file_style not in valid_styles:
             raise ValueError(
-                f"file_style must be one of {valid_styles}, "
-                f"got '{self.file_style}'"
+                f"file_style must be one of {valid_styles}, got '{self.file_style}'"
             )
 
         # Validate line numbers
@@ -264,6 +266,7 @@ ImplicitDependencyTuple = Tuple[ImplicitDependency, ...]
 # Utility Functions
 # ---------------------------------------------------------------------------
 
+
 def strip_html_markup(source: str) -> str:
     """
     Extract only PHP code blocks from a mixed PHP/HTML/JS file.
@@ -299,10 +302,7 @@ def strip_html_markup(source: str) -> str:
     # - (?:php\s|php$|) matches: "php " (with space), "php" at end, or empty (short tag)
     # - (.*?) captures the PHP content non-greedily
     # - \?> matches the closing ?>
-    php_pattern = re.compile(
-        r'<\?(?:php\s|php$|)(.*?)\?>',
-        re.DOTALL | re.IGNORECASE
-    )
+    php_pattern = re.compile(r"<\?(?:php\s|php$|)(.*?)\?>", re.DOTALL | re.IGNORECASE)
 
     # Find all PHP blocks using finditer to get match positions
     matches = list(php_pattern.finditer(source))
@@ -318,7 +318,7 @@ def strip_html_markup(source: str) -> str:
         content = match.group(1)
 
         # Check if it was <?php or just <?
-        if full_match_text[:5].lower() == '<?php':
+        if full_match_text[:5].lower() == "<?php":
             result_parts.append(f"<?php {content}?>")
         else:
             # Short tag - preserve as <? ... ?>
@@ -347,13 +347,13 @@ def fast_brace_scan(source: str, open_pos: int) -> int:
         optimized for extremely large files. For those cases, consider
         using a proper parser or the FastBraceScanner class.
     """
-    if open_pos >= len(source) or source[open_pos] != '{':
+    if open_pos >= len(source) or source[open_pos] != "{":
         return -1
 
     depth = 1
     pos = open_pos + 1
     in_string = False
-    string_char = ''
+    string_char = ""
 
     while pos < len(source):
         char = source[pos]
@@ -363,9 +363,9 @@ def fast_brace_scan(source: str, open_pos: int) -> int:
             if not in_string:
                 in_string = True
                 string_char = char
-            elif char == string_char and (pos == 0 or source[pos - 1] != '\\'):
+            elif char == string_char and (pos == 0 or source[pos - 1] != "\\"):
                 in_string = False
-                string_char = ''
+                string_char = ""
 
         # Skip brace counting inside strings
         if in_string:
@@ -375,23 +375,23 @@ def fast_brace_scan(source: str, open_pos: int) -> int:
         # Handle comments and literals
         if pos + 1 < len(source):
             # Single-line comment
-            if source[pos:pos + 2] == '//':
+            if source[pos : pos + 2] == "//":
                 # Skip to end of line
-                while pos < len(source) and source[pos] != '\n':
+                while pos < len(source) and source[pos] != "\n":
                     pos += 1
                 pos += 1
                 continue
             # Multi-line comment
-            if source[pos:pos + 2] == '/*':
-                end = source.find('*/', pos + 2)
+            if source[pos : pos + 2] == "/*":
+                end = source.find("*/", pos + 2)
                 if end == -1:
                     return -1
                 pos = end + 2
                 continue
 
-        if char == '{':
+        if char == "{":
             depth += 1
-        elif char == '}':
+        elif char == "}":
             depth -= 1
             if depth == 0:
                 return pos
@@ -435,14 +435,9 @@ def read_php_file(path: Path) -> str:
 
         # Check for binary content: if >30% of characters are non-printable
         # or control characters (excluding common ones like tab, newline, carriage return)
-        non_printable = sum(
-            1 for c in content
-            if ord(c) < 32 and c not in '\t\n\r'
-        )
+        non_printable = sum(1 for c in content if ord(c) < 32 and c not in "\t\n\r")
         if len(content) > 0 and (non_printable / len(content)) > 0.30:
-            raise PhpReadError(
-                f"Failed to read {path}: file appears to be binary"
-            )
+            raise PhpReadError(f"Failed to read {path}: file appears to be binary")
 
         return content
 
@@ -458,7 +453,9 @@ class PhpReadError(Exception):
 # ---------------------------------------------------------------------------
 
 
-def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, int, str]]:
+def _extract_function_blocks(
+    source: str, source_file: Path
+) -> list[tuple[int, int, str]]:
     r"""
     Extract standalone function blocks from PHP source.
 
@@ -495,8 +492,7 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
     # Find class definition regions to exclude methods
     # We need to find the opening brace of the class to properly mark the region
     class_pattern = re.compile(
-        r'(?:^|\n)(?:abstract\s+|final\s+)?class\s+\w+',
-        re.MULTILINE
+        r"(?:^|\n)(?:abstract\s+|final\s+)?class\s+\w+", re.MULTILINE
     )
 
     for class_match in class_pattern.finditer(source):
@@ -504,7 +500,7 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
 
         # Find the opening brace after 'class ClassName'
         brace_search_start = class_match.end()
-        brace_pos = source.find('{', brace_search_start)
+        brace_pos = source.find("{", brace_search_start)
 
         if brace_pos != -1:
             # Use fast_brace_scan to find the class closing brace
@@ -520,10 +516,7 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
 
     # Find all standalone function definitions
     # Pattern: function name(
-    func_pattern = re.compile(
-        r'function\s+(\w+)\s*\(',
-        re.MULTILINE
-    )
+    func_pattern = re.compile(r"function\s+(\w+)\s*\(", re.MULTILINE)
 
     blocks: list[tuple[int, int, str]] = []
 
@@ -542,7 +535,7 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
         # Find the opening brace after the function signature
         # Search from the match end forward
         brace_search_start = match.end()
-        brace_pos = source.find('{', brace_search_start)
+        brace_pos = source.find("{", brace_search_start)
 
         if brace_pos == -1:
             # No opening brace found - log and skip
@@ -554,8 +547,8 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
             _log_needs_manual_review(
                 source_file=source_file,
                 name=func_name,
-                start_line=source[:match.start()].count('\n') + 1,
-                reason="missing_opening_brace"
+                start_line=source[: match.start()].count("\n") + 1,
+                reason="missing_opening_brace",
             )
             continue
 
@@ -572,18 +565,18 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
             _log_needs_manual_review(
                 source_file=source_file,
                 name=func_name,
-                start_line=source[:match.start()].count('\n') + 1,
-                reason="unmatched_brace"
+                start_line=source[: match.start()].count("\n") + 1,
+                reason="unmatched_brace",
             )
             continue
 
         # Extract the function content (from start to after closing brace)
         # Include the function keyword and the braces
-        content = source[match.start():close_pos + 1]
+        content = source[match.start() : close_pos + 1]
 
         # Calculate line numbers (1-indexed)
-        start_line = source[:match.start()].count('\n') + 1
-        end_line = source[:close_pos].count('\n') + 1
+        start_line = source[: match.start()].count("\n") + 1
+        end_line = source[:close_pos].count("\n") + 1
 
         blocks.append((start_line, end_line, content))
 
@@ -591,10 +584,7 @@ def _extract_function_blocks(source: str, source_file: Path) -> list[tuple[int, 
 
 
 def _log_needs_manual_review(
-    source_file: Path,
-    name: str,
-    start_line: int,
-    reason: str
+    source_file: Path, name: str, start_line: int, reason: str
 ) -> None:
     """
     Log an entry to needs_manual_review.json.
@@ -621,12 +611,14 @@ def _log_needs_manual_review(
             entries = []
 
     # Add new entry
-    entries.append({
-        "source_file": str(source_file),
-        "name": name,
-        "start_line": start_line,
-        "reason": reason,
-    })
+    entries.append(
+        {
+            "source_file": str(source_file),
+            "name": name,
+            "start_line": start_line,
+            "reason": reason,
+        }
+    )
 
     # Write back
     try:
@@ -681,9 +673,9 @@ def _extract_preamble(source: str) -> tuple[str, str]:
     # - final class name
     # - interface name
     first_delimiter = re.search(
-        r'(?:^|\n)(?:function\s+\w+\s*\(|(?:abstract\s+|final\s+)?class\s+\w+|interface\s+\w+)',
+        r"(?:^|\n)(?:function\s+\w+\s*\(|(?:abstract\s+|final\s+)?class\s+\w+|interface\s+\w+)",
         source,
-        re.MULTILINE
+        re.MULTILINE,
     )
 
     if first_delimiter is None:
@@ -698,10 +690,10 @@ def _extract_preamble(source: str) -> tuple[str, str]:
 
     # Strip PHP tags and whitespace from preamble
     # Remove <?php ... ?> blocks, including <?php without closing tag
-    preamble = re.sub(r'<\?php[\s\S]*?\?>', '', raw_preamble)  # Remove <?php ... ?>
-    preamble = re.sub(r'<\?[\s\S]*?\?>', '', preamble)  # Remove <? ... ?>
-    preamble = re.sub(r'<\?php\s*', '', preamble)  # Remove <?php without ?>
-    preamble = re.sub(r'<\?\s*', '', preamble)  # Remove <? without ?>
+    preamble = re.sub(r"<\?php[\s\S]*?\?>", "", raw_preamble)  # Remove <?php ... ?>
+    preamble = re.sub(r"<\?[\s\S]*?\?>", "", preamble)  # Remove <? ... ?>
+    preamble = re.sub(r"<\?php\s*", "", preamble)  # Remove <?php without ?>
+    preamble = re.sub(r"<\?\s*", "", preamble)  # Remove <? without ?>
     preamble = preamble.strip()
 
     # If preamble is empty after stripping PHP tags, return empty
@@ -749,10 +741,7 @@ def _extract_switch_cases(
 
     # Find all switch statements using regex
     # Pattern matches: switch ($variable) {
-    switch_pattern = re.compile(
-        r'switch\s*\(\s*\$[\w]+\s*\)\s*\{',
-        re.MULTILINE
-    )
+    switch_pattern = re.compile(r"switch\s*\(\s*\$[\w]+\s*\)\s*\{", re.MULTILINE)
 
     blocks: list[tuple[int, int, str, str]] = []
 
@@ -761,7 +750,7 @@ def _extract_switch_cases(
 
         # Find the opening brace after 'switch ($var) {'
         brace_search_start = switch_match.end() - 1  # Position of '{'
-        brace_pos = source.find('{', brace_search_start)
+        brace_pos = source.find("{", brace_search_start)
 
         if brace_pos == -1:
             # No opening brace found - log and skip
@@ -772,8 +761,8 @@ def _extract_switch_cases(
             _log_needs_manual_review(
                 source_file=source_file,
                 name=f"switch_{source_file.stem}",
-                start_line=source[:switch_start_pos].count('\n') + 1,
-                reason="missing_opening_brace"
+                start_line=source[:switch_start_pos].count("\n") + 1,
+                reason="missing_opening_brace",
             )
             continue
 
@@ -789,22 +778,21 @@ def _extract_switch_cases(
             _log_needs_manual_review(
                 source_file=source_file,
                 name=f"switch_{source_file.stem}",
-                start_line=source[:switch_start_pos].count('\n') + 1,
-                reason="unmatched_brace"
+                start_line=source[:switch_start_pos].count("\n") + 1,
+                reason="unmatched_brace",
             )
             continue
 
         # Extract the switch block content
-        switch_content = source[switch_start_pos:close_pos + 1]
+        switch_content = source[switch_start_pos : close_pos + 1]
 
         # Extract individual cases from the switch block
         # Pattern matches: case 'label': or case "label": or case label: or default:
         # Uses two patterns: one for case statements, one for default
         case_label_pattern = re.compile(
-            r"case\s+(?:'([^']+)'|\"([^\"]+)\"|([\w\-_]+))\s*:",
-            re.MULTILINE
+            r"case\s+(?:'([^']+)'|\"([^\"]+)\"|([\w\-_]+))\s*:", re.MULTILINE
         )
-        default_pattern = re.compile(r'default\s*:', re.MULTILINE)
+        default_pattern = re.compile(r"default\s*:", re.MULTILINE)
 
         # Find all case positions within the switch block
         case_matches = list(case_label_pattern.finditer(switch_content))
@@ -823,10 +811,14 @@ def _extract_switch_cases(
             # case_label_pattern has groups: 1=quoted single, 2=quoted double, 3=unquoted
             # default_pattern has no groups
             if case_match.re == case_label_pattern:
-                case_label_raw = case_match.group(1) or case_match.group(2) or case_match.group(3)
-                case_label = case_label_raw.strip("'\"") if case_label_raw else 'unknown'
+                case_label_raw = (
+                    case_match.group(1) or case_match.group(2) or case_match.group(3)
+                )
+                case_label = (
+                    case_label_raw.strip("'\"") if case_label_raw else "unknown"
+                )
             else:
-                case_label = 'default'
+                case_label = "default"
 
             case_start_in_switch = case_match.start()
 
@@ -840,7 +832,7 @@ def _extract_switch_cases(
                 case_end_in_switch = len(switch_content) - 1
 
             # Extract case content
-            case_content = switch_content[case_start_in_switch:case_end_in_switch + 1]
+            case_content = switch_content[case_start_in_switch : case_end_in_switch + 1]
 
             # Calculate actual line numbers in the source file
             # case_start_in_switch is relative to switch_content (starts at 0)
@@ -850,57 +842,64 @@ def _extract_switch_cases(
             case_end_pos_in_source = switch_start_pos + case_end_in_switch
 
             # Count newlines from source start to these positions
-            case_start_line = source[:case_start_pos_in_source].count('\n') + 1
-            case_end_line = source[:case_end_pos_in_source].count('\n') + 1
+            case_start_line = source[:case_start_pos_in_source].count("\n") + 1
+            case_end_line = source[:case_end_pos_in_source].count("\n") + 1
 
             # Calculate case line count
-            case_line_count = case_content.count('\n') + 1
+            case_line_count = case_content.count("\n") + 1
 
             # If case is >500 lines, sub-chunk it while preserving case header
             if case_line_count > 500:
                 # Extract the case header (first few lines with case label)
-                header_end = case_content.find('\n', case_content.find(':'))
+                header_end = case_content.find("\n", case_content.find(":"))
                 if header_end == -1:
                     header_end = len(case_content)
-                case_header = case_content[:header_end + 1]
+                case_header = case_content[: header_end + 1]
 
                 # Split remaining content into chunks of ~500 lines
-                remaining_content = case_content[header_end + 1:]
+                remaining_content = case_content[header_end + 1 :]
                 chunk_size = 500
 
                 # Create first chunk with header
-                first_chunk = case_header + remaining_content[:chunk_size * 50]  # ~50 chars per line avg
-                first_chunk_lines = first_chunk.count('\n') + 1
+                first_chunk = (
+                    case_header + remaining_content[: chunk_size * 50]
+                )  # ~50 chars per line avg
+                first_chunk_lines = first_chunk.count("\n") + 1
 
-                blocks.append((
-                    case_start_line,
-                    case_start_line + first_chunk_lines - 1,
-                    first_chunk,
-                    case_label
-                ))
+                blocks.append(
+                    (
+                        case_start_line,
+                        case_start_line + first_chunk_lines - 1,
+                        first_chunk,
+                        case_label,
+                    )
+                )
 
                 # Create additional chunks if needed
                 offset = chunk_size * 50
                 while offset < len(remaining_content):
-                    chunk = remaining_content[offset:offset + chunk_size * 50]
-                    chunk_lines = chunk.count('\n') + 1
-                    chunk_start = case_start_line + first_chunk_lines + (offset // (chunk_size * 50)) * chunk_size
+                    chunk = remaining_content[offset : offset + chunk_size * 50]
+                    chunk_lines = chunk.count("\n") + 1
+                    chunk_start = (
+                        case_start_line
+                        + first_chunk_lines
+                        + (offset // (chunk_size * 50)) * chunk_size
+                    )
 
-                    blocks.append((
-                        chunk_start,
-                        chunk_start + chunk_lines - 1,
-                        chunk,
-                        f"{case_label}_cont"
-                    ))
+                    blocks.append(
+                        (
+                            chunk_start,
+                            chunk_start + chunk_lines - 1,
+                            chunk,
+                            f"{case_label}_cont",
+                        )
+                    )
                     offset += chunk_size * 50
             else:
                 # Normal case - add as-is
-                blocks.append((
-                    case_start_line,
-                    case_end_line,
-                    case_content,
-                    case_label
-                ))
+                blocks.append(
+                    (case_start_line, case_end_line, case_content, case_label)
+                )
 
     return blocks
 
@@ -945,9 +944,9 @@ def _fragment_by_size(
         return []
 
     # Count total lines in source
-    total_lines = source.count('\n')
+    total_lines = source.count("\n")
     # Handle case where source doesn't end with newline
-    if not source.endswith('\n'):
+    if not source.endswith("\n"):
         total_lines += 1
 
     # If source fits in max_lines, return single fragment
@@ -965,7 +964,7 @@ def _fragment_by_size(
 
     while pos < len(source):
         # Calculate start line (1-indexed)
-        start_line = source[:pos].count('\n') + 1
+        start_line = source[:pos].count("\n") + 1
 
         # Calculate end position (pos + max_lines lines)
         # Find the position max_lines after current pos
@@ -973,7 +972,7 @@ def _fragment_by_size(
         end_pos = pos
 
         while end_pos < len(source) and lines_remaining > 0:
-            if source[end_pos] == '\n':
+            if source[end_pos] == "\n":
                 lines_remaining -= 1
             end_pos += 1
 
@@ -981,7 +980,7 @@ def _fragment_by_size(
         end_pos = min(end_pos, len(source))
 
         # Calculate end line (1-indexed)
-        end_line = source[:end_pos].count('\n') + 1
+        end_line = source[:end_pos].count("\n") + 1
 
         # Extract content for this fragment
         content = source[pos:end_pos]
@@ -994,7 +993,7 @@ def _fragment_by_size(
         lines_to_skip = step
 
         while next_pos < len(source) and lines_to_skip > 0:
-            if source[next_pos] == '\n':
+            if source[next_pos] == "\n":
                 lines_to_skip -= 1
             next_pos += 1
 
@@ -1044,30 +1043,32 @@ def _classify_file_style(source: str) -> str:
 
     # Check 1: LEGACY_MODERNIZED - namespace + constructor with typed parameters
     # Pattern: namespace declaration
-    has_namespace = bool(re.search(r'\bnamespace\s+[\w\\]+', source))
+    has_namespace = bool(re.search(r"\bnamespace\s+[\w\\]+", source))
 
     # Pattern: constructor with typed parameters (e.g., __construct(Type $param))
-    has_typed_constructor = bool(re.search(
-        r'function\s+__construct\s*\(\s*(?:int|float|string|array|bool|object|callable|mixed)\s+\$\w+',
-        source
-    ))
+    has_typed_constructor = bool(
+        re.search(
+            r"function\s+__construct\s*\(\s*(?:int|float|string|array|bool|object|callable|mixed)\s+\$\w+",
+            source,
+        )
+    )
 
     if has_namespace and has_typed_constructor:
         return "LEGACY_MODERNIZED"
 
     # Check for class existence (simpler pattern)
-    has_class = bool(re.search(r'\bclass\s+\w+', source))
+    has_class = bool(re.search(r"\bclass\s+\w+", source))
 
     # Legacy patterns to check for HYBRID classification
     legacy_patterns = [
-        r'mysql_query',           # old mysql extension
-        r'tep_db_query',          # osCommerce
-        r'\$wpdb->',              # WordPress
-        r'zen_db_perform',        # ZenCart
-        r'Mage::',                # Magento/OpenMage
-        r'global\s+\$\w+',        # global variable access
-        r'\$GLOBALS\s*\[',        # $GLOBALS access
-        r'\$_(GET|POST|REQUEST|SERVER|COOKIE|FILES|SESSION)\s*\[',  # superglobals
+        r"mysql_query",  # old mysql extension
+        r"tep_db_query",  # osCommerce
+        r"\$wpdb->",  # WordPress
+        r"zen_db_perform",  # ZenCart
+        r"Mage::",  # Magento/OpenMage
+        r"global\s+\$\w+",  # global variable access
+        r"\$GLOBALS\s*\[",  # $GLOBALS access
+        r"\$_(GET|POST|REQUEST|SERVER|COOKIE|FILES|SESSION)\s*\[",  # superglobals
     ]
 
     # Check 2: HYBRID - has class AND legacy patterns
@@ -1078,11 +1079,11 @@ def _classify_file_style(source: str) -> str:
 
     # Check 3: LEGACY_PURE - global $db OR top-level functions without class
     # Pattern: global $db (common osCommerce pattern)
-    has_global_db = bool(re.search(r'global\s+\$db\b', source))
+    has_global_db = bool(re.search(r"global\s+\$db\b", source))
 
     # Check for top-level functions (functions not inside a class)
     # Use simpler detection: if no class, all functions are top-level
-    has_any_function = bool(re.search(r'\bfunction\s+\w+\s*\(', source))
+    has_any_function = bool(re.search(r"\bfunction\s+\w+\s*\(", source))
 
     if not has_class:
         # No class means pure (unless it has modern patterns, which we already checked)
@@ -1185,7 +1186,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
         for start_line, end_line, func_content in function_blocks:
             # Determine legacy action from function name
             # Extract function name for LEGACY_ACTION
-            func_match = re.search(r'function\s+(\w+)\s*\(', func_content)
+            func_match = re.search(r"function\s+(\w+)\s*\(", func_content)
             func_name = func_match.group(1) if func_match else f"function_{start_line}"
 
             # Determine fragment name
@@ -1293,7 +1294,7 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
             # Create a bootstrap fragment from preamble only
             if preamble_content:
                 # Calculate lines from preamble
-                preamble_lines = preamble_content.count('\n') + 1
+                preamble_lines = preamble_content.count("\n") + 1
 
                 # Scan for legacy signatures in preamble content
                 sigs = tuple(scan_signatures(preamble_content))
@@ -1322,10 +1323,10 @@ def process_php_file(path: Path, content: str, profile_name: str) -> list[PhpFra
     if preamble_content and len(fragments) > 0:
         # Check if preamble has meaningful content beyond just PHP tags
         # Strip PHP tags to check
-        clean_preamble = re.sub(r'<\?php\s*|\?>', '', preamble_content).strip()
+        clean_preamble = re.sub(r"<\?php\s*|\?>", "", preamble_content).strip()
         if len(clean_preamble) > 20:  # More than just trivial content
             # Add bootstrap fragment for preamble
-            preamble_lines = preamble_content.count('\n') + 1
+            preamble_lines = preamble_content.count("\n") + 1
 
             # Check if a bootstrap fragment already exists (from fallback case)
             has_bootstrap = any(
@@ -1472,6 +1473,7 @@ def format_arch_header(fragment: PhpFragment) -> str:
         symbols = [dep.target_symbol for dep in fragment.implicit_deps]
         # Format as JSON list string
         import json
+
         implicit_deps_str = json.dumps(symbols)
         lines.append(f"IMPLICIT_DEPS: {implicit_deps_str}")
 
@@ -1483,7 +1485,9 @@ def format_arch_header(fragment: PhpFragment) -> str:
     return "\n".join(lines)
 
 
-def write_bundle(fragment: PhpFragment, output_dir: Path, include_graph: object = None) -> Path:
+def write_bundle(
+    fragment: PhpFragment, output_dir: Path, include_graph: object = None
+) -> Path:
     """
     Write a PHP fragment bundle to a .txt file.
 
@@ -1540,7 +1544,11 @@ def write_bundle(fragment: PhpFragment, output_dir: Path, include_graph: object 
     header = format_arch_header(fragment)
 
     # Build [LEGACY_SIGNATURES] section if fragment has signatures (T033)
-    sigs_section = format_legacy_signatures_section(list(fragment.signatures)) if fragment.signatures else ""
+    sigs_section = (
+        format_legacy_signatures_section(list(fragment.signatures))
+        if fragment.signatures
+        else ""
+    )
 
     # Build [INCLUDE_GRAPH] section (T045) — requires include graph, so we
     # import lazily to avoid circular imports at module level
@@ -1548,6 +1556,7 @@ def write_bundle(fragment: PhpFragment, output_dir: Path, include_graph: object 
     if include_graph is not None:
         try:
             from src.discovery.php_include_graph import format_include_graph_section
+
             include_graph_section = format_include_graph_section(
                 include_graph, source_file=str(fragment.source_file)
             )
@@ -1561,7 +1570,9 @@ def write_bundle(fragment: PhpFragment, output_dir: Path, include_graph: object 
     # [INCLUDE_GRAPH] section inserted when non-empty (T045)
     if include_graph_section:
         parts.append(f"[INCLUDE_GRAPH]\n{include_graph_section}")
-    parts.append(f"--- FILE: {fragment.name} ({fragment.fragment_type}) ---\n{fragment.raw_content}")
+    parts.append(
+        f"--- FILE: {fragment.name} ({fragment.fragment_type}) ---\n{fragment.raw_content}"
+    )
     bundle_content = "\n".join(parts)
 
     # Generate output filename: <fragment_name>.txt
@@ -1581,24 +1592,37 @@ def write_bundle(fragment: PhpFragment, output_dir: Path, include_graph: object 
 # ---------------------------------------------------------------------------
 
 # Known-set for osCommerce/ZenCart global variables (Pass 1)
-_KNOWN_GLOBAL_VARS: frozenset[str] = frozenset({
-    "$db",
-    "$customer_id",
-    "$languages_id",
-    "$currencies",
-    "$orders",
-    "$messageStack",
-    "$languages",
-    "$template",
-    "$breadcrumb",
-    "$application",
-})
+_KNOWN_GLOBAL_VARS: frozenset[str] = frozenset(
+    {
+        "$db",
+        "$customer_id",
+        "$languages_id",
+        "$currencies",
+        "$orders",
+        "$messageStack",
+        "$languages",
+        "$template",
+        "$breadcrumb",
+        "$application",
+    }
+)
 
 # Superglobals / built-ins always excluded
-_SUPERGLOBALS: frozenset[str] = frozenset({
-    "$_GET", "$_POST", "$_SESSION", "$_SERVER", "$_COOKIE",
-    "$_FILES", "$_REQUEST", "$GLOBALS", "$argc", "$argv", "$this",
-})
+_SUPERGLOBALS: frozenset[str] = frozenset(
+    {
+        "$_GET",
+        "$_POST",
+        "$_SESSION",
+        "$_SERVER",
+        "$_COOKIE",
+        "$_FILES",
+        "$_REQUEST",
+        "$GLOBALS",
+        "$argc",
+        "$argv",
+        "$this",
+    }
+)
 
 
 def _build_exclusion_set(source: str) -> frozenset[str]:
@@ -1617,23 +1641,25 @@ def _build_exclusion_set(source: str) -> frozenset[str]:
     excluded: set[str] = set(_SUPERGLOBALS)
 
     # Function parameters: function name($param1, $param2, ...) or typed ($type $param)
-    for params_str in re.findall(r'function\s+\w+\s*\(([^)]*)\)', source):
-        for token in re.findall(r'\$\w+', params_str):
+    for params_str in re.findall(r"function\s+\w+\s*\(([^)]*)\)", source):
+        for token in re.findall(r"\$\w+", params_str):
             excluded.add(token)
 
     # foreach vars: foreach ($arr as $val) or foreach ($arr as $key => $val)
-    for match in re.finditer(r'foreach\s*\([^)]+?\s+as\s+(\$\w+)(?:\s*=>\s*(\$\w+))?', source):
+    for match in re.finditer(
+        r"foreach\s*\([^)]+?\s+as\s+(\$\w+)(?:\s*=>\s*(\$\w+))?", source
+    ):
         if match.group(1):
             excluded.add(match.group(1))
         if match.group(2):
             excluded.add(match.group(2))
 
     # catch vars: catch (ExType $var)
-    for match in re.finditer(r'catch\s*\([^)]+\s+(\$\w+)\)', source):
+    for match in re.finditer(r"catch\s*\([^)]+\s+(\$\w+)\)", source):
         excluded.add(match.group(1))
 
     # Locally-assigned vars: $var = ... (left-hand side assignments)
-    for match in re.finditer(r'(\$\w+)\s*=(?!=)', source):
+    for match in re.finditer(r"(\$\w+)\s*=(?!=)", source):
         excluded.add(match.group(1))
 
     return frozenset(excluded)
@@ -1668,7 +1694,7 @@ def detect_implicit_deps(fragment_content: str) -> tuple[ImplicitDependency, ...
     exclusion_set = _build_exclusion_set(fragment_content)
 
     # Collect all variable references (not assignments, not superglobals)
-    all_vars = re.findall(r'\$\w+', fragment_content)
+    all_vars = re.findall(r"\$\w+", fragment_content)
 
     found: dict[str, ImplicitDependency] = {}
 
@@ -1685,6 +1711,7 @@ def detect_implicit_deps(fragment_content: str) -> tuple[ImplicitDependency, ...
 
     # Pass 2 — Frequency scan: vars referenced ≥3 times (confidence=0.8)
     from collections import Counter
+
     var_counts = Counter(all_vars)
     for var, count in var_counts.items():
         if count >= 3 and var not in exclusion_set and var not in found:

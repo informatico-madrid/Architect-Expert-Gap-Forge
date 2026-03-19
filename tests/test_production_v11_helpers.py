@@ -208,9 +208,7 @@ def test_ast_fragment_list_generates_fragments() -> None:
     code = (
         "def foo():\n    return 1\n\nclass Bar:\n    def baz(self):\n        return 2\n"
     )
-    fragments = _ast_fragment_list(
-        "module.py", code, "ctx", {"extra": True}
-    )
+    fragments = _ast_fragment_list("module.py", code, "ctx", {"extra": True})
     assert len(fragments) >= 2
     assert fragments[0]["context"] == "ctx"
 

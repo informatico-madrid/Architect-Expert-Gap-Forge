@@ -44,9 +44,7 @@ class TestPhpStage2Roundtrip:
     @pytest.fixture
     def oscommerce_fixture_path(self) -> Path:
         """Path to the osCommerce categories.php fixture."""
-        return Path(
-            "tests/fixtures/php_legacy/oscommerce_categories.php"
-        )
+        return Path("tests/fixtures/php_legacy/oscommerce_categories.php")
 
     @pytest.fixture
     def temp_output_dir(self, tmp_path: Path) -> Path:
@@ -206,7 +204,9 @@ class TestPhpStage2Roundtrip:
         assert "CATEGORY:" in legacy_sigs, "Expected CATEGORY: field in signatures"
         assert "PATTERN:" in legacy_sigs, "Expected PATTERN: field in signatures"
         assert "SEVERITY:" in legacy_sigs, "Expected SEVERITY: field in signatures"
-        assert "MODERN_HINT:" in legacy_sigs, "Expected MODERN_HINT: field in signatures"
+        assert "MODERN_HINT:" in legacy_sigs, (
+            "Expected MODERN_HINT: field in signatures"
+        )
 
         # Assert: Contains at least one PERSISTENCE_SMELL category entry
         assert "CATEGORY: PERSISTENCE_SMELL" in legacy_sigs, (

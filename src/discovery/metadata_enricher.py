@@ -55,6 +55,7 @@ from src.discovery.fragment_parser import (
 # ---------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
 # Custom Exceptions
 # ---------------------------------------------------------------------------
@@ -73,6 +74,7 @@ class RepoAbortError(Exception):
 # ---------------------------------------------------------------------------
 # Pydantic Config
 # ---------------------------------------------------------------------------
+
 
 class ProcessingConfig(BaseModel):
     """Configuration for the RepoProcessor."""
@@ -230,7 +232,9 @@ class RepoProcessor:
             self._stats["modules_found"] += len(modules)
 
             for mod in modules:
-                self._emit_module(mod, repo_path, prefix, size_limit, repo_prefix=prefix)
+                self._emit_module(
+                    mod, repo_path, prefix, size_limit, repo_prefix=prefix
+                )
 
         except RepoAbortError as e:
             self._stats["parse_errors_aborted"] += 1
@@ -298,7 +302,9 @@ class RepoProcessor:
             except Exception as exc:
                 logger.warning("Could not build module for %s: %s", mod_dir, exc)
 
-        logger.info("directory_scan: found %d module directories in %s", len(modules), root)
+        logger.info(
+            "directory_scan: found %d module directories in %s", len(modules), root
+        )
         return modules
 
     def _build_module(

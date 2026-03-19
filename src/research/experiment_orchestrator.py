@@ -27,6 +27,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.research.models import ExperimentReport
+
 logger = logging.getLogger(__name__)
 
 # ======================================================================
@@ -362,7 +364,11 @@ class ExperimentOrchestrator:
 
 @dataclass
 class TrainingRun:
-    """Represents a model training run."""
+    """Represents an in-progress model training run.
+
+    Note: This is a mutable class for tracking ongoing training operations.
+    For completed training runs with metrics, see src.research.models.TrainingRun.
+    """
 
     variant: str
     fast_mode: bool
@@ -372,22 +378,6 @@ class TrainingRun:
     checkpoint_path: str | None = None
     config_path: str | None = None
     metrics: dict[str, Any] = field(default_factory=dict)
-    error: str | None = None
-
-
-@dataclass
-class ExperimentReport:
-    """Represents an experiment run report."""
-
-    experiment_name: str
-    variant: str
-    fast_mode: bool
-    status: str
-    start_time: datetime = field(default_factory=datetime.now)
-    end_time: datetime | None = None
-    training_run: TrainingRun | None = None
-    evaluation_results: dict[str, Any] = field(default_factory=dict)
-    artifacts: dict[str, Any] = field(default_factory=dict)
     error: str | None = None
 
 

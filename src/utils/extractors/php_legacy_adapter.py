@@ -37,6 +37,7 @@ from src.utils.extractors.base import (
 
 logger = logging.getLogger(__name__)
 
+
 # Module-level worker function for ProcessPoolExecutor (must be picklable)
 # This is defined at module level to ensure pickle compatibility
 def _process_php_fragment_worker(args: tuple) -> dict:
@@ -112,9 +113,7 @@ class PhpLegacyAdapter:
         r"(?:include|include_once|require|require_once)\s*\(?\s*['\"]([^'\"]+)['\"]"
     )
     _GLOBAL_VAR_PATTERN = re.compile(r"\bglobal\s+\$([a-zA-Z_][a-zA-Z0-9_]*)")
-    _FUNCTION_CALL_PATTERN = re.compile(
-        r"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\("
-    )
+    _FUNCTION_CALL_PATTERN = re.compile(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(")
 
     def __init__(
         self,
@@ -331,20 +330,23 @@ class PhpLegacyAdapter:
 
         # Stage 2: Process files using ProcessPoolExecutor (CPU-bound)
         logger.debug("Stage 2: Fragmenting %d files", len(file_contents))
-        worker_args = [
-            (str(path), content, profile)
-            for path, content in file_contents
-        ]
+        worker_args = [(str(path), content, profile) for path, content in file_contents]
 
         all_fragments: List[tuple[Path, dict]] = []
         with ProcessPoolExecutor(max_workers=self._cpu_workers) as executor:
-            results = executor.map(_process_php_fragment_worker, worker_args, chunksize=50)
+            results = executor.map(
+                _process_php_fragment_worker, worker_args, chunksize=50
+            )
             for result in results:
                 if result.get("success"):
                     path = Path(result["path"])
                     all_fragments.append((path, result))
                 else:
-                    logger.warning("Failed to process %s: %s", result.get("path"), result.get("error"))
+                    logger.warning(
+                        "Failed to process %s: %s",
+                        result.get("path"),
+                        result.get("error"),
+                    )
 
         logger.debug("Stage 2 complete: %d files processed", len(all_fragments))
 
@@ -371,7 +373,9 @@ class PhpLegacyAdapter:
                         preamble_ref=frag_data["preamble_ref"],
                         dependencies=frag_data.get("dependencies", ()),
                         platform_hints=frag_data.get("platform_hints", ()),
-                        signatures=frag_data.get("signatures", ()),  # Pass signatures to bundle
+                        signatures=frag_data.get(
+                            "signatures", ()
+                        ),  # Pass signatures to bundle
                     )
                     output_path = write_bundle(fragment, output_dir)
                     written_files.append(output_path)
@@ -384,11 +388,19 @@ class PhpLegacyAdapter:
             list(executor.map(write_fragment_bundle, all_fragments))
 
         # Stage 4: Build include graph and emit MODULE_BLUEPRINT bundles for hub files
-        logger.debug("Stage 4: Building include graph and emitting MODULE_BLUEPRINT bundles")
-        blueprint_files = self._emit_hub_blueprints(file_contents, all_fragments, output_dir)
+        logger.debug(
+            "Stage 4: Building include graph and emitting MODULE_BLUEPRINT bundles"
+        )
+        blueprint_files = self._emit_hub_blueprints(
+            file_contents, all_fragments, output_dir
+        )
         written_files.extend(blueprint_files)
 
-        logger.info("Processing complete: %d bundles written to %s", len(written_files), output_dir)
+        logger.info(
+            "Processing complete: %d bundles written to %s",
+            len(written_files),
+            output_dir,
+        )
         return written_files
 
     def _emit_hub_blueprints(
@@ -426,7 +438,9 @@ class PhpLegacyAdapter:
             logger.debug("No hub files found in repository")
             return []
 
-        logger.info("Found %d hub files, emitting MODULE_BLUEPRINT bundles", len(hub_files))
+        logger.info(
+            "Found %d hub files, emitting MODULE_BLUEPRINT bundles", len(hub_files)
+        )
 
         blueprint_files: List[Path] = []
         for hub_file in hub_files:
@@ -509,7 +523,11 @@ class PhpLegacyAdapter:
         lines.append("FRAGMENT_TYPE: MODULE_BLUEPRINT")
         lines.append("LANGUAGE: php")
         lines.append("PLATFORM: php_legacy")
-        lines.append("DEPENDENCIES: {}".format(", ".join(sorted(including_files)) if including_files else "none"))
+        lines.append(
+            "DEPENDENCIES: {}".format(
+                ", ".join(sorted(including_files)) if including_files else "none"
+            )
+        )
         lines.append("NEIGHBORS: {}".format(len(including_files)))
         lines.append("PREAMBLE_REF: {}".format(preamble_hash))
         lines.append("")

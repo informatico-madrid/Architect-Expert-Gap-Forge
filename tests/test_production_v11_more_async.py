@@ -65,7 +65,9 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     sem = asyncio.Semaphore(1)
     frag = make_theory_frag("Sec1")
     res = asyncio.run(
-        pr_module.generate_theory_sample_async(client, "m", frag, "master", "changelog", sem)
+        pr_module.generate_theory_sample_async(
+            client, "m", frag, "master", "changelog", sem
+        )
     )
     assert res["status"] == "accepted"
     assert (

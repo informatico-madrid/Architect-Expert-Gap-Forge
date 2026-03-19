@@ -73,7 +73,9 @@ def test_load_governance_context(tmp_path):
     # create file and test truncation
     md = tmp_path / "HA_MASTER_GUIDE_2026.md"
     md.write_text("X" * 6000)
-    cfg2 = br_cfg.BacktrackingConfig(gap_dir=str(tmp_path), governance_context_chars=100)
+    cfg2 = br_cfg.BacktrackingConfig(
+        gap_dir=str(tmp_path), governance_context_chars=100
+    )
     ctx = br_strategy._load_governance_context(cfg2)
     assert ctx is not None
     assert len(ctx) == 100

@@ -465,8 +465,8 @@ class InferenceRouter:
                     "To resolve this issue:\n\n"
                     "1. Obtain an API key from: https://aistudio.google.com/app/apikey\n"
                     "2. Set the environment variable:\n"
-                    "   - Linux/macOS: export GOOGLE_API_KEY=\"your-api-key-here\"\n"
-                    "   - Windows (PowerShell): $env:GOOGLE_API_KEY=\"your-api-key-here\"\n\n"
+                    '   - Linux/macOS: export GOOGLE_API_KEY="your-api-key-here"\n'
+                    '   - Windows (PowerShell): $env:GOOGLE_API_KEY="your-api-key-here"\n\n'
                     "Alternatively, use the vllm backend:\n"
                     "   --professor-backend vllm\n"
                     "   --inference-backend vllm"

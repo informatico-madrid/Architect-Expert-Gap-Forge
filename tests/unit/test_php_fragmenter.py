@@ -467,7 +467,7 @@ switch ($mode) {
 
         # Should have case labels
         labels = [c[3] for c in cases]
-        assert 'initialize' in labels or 'add' in labels or 'process' in labels
+        assert "initialize" in labels or "add" in labels or "process" in labels
 
     def test_extract_switch_cases_no_switch(self) -> None:
         """Test when there's no switch statement - returns empty list."""
@@ -596,7 +596,14 @@ function handler() {
         deps = detect_implicit_deps(source)
         symbols = {d.target_symbol for d in deps}
 
-        for superglobal in ("$_GET", "$_POST", "$_SESSION", "$_SERVER", "$_COOKIE", "$GLOBALS"):
+        for superglobal in (
+            "$_GET",
+            "$_POST",
+            "$_SESSION",
+            "$_SERVER",
+            "$_COOKIE",
+            "$GLOBALS",
+        ):
             assert superglobal not in symbols, f"{superglobal} should not be reported"
 
     def test_function_params_excluded(self) -> None:
@@ -712,7 +719,9 @@ function minimal() {
         deps = detect_implicit_deps(source)
         symbols = {d.target_symbol for d in deps}
 
-        assert "$rareVar" not in symbols, "$rareVar used <3 times should not be detected"
+        assert "$rareVar" not in symbols, (
+            "$rareVar used <3 times should not be detected"
+        )
 
     def test_empty_fragment_returns_empty_tuple(self) -> None:
         """Empty fragment → empty tuple."""
@@ -736,4 +745,3 @@ function process() {
         symbols = [d.target_symbol for d in deps]
 
         assert symbols == sorted(symbols), "Result must be sorted by target_symbol"
-

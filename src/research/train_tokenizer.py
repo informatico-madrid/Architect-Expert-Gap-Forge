@@ -288,7 +288,9 @@ class TokenizerTrainer:
         checkpoint_data = None
         if self.resume and self.checkpoint_manager.checkpoint_exists(checkpoint_name):
             try:
-                checkpoint_data = self.checkpoint_manager.load_checkpoint(checkpoint_name)
+                checkpoint_data = self.checkpoint_manager.load_checkpoint(
+                    checkpoint_name
+                )
                 logger.info(
                     "Resuming from checkpoint: %s",
                     checkpoint_name,

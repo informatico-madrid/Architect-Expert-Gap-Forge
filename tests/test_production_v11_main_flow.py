@@ -81,14 +81,18 @@ def test_main_async_processes_fragments_writes_output(
         "src.factory.prompt_builder._prompt", lambda key: f"<{key}>", raising=False
     )
     monkeypatch.setattr(
-        "src.factory.prompt_builder._render", lambda template, **subs: template, raising=False
+        "src.factory.prompt_builder._render",
+        lambda template, **subs: template,
+        raising=False,
     )
 
     # Deterministic assignment to avoid randomness
     monkeypatch.setattr(
         pr_module,
         "assign_example_type",
-        lambda frag, has_legacy=False: SimpleNamespace(example_type="nominal", difficulty="easy"),
+        lambda frag, has_legacy=False: SimpleNamespace(
+            example_type="nominal", difficulty="easy"
+        ),
     )
 
     # Replace generate_sample_async with a fast accepted-response stub
@@ -210,11 +214,15 @@ rule: value
 
     # Stubs
     monkeypatch.setattr(pb_module, "_prompt", lambda key: f"<{key}>", raising=False)
-    monkeypatch.setattr(pb_module, "_render", lambda template, **subs: template, raising=False)
+    monkeypatch.setattr(
+        pb_module, "_render", lambda template, **subs: template, raising=False
+    )
     monkeypatch.setattr(
         pr_module,
         "assign_example_type",
-        lambda frag, has_legacy=False: SimpleNamespace(example_type="nominal", difficulty="easy"),
+        lambda frag, has_legacy=False: SimpleNamespace(
+            example_type="nominal", difficulty="easy"
+        ),
         raising=False,
     )
 
@@ -238,7 +246,9 @@ rule: value
         "src.factory.pipeline_runner.generate_sample_async", fake_generate
     )
     monkeypatch.setattr(
-        "src.factory.pipeline_runner.AsyncOpenAI", lambda *a, **k: SimpleNamespace(), raising=False
+        "src.factory.pipeline_runner.AsyncOpenAI",
+        lambda *a, **k: SimpleNamespace(),
+        raising=False,
     )
 
     # Args

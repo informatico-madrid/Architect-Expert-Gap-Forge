@@ -69,7 +69,13 @@ from src.audit.sampling import load_dataset, stratified_sample
 from src.audit.report_writer import generate_report
 from src.audit.calibration import run_calibration
 from src.audit.inference import InferenceRouter
-from src.audit.schema import AuditReport, ExamRecord, PromptGenerationError, SampleRecord, ScoreCard
+from src.audit.schema import (
+    AuditReport,
+    ExamRecord,
+    PromptGenerationError,
+    SampleRecord,
+    ScoreCard,
+)
 from src.audit.scorecard import compute_scorecard
 from src.utils.doc_loader import load_master_docs
 
@@ -393,6 +399,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
 
         # Detect format by file extension
         import yaml
+
         if prompts_path.suffix in [".yaml", ".yml"]:
             with open(prompts_path, "r", encoding="utf-8") as f:
                 prompts_data = yaml.safe_load(f)
@@ -420,10 +427,7 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         except FileNotFoundError:
             try:
                 sample_records = load_persisted_sample(args.audit_dir)
-                prompts = [
-                    {"id": s.id, "text": s.user_prompt}
-                    for s in sample_records
-                ]
+                prompts = [{"id": s.id, "text": s.user_prompt} for s in sample_records]
                 logger.info("Loaded %d prompts from existing sample", len(prompts))
             except FileNotFoundError:
                 raise CLIError(
@@ -458,9 +462,16 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         api_url=args.api_url,
         claude_model=args.claude_model,
     )
-    logger.info("Calibration: student=vLLM(model=%s), judge=%s(model=%s)", 
-                args.judge_model, args.judge_backend,
-                args.claude_model if args.judge_backend == "claude" else args.gemini_model if args.judge_backend == "gemini" else args.judge_model)
+    logger.info(
+        "Calibration: student=vLLM(model=%s), judge=%s(model=%s)",
+        args.judge_model,
+        args.judge_backend,
+        args.claude_model
+        if args.judge_backend == "claude"
+        else args.gemini_model
+        if args.judge_backend == "gemini"
+        else args.judge_model,
+    )
 
     # Run calibration
     report = run_calibration(
@@ -471,7 +482,9 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         use_prompt_metadata=args.use_prompt_metadata,
         use_noxious_filter=args.use_noxious_filter,
         noxious_loss_threshold=args.noxious_loss_threshold,
-        noxious_sample_size=(args.noxious_sample_size if args.noxious_sample_size > 0 else None),
+        noxious_sample_size=(
+            args.noxious_sample_size if args.noxious_sample_size > 0 else None
+        ),
         noxious_aggressiveness=args.noxious_aggressiveness,
         student_client=student_client,
         judge_client=judge_client,

@@ -53,7 +53,9 @@ def test_main_async_minimal(tmp_path, monkeypatch):
     (gap / cfg_module._TECHNICAL_CHANGELOG_FILENAME).write_text(
         "# Changelog\nLots of changes"
     )
-    (gap / cfg_module._JINJA_YAML_GUIDE_FILENAME).write_text("# Jinja Guide\nTemplate rules")
+    (gap / cfg_module._JINJA_YAML_GUIDE_FILENAME).write_text(
+        "# Jinja Guide\nTemplate rules"
+    )
 
     # Prepare a raw .txt bundle (FUNCTIONAL_UNIT)
     raw = tmp_path / "raw"
@@ -88,11 +90,17 @@ def test_main_async_minimal(tmp_path, monkeypatch):
             else template + " " + " ".join(f"{k}={v}" for k, v in subs.items())
         ),
     )
-    monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
+    monkeypatch.setattr(
+        pb_module, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False
+    )
 
     # Deterministic assignment of example type
     monkeypatch.setattr(
-        pr_module, "assign_example_type", lambda frag, has_legacy=False: SimpleNamespace(example_type="nominal", difficulty="easy")
+        pr_module,
+        "assign_example_type",
+        lambda frag, has_legacy=False: SimpleNamespace(
+            example_type="nominal", difficulty="easy"
+        ),
     )
 
     # Fake client returns a long reasoning and write_action with content

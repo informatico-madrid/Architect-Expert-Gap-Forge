@@ -19,7 +19,6 @@ import json
 import logging
 import random
 import re
-import sys
 from pathlib import Path
 from string import Template
 from typing import Any, Dict, List, Optional, Tuple

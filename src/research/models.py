@@ -86,6 +86,7 @@ class TrainingRun:
     duration_seconds: float
     model_checkpoint: str
     tokenizer_files: list[str] = field(default_factory=list)
+    metrics: dict[str, object] = field(default_factory=dict)
 
     @property
     def efficiency_score(self) -> float:
@@ -94,3 +95,32 @@ class TrainingRun:
         Formula: (1.0 / val_bpb) * mfu_percent / (peak_vram_mb / 1000)
         """
         return (1.0 / self.val_bpb) * self.mfu_percent / (self.peak_vram_mb / 1000)
+
+
+@dataclass
+class ExperimentReport:
+    """Represents an experiment run report.
+
+    Attributes:
+        experiment_name: Name of the experiment
+        variant: Variant name used
+        fast_mode: Whether fast mode was enabled
+        status: Experiment status (started, running, completed, failed)
+        start_time: Experiment start timestamp
+        end_time: Experiment end timestamp
+        training_run: Associated training run data
+        evaluation_results: Dictionary of evaluation metrics
+        artifacts: Dictionary of produced artifacts
+        error: Error message if experiment failed
+    """
+
+    experiment_name: str
+    variant: str
+    fast_mode: bool
+    status: str
+    start_time: datetime = field(default_factory=datetime.now)
+    end_time: datetime | None = None
+    training_run: Optional["TrainingRun"] = None
+    evaluation_results: dict[str, object] = field(default_factory=dict)
+    artifacts: dict[str, object] = field(default_factory=dict)
+    error: Optional[str] = None

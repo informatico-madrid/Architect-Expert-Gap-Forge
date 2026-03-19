@@ -40,9 +40,7 @@ __all__ = [
 #   cp configs/prompts/reconstruction_system.txt.example configs/prompts/reconstruction_system.txt
 _PROMPT_BACKTRACKING_PATH: str = "configs/prompts/backtracking_system.txt"
 _PROMPT_RECONSTRUCTION_PATH: str = "configs/prompts/reconstruction_system.txt"
-_DEFAULT_LEGACY_PATTERNS_FILE: str = (
-    "configs/stage_5_evaluation/ha_patterns.yaml"
-)
+_DEFAULT_LEGACY_PATTERNS_FILE: str = "configs/stage_5_evaluation/ha_patterns.yaml"
 
 
 # ---------------------------------------------------------------------------

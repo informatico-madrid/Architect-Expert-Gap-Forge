@@ -3,7 +3,7 @@ COMPOSE_FILE=deploy/docker/docker-compose.yaml
 ENV_FILE=deploy/.env
 
 # Python interpreter — override at call site: make test PYTHON=/path/to/python
-PYTHON ?= python
+PYTHON ?= python3
 
 .PHONY: up down shell logs preprocess train merge test coverage lint fmt check-headers
 

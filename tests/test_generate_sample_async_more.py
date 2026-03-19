@@ -40,7 +40,9 @@ def stub_templates(monkeypatch: pytest.MonkeyPatch) -> None:
             else template + " " + " ".join(f"{k}={v}" for k, v in subs.items())
         ),
     )
-    monkeypatch.setattr(pb_module, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False)
+    monkeypatch.setattr(
+        pb_module, "TOOLS_DEFINITION", [{"name": "tool"}], raising=False
+    )
     monkeypatch.setattr(
         pb_module, "LEGACY_2023_PATTERNS", [{"legacy_code": "old_code"}], raising=False
     )

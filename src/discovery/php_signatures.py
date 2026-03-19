@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Tuple
 if TYPE_CHECKING:
     from types import MappingProxyType
 
+
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -237,9 +238,7 @@ class LegacySignature:
 
         # Validate line_number is positive
         if self.line_number < 1:
-            raise ValueError(
-                f"line_number must be >= 1, got {self.line_number}"
-            )
+            raise ValueError(f"line_number must be >= 1, got {self.line_number}")
 
     @property
     def is_critical(self) -> bool:
@@ -267,8 +266,7 @@ LegacySignatureTuple = Tuple[LegacySignature, ...]
 # Core Functions
 # ---------------------------------------------------------------------------
 def scan_signatures(
-    content: str,
-    platform_patterns: MappingProxyType | None = None
+    content: str, platform_patterns: MappingProxyType | None = None
 ) -> list[LegacySignature]:
     """
     Scan PHP content for legacy code signatures.
@@ -281,7 +279,7 @@ def scan_signatures(
         List of LegacySignature instances found in the content
     """
     signatures: list[LegacySignature] = []
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     # Combine base patterns with platform-specific patterns
     all_patterns: dict[str, list[tuple[str, str]]] = SIGNATURE_PATTERNS.copy()
@@ -301,7 +299,9 @@ def scan_signatures(
                 try:
                     if re.search(pattern_str, line):
                         severity = CATEGORY_SEVERITY.get(category, "info")
-                        modern_equiv = MODERN_EQUIVALENTS.get(pattern_name, "Review and modernize")
+                        modern_equiv = MODERN_EQUIVALENTS.get(
+                            pattern_name, "Review and modernize"
+                        )
 
                         sig = LegacySignature(
                             pattern_name=pattern_name,
@@ -309,7 +309,7 @@ def scan_signatures(
                             matched_text=line.strip(),
                             line_number=line_num,
                             severity=severity,
-                            modern_equivalent=modern_equiv
+                            modern_equivalent=modern_equiv,
                         )
                         signatures.append(sig)
                 except re.error as e:
@@ -319,9 +319,7 @@ def scan_signatures(
     return signatures
 
 
-def format_legacy_signatures_section(
-    sigs: list[LegacySignature]
-) -> str:
+def format_legacy_signatures_section(sigs: list[LegacySignature]) -> str:
     """
     Format legacy signatures for bundle output.
 

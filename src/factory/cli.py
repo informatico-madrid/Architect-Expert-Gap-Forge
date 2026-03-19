@@ -247,6 +247,7 @@ def main() -> None:
 
     # Run the async pipeline
     import asyncio
+
     asyncio.run(main_async(args))
 
 

@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 # Data Classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass(slots=True, frozen=True)
 class ModuleFile:
     """A single file within a discovered module.
@@ -74,6 +75,7 @@ class Module:
 # File Classification Functions
 # ---------------------------------------------------------------------------
 
+
 def classify_role(f: Path) -> str:
     """Determine the semantic role of a file.
 
@@ -100,6 +102,7 @@ def classify_role(f: Path) -> str:
 # ---------------------------------------------------------------------------
 # Import Extraction Functions
 # ---------------------------------------------------------------------------
+
 
 def extract_local_imports(code: str) -> List[str]:
     """Extract relative imports as concrete filename.py references.
@@ -141,6 +144,7 @@ def extract_local_imports(code: str) -> List[str]:
 # Module Builder Functions
 # ---------------------------------------------------------------------------
 
+
 def build_module(
     mod_dir: Path,
     anchor_type: str,
@@ -165,9 +169,7 @@ def build_module(
     files_list: List[ModuleFile] = []
     all_names: List[str] = []
     for f in sorted(mod_dir.iterdir()):
-        if f.is_file() and f.suffix in (
-            extensions | {".json", ".yaml", ".yml"}
-        ):
+        if f.is_file() and f.suffix in (extensions | {".json", ".yaml", ".yml"}):
             if is_ignored(f, ignore_patterns):
                 continue
             all_names.append(f.name)

@@ -26,13 +26,21 @@ import yaml
 # Import module under test
 # ---------------------------------------------------------------------------
 from src.factory.prompt_builder import (
-    _render, _prompt, detect_legacy_patterns, post_validate_output,
-    load_taxonomy, load_master_docs, get_theory_fragments,
+    _render,
+    _prompt,
+    detect_legacy_patterns,
+    post_validate_output,
+    load_taxonomy,
+    load_master_docs,
+    get_theory_fragments,
 )
 from src.factory.checkpoint import make_checkpoint_key, load_checkpoint
 from src.factory.pipeline_runner import parse_raw_response
 from src.factory.fragment_extractor import (
-    get_file_chunks, parse_bundle, _ast_fragment_list, get_v2_fragments,
+    get_file_chunks,
+    parse_bundle,
+    _ast_fragment_list,
+    get_v2_fragments,
 )
 import src.factory.prompt_builder as pb
 import src.factory.prompt_builder as pb

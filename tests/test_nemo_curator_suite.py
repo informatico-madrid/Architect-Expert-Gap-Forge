@@ -793,9 +793,7 @@ class TestRunNemoFilterPipelineMocked:
             "RepeatingTopNGramsFilter",
         ):
             monkeypatch.setattr(ncs, attr, _DummyStage, raising=False)
-        monkeypatch.setattr(
-            socket, "socket", lambda *args, **kwargs: _DummySocket()
-        )
+        monkeypatch.setattr(socket, "socket", lambda *args, **kwargs: _DummySocket())
 
         input_path = tmp_path / "in.jsonl"
         input_path.write_text("{}", encoding="utf-8")

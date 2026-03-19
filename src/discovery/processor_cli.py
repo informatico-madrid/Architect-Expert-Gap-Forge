@@ -115,6 +115,7 @@ def main(args: Optional[list] = None) -> int:
         logger.critical("Processor failed: %s", e)
         if parsed.verbose:
             import traceback
+
             traceback.print_exc()
         return 1
 

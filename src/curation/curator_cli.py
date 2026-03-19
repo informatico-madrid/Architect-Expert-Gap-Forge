@@ -419,7 +419,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         stats.total_output = sum(
             1 for line in open(args.output, "r", encoding="utf-8") if line.strip()
         )
-        logger.info("Final output written: %s (%d records)", args.output, stats.total_output)
+        logger.info(
+            "Final output written: %s (%d records)", args.output, stats.total_output
+        )
 
     # Cleanup
     for f in temp_files:

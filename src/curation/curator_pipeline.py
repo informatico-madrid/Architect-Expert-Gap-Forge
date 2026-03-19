@@ -14,6 +14,7 @@ I/O helpers, and the NeMo filter pipeline runner.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import logging
 import os
@@ -43,12 +44,7 @@ DEFAULT_REPORTS_DIR: str = "data/reports"
 _NEMO_AVAILABLE = False
 _DATASKETCH_AVAILABLE = False
 
-try:
-    from datasketch import MinHash, MinHashLSH  # type: ignore
-
-    _DATASKETCH_AVAILABLE = True
-except ImportError:
-    pass
+_DATASKETCH_AVAILABLE = importlib.util.find_spec("datasketch") is not None
 
 try:
     from nemo_curator.core.client import RayClient  # type: ignore

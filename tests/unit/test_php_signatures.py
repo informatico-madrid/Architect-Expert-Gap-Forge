@@ -283,6 +283,7 @@ class TestScanSignaturesSecurityVuln:
         # The pattern preg_replace\s*\([^,]+,\s*/(e|eval) is complex and may have edge cases
         # This test verifies the pattern exists in the library
         from src.discovery.php_signatures import SIGNATURE_PATTERNS
+
         patterns = SIGNATURE_PATTERNS["SECURITY_VULN"]
         pattern_names = [p[0] for p in patterns]
         assert "preg_replace_eval" in pattern_names
@@ -402,7 +403,7 @@ $cart = $_SESSION['cart'];
         # Verify we have signatures from all 4 categories
         categories = {s.category for s in sigs}
         assert "PERSISTENCE_SMELL" in categories  # mysql_query
-        assert "STATE_POLLUTION" in categories    # global, $_SESSION
+        assert "STATE_POLLUTION" in categories  # global, $_SESSION
         assert "MODULE_LINK_SMELL" in categories  # include
 
     def test_detects_multiple_patterns_same_category(self) -> None:
@@ -416,7 +417,9 @@ tep_session_register('customer_id');
 """
         sigs = scan_signatures(content)
         state = [s for s in sigs if s.category == "STATE_POLLUTION"]
-        assert len(state) >= 4  # global_var, session_access, cookie_access, tep_session_register
+        assert (
+            len(state) >= 4
+        )  # global_var, session_access, cookie_access, tep_session_register
 
     def test_line_numbers_correct(self) -> None:
         """Should return correct line numbers for signatures."""
@@ -466,7 +469,7 @@ class TestLegacySignatureDataclass:
                 matched_text="test",
                 line_number=1,
                 severity="warning",
-                modern_equivalent="test"
+                modern_equivalent="test",
             )
 
     def test_signature_validates_severity(self) -> None:
@@ -478,7 +481,7 @@ class TestLegacySignatureDataclass:
                 matched_text="test",
                 line_number=1,
                 severity="invalid_severity",
-                modern_equivalent="test"
+                modern_equivalent="test",
             )
 
     def test_signature_validates_line_number(self) -> None:
@@ -490,7 +493,7 @@ class TestLegacySignatureDataclass:
                 matched_text="test",
                 line_number=0,
                 severity="warning",
-                modern_equivalent="test"
+                modern_equivalent="test",
             )
 
     def test_is_critical_property(self) -> None:
@@ -501,7 +504,7 @@ class TestLegacySignatureDataclass:
             matched_text="eval($code)",
             line_number=1,
             severity="critical",
-            modern_equivalent="Avoid eval"
+            modern_equivalent="Avoid eval",
         )
         assert sig.is_critical is True
         assert sig.is_warning is False
@@ -515,7 +518,7 @@ class TestLegacySignatureDataclass:
             matched_text="mysql_query($sql)",
             line_number=1,
             severity="warning",
-            modern_equivalent="Use PDO"
+            modern_equivalent="Use PDO",
         )
         assert sig.is_warning is True
         assert sig.is_critical is False
@@ -529,7 +532,7 @@ class TestLegacySignatureDataclass:
             matched_text="define('CONST', 'val')",
             line_number=1,
             severity="info",
-            modern_equivalent="Use .env"
+            modern_equivalent="Use .env",
         )
         assert sig.is_info is True
         assert sig.is_critical is False
@@ -553,7 +556,7 @@ class TestFormatLegacySignaturesSection:
                 matched_text="mysql_query($sql)",
                 line_number=5,
                 severity="warning",
-                modern_equivalent="Use PDO"
+                modern_equivalent="Use PDO",
             )
         ]
         result = format_legacy_signatures_section(sigs)
@@ -570,7 +573,7 @@ class TestFormatLegacySignaturesSection:
                 matched_text="mysql_query($sql)",
                 line_number=5,
                 severity="warning",
-                modern_equivalent="Use PDO"
+                modern_equivalent="Use PDO",
             ),
             LegacySignature(
                 pattern_name="global_var",
@@ -578,8 +581,8 @@ class TestFormatLegacySignaturesSection:
                 matched_text="global $db",
                 line_number=10,
                 severity="warning",
-                modern_equivalent="Use DI"
-            )
+                modern_equivalent="Use DI",
+            ),
         ]
         result = format_legacy_signatures_section(sigs)
         assert "---" in result
@@ -596,7 +599,7 @@ class TestFormatLegacySignaturesSection:
                 matched_text=long_text,
                 line_number=1,
                 severity="info",
-                modern_equivalent="test"
+                modern_equivalent="test",
             )
         ]
         result = format_legacy_signatures_section(sigs)

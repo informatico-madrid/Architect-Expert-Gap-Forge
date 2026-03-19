@@ -201,7 +201,13 @@ class TestScoringWeights:
 
     def test_all_dimensions_present(self) -> None:
         """All required dimensions should be present."""
-        required = {"ha_modernity", "reasoning_depth", "functionality", "completeness", "style"}
+        required = {
+            "ha_modernity",
+            "reasoning_depth",
+            "functionality",
+            "completeness",
+            "style",
+        }
         assert set(SCORING_WEIGHTS.keys()) == required
 
     def test_ha_modernity_has_highest_weight(self) -> None:
@@ -292,7 +298,13 @@ class TestCalibrationPrompt:
 
     def test_valid_parameters_contains_expected(self) -> None:
         """VALID_PARAMETERS should contain expected parameter names."""
-        expected = {"temperature", "top_k", "min_p", "repetition_penalty", "presence_penalty"}
+        expected = {
+            "temperature",
+            "top_k",
+            "min_p",
+            "repetition_penalty",
+            "presence_penalty",
+        }
         assert VALID_PARAMETERS == expected
 
 
@@ -399,27 +411,51 @@ class TestRefineParameterSpace:
 
         results = [
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.7, top_k=40, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.7, top_k=40, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.9, "reasoning_depth": 0.8, "functionality": 0.9, "completeness": 0.8, "style": 0.9},
+                judge_scores={
+                    "ha_modernity": 0.9,
+                    "reasoning_depth": 0.8,
+                    "functionality": 0.9,
+                    "completeness": 0.8,
+                    "style": 0.9,
+                },
                 composite_score=0.87,
                 adjusted_score=0.87,
                 response_length=250,
                 timestamp="2026-01-01T00:00:00Z",
             ),
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.6, top_k=40, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.6, top_k=40, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.7, "reasoning_depth": 0.7, "functionality": 0.7, "completeness": 0.7, "style": 0.7},
+                judge_scores={
+                    "ha_modernity": 0.7,
+                    "reasoning_depth": 0.7,
+                    "functionality": 0.7,
+                    "completeness": 0.7,
+                    "style": 0.7,
+                },
                 composite_score=0.7,
                 adjusted_score=0.7,
                 response_length=250,
                 timestamp="2026-01-01T00:00:00Z",
             ),
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.5, top_k=40, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.5, top_k=40, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.5, "reasoning_depth": 0.5, "functionality": 0.5, "completeness": 0.5, "style": 0.5},
+                judge_scores={
+                    "ha_modernity": 0.5,
+                    "reasoning_depth": 0.5,
+                    "functionality": 0.5,
+                    "completeness": 0.5,
+                    "style": 0.5,
+                },
                 composite_score=0.5,
                 adjusted_score=0.5,
                 response_length=250,
@@ -427,7 +463,12 @@ class TestRefineParameterSpace:
             ),
         ]
 
-        base_grid = {"temperature": [0.5, 0.6, 0.7], "top_k": [20, 40], "min_p": [0.02], "repetition_penalty": [1.1]}
+        base_grid = {
+            "temperature": [0.5, 0.6, 0.7],
+            "top_k": [20, 40],
+            "min_p": [0.02],
+            "repetition_penalty": [1.1],
+        }
         result = refine_parameter_space(results, base_grid=base_grid, top_percent=0.33)
 
         # Should narrow toward 0.7 (best performer)
@@ -441,9 +482,17 @@ class TestRefineParameterSpace:
 
         results = [
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.6, top_k=40, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.6, top_k=40, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.8, "reasoning_depth": 0.8, "functionality": 0.8, "completeness": 0.8, "style": 0.8},
+                judge_scores={
+                    "ha_modernity": 0.8,
+                    "reasoning_depth": 0.8,
+                    "functionality": 0.8,
+                    "completeness": 0.8,
+                    "style": 0.8,
+                },
                 composite_score=0.8,
                 adjusted_score=0.8,
                 response_length=250,
@@ -474,9 +523,17 @@ class TestAnalyzeParameterPerformance:
 
         results = [
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.7, top_k=40, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.7, top_k=40, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.9, "reasoning_depth": 0.8, "functionality": 0.9, "completeness": 0.8, "style": 0.9},
+                judge_scores={
+                    "ha_modernity": 0.9,
+                    "reasoning_depth": 0.8,
+                    "functionality": 0.9,
+                    "completeness": 0.8,
+                    "style": 0.9,
+                },
                 composite_score=0.87,
                 adjusted_score=0.87,
                 response_length=250,
@@ -496,18 +553,34 @@ class TestAnalyzeParameterPerformance:
 
         results = [
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.5, top_k=20, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.5, top_k=20, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.5, "reasoning_depth": 0.5, "functionality": 0.5, "completeness": 0.5, "style": 0.5},
+                judge_scores={
+                    "ha_modernity": 0.5,
+                    "reasoning_depth": 0.5,
+                    "functionality": 0.5,
+                    "completeness": 0.5,
+                    "style": 0.5,
+                },
                 composite_score=0.5,
                 adjusted_score=0.5,
                 response_length=250,
                 timestamp="2026-01-01T00:00:00Z",
             ),
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.7, top_k=20, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.7, top_k=20, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.9, "reasoning_depth": 0.9, "functionality": 0.9, "completeness": 0.9, "style": 0.9},
+                judge_scores={
+                    "ha_modernity": 0.9,
+                    "reasoning_depth": 0.9,
+                    "functionality": 0.9,
+                    "completeness": 0.9,
+                    "style": 0.9,
+                },
                 composite_score=0.9,
                 adjusted_score=0.9,
                 response_length=250,
@@ -543,18 +616,34 @@ class TestGetRefinementRecommendations:
 
         results = [
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.7, top_k=50, min_p=0.05, repetition_penalty=1.2),
+                profile=SamplingProfile(
+                    temperature=0.7, top_k=50, min_p=0.05, repetition_penalty=1.2
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.9, "reasoning_depth": 0.9, "functionality": 0.9, "completeness": 0.9, "style": 0.9},
+                judge_scores={
+                    "ha_modernity": 0.9,
+                    "reasoning_depth": 0.9,
+                    "functionality": 0.9,
+                    "completeness": 0.9,
+                    "style": 0.9,
+                },
                 composite_score=0.9,
                 adjusted_score=0.9,
                 response_length=250,
                 timestamp="2026-01-01T00:00:00Z",
             ),
             CalibrationResult(
-                profile=SamplingProfile(temperature=0.5, top_k=20, min_p=0.02, repetition_penalty=1.1),
+                profile=SamplingProfile(
+                    temperature=0.5, top_k=20, min_p=0.02, repetition_penalty=1.1
+                ),
                 exam_id="p1",
-                judge_scores={"ha_modernity": 0.5, "reasoning_depth": 0.5, "functionality": 0.5, "completeness": 0.5, "style": 0.5},
+                judge_scores={
+                    "ha_modernity": 0.5,
+                    "reasoning_depth": 0.5,
+                    "functionality": 0.5,
+                    "completeness": 0.5,
+                    "style": 0.5,
+                },
                 composite_score=0.5,
                 adjusted_score=0.5,
                 response_length=250,

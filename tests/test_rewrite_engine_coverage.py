@@ -35,6 +35,7 @@ from src.curation.backtracking_config import BacktrackingConfig
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_record(
     record_id: str = "r1",
     think: str = "my reasoning",
@@ -56,6 +57,7 @@ def _make_record(
 # _VLLMAsyncAdapter
 # ---------------------------------------------------------------------------
 
+
 class TestVLLMAsyncAdapter:
     """Tests for the deferred-import AsyncOpenAI adapter."""
 
@@ -65,7 +67,9 @@ class TestVLLMAsyncAdapter:
         mock_client_instance = MagicMock()
         mock_openai_cls.return_value = mock_client_instance
 
-        with patch.dict("sys.modules", {"openai": MagicMock(AsyncOpenAI=mock_openai_cls)}):
+        with patch.dict(
+            "sys.modules", {"openai": MagicMock(AsyncOpenAI=mock_openai_cls)}
+        ):
             adapter = br_engine._VLLMAsyncAdapter(
                 api_url="http://localhost:8000/v1",
                 model="test-model",
@@ -86,7 +90,10 @@ class TestVLLMAsyncAdapter:
         mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
 
         async def _run():
-            with patch.dict("sys.modules", {"openai": MagicMock(AsyncOpenAI=MagicMock(return_value=mock_client))}):
+            with patch.dict(
+                "sys.modules",
+                {"openai": MagicMock(AsyncOpenAI=MagicMock(return_value=mock_client))},
+            ):
                 adapter = br_engine._VLLMAsyncAdapter("http://x", "m")
                 return await adapter.generate(
                     "prompt",
@@ -107,7 +114,10 @@ class TestVLLMAsyncAdapter:
         mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
 
         async def _run():
-            with patch.dict("sys.modules", {"openai": MagicMock(AsyncOpenAI=MagicMock(return_value=mock_client))}):
+            with patch.dict(
+                "sys.modules",
+                {"openai": MagicMock(AsyncOpenAI=MagicMock(return_value=mock_client))},
+            ):
                 adapter = br_engine._VLLMAsyncAdapter("http://x", "m")
                 return await adapter.generate(
                     "p", system_prompt="s", max_tokens=100, temperature=0.5
@@ -120,6 +130,7 @@ class TestVLLMAsyncAdapter:
 # ---------------------------------------------------------------------------
 # _setup_audit_dir error path
 # ---------------------------------------------------------------------------
+
 
 class TestSetupAuditDir:
     def test_returns_none_when_audit_dir_is_none(self):
@@ -146,6 +157,7 @@ class TestSetupAuditDir:
 # _emit_audit_file error path
 # ---------------------------------------------------------------------------
 
+
 class TestEmitAuditFile:
     def test_writes_json_file(self, tmp_path):
         """Happy path: writes JSON to audit dir."""
@@ -166,6 +178,7 @@ class TestEmitAuditFile:
 # ---------------------------------------------------------------------------
 # apply_backtracking_rewrite — empty prompts path
 # ---------------------------------------------------------------------------
+
 
 class TestApplyBacktrackingRewriteEdgeCases:
     def test_returns_none_when_prompts_empty(self, monkeypatch):
@@ -224,6 +237,7 @@ class TestApplyBacktrackingRewriteEdgeCases:
 # rewrite_pipeline — client=None creates _VLLMAsyncAdapter (line 428)
 # ---------------------------------------------------------------------------
 
+
 class TestRewritePipelineClientNone:
     def test_client_none_creates_adapter(self, tmp_path, monkeypatch):
         """Line 428: when client=None, _VLLMAsyncAdapter is instantiated."""
@@ -258,6 +272,7 @@ class TestRewritePipelineClientNone:
 # ---------------------------------------------------------------------------
 # rewrite_pipeline — rejection / failed paths in _bounded_rewrite
 # ---------------------------------------------------------------------------
+
 
 class TestRewritePipelineBoundedRewritePaths:
     """Lines 502-526: rejection and None-result paths inside _bounded_rewrite."""
@@ -374,11 +389,17 @@ class TestRewritePipelineBoundedRewritePaths:
                 return {
                     "id": "x",
                     "conversation": [],  # _get_assistant_content will raise
-                    "metadata": {"backtracking_applied": True, "backtracking_strategy": "full_backtracking"},
+                    "metadata": {
+                        "backtracking_applied": True,
+                        "backtracking_strategy": "full_backtracking",
+                    },
                 }
+
             return _inner()
 
-        monkeypatch.setattr(br_engine, "apply_backtracking_rewrite", _bad_record_rewrite)
+        monkeypatch.setattr(
+            br_engine, "apply_backtracking_rewrite", _bad_record_rewrite
+        )
 
         class FakeClient:
             async def generate(self, *a, **kw):

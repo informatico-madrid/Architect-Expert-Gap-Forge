@@ -67,7 +67,7 @@ def test_structural_quality_filter_various_cases(tmp_path):
         "conversation": [
             {
                 "role": "assistant",
-                "content": f"{think_start}valid content{think_end} <tool_call>{{\"content\": \"x\"}}</tool_call>",
+                "content": f'{think_start}valid content{think_end} <tool_call>{{"content": "x"}}</tool_call>',
             }
         ]
     }
@@ -81,7 +81,7 @@ def test_structural_quality_filter_various_cases(tmp_path):
         "conversation": [
             {
                 "role": "assistant",
-                "content": f"{think_start}short{think_end}<tool_call>{{\"content\": \"x\"}}</tool_call>",
+                "content": f'{think_start}short{think_end}<tool_call>{{"content": "x"}}</tool_call>',
             }
         ]
     }
@@ -96,7 +96,7 @@ def test_structural_quality_filter_various_cases(tmp_path):
         "conversation": [
             {
                 "role": "assistant",
-                "content": f"{think_start}{think_meta}{think_end}<tool_call>{{\"content\": \"code\"}}</tool_call>",
+                "content": f'{think_start}{think_meta}{think_end}<tool_call>{{"content": "code"}}</tool_call>',
             }
         ]
     }
@@ -184,9 +184,7 @@ def test_run_nemo_filter_pipeline_not_installed(tmp_path):
         # Skip this assertion if environment actually has nemo installed
         return
     with pytest.raises(RuntimeError):
-        run_nemo_filter_pipeline(
-            str(tmp_path / "in.jsonl"), str(tmp_path / "outdir")
-        )
+        run_nemo_filter_pipeline(str(tmp_path / "in.jsonl"), str(tmp_path / "outdir"))
 
 
 def test_build_clusters_datasketch_not_available():
@@ -194,9 +192,7 @@ def test_build_clusters_datasketch_not_available():
     if _DATASKETCH_AVAILABLE:
         return  # Skip if available
     records = [{"conversation": [{"role": "assistant", "content": "test"}]}]
-    result = _build_clusters_datasketch(
-        records, threshold=0.8, num_perm=4, shingle_k=3
-    )
+    result = _build_clusters_datasketch(records, threshold=0.8, num_perm=4, shingle_k=3)
     assert result is None
 
 

@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Iterator
 if TYPE_CHECKING:
     pass
 
+
 # ---------------------------------------------------------------------------
 # Include Types
 # ---------------------------------------------------------------------------
@@ -76,9 +77,7 @@ class IncludeEdge:
             )
 
         if self.line_number < 1:
-            raise ValueError(
-                f"line_number must be >= 1, got {self.line_number}"
-            )
+            raise ValueError(f"line_number must be >= 1, got {self.line_number}")
 
     @property
     def is_unresolved(self) -> bool:
@@ -113,10 +112,10 @@ class IncludeGraph:
     def __post_init__(self) -> None:
         """Validate fields after initialization."""
         if not isinstance(self.edges, tuple):
-            object.__setattr__(self, 'edges', tuple(self.edges))
+            object.__setattr__(self, "edges", tuple(self.edges))
 
         if not isinstance(self.entry_points, tuple):
-            object.__setattr__(self, 'entry_points', tuple(self.entry_points))
+            object.__setattr__(self, "entry_points", tuple(self.entry_points))
 
     def neighbors(self, source_file: str) -> Iterator[str]:
         """
@@ -211,7 +210,9 @@ class IncludeGraph:
     @property
     def node_count(self) -> int:
         """Return the total number of unique files in the graph."""
-        return len({e.source_file for e in self.edges} | {e.target_file for e in self.edges})
+        return len(
+            {e.source_file for e in self.edges} | {e.target_file for e in self.edges}
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -224,9 +225,7 @@ IncludeEdgeTuple = tuple[IncludeEdge, ...]
 # Core Functions
 # ---------------------------------------------------------------------------
 def parse_includes(
-    content: str,
-    source_file: str,
-    known_constants: dict[str, str] | None = None
+    content: str, source_file: str, known_constants: dict[str, str] | None = None
 ) -> list[IncludeEdge]:
     """
     Parse include/require statements from PHP content.
@@ -247,41 +246,44 @@ def parse_includes(
 
     # Regex patterns for include/require statements
     include_pattern = re.compile(
-        r'(include|include_once|require|require_once)\s*[(_]?\s*'
+        r"(include|include_once|require|require_once)\s*[(_]?\s*"
         r'["\']([^"\']+)["\']',
-        re.IGNORECASE
+        re.IGNORECASE,
     )
 
     # Pattern for variable/dynamic includes (will be marked unresolved)
     dynamic_pattern = re.compile(
-        r'(include|include_once|require|require_once)\s*\(?\s*\$',
-        re.IGNORECASE
+        r"(include|include_once|require|require_once)\s*\(?\s*\$", re.IGNORECASE
     )
 
-    lines = content.split('\n')
+    lines = content.split("\n")
 
     for line_num, line in enumerate(lines, start=1):
         # Skip dynamic includes (unresolvable)
         if dynamic_pattern.search(line):
             # Still create edge but mark as unresolved
-            match = re.search(r'(include|include_once|require|require_once)', line, re.IGNORECASE)
+            match = re.search(
+                r"(include|include_once|require|require_once)", line, re.IGNORECASE
+            )
             if match:
                 include_type = match.group(1).lower()
-                if include_type == 'include':
+                if include_type == "include":
                     edge_type = IncludeType.INCLUDE
-                elif include_type == 'include_once':
+                elif include_type == "include_once":
                     edge_type = IncludeType.INCLUDE_ONCE
-                elif include_type == 'require':
+                elif include_type == "require":
                     edge_type = IncludeType.REQUIRE
                 else:
                     edge_type = IncludeType.REQUIRE_ONCE
 
-                edges.append(IncludeEdge(
-                    source_file=source_file,
-                    target_file="$DYNAMIC",
-                    include_type=edge_type,
-                    line_number=line_num
-                ))
+                edges.append(
+                    IncludeEdge(
+                        source_file=source_file,
+                        target_file="$DYNAMIC",
+                        include_type=edge_type,
+                        line_number=line_num,
+                    )
+                )
             continue
 
         # Parse static includes
@@ -294,28 +296,29 @@ def parse_includes(
                 target_path = target_path.replace(const_name, const_value)
 
             # Map to canonical include type
-            if include_type_raw == 'include':
+            if include_type_raw == "include":
                 edge_type = IncludeType.INCLUDE
-            elif include_type_raw == 'include_once':
+            elif include_type_raw == "include_once":
                 edge_type = IncludeType.INCLUDE_ONCE
-            elif include_type_raw == 'require':
+            elif include_type_raw == "require":
                 edge_type = IncludeType.REQUIRE
             else:
                 edge_type = IncludeType.REQUIRE_ONCE
 
-            edges.append(IncludeEdge(
-                source_file=source_file,
-                target_file=target_path,
-                include_type=edge_type,
-                line_number=line_num
-            ))
+            edges.append(
+                IncludeEdge(
+                    source_file=source_file,
+                    target_file=target_path,
+                    include_type=edge_type,
+                    line_number=line_num,
+                )
+            )
 
     return edges
 
 
 def build_include_graph(
-    file_map: dict[Path, str],
-    constants: dict[str, str] | None = None
+    file_map: dict[Path, str], constants: dict[str, str] | None = None
 ) -> IncludeGraph:
     """
     Build an include graph from a collection of PHP files.
@@ -339,10 +342,7 @@ def build_include_graph(
     all_files = {str(p) for p in file_map.keys()}
     entry_points = tuple(f for f in all_files if f not in included_files)
 
-    return IncludeGraph(
-        edges=tuple(all_edges),
-        entry_points=entry_points
-    )
+    return IncludeGraph(edges=tuple(all_edges), entry_points=entry_points)
 
 
 def get_hub_files(graph: IncludeGraph, threshold: int = 5) -> list[str]:
@@ -367,8 +367,7 @@ def get_hub_files(graph: IncludeGraph, threshold: int = 5) -> list[str]:
 
 
 def format_include_graph_section(
-    graph: IncludeGraph,
-    source_file: str | None = None
+    graph: IncludeGraph, source_file: str | None = None
 ) -> str:
     """
     Format the include graph as a section string for bundle output.

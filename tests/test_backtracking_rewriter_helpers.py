@@ -67,7 +67,9 @@ def test_load_legacy_regexes_and_validate(tmp_path):
     # resolution contains deprecated_api inside fenced code — should be detected
     new_think = "A" * 40 + " deprecated_api()"
     resolution = "```python\ndeprecated_api()\n```"
-    ok, reason = br_strategy._validate_resolution_no_legacy(new_think, resolution, legacy)
+    ok, reason = br_strategy._validate_resolution_no_legacy(
+        new_think, resolution, legacy
+    )
     assert not ok
     assert "deprecated_api" in reason
 

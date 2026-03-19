@@ -75,7 +75,9 @@ def test_structural_quality_filter(tmp_path):
         "conversation": [
             {
                 "role": "assistant",
-                "content": "<think>" + "x" * 600 + "</think><tool_call>code here</tool_call>",
+                "content": "<think>"
+                + "x" * 600
+                + "</think><tool_call>code here</tool_call>",
             }
         ]
     }
@@ -86,11 +88,16 @@ def test_structural_quality_filter(tmp_path):
     # Invalid record (shallow thinking) should fail
     rec2 = {
         "conversation": [
-            {"role": "assistant", "content": "<think>short</think><tool_call>c</tool_call>"}
+            {
+                "role": "assistant",
+                "content": "<think>short</think><tool_call>c</tool_call>",
+            }
         ]
     }
     stats2 = CurationStats()
-    out2 = structural_quality_filter([rec2], stats2, min_think_chars=500, ldi_min_ratio=0.1)
+    out2 = structural_quality_filter(
+        [rec2], stats2, min_think_chars=500, ldi_min_ratio=0.1
+    )
     assert len(out2) == 0
     assert stats2.shallow_thinking == 1
 

@@ -189,6 +189,7 @@ def test_run_nemo_filter_pipeline_with_fake_nemo(tmp_path):
     # Enable fake nemo/datasketch, reload the suite to pick up availability
     enable_fake_nemo()
     from src.curation import curator_pipeline as ncs
+
     importlib.reload(ncs)
 
     try:

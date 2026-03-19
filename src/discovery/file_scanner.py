@@ -82,6 +82,7 @@ GOVERNANCE_FILENAMES: Set[str] = {
 # Module Discovery Functions
 # ---------------------------------------------------------------------------
 
+
 def discover_modules(
     root: Path,
     strategy: str,
@@ -182,7 +183,9 @@ def _discover_by_manifest_and_init(
             manifest_data = {}
         if build_module_func:
             modules.append(
-                build_module_func(mod_dir, anchor_type="manifest", manifest=manifest_data)
+                build_module_func(
+                    mod_dir, anchor_type="manifest", manifest=manifest_data
+                )
             )
         else:
             modules.append(
@@ -347,7 +350,9 @@ def _discover_with_overrides(
 
         if build_module_func:
             modules.append(
-                build_module_func(mod_dir, anchor_type=anchor_type, manifest=manifest_data)
+                build_module_func(
+                    mod_dir, anchor_type=anchor_type, manifest=manifest_data
+                )
             )
         else:
             modules.append(
@@ -377,7 +382,7 @@ def _merge_with_overrides(
     Removes modules that are disabled in overrides, and adds any modules
     defined exclusively in overrides.
     """
-    from src.discovery.fragment_parser import Module
+    from src.discovery.fragment_parser import Module  # noqa: F401
 
     if not module_overrides:
         return discovered_modules
@@ -414,6 +419,7 @@ def _merge_with_overrides(
 # ---------------------------------------------------------------------------
 # Helper Functions
 # ---------------------------------------------------------------------------
+
 
 def is_ignored(p: Path, ignore_patterns: Set[str]) -> bool:
     """Check if a path should be ignored based on ignore patterns.

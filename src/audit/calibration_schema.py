@@ -64,12 +64,12 @@ SCORING_WEIGHTS: Final[dict[str, float]] = {
 # Grid pivots around these base values to find optimal settings
 # Expanded grid for broader exploration - noxious filter will prune bad values
 CALIBRATION_GRID: Final[dict[str, list[Any]]] = {
-    "temperature": [0.3, 0.5, 0.6, 0.7, 0.9, 1.1],          # pivot 0.6
-    "top_p": [0.7, 0.8, 0.9, 0.95, 1.0],                      # pivot 0.9
-    "top_k": [5, 10, 20, 40, 60, 80],                          # pivot 20
-    "min_p": [0.0, 0.02, 0.05, 0.1, 0.15],                    # pivot 0.0
-    "repetition_penalty": [1.0, 1.05, 1.1, 1.15, 1.2],        # pivot 1.0
-    "presence_penalty": [0.0, 0.5, 1.0, 1.5, 2.0],           # pivot 1.0 (range -2 to 2)
+    "temperature": [0.3, 0.5, 0.6, 0.7, 0.9, 1.1],  # pivot 0.6
+    "top_p": [0.7, 0.8, 0.9, 0.95, 1.0],  # pivot 0.9
+    "top_k": [5, 10, 20, 40, 60, 80],  # pivot 20
+    "min_p": [0.0, 0.02, 0.05, 0.1, 0.15],  # pivot 0.0
+    "repetition_penalty": [1.0, 1.05, 1.1, 1.15, 1.2],  # pivot 1.0
+    "presence_penalty": [0.0, 0.5, 1.0, 1.5, 2.0],  # pivot 1.0 (range -2 to 2)
 }
 
 # Valid parameter names that can be targeted in calibration prompts
@@ -121,21 +121,15 @@ class SamplingProfile:
 
         # top_p validation
         if not (0.0 <= self.top_p <= 1.0):
-            raise ValueError(
-                f"top_p must be in range [0.0, 1.0], got {self.top_p}"
-            )
+            raise ValueError(f"top_p must be in range [0.0, 1.0], got {self.top_p}")
 
         # top_k validation
         if not (1 <= self.top_k <= 200):
-            raise ValueError(
-                f"top_k must be in range [1, 200], got {self.top_k}"
-            )
+            raise ValueError(f"top_k must be in range [1, 200], got {self.top_k}")
 
         # min_p validation
         if not (0.0 <= self.min_p <= 1.0):
-            raise ValueError(
-                f"min_p must be in range [0.0, 1.0], got {self.min_p}"
-            )
+            raise ValueError(f"min_p must be in range [0.0, 1.0], got {self.min_p}")
 
         # repetition_penalty validation
         if not (1.0 <= self.repetition_penalty <= 2.0):
@@ -259,9 +253,7 @@ class CalibrationReport:
             total_iterations=data["total_iterations"],
             best_profile=SamplingProfile.from_dict(data["best_profile"]),
             best_score=data["best_score"],
-            all_results=[
-                CalibrationResult.from_dict(r) for r in data["all_results"]
-            ],
+            all_results=[CalibrationResult.from_dict(r) for r in data["all_results"]],
             statistics=data.get("statistics", {}),
             prompt_count=data.get("prompt_count", 0),
             focus_analysis=data.get("focus_analysis", {}),
@@ -306,9 +298,7 @@ class CalibrationCheckpoint:
             current_prompt_idx=data["current_prompt_idx"],
             current_profile_idx=data["current_profile_idx"],
             completed_profiles=data["completed_profiles"],
-            all_results=[
-                CalibrationResult.from_dict(r) for r in data["all_results"]
-            ],
+            all_results=[CalibrationResult.from_dict(r) for r in data["all_results"]],
             total_profiles=data["total_profiles"],
             total_prompts=data["total_prompts"],
             discarded_params=data.get("discarded_params", {}),
@@ -368,9 +358,7 @@ class CalibrationPrompt:
         param_target = data.get("parameter_target", [])
         if isinstance(param_target, str):
             # Parse comma-separated string
-            param_target = [
-                p.strip() for p in param_target.split(",") if p.strip()
-            ]
+            param_target = [p.strip() for p in param_target.split(",") if p.strip()]
 
         return cls(
             id=str(data["id"]),

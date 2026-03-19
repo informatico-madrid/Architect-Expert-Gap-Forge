@@ -91,7 +91,11 @@ def generate_report(
     type_scores: dict[str, list[float]] = defaultdict(list)
     for sc in scorecards:
         # Try to get example_type from dimensions or use a default
-        example_type = sc.dimensions.get("example_type", "unknown") if hasattr(sc, "dimensions") else "unknown"
+        example_type = (
+            sc.dimensions.get("example_type", "unknown")
+            if hasattr(sc, "dimensions")
+            else "unknown"
+        )
         type_scores[example_type].append(sc.composite_score)
 
     base_lat = [r.latency_ms for r in baseline_results if hasattr(r, "latency_ms")]
@@ -123,7 +127,9 @@ def generate_report(
     w("---")
     w("")
 
-    w(f"## Final Grade: {report.final_grade}/100 ({_get_grade_label(report.final_grade)})")
+    w(
+        f"## Final Grade: {report.final_grade}/100 ({_get_grade_label(report.final_grade)})"
+    )
     w("")
     w(f"**Verdict:** {report.verdict}")
     w("")

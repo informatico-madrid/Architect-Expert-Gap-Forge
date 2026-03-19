@@ -27,7 +27,12 @@ from typing import Protocol, Sequence, runtime_checkable
 
 from src.schemas.common import RawRecord
 
-from .backtracking_config import BacktrackingConfig, PipelineReport, _PROMPT_BACKTRACKING_PATH, _PROMPT_RECONSTRUCTION_PATH
+from .backtracking_config import (
+    BacktrackingConfig,
+    PipelineReport,
+    _PROMPT_BACKTRACKING_PATH,
+    _PROMPT_RECONSTRUCTION_PATH,
+)
 from .backtracking_helpers import (
     _RejectionSamplingError,
     _format_seconds,
@@ -200,40 +205,40 @@ async def apply_backtracking_rewrite(
 ) -> RawRecord | None:
     """Apply backtracking rewrite to a single record (async).
 
-    Parameters
-    ----------
-    record:
-        Source training record.
-    client:
-        An async inference client that implements ``_AsyncGenerateClient``
-        (i.e. has ``async def generate(prompt, *, system_prompt, max_tokens,
-        temperature) -> str``).
-    config:
-        Pipeline configuration.
-    _system_bt:
-        Pre-loaded backtracking system prompt text.  Internal keyword argument
-        used by the pipeline to avoid repeated file reads.
-    _system_rc:
-        Pre-loaded trace-reconstruction system prompt text.  Same as above.
-    _governance_context:
-        Raw text of ``HA_MASTER_GUIDE_2026.md`` to inject in the user message.
-        When ``None`` prompts are sent without the governance context block.
-    _legacy_regexes:
-        Compiled legacy regex patterns for post-generation rejection sampling.
-        When non-empty, the resolution half of the generated think block is
-        validated; records that still contain legacy code are discarded.
+        Parameters
+        ----------
+        record:
+            Source training record.
+        client:
+            An async inference client that implements ``_AsyncGenerateClient``
+            (i.e. has ``async def generate(prompt, *, system_prompt, max_tokens,
+            temperature) -> str``).
+        config:
+            Pipeline configuration.
+        _system_bt:
+            Pre-loaded backtracking system prompt text.  Internal keyword argument
+            used by the pipeline to avoid repeated file reads.
+        _system_rc:
+            Pre-loaded trace-reconstruction system prompt text.  Same as above.
+        _governance_context:
+            Raw text of ``HA_MASTER_GUIDE_2026.md`` to inject in the user message.
+            When ``None`` prompts are sent without the governance context block.
+        _legacy_regexes:
+            Compiled legacy regex patterns for post-generation rejection sampling.
+            When non-empty, the resolution half of the generated think block is
+            validated; records that still contain legacy code are discarded.
 
-    Returns
-    -------
-    The rewritten record with updated metadata, or ``None`` if all retries
-    fail **or** the generated reasoning fails rejection sampling.
+        Returns
+        -------
+        The rewritten record with updated metadata, or ``None`` if all retries
+        fail **or** the generated reasoning fails rejection sampling.
 
-    Sacred Constraint
-    -----------------
-    Content at and after ``
-</think>
+        Sacred Constraint
+        -----------------
+        Content at and after ``
+    </think>
 
-`` is **never** modified.
+    `` is **never** modified.
     """
     strategy = classify_rewrite_strategy(record)
 

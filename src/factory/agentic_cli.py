@@ -16,7 +16,6 @@ Command-line interface for multi-turn agentic training data generation.
 import argparse
 import logging
 import random
-import sys
 from pathlib import Path
 
 # ══════════════════════════════════════════════════════════════════════

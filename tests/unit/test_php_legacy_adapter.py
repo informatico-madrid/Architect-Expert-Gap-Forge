@@ -31,6 +31,7 @@ from src.utils.extractors.base import (
 def php_adapter():
     """Create a PhpLegacyAdapter instance for testing."""
     from src.utils.extractors.php_legacy_adapter import PhpLegacyAdapter
+
     return PhpLegacyAdapter()
 
 
@@ -46,19 +47,22 @@ class TestPhpLegacyAdapterConstructor:
     def test_constructor_instantiates(self) -> None:
         """PhpLegacyAdapter should instantiate without errors."""
         from src.utils.extractors.php_legacy_adapter import PhpLegacyAdapter
+
         adapter = PhpLegacyAdapter()
         assert adapter is not None
 
     def test_constructor_default_workers(self) -> None:
         """PhpLegacyAdapter should have default worker pool configuration."""
         from src.utils.extractors.php_legacy_adapter import PhpLegacyAdapter
+
         adapter = PhpLegacyAdapter()
         # Adapter should have thread pool configuration
-        assert hasattr(adapter, '_io_workers') or hasattr(adapter, 'max_workers')
+        assert hasattr(adapter, "_io_workers") or hasattr(adapter, "max_workers")
 
     def test_constructor_accepts_custom_config(self) -> None:
         """PhpLegacyAdapter should accept custom configuration parameters."""
         from src.utils.extractors.php_legacy_adapter import PhpLegacyAdapter
+
         # Should be able to instantiate with optional config
         adapter = PhpLegacyAdapter()
         assert adapter is not None
@@ -67,9 +71,7 @@ class TestPhpLegacyAdapterConstructor:
 class TestPhpLegacyAdapterParseFile:
     """Test suite for PhpLegacyAdapter.parse_file() method."""
 
-    def test_parse_file_returns_parse_result(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_parse_file_returns_parse_result(self, php_adapter, fixtures_dir) -> None:
         """parse_file should return a ParseResult with content and metadata."""
         test_file = fixtures_dir / "oscommerce_categories.php"
         result = php_adapter.parse_file(test_file)
@@ -78,9 +80,7 @@ class TestPhpLegacyAdapterParseFile:
         assert result.file_path == test_file
         assert result.raw_content != ""
 
-    def test_parse_file_reads_php_content(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_parse_file_reads_php_content(self, php_adapter, fixtures_dir) -> None:
         """parse_file should read the PHP file content."""
         test_file = fixtures_dir / "oscommerce_categories.php"
         result = php_adapter.parse_file(test_file)
@@ -88,9 +88,7 @@ class TestPhpLegacyAdapterParseFile:
         # osCommerce uses tep_db_query
         assert "php" in result.raw_content.lower()
 
-    def test_parse_file_has_ast_tree_none(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_parse_file_has_ast_tree_none(self, php_adapter, fixtures_dir) -> None:
         """parse_file should return None for ast_tree on PHP (non-AST language)."""
         test_file = fixtures_dir / "oscommerce_categories.php"
         result = php_adapter.parse_file(test_file)
@@ -98,9 +96,7 @@ class TestPhpLegacyAdapterParseFile:
         # PHP doesn't use AST in the same way - should be None or custom structure
         assert result.ast_tree is None or result.ast_tree == {}
 
-    def test_parse_file_wordpress_fixture(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_parse_file_wordpress_fixture(self, php_adapter, fixtures_dir) -> None:
         """parse_file should handle WordPress PHP files."""
         test_file = fixtures_dir / "wordpress_ajax_actions.php"
         result = php_adapter.parse_file(test_file)
@@ -108,9 +104,7 @@ class TestPhpLegacyAdapterParseFile:
         assert isinstance(result, ParseResult)
         assert result.file_path == test_file
 
-    def test_parse_file_zencart_fixture(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_parse_file_zencart_fixture(self, php_adapter, fixtures_dir) -> None:
         """parse_file should handle ZenCart PHP files."""
         test_file = fixtures_dir / "zencart_customers.php"
         result = php_adapter.parse_file(test_file)
@@ -118,9 +112,7 @@ class TestPhpLegacyAdapterParseFile:
         assert isinstance(result, ParseResult)
         assert result.file_path == test_file
 
-    def test_parse_file_raises_on_missing_file(
-        self, php_adapter, tmp_path
-    ) -> None:
+    def test_parse_file_raises_on_missing_file(self, php_adapter, tmp_path) -> None:
         """parse_file should raise ParseError on missing files."""
         missing_file = tmp_path / "nonexistent.php"
 
@@ -129,9 +121,7 @@ class TestPhpLegacyAdapterParseFile:
 
         assert str(missing_file) in str(exc_info.value)
 
-    def test_parse_file_dependencies_tuple(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_parse_file_dependencies_tuple(self, php_adapter, fixtures_dir) -> None:
         """parse_file result should have dependencies as tuple."""
         test_file = fixtures_dir / "oscommerce_categories.php"
         result = php_adapter.parse_file(test_file)
@@ -142,9 +132,7 @@ class TestPhpLegacyAdapterParseFile:
 class TestPhpLegacyAdapterExtractDependencies:
     """Test suite for PhpLegacyAdapter.extract_dependencies() method."""
 
-    def test_extract_dependencies_returns_list(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_extract_dependencies_returns_list(self, php_adapter, fixtures_dir) -> None:
         """extract_dependencies should return a list."""
         test_file = fixtures_dir / "oscommerce_categories.php"
         deps = php_adapter.extract_dependencies(test_file)
@@ -171,9 +159,7 @@ class TestPhpLegacyAdapterExtractDependencies:
         # Should find some dependency (file path or module name)
         assert len(deps) >= 0  # May vary based on implementation
 
-    def test_extract_dependencies_wordpress(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_extract_dependencies_wordpress(self, php_adapter, fixtures_dir) -> None:
         """extract_dependencies should find WordPress-specific dependencies."""
         test_file = fixtures_dir / "wordpress_ajax_actions.php"
         deps = php_adapter.extract_dependencies(test_file)
@@ -181,9 +167,7 @@ class TestPhpLegacyAdapterExtractDependencies:
         # WordPress uses $wpdb, add_action
         assert isinstance(deps, list)
 
-    def test_extract_dependencies_zencart(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_extract_dependencies_zencart(self, php_adapter, fixtures_dir) -> None:
         """extract_dependencies should find ZenCart-specific dependencies."""
         test_file = fixtures_dir / "zencart_customers.php"
         deps = php_adapter.extract_dependencies(test_file)
@@ -202,16 +186,14 @@ class TestPhpLegacyAdapterExtractDependencies:
 
         assert isinstance(deps, list)
 
-    def test_extract_dependencies_module_types(
-        self, php_adapter, fixtures_dir
-    ) -> None:
+    def test_extract_dependencies_module_types(self, php_adapter, fixtures_dir) -> None:
         """extract_dependencies should return deps with module_type field."""
         test_file = fixtures_dir / "oscommerce_categories.php"
         deps = php_adapter.extract_dependencies(test_file)
 
         for dep in deps:
-            assert hasattr(dep, 'module_type')
-            assert hasattr(dep, 'name')
+            assert hasattr(dep, "module_type")
+            assert hasattr(dep, "name")
 
 
 class TestPhpLegacyAdapterProtocol:
@@ -225,12 +207,12 @@ class TestPhpLegacyAdapterProtocol:
 
     def test_adapter_has_parse_file_method(self, php_adapter) -> None:
         """Adapter should have parse_file method."""
-        assert hasattr(php_adapter, 'parse_file')
+        assert hasattr(php_adapter, "parse_file")
         assert callable(php_adapter.parse_file)
 
     def test_adapter_has_extract_dependencies_method(self, php_adapter) -> None:
         """Adapter should have extract_dependencies method."""
-        assert hasattr(php_adapter, 'extract_dependencies')
+        assert hasattr(php_adapter, "extract_dependencies")
         assert callable(php_adapter.extract_dependencies)
 
 
@@ -267,9 +249,7 @@ class TestPhpLegacyAdapterProcessRepository:
         # Returns list (possibly empty or with bundles)
         assert isinstance(bundle_paths, list)
 
-    def test_process_repository_empty_dir(
-        self, php_adapter, tmp_path
-    ) -> None:
+    def test_process_repository_empty_dir(self, php_adapter, tmp_path) -> None:
         """process_repository should return empty list for empty directory."""
         output_dir = tmp_path / "output"
         output_dir.mkdir()
@@ -281,9 +261,7 @@ class TestPhpLegacyAdapterProcessRepository:
         )
         assert bundle_paths == []
 
-    def test_process_repository_no_php_files(
-        self, php_adapter, tmp_path
-    ) -> None:
+    def test_process_repository_no_php_files(self, php_adapter, tmp_path) -> None:
         """process_repository should return empty list when no PHP files found."""
         # Create non-PHP file
         (tmp_path / "readme.txt").write_text("Just a text file")
@@ -394,9 +372,7 @@ echo 'Page {i}';
         # Should return list of bundles
         assert isinstance(bundle_paths, list)
 
-    def test_process_repository_skips_empty_result(
-        self, php_adapter, tmp_path
-    ) -> None:
+    def test_process_repository_skips_empty_result(self, php_adapter, tmp_path) -> None:
         """process_repository should handle empty worker results gracefully."""
         # Create a file that might produce empty fragments
         test_file = tmp_path / "empty.php"

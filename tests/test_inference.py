@@ -594,7 +594,11 @@ class TestClaudeClientFindCli:
 
     def test_checks_common_paths(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            with patch.object(ClaudeClient, "_find_claude_cli", return_value=os.path.expanduser("~/.local/bin/claude")):
+            with patch.object(
+                ClaudeClient,
+                "_find_claude_cli",
+                return_value=os.path.expanduser("~/.local/bin/claude"),
+            ):
                 client = ClaudeClient(model="sonnet")
                 assert client._cli_path == os.path.expanduser("~/.local/bin/claude")
 
@@ -691,7 +695,10 @@ class TestCalibrationWithClaudeJudge:
 
         # Create test prompts
         test_prompts = [
-            {"id": "test_prompt_1", "text": "Explain what is machine learning in one sentence."},
+            {
+                "id": "test_prompt_1",
+                "text": "Explain what is machine learning in one sentence.",
+            },
         ]
 
         # Mock ClaudeClient for judge
@@ -723,7 +730,9 @@ class TestCalibrationWithClaudeJudge:
         }
 
         # Patch at the module level where calibration.py imports it (inside the function)
-        with patch("src.audit.judge.llm_judge_score", return_value=mock_judge_result) as mock_judge:
+        with patch(
+            "src.audit.judge.llm_judge_score", return_value=mock_judge_result
+        ) as mock_judge:
             # Run calibration with mocked clients
             engine = CalibrationEngine(
                 prompts=test_prompts,
@@ -816,7 +825,9 @@ class TestCalibrationWithClaudeJudge:
 
         # Mock student client
         mock_student_client = MagicMock()
-        mock_student_client.generate_with_retry.return_value = "Sample response with enough words to avoid length penalty."
+        mock_student_client.generate_with_retry.return_value = (
+            "Sample response with enough words to avoid length penalty."
+        )
 
         # Patch at the module level where calibration.py imports it (inside the function)
         with patch("src.audit.judge.llm_judge_score", side_effect=mock_judge_score):
@@ -867,7 +878,13 @@ class TestCalibrationWithClaudeJudge:
         mock_existing_result = CalibrationResult(
             profile=profiles[0],
             exam_id="test_prompt_1",
-            judge_scores={"ha_modernity": 0.8, "reasoning_depth": 0.8, "functionality": 0.8, "completeness": 0.8, "style": 0.8},
+            judge_scores={
+                "ha_modernity": 0.8,
+                "reasoning_depth": 0.8,
+                "functionality": 0.8,
+                "completeness": 0.8,
+                "style": 0.8,
+            },
             composite_score=0.8,
             adjusted_score=0.8,
             response_length=250,
@@ -902,7 +919,9 @@ class TestCalibrationWithClaudeJudge:
         mock_student_client.generate_with_retry.return_value = "New response."
 
         # Patch at the module level where calibration.py imports it (inside the function)
-        with patch("src.audit.judge.llm_judge_score", return_value=mock_judge_result) as mock_judge_fn:
+        with patch(
+            "src.audit.judge.llm_judge_score", return_value=mock_judge_result
+        ) as mock_judge_fn:
             # Create engine with checkpoint that has already completed this iteration
             engine = CalibrationEngine(
                 prompts=test_prompts,
@@ -913,7 +932,9 @@ class TestCalibrationWithClaudeJudge:
 
             # Simulate resume by pre-populating completed profiles
             engine.results = [mock_existing_result]
-            engine._completed_profiles = [(0, 0)]  # Already completed prompt 0, profile 0
+            engine._completed_profiles = [
+                (0, 0)
+            ]  # Already completed prompt 0, profile 0
 
             # Run - should skip the already-completed iteration
             _ = engine.run(verbose=False)

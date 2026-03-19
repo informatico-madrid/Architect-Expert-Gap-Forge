@@ -70,7 +70,6 @@ from src.audit.calibration_schema import (
     SamplingProfile,
 )
 from src.audit.inference import InferenceRouter
-from src.audit.schema import ExamRecord, PromptGenerationError
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +127,9 @@ def load_calibration_prompts_from_yaml(
             prompt = CalibrationPrompt.from_dict(item)
             prompts.append(prompt)
         except (KeyError, ValueError) as e:
-            logger.warning("Skipping invalid prompt %s: %s", item.get("id", "unknown"), e)
+            logger.warning(
+                "Skipping invalid prompt %s: %s", item.get("id", "unknown"), e
+            )
             continue
 
     logger.info("Loaded %d calibration prompts from %s", len(prompts), yaml_path)
@@ -383,7 +384,9 @@ def analyze_evaluation_focus(
 
         # Build analysis result for this prompt
         if best_match and best_match in EVALUATION_FOCUS_MAPPING:
-            params_increase, params_decrease, reasoning = EVALUATION_FOCUS_MAPPING[best_match]
+            params_increase, params_decrease, reasoning = EVALUATION_FOCUS_MAPPING[
+                best_match
+            ]
             # Filter to only include parameters that are in this prompt's parameter_target
             target_params = set(prompt.get_parameter_target_set())
             filtered_increase = [p for p in params_increase if p in target_params]
@@ -548,19 +551,23 @@ def generate_parameter_adjustments(
     recommendations: list[dict[str, Any]] = []
     for param_name in base_grid:
         if param_name in strategy.get("increase", []):
-            recommendations.append({
-                "parameter": param_name,
-                "action": "increase",
-                "reason": "Recommended for increase based on evaluation_focus analysis",
-                "values": adjusted_grid.get(param_name, []),
-            })
+            recommendations.append(
+                {
+                    "parameter": param_name,
+                    "action": "increase",
+                    "reason": "Recommended for increase based on evaluation_focus analysis",
+                    "values": adjusted_grid.get(param_name, []),
+                }
+            )
         elif param_name in strategy.get("decrease", []):
-            recommendations.append({
-                "parameter": param_name,
-                "action": "decrease",
-                "reason": "Recommended for decrease based on evaluation_focus analysis",
-                "values": adjusted_grid.get(param_name, []),
-            })
+            recommendations.append(
+                {
+                    "parameter": param_name,
+                    "action": "decrease",
+                    "reason": "Recommended for decrease based on evaluation_focus analysis",
+                    "values": adjusted_grid.get(param_name, []),
+                }
+            )
 
     return {
         "adjusted_grid": adjusted_grid,
@@ -608,7 +615,13 @@ def get_parameter_priority_order(
     decrease_params = focus_strategy.get("decrease", [])
 
     # Default all parameters to medium priority (balanced exploration)
-    default_params = ["temperature", "top_k", "min_p", "repetition_penalty", "presence_penalty"]
+    default_params = [
+        "temperature",
+        "top_k",
+        "min_p",
+        "repetition_penalty",
+        "presence_penalty",
+    ]
     for param in default_params:
         priority[param] = "medium"
 
@@ -721,7 +734,9 @@ def generate_adaptive_profiles(
     for param_name, param_values in grid.items():
         if param_values:
             priority = priority_order.get(param_name, "medium")
-            ordered_grid[param_name] = _sort_values_by_priority(param_values, priority, param_name)
+            ordered_grid[param_name] = _sort_values_by_priority(
+                param_values, priority, param_name
+            )
         else:
             ordered_grid[param_name] = param_values
 
@@ -745,7 +760,9 @@ def generate_adaptive_profiles(
             )
             profiles.append(profile)
         except (ValueError, KeyError) as e:
-            logger.warning("Skipping invalid profile combination %s: %s", profile_dict, e)
+            logger.warning(
+                "Skipping invalid profile combination %s: %s", profile_dict, e
+            )
 
     return profiles
 
@@ -781,7 +798,13 @@ def get_adaptive_parameter_weights(
     base_weight = 0.25
     focus_boost = 0.5  # Additional weight for focused parameters
 
-    default_params = ["temperature", "top_k", "min_p", "repetition_penalty", "presence_penalty"]
+    default_params = [
+        "temperature",
+        "top_k",
+        "min_p",
+        "repetition_penalty",
+        "presence_penalty",
+    ]
 
     increase_params = set(focus_strategy.get("increase", []))
     decrease_params = set(focus_strategy.get("decrease", []))
@@ -824,7 +847,9 @@ def _adjust_for_increase(values: list[Any], param_name: str = "") -> list[Any]:
         adjusted = [round(v + shift, 2) for v in numeric_values]
 
         # Ensure values stay within reasonable bounds
-        adjusted = [_clamp_to_valid_range(v, numeric_values[0], param_name) for v in adjusted]
+        adjusted = [
+            _clamp_to_valid_range(v, numeric_values[0], param_name) for v in adjusted
+        ]
 
         return adjusted
     except (ValueError, TypeError):
@@ -859,7 +884,9 @@ def _adjust_for_decrease(values: list[Any], param_name: str = "") -> list[Any]:
         adjusted = [round(v - shift, 2) for v in numeric_values]
 
         # Ensure values stay within reasonable bounds
-        adjusted = [_clamp_to_valid_range(v, numeric_values[-1], param_name) for v in adjusted]
+        adjusted = [
+            _clamp_to_valid_range(v, numeric_values[-1], param_name) for v in adjusted
+        ]
 
         return adjusted
     except (ValueError, TypeError):
@@ -886,7 +913,9 @@ def _clamp_to_valid_range(value: float, original: Any, param_name: str = "") -> 
     # Determine parameter type from original value
     try:
         orig_float = float(original)
-        orig_is_int = isinstance(original, int) or (isinstance(original, str) and original.isdigit())
+        orig_is_int = isinstance(original, int) or (
+            isinstance(original, str) and original.isdigit()
+        )
 
         # Check parameter name first if provided
         if param_name == "top_k":
@@ -1041,7 +1070,9 @@ def refine_parameter_space(
                 refined_values = [round(weighted_avg, 2)]
             else:
                 step = (new_max - new_min) / (num_values - 1) if num_values > 1 else 0
-                refined_values = [round(new_min + i * step, 2) for i in range(num_values)]
+                refined_values = [
+                    round(new_min + i * step, 2) for i in range(num_values)
+                ]
 
             # Clamp to valid ranges
             refined_values = [
@@ -1102,7 +1133,11 @@ def analyze_parameter_performance(
     param_data: dict[str, dict[Any, list[float]]] = {}
 
     for result in results:
-        score = result.adjusted_score if result.adjusted_score > 0 else result.composite_score
+        score = (
+            result.adjusted_score
+            if result.adjusted_score > 0
+            else result.composite_score
+        )
 
         for param_name in ["temperature", "top_k", "min_p", "repetition_penalty"]:
             param_value = getattr(result.profile, param_name, None)
@@ -1196,27 +1231,35 @@ def get_refinement_recommendations(
 
             # Determine recommendation
             if original_values != refined_values:
-                recommendations.append({
-                    "parameter": param_name,
-                    "action": "narrow_range",
-                    "reason": f"Best performing value: {best_value} (avg score: {best_score:.2f})",
-                    "original_values": original_values,
-                    "refined_values": refined_values,
-                    "best_value": best_value,
-                })
+                recommendations.append(
+                    {
+                        "parameter": param_name,
+                        "action": "narrow_range",
+                        "reason": f"Best performing value: {best_value} (avg score: {best_score:.2f})",
+                        "original_values": original_values,
+                        "refined_values": refined_values,
+                        "best_value": best_value,
+                    }
+                )
             else:
-                recommendations.append({
-                    "parameter": param_name,
-                    "action": "keep_range",
-                    "reason": f"No significant improvement found (best: {best_value}, score: {best_score:.2f})",
-                    "original_values": original_values,
-                    "refined_values": refined_values,
-                    "best_value": best_value,
-                })
+                recommendations.append(
+                    {
+                        "parameter": param_name,
+                        "action": "keep_range",
+                        "reason": f"No significant improvement found (best: {best_value}, score: {best_score:.2f})",
+                        "original_values": original_values,
+                        "refined_values": refined_values,
+                        "best_value": best_value,
+                    }
+                )
 
     # Calculate summary statistics
     total_results = len(results)
-    avg_score = sum(r.composite_score for r in results) / total_results if total_results > 0 else 0
+    avg_score = (
+        sum(r.composite_score for r in results) / total_results
+        if total_results > 0
+        else 0
+    )
     best_result = max(results, key=lambda r: r.adjusted_score) if results else None
     best_score_overall = best_result.adjusted_score if best_result else 0
 
@@ -1291,7 +1334,9 @@ def extract_focus_analysis(
             # Map common field names to what CalibrationPrompt expects
             cal_prompt_dict = {
                 "id": prompt.get("id", "unknown"),
-                "question": prompt.get("question", prompt.get("text", prompt.get("prompt", ""))),
+                "question": prompt.get(
+                    "question", prompt.get("text", prompt.get("prompt", ""))
+                ),
                 "type": prompt.get("type", "investigation"),
                 "parameter_target": prompt.get("parameter_target", ""),
                 "evaluation_focus": prompt.get("evaluation_focus", ""),
@@ -1317,7 +1362,9 @@ def extract_focus_analysis(
     focused_params = get_focused_parameters(calibration_prompts)
 
     # Get unique evaluation foci
-    evaluation_foci = list(set(p.evaluation_focus for p in calibration_prompts if p.evaluation_focus))
+    evaluation_foci = list(
+        set(p.evaluation_focus for p in calibration_prompts if p.evaluation_focus)
+    )
 
     # Get adjustment strategy
     adjustment_strategy = get_focused_adjustment_strategy(calibration_prompts)
@@ -1385,7 +1432,9 @@ def generate_profiles(
             )
             profiles.append(profile)
         except ValueError as e:
-            logger.warning("Skipping invalid profile combination %s: %s", profile_dict, e)
+            logger.warning(
+                "Skipping invalid profile combination %s: %s", profile_dict, e
+            )
 
     return profiles
 
@@ -1484,8 +1533,7 @@ def apply_length_penalty(
 
     adjusted = composite_score * (1.0 - penalty_ratio)
     logger.debug(
-        "Length penalty applied: %d words (min %d), penalty=%.2f, "
-        "adjusted_score=%.3f",
+        "Length penalty applied: %d words (min %d), penalty=%.2f, adjusted_score=%.3f",
         response_length,
         min_words,
         penalty_ratio,
@@ -1609,7 +1657,7 @@ class CalibrationEngine:
         self.results: list[CalibrationResult] = []
         self.checkpoint_dir = checkpoint_dir
         self._completed_profiles: set[tuple[int, int]] = set()
-        
+
         # Dynamic noxious filter: track discarded parameter values
         self._discarded_params: dict[str, set[Any]] = {}  # {param: {discarded_values}}
         self._use_noxious_filter = use_noxious_filter
@@ -1637,14 +1685,18 @@ class CalibrationEngine:
                 try:
                     if getattr(self._loaded_checkpoint, "discarded_params", None):
                         self._discarded_params = {
-                            k: set(v) for k, v in self._loaded_checkpoint.discarded_params.items()
+                            k: set(v)
+                            for k, v in self._loaded_checkpoint.discarded_params.items()
                         }
                         logger.info(
                             "Restored %d discarded parameter sets from checkpoint",
                             len(self._discarded_params),
                         )
                 except Exception:
-                    logger.debug("Failed to restore discarded_params from checkpoint", exc_info=True)
+                    logger.debug(
+                        "Failed to restore discarded_params from checkpoint",
+                        exc_info=True,
+                    )
                 logger.info(
                     "Resuming from checkpoint: %d iterations already completed (%.1f%%)",
                     len(self._completed_profiles),
@@ -1711,10 +1763,18 @@ class CalibrationEngine:
             # Show parameter grid being used
             logger.info("║  Parameter Grid (sample):".ljust(72) + "║")
             for i, profile in enumerate(self.profiles[:3]):  # Show first 3
-                line = f"║    {i+1}: t={profile.temperature:.1f} tp={profile.top_p:.2f} k={profile.top_k} min={profile.min_p:.2f} rep={profile.repetition_penalty:.2f}".ljust(72) + "║"
+                line = (
+                    f"║    {i + 1}: t={profile.temperature:.1f} tp={profile.top_p:.2f} k={profile.top_k} min={profile.min_p:.2f} rep={profile.repetition_penalty:.2f}".ljust(
+                        72
+                    )
+                    + "║"
+                )
                 logger.info(line)
             if len(self.profiles) > 3:
-                line = f"║    ... and {len(self.profiles) - 3} more profiles".ljust(72) + "║"
+                line = (
+                    f"║    ... and {len(self.profiles) - 3} more profiles".ljust(72)
+                    + "║"
+                )
                 logger.info(line)
             logger.info("╚" + "═" * 72 + "╝")
             logger.info("")
@@ -1726,7 +1786,9 @@ class CalibrationEngine:
         for prompt_idx, prompt in enumerate(self.prompts):
             prompt_id = prompt.get("id", f"prompt_{prompt_idx}")
             # Support multiple field names: text, prompt, or question
-            prompt_text = prompt.get("text", prompt.get("prompt", prompt.get("question", "")))
+            prompt_text = prompt.get(
+                "text", prompt.get("prompt", prompt.get("question", ""))
+            )
 
             if not prompt_text:
                 logger.warning("Skipping empty prompt at index %d", prompt_idx)
@@ -1753,27 +1815,51 @@ class CalibrationEngine:
 
                 # Show what prompt is being tested - START line
                 prompt_short = prompt_id.replace("calibration_prompt_", "P")
-                presence = " presence_penalty=%s" % profile.presence_penalty if profile.presence_penalty is not None else ""
-                profile_short = "temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s" % (
-                    profile.temperature, profile.top_p, profile.top_k, profile.min_p, profile.repetition_penalty, presence
+                presence = (
+                    " presence_penalty=%s" % profile.presence_penalty
+                    if profile.presence_penalty is not None
+                    else ""
                 )
-                
+                profile_short = (
+                    "temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s"
+                    % (
+                        profile.temperature,
+                        profile.top_p,
+                        profile.top_k,
+                        profile.min_p,
+                        profile.repetition_penalty,
+                        presence,
+                    )
+                )
+
                 # Calc dynamically how many profiles are actually alive
                 if self._use_noxious_filter:
-                    alive_profiles = sum(1 for p in self.profiles if not self._is_profile_noxious(p))
+                    alive_profiles = sum(
+                        1 for p in self.profiles if not self._is_profile_noxious(p)
+                    )
                     active_total = total_prompts * alive_profiles
                 else:
                     active_total = total_iterations
 
                 # Show progress header every 50 iterations
-                run_index = len(self.results) + 1  # How many we have actually processed/completed
+                run_index = (
+                    len(self.results) + 1
+                )  # How many we have actually processed/completed
                 if run_index % 50 == 1:
                     pct = (run_index / max(1, active_total)) * 100
                     best_score_val = best_result.adjusted_score if best_result else 0.0
                     logger.info("")
                     logger.info("┌" + "─" * 70 + "┐")
-                    logger.info("│ 🔄 CALIBRATION PROGRESS: %d/%d activas (%.1f%%)".ljust(71) + "│", run_index, active_total, pct)
-                    logger.info("│ 🏆 Best so far: score=%.3f".ljust(71) + "│", best_score_val)
+                    logger.info(
+                        "│ 🔄 CALIBRATION PROGRESS: %d/%d activas (%.1f%%)".ljust(71)
+                        + "│",
+                        run_index,
+                        active_total,
+                        pct,
+                    )
+                    logger.info(
+                        "│ 🏆 Best so far: score=%.3f".ljust(71) + "│", best_score_val
+                    )
                     logger.info("└" + "─" * 70 + "┘")
                     logger.info("")
 
@@ -1822,12 +1908,17 @@ class CalibrationEngine:
                         # build simple count map from existing results to aid debugging
                         counts = {}
                         for v in vals:
-                            counts[v] = sum(1 for r in self.results if getattr(r.profile, p) == v)
+                            counts[v] = sum(
+                                1 for r in self.results if getattr(r.profile, p) == v
+                            )
                         counts_str = ",".join(f"{k}:{counts[k]}" for k in counts)
                         diag_parts.append(f"{p}={{ {counts_str} }}")
                     logger.debug("Active-value counts: %s", " | ".join(diag_parts))
                 except Exception:
-                    logger.debug("Failed to compute active-value diagnostic counts", exc_info=True)
+                    logger.debug(
+                        "Failed to compute active-value diagnostic counts",
+                        exc_info=True,
+                    )
 
                 logger.info(
                     "▶ [Efectivo %d/%d] %s @ %s",
@@ -1857,8 +1948,11 @@ class CalibrationEngine:
                         parameter_target = prompt.get("parameter_target", "")
                         evaluation_focus = prompt.get("evaluation_focus", "")
                         judge_scores = self._get_judge_scores(
-                            prompt_text, response_text, prompt_id,
-                            parameter_target, evaluation_focus
+                            prompt_text,
+                            response_text,
+                            prompt_id,
+                            parameter_target,
+                            evaluation_focus,
                         )
 
                     # Calculate composite score
@@ -1889,7 +1983,10 @@ class CalibrationEngine:
                     is_best = adjusted_score > current_best
 
                     # Update best result tracking
-                    if best_result is None or adjusted_score > best_result.adjusted_score:
+                    if (
+                        best_result is None
+                        or adjusted_score > best_result.adjusted_score
+                    ):
                         best_result = result
 
                     # Save checkpoint after each iteration
@@ -1938,9 +2035,14 @@ class CalibrationEngine:
                         best_profile = best_result.profile
                         logger.info(
                             "    🏆 NEW BEST! Profile: temperature=%s top_p=%s top_k=%s min_p=%s repetition_penalty=%s%s",
-                            best_profile.temperature, best_profile.top_p, best_profile.top_k,
-                            best_profile.min_p, best_profile.repetition_penalty,
-                            " presence_penalty=%s" % best_profile.presence_penalty if best_profile.presence_penalty is not None else "",
+                            best_profile.temperature,
+                            best_profile.top_p,
+                            best_profile.top_k,
+                            best_profile.min_p,
+                            best_profile.repetition_penalty,
+                            " presence_penalty=%s" % best_profile.presence_penalty
+                            if best_profile.presence_penalty is not None
+                            else "",
                         )
 
                 except Exception as e:
@@ -2060,7 +2162,9 @@ class CalibrationEngine:
             except json.JSONDecodeError as exc:
                 logger.warning(
                     "Judge produced invalid JSON for %s: %s - raw: %s",
-                    exam_id, exc, raw[:200]
+                    exam_id,
+                    exc,
+                    raw[:200],
                 )
                 return self._neutral_scores()
 
@@ -2120,7 +2224,9 @@ class CalibrationEngine:
         if triggers:
             # Keep this at DEBUG level to avoid spamming the user's console during
             # large resumes; set logging to DEBUG to inspect triggers when needed.
-            logger.debug("⏭ Skipping noxious profile -> triggers: %s", ", ".join(triggers))
+            logger.debug(
+                "⏭ Skipping noxious profile -> triggers: %s", ", ".join(triggers)
+            )
             return True
 
         return False
@@ -2143,8 +2249,12 @@ class CalibrationEngine:
             return
 
         param_names = [
-            "temperature", "top_p", "top_k",
-            "min_p", "repetition_penalty", "presence_penalty",
+            "temperature",
+            "top_p",
+            "top_k",
+            "min_p",
+            "repetition_penalty",
+            "presence_penalty",
         ]
         # Accumulate per-parameter-value scores from all results so far
         # {param: {value: [adjusted_scores]}}
@@ -2176,27 +2286,30 @@ class CalibrationEngine:
             valid_buckets = {v: s for v, s in buckets.items() if len(s) >= 5}
             if len(valid_buckets) < 2:
                 continue
-            
+
             avg_by_val = {v: sum(s) / len(s) for v, s in valid_buckets.items()}
             best_avg = max(avg_by_val.values())
-            
+
             # Sort values from worst to best
             sorted_vals = sorted(avg_by_val.items(), key=lambda x: x[1])
             total_vals = len(sorted_vals)
-            if total_vals < 2: continue
-            
+            if total_vals < 2:
+                continue
+
             # Algoritmo de supresion agresiva (Proporcional):
             # Eliminamos una fracción de los peores (controlada por
             # self._noxious_aggressiveness), siempre que la diferencia con el
             # mejor sea > 0.015 o si superan el threshold absoluto
             # (loss_threshold). Esto fuerza la reducción en resume.
             num_to_discard = max(1, int(total_vals * self._noxious_aggressiveness))
-            
+
             for i, (val, avg) in enumerate(sorted_vals):
-                is_already_discarded = val in self._discarded_params.get(param_name, set())
+                is_already_discarded = val in self._discarded_params.get(
+                    param_name, set()
+                )
                 if is_already_discarded:
                     continue
-                    
+
                 diff = best_avg - avg
                 # Descartar si excede el threshold estricto, O si está entre los peores rankeados
                 if diff > loss_threshold or (diff > 0.015 and i < num_to_discard):
@@ -2205,14 +2318,24 @@ class CalibrationEngine:
                     logger.info(
                         "🚫 Noxious filter agresivo: %s=%s descartado "
                         "(avg=%.4f vs best=%.4f, delta=%.4f, rank=%d/%d)",
-                        param_name, val, avg, best_avg, diff, i+1, total_vals
+                        param_name,
+                        val,
+                        avg,
+                        best_avg,
+                        diff,
+                        i + 1,
+                        total_vals,
                     )
 
             # Guardrail: never discard all candidate values for a parameter.
             # If aggressive rules would remove every candidate, restore the
             # best value so at least one remains available.
             candidate_vals = [v for v, _ in sorted_vals]
-            discarded_in_candidates = [v for v in self._discarded_params.get(param_name, set()) if v in candidate_vals]
+            discarded_in_candidates = [
+                v
+                for v in self._discarded_params.get(param_name, set())
+                if v in candidate_vals
+            ]
             if len(discarded_in_candidates) >= len(candidate_vals):
                 # Determine best candidate by avg (if available) and keep it
                 try:
@@ -2237,7 +2360,9 @@ class CalibrationEngine:
             )
             logger.info(
                 "🧹 %d value(s) newly discarded -> %d/%d profiles will be skipped going forward",
-                newly_discarded, skipped_count, len(self.profiles),
+                newly_discarded,
+                skipped_count,
+                len(self.profiles),
             )
 
     def _derive_discards_from_noxious_checkpoint(
@@ -2281,7 +2406,9 @@ class CalibrationEngine:
                     data = json.load(f)
                     aggregated_results.extend(data.get("all_results", []))
             except Exception:
-                logger.debug("Could not read latest.json for aggregation", exc_info=True)
+                logger.debug(
+                    "Could not read latest.json for aggregation", exc_info=True
+                )
 
         # 2) Load any checkpoint_*.json files (these may be incremental)
         try:
@@ -2294,10 +2421,14 @@ class CalibrationEngine:
                         ck = json.load(f)
                         aggregated_results.extend(ck.get("all_results", []))
                 except Exception:
-                    logger.debug("Failed reading %s for aggregation", full, exc_info=True)
+                    logger.debug(
+                        "Failed reading %s for aggregation", full, exc_info=True
+                    )
         except OSError:
             # directory may not exist or be readable
-            logger.debug("Checkpoint directory not readable: %s", checkpoint_dir, exc_info=True)
+            logger.debug(
+                "Checkpoint directory not readable: %s", checkpoint_dir, exc_info=True
+            )
 
         # 3) Optionally use the specialized noxious filter checkpoint for
         #     stronger per-value per-prompt signal (it contains 'prompt_data').
@@ -2308,7 +2439,9 @@ class CalibrationEngine:
                     nf = json.load(f)
             except Exception:
                 nf = None
-                logger.debug("Failed to load noxious_filter_checkpoint.json", exc_info=True)
+                logger.debug(
+                    "Failed to load noxious_filter_checkpoint.json", exc_info=True
+                )
 
             if nf:
                 prompt_data: dict[str, Any] = nf.get("prompt_data", {})
@@ -2319,7 +2452,9 @@ class CalibrationEngine:
                     for _prompt_key, pdict in prompts.items():
                         pivot_score = pdict.get("pivot_score")
                         if pivot_score is not None and pivot_val is not None:
-                            collected.setdefault(pivot_val, []).append(float(pivot_score))
+                            collected.setdefault(pivot_val, []).append(
+                                float(pivot_score)
+                            )
                         for key, score in pdict.items():
                             if key == "pivot_score":
                                 continue
@@ -2337,7 +2472,9 @@ class CalibrationEngine:
                     if len(collected) < 2:
                         continue
 
-                    avg_by_val = {v: sum(lst) / len(lst) for v, lst in collected.items() if lst}
+                    avg_by_val = {
+                        v: sum(lst) / len(lst) for v, lst in collected.items() if lst
+                    }
                     if not avg_by_val:
                         continue
                     best_avg = max(avg_by_val.values())
@@ -2360,7 +2497,9 @@ class CalibrationEngine:
                                 )
 
                 if newly_discarded_pf:
-                    skipped = sum(1 for p in self.profiles if self._is_profile_noxious(p))
+                    skipped = sum(
+                        1 for p in self.profiles if self._is_profile_noxious(p)
+                    )
                     logger.info(
                         "🧹 Pre-filter checkpoint: %d value(s) derived -> %d/%d profiles will be skipped from now on",
                         newly_discarded_pf,
@@ -2380,19 +2519,27 @@ class CalibrationEngine:
                 "presence_penalty",
             ]
 
-            value_scores: dict[str, dict[Any, list[float]]] = {p: {} for p in param_names}
+            value_scores: dict[str, dict[Any, list[float]]] = {
+                p: {} for p in param_names
+            }
             for r in aggregated_results:
                 # Support both dict-based results (from checkpoint) and objects
                 # If object-like, attempt attribute access defensively.
                 try:
-                    prof = r.get("profile", {}) if isinstance(r, dict) else getattr(r, "profile", {})
+                    prof = (
+                        r.get("profile", {})
+                        if isinstance(r, dict)
+                        else getattr(r, "profile", {})
+                    )
                 except Exception:
                     prof = {}
                 score = 0.0
                 if isinstance(r, dict):
                     score = r.get("adjusted_score", r.get("composite_score", 0.0))
                 else:
-                    score = getattr(r, "adjusted_score", getattr(r, "composite_score", 0.0))
+                    score = getattr(
+                        r, "adjusted_score", getattr(r, "composite_score", 0.0)
+                    )
 
                 for param in param_names:
                     val = None
@@ -2424,12 +2571,22 @@ class CalibrationEngine:
                         newly_discarded += 1
                         logger.info(
                             "🧹 Pre-resume aggregate discard: %s=%s discarded (avg=%.4f vs best=%.4f, delta=%.4f, rank=%d/%d)",
-                            param_name, val, avg, best_avg, diff, i + 1, total_vals,
+                            param_name,
+                            val,
+                            avg,
+                            best_avg,
+                            diff,
+                            i + 1,
+                            total_vals,
                         )
 
                 # Guardrail: ensure we do not discard every candidate for a param
                 candidate_vals = [v for v, _ in sorted_vals]
-                discarded_in_candidates = [v for v in self._discarded_params.get(param_name, set()) if v in candidate_vals]
+                discarded_in_candidates = [
+                    v
+                    for v in self._discarded_params.get(param_name, set())
+                    if v in candidate_vals
+                ]
                 if len(discarded_in_candidates) >= len(candidate_vals):
                     try:
                         best_val = max(avg_by_val.items(), key=lambda x: x[1])[0]
@@ -2698,8 +2855,10 @@ def filter_noxious_parameter_values(
     def get_judge_score(prompt_text: str, response: str, prompt_meta: dict) -> float:
         """Get judge score for a response using the judge client."""
         parameter_target = prompt_meta.get("parameter_target", "")
-        evaluation_focus = prompt_meta.get("evaluation_focus", "General response quality")
-        
+        evaluation_focus = prompt_meta.get(
+            "evaluation_focus", "General response quality"
+        )
+
         try:
             user_msg = pm.format(
                 "professor_judge_calibration",
@@ -2708,7 +2867,7 @@ def filter_noxious_parameter_values(
                 evaluation_focus=evaluation_focus or "General response quality",
                 model_response=response,
             )
-            
+
             raw = judge_client.generate_with_retry(
                 prompt=user_msg,
                 system_prompt=pm.system("professor_judge_calibration"),
@@ -2718,12 +2877,12 @@ def filter_noxious_parameter_values(
                 retry_delay=5.0,
                 json_mode=True,
             )
-            
+
             # Clean and parse JSON
             cleaned = re.sub(r"^```(?:json)?\s*", "", raw.strip(), flags=re.MULTILINE)
             cleaned = re.sub(r"```\s*$", "", cleaned, flags=re.MULTILINE).strip()
             parsed = json.loads(cleaned)
-            
+
             # Calculate composite score from judge dimensions
             weights = {
                 "parameter_effectiveness": 0.2,
@@ -2733,8 +2892,7 @@ def filter_noxious_parameter_values(
                 "style": 0.15,
             }
             composite = sum(
-                parsed.get(dim, 0.5) * weight 
-                for dim, weight in weights.items()
+                parsed.get(dim, 0.5) * weight for dim, weight in weights.items()
             )
             return composite
         except Exception as e:
@@ -2752,7 +2910,11 @@ def filter_noxious_parameter_values(
         logger.info("  Original grid: %d combinations", original_combos)
         logger.info("  Prompts to test: %d", len(prompts))
         if sample_size and sample_size > 0 and sample_size < len(prompts):
-            logger.info("  Sampling %d/%d prompts for pre-filter (faster)", sample_size, len(prompts))
+            logger.info(
+                "  Sampling %d/%d prompts for pre-filter (faster)",
+                sample_size,
+                len(prompts),
+            )
         logger.info("  Loss threshold: %s", loss_threshold)
         logger.info("  Using real judge for scoring")
         logger.info("")
@@ -2767,7 +2929,12 @@ def filter_noxious_parameter_values(
             # Pivot not in grid, use first value as pivot
             pivot = param_values[len(param_values) // 2]
             if verbose:
-                logger.warning("  ⚠️  Pivot %s not in grid for %s, using %s", pivot, param_name, pivot)
+                logger.warning(
+                    "  ⚠️  Pivot %s not in grid for %s, using %s",
+                    pivot,
+                    param_name,
+                    pivot,
+                )
 
         if verbose:
             logger.info("")
@@ -2785,8 +2952,11 @@ def filter_noxious_parameter_values(
         # Load from checkpoint if available
         param_checkpoint = checkpoint_data.get("param_scores", {}).get(param_name, {})
         if param_checkpoint and verbose:
-            logger.info("     📂 Loaded %d scores from checkpoint", sum(len(v) for v in param_checkpoint.values()))
-        
+            logger.info(
+                "     📂 Loaded %d scores from checkpoint",
+                sum(len(v) for v in param_checkpoint.values()),
+            )
+
         # Convert checkpoint data to value_scores format
         # JSON keys are always str, so match against str(v) for numeric values
         for ckpt_key, prompt_scores in param_checkpoint.items():
@@ -2804,28 +2974,41 @@ def filter_noxious_parameter_values(
             prompt = prompts[prompt_idx]
             # Get prompt text and ID
             prompt_id = prompt.get("id", f"prompt_{prompt_idx}")
-            prompt_text = prompt.get("question", prompt.get("text", prompt.get("prompt", "")))
+            prompt_text = prompt.get(
+                "question", prompt.get("text", prompt.get("prompt", ""))
+            )
             if not prompt_text:
                 continue
 
             # Check if this prompt was already evaluated for all values in checkpoint
             prompt_key = f"prompt_{prompt_idx}"
-            param_prompt_data = checkpoint_data.get("prompt_data", {}).get(param_name, {}).get(prompt_key, {})
-            
+            param_prompt_data = (
+                checkpoint_data.get("prompt_data", {})
+                .get(param_name, {})
+                .get(prompt_key, {})
+            )
+
             # Load pivot score from checkpoint if available
             if "pivot_score" in param_prompt_data:
                 pivot_score = param_prompt_data["pivot_score"]
                 if verbose:
                     logger.info(
                         "     [P%d/%d] %-20s pivot=%-5s → score=%.3f  (cached)",
-                        prompt_idx + 1, len(prompts), prompt_id, pivot, pivot_score,
+                        prompt_idx + 1,
+                        len(prompts),
+                        prompt_id,
+                        pivot,
+                        pivot_score,
                     )
             else:
                 # Generate with pivot profile
                 if verbose:
                     logger.info(
                         "     [P%d/%d] %-20s pivot=%-5s → generating...",
-                        prompt_idx + 1, len(prompts), prompt_id, pivot,
+                        prompt_idx + 1,
+                        len(prompts),
+                        prompt_id,
+                        pivot,
                     )
                 pivot_profile = SamplingProfile(
                     temperature=pivot_values.get("temperature", 0.6),
@@ -2850,7 +3033,11 @@ def filter_noxious_parameter_values(
                 if verbose:
                     logger.info(
                         "     [P%d/%d] %-20s pivot=%-5s → score=%.3f",
-                        prompt_idx + 1, len(prompts), prompt_id, pivot, pivot_score,
+                        prompt_idx + 1,
+                        len(prompts),
+                        prompt_id,
+                        pivot,
+                        pivot_score,
                     )
 
                 # Save to checkpoint
@@ -2859,7 +3046,9 @@ def filter_noxious_parameter_values(
                         checkpoint_data["prompt_data"] = {}
                     if param_name not in checkpoint_data["prompt_data"]:
                         checkpoint_data["prompt_data"][param_name] = {}
-                    checkpoint_data["prompt_data"][param_name][prompt_key] = {"pivot_score": pivot_score}
+                    checkpoint_data["prompt_data"][param_name][prompt_key] = {
+                        "pivot_score": pivot_score
+                    }
                     save_noxious_checkpoint()
 
             # Test each value of this parameter
@@ -2881,7 +3070,11 @@ def filter_noxious_parameter_values(
                     if verbose:
                         logger.info(
                             "     [%5.1f%%] %s=%-5s  P%d  score=%.3f  (cached)",
-                            _pct, param_name, value, prompt_idx + 1, test_score,
+                            _pct,
+                            param_name,
+                            value,
+                            prompt_idx + 1,
+                            test_score,
                         )
                     continue
 
@@ -2892,7 +3085,10 @@ def filter_noxious_parameter_values(
                 if verbose:
                     logger.info(
                         "     [%5.1f%%] %s=%-5s  P%d  generating...",
-                        _pct, param_name, value, prompt_idx + 1,
+                        _pct,
+                        param_name,
+                        value,
+                        prompt_idx + 1,
                     )
 
                 try:
@@ -2901,7 +3097,9 @@ def filter_noxious_parameter_values(
                         top_p=test_profile_dict.get("top_p", 0.9),
                         top_k=test_profile_dict.get("top_k", 20),
                         min_p=test_profile_dict.get("min_p", 0.0),
-                        repetition_penalty=test_profile_dict.get("repetition_penalty", 1.0),
+                        repetition_penalty=test_profile_dict.get(
+                            "repetition_penalty", 1.0
+                        ),
                         presence_penalty=test_profile_dict.get("presence_penalty"),
                     )
                     test_response = generate_response_with_profile(
@@ -2917,7 +3115,11 @@ def filter_noxious_parameter_values(
                 if verbose:
                     logger.info(
                         "     [%5.1f%%] %s=%-5s  P%d  score=%.3f",
-                        _pct, param_name, value, prompt_idx + 1, test_score,
+                        _pct,
+                        param_name,
+                        value,
+                        prompt_idx + 1,
+                        test_score,
                     )
 
                 # Save to checkpoint
@@ -2927,8 +3129,12 @@ def filter_noxious_parameter_values(
                     if param_name not in checkpoint_data["prompt_data"]:
                         checkpoint_data["prompt_data"][param_name] = {}
                     if prompt_key not in checkpoint_data["prompt_data"][param_name]:
-                        checkpoint_data["prompt_data"][param_name][prompt_key] = {"pivot_score": pivot_score}
-                    checkpoint_data["prompt_data"][param_name][prompt_key][value_key] = test_score
+                        checkpoint_data["prompt_data"][param_name][prompt_key] = {
+                            "pivot_score": pivot_score
+                        }
+                    checkpoint_data["prompt_data"][param_name][prompt_key][
+                        value_key
+                    ] = test_score
                     save_noxious_checkpoint()
 
                 if len(value_scores[value]) <= prompt_idx:
@@ -2954,7 +3160,9 @@ def filter_noxious_parameter_values(
                 if value_scores[pivot][i] - scores[i] > loss_threshold:
                     losses += 1
 
-            loss_rate = losses / min(len(scores), len(value_scores[pivot])) if scores else 0
+            loss_rate = (
+                losses / min(len(scores), len(value_scores[pivot])) if scores else 0
+            )
 
             # Discard if loses >80% of the time
             if loss_rate > 0.8:
@@ -2969,7 +3177,11 @@ def filter_noxious_parameter_values(
                             current_combos *= len(p_vals)
                     logger.info(
                         "  ❌ NOXIOUS: %s=%s - loss_rate=%.0f%% (avg: value=%.3f vs pivot=%.3f)",
-                        param_name, value, loss_rate * 100, value_avg, pivot_avg,
+                        param_name,
+                        value,
+                        loss_rate * 100,
+                        value_avg,
+                        pivot_avg,
                     )
             else:
                 good_values.append(value)
@@ -2981,7 +3193,9 @@ def filter_noxious_parameter_values(
         for values in filtered_grid.values():
             total_combinations *= len(values)
         original = _calc_combinations(grid)
-        reduction = ((original - total_combinations) / original) * 100 if original > 0 else 0
+        reduction = (
+            ((original - total_combinations) / original) * 100 if original > 0 else 0
+        )
 
         logger.info("")
         logger.info("=" * 60)
@@ -3077,7 +3291,11 @@ def run_calibration(
             student_client=student_client,
             judge_client=judge_client,
             loss_threshold=noxious_loss_threshold,
-            sample_size=(noxious_sample_size if noxious_sample_size and noxious_sample_size > 0 else None),
+            sample_size=(
+                noxious_sample_size
+                if noxious_sample_size and noxious_sample_size > 0
+                else None
+            ),
             checkpoint_dir=checkpoint_dir,
             verbose=verbose,
         )
@@ -3104,7 +3322,9 @@ def run_calibration(
             if has_focus:
                 cal_prompt_dict = {
                     "id": prompt.get("id", "unknown"),
-                    "question": prompt.get("question", prompt.get("text", prompt.get("prompt", ""))),
+                    "question": prompt.get(
+                        "question", prompt.get("text", prompt.get("prompt", ""))
+                    ),
                     "type": prompt.get("type", "investigation"),
                     "parameter_target": param_target,
                     "evaluation_focus": eval_focus,
@@ -3117,7 +3337,9 @@ def run_calibration(
                     "Using adaptive profile generation with %d prompts having focus metadata",
                     len(calibration_prompts),
                 )
-            profiles = generate_adaptive_profiles(prompts=calibration_prompts, grid=effective_grid)
+            profiles = generate_adaptive_profiles(
+                prompts=calibration_prompts, grid=effective_grid
+            )
         else:
             if verbose:
                 logger.info(
@@ -3315,9 +3537,7 @@ def main() -> None:
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(
-        description="Run inference parameter calibration"
-    )
+    parser = argparse.ArgumentParser(description="Run inference parameter calibration")
     parser.add_argument(
         "--prompts",
         required=True,

@@ -112,39 +112,39 @@ def _validate_resolution_no_legacy(
 ) -> tuple[bool, str]:
     """Executable-Code Validation — check that the resolution half is legacy-free.
 
-    The generated think block follows a 4-step structure:
+        The generated think block follows a 4-step structure:
 
-      1. Legacy Impulse  (first half — intentionally *names* deprecated APIs)
-      2. Self-Evaluation
-      3. Backtracking
-      4. Modern Resolution  (second half — *executable code* must be clean)
+          1. Legacy Impulse  (first half — intentionally *names* deprecated APIs)
+          2. Self-Evaluation
+          3. Backtracking
+          4. Modern Resolution  (second half — *executable code* must be clean)
 
-    This function:
+        This function:
 
-    1. Splits ``new_think`` at the midpoint (same as before — avoids penalising
-       the intentional Legacy Impulse name-drop in the first half).
-    2. **Extracts only executable code** from the resolution half (fenced
-       blocks, ``<tool_call>`` JSON payloads) via :func:`_extract_executable_code`.
-       Plain natural-language text — including BACKTRACKING sentences that
-       *name* the legacy API in order to reject it — is ignored.
-    3. **Strips Python comments** (``# ...``) from the extracted code via
-       :func:`_strip_python_comments`.  Comments such as
-       ``# FIX: migrated from hass.data`` are explanatory and must not trigger
-       the filter; the *executable* call is what matters.
-    4. Applies the legacy regex patterns to the cleaned code only.
+        1. Splits ``new_think`` at the midpoint (same as before — avoids penalising
+           the intentional Legacy Impulse name-drop in the first half).
+        2. **Extracts only executable code** from the resolution half (fenced
+           blocks, ``<tool_call>`` JSON payloads) via :func:`_extract_executable_code`.
+           Plain natural-language text — including BACKTRACKING sentences that
+           *name* the legacy API in order to reject it — is ignored.
+        3. **Strips Python comments** (``# ...``) from the extracted code via
+           :func:`_strip_python_comments`.  Comments such as
+           ``# FIX: migrated from hass.data`` are explanatory and must not trigger
+           the filter; the *executable* call is what matters.
+        4. Applies the legacy regex patterns to the cleaned code only.
 
-    The same extraction + comment-stripping logic is applied to ``code_rest``
-    (the sacred code block after ``
-</think>
+        The same extraction + comment-stripping logic is applied to ``code_rest``
+        (the sacred code block after ``
+    </think>
 
-``) before checking it.
+    ``) before checking it.
 
-    Returns
-    -------
-    (True, "")
-        Validation passed — no legacy patterns in executable code.
-    (False, reason)
-        Validation failed — ``reason`` describes which pattern matched.
+        Returns
+        -------
+        (True, "")
+            Validation passed — no legacy patterns in executable code.
+        (False, reason)
+            Validation failed — ``reason`` describes which pattern matched.
     """
     if not legacy_regexes:
         return True, ""

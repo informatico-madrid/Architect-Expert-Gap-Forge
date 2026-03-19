@@ -545,6 +545,7 @@ def build_user_theory(theory_frag: Dict) -> Tuple[str, str]:
 # PHP LEGACY: Doctrine + snippet loader (T062)
 # ======================================================================
 
+
 def load_php_legacy_doctrine(base_dir: Optional[Path] = None) -> str:
     """Load the master Symfony hexagonal doctrine document for PHP legacy prompts.
 
@@ -558,7 +559,14 @@ def load_php_legacy_doctrine(base_dir: Optional[Path] = None) -> str:
         Doctrine content string, or ``""`` if the file does not exist.
     """
     root = base_dir or Path.cwd()
-    doctrine_path = root / "configs" / "stage_2_factory" / "taxonomy" / "php_legacy" / "master_symfony_hex.md"
+    doctrine_path = (
+        root
+        / "configs"
+        / "stage_2_factory"
+        / "taxonomy"
+        / "php_legacy"
+        / "master_symfony_hex.md"
+    )
     if not doctrine_path.exists():
         logger.warning("PHP doctrine file not found: %s", doctrine_path)
         return ""
@@ -579,11 +587,29 @@ def load_php_platform_snippet(platform: str, base_dir: Optional[Path] = None) ->
         Platform snippet content string, or ``""`` if the file does not exist.
     """
     root = base_dir or Path.cwd()
-    snippet_path = root / "configs" / "stage_2_factory" / "taxonomy" / "php_legacy" / "snippets" / f"{platform}.md"
+    snippet_path = (
+        root
+        / "configs"
+        / "stage_2_factory"
+        / "taxonomy"
+        / "php_legacy"
+        / "snippets"
+        / f"{platform}.md"
+    )
     if not snippet_path.exists():
-        logger.warning("PHP platform snippet not found for '%s': %s", platform, snippet_path)
+        logger.warning(
+            "PHP platform snippet not found for '%s': %s", platform, snippet_path
+        )
         # Fall back to generic_php
-        fallback = root / "configs" / "stage_2_factory" / "taxonomy" / "php_legacy" / "snippets" / "generic_php.md"
+        fallback = (
+            root
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+            / "snippets"
+            / "generic_php.md"
+        )
         if fallback.exists():
             return fallback.read_text(encoding="utf-8", errors="ignore")
         return ""

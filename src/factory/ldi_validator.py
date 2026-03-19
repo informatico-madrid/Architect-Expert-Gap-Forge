@@ -62,9 +62,7 @@ class ExampleTypeAssignment:
 # ======================================================================
 
 
-def validate_ldi(
-    code_len: int, reasoning_len: int, subtype: str
-) -> LDIResult:
+def validate_ldi(code_len: int, reasoning_len: int, subtype: str) -> LDIResult:
     """Validate code-to-reasoning Length Density Index.
 
     Args:
@@ -83,7 +81,9 @@ def validate_ldi(
     if subtype in ("test", "doc", "jinja", "yaml"):
         if reasoning_len < 50:
             return LDIResult(
-                is_valid=False, score=ldi, reason="Reasoning too short for doc/test/template"
+                is_valid=False,
+                score=ldi,
+                reason="Reasoning too short for doc/test/template",
             )
         return LDIResult(
             is_valid=True, score=ldi, reason="Pass (Doc/Test/Template Mode)"
@@ -94,7 +94,9 @@ def validate_ldi(
     dynamic_limit = base_threshold * (code_len / (code_len + k_factor))
 
     if code_len > 0 and code_len < 100 and ldi > 0.01:
-        return LDIResult(is_valid=True, score=ldi, reason="Pass (Micro-Snippet Exception)")
+        return LDIResult(
+            is_valid=True, score=ldi, reason="Pass (Micro-Snippet Exception)"
+        )
 
     if ldi < dynamic_limit:
         return LDIResult(

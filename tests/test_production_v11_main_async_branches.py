@@ -131,7 +131,9 @@ def test_main_async_resume_all_processed(tmp_path, mock_args, mock_frags, monkey
         monkeypatch.setattr(
             pr_module, "get_theory_fragments", MagicMock(return_value=mock_frags)
         )
-        monkeypatch.setattr(pr_module, "load_checkpoint", MagicMock(return_value=done_keys))
+        monkeypatch.setattr(
+            pr_module, "load_checkpoint", MagicMock(return_value=done_keys)
+        )
 
         mock_client = MagicMock()
         monkeypatch.setattr(
@@ -159,7 +161,9 @@ def test_main_async_theory_mode(tmp_path, mock_args, mock_frags, monkeypatch):
             pr_module, "load_taxonomy", MagicMock(return_value={"prompts": {}})
         )
         monkeypatch.setattr(
-            pb_module, "_TAX", {"prompts": {"theory": {"system": "system", "user": "user"}}}
+            pb_module,
+            "_TAX",
+            {"prompts": {"theory": {"system": "system", "user": "user"}}},
         )
         monkeypatch.setattr(
             pr_module,
@@ -209,7 +213,9 @@ def test_main_async_with_output_specified(tmp_path, mock_args, mock_frags, monke
             pr_module, "load_taxonomy", MagicMock(return_value={"prompts": {}})
         )
         monkeypatch.setattr(
-            pb_module, "_TAX", {"prompts": {"theory": {"system": "system", "user": "user"}}}
+            pb_module,
+            "_TAX",
+            {"prompts": {"theory": {"system": "system", "user": "user"}}},
         )
         monkeypatch.setattr(
             pr_module,

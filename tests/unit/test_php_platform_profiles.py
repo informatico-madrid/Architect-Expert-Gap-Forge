@@ -84,8 +84,19 @@ class TestDetectPlatformMarkerFiles:
         """Should detect OpenMage when app/Mage.php is present."""
         (tmp_path / "app").mkdir(parents=True)
         (tmp_path / "app" / "Mage.php").touch()
-        (tmp_path / "app" / "code" / "core" / "Mage" / "Catalog" / "Model").mkdir(parents=True)
-        (tmp_path / "app" / "code" / "core" / "Mage" / "Catalog" / "Model" / "Product.php").touch()
+        (tmp_path / "app" / "code" / "core" / "Mage" / "Catalog" / "Model").mkdir(
+            parents=True
+        )
+        (
+            tmp_path
+            / "app"
+            / "code"
+            / "core"
+            / "Mage"
+            / "Catalog"
+            / "Model"
+            / "Product.php"
+        ).touch()
 
         result = detect_platform(tmp_path)
         assert result.name == "openmage"
@@ -94,8 +105,19 @@ class TestDetectPlatformMarkerFiles:
         """Should detect OpenMage when app/etc/config.php is present."""
         (tmp_path / "app" / "etc").mkdir(parents=True)
         (tmp_path / "app" / "etc" / "config.php").touch()
-        (tmp_path / "app" / "code" / "community" / "Openwd" / "Review" / "Model").mkdir(parents=True)
-        (tmp_path / "app" / "code" / "community" / "Openwd" / "Review" / "Model" / "Rating.php").touch()
+        (tmp_path / "app" / "code" / "community" / "Openwd" / "Review" / "Model").mkdir(
+            parents=True
+        )
+        (
+            tmp_path
+            / "app"
+            / "code"
+            / "community"
+            / "Openwd"
+            / "Review"
+            / "Model"
+            / "Rating.php"
+        ).touch()
 
         result = detect_platform(tmp_path)
         assert result.name == "openmage"
@@ -188,9 +210,9 @@ class TestDetectPlatformMarkerPatternFallback:
         (tmp_path / "catalog" / "functions" / "tep_db_query_helper.php").write_text(
             "<?php\nfunction tep_db_query($sql) { return mysql_query($sql); }\n"
         )
-        (tmp_path / "catalog" / "functions" / "tep_session_register_handler.php").write_text(
-            "<?php\nfunction tep_session_register($var) { return true; }\n"
-        )
+        (
+            tmp_path / "catalog" / "functions" / "tep_session_register_handler.php"
+        ).write_text("<?php\nfunction tep_session_register($var) { return true; }\n")
         (tmp_path / "catalog" / "classes").mkdir(parents=True)
         (tmp_path / "catalog" / "classes" / "tep_database.php").write_text(
             "<?php\ndefine('DIR_WS_INCLUDES', 'includes/');\n"
@@ -217,9 +239,7 @@ class TestDetectPlatformGenericFallback:
             "<?php\nclass UserController {}\n"
         )
         (tmp_path / "src" / "Model").mkdir(parents=True)
-        (tmp_path / "src" / "Model" / "User.php").write_text(
-            "<?php\nclass User {}\n"
-        )
+        (tmp_path / "src" / "Model" / "User.php").write_text("<?php\nclass User {}\n")
         (tmp_path / "src" / "Service").mkdir(parents=True)
         (tmp_path / "src" / "Service" / "UserService.php").write_text(
             "<?php\nclass UserService {}\n"
@@ -251,7 +271,9 @@ class TestDetectPlatformOsCommercePhoenix:
         (tmp_path / "includes" / "OSC" / "OM").mkdir(parents=True)
         (tmp_path / "includes" / "OSC" / "OM" / "Registry.php").touch()
         (tmp_path / "includes" / "OSC" / "OM" / "Modules").mkdir(parents=True)
-        (tmp_path / "includes" / "OSC" / "OM" / "Modules" / "ModuleInterface.php").touch()
+        (
+            tmp_path / "includes" / "OSC" / "OM" / "Modules" / "ModuleInterface.php"
+        ).touch()
 
         result = detect_platform(tmp_path)
         assert result.name == "oscommerce_phoenix"
@@ -355,4 +377,6 @@ class TestPlatformProfileExclusion:
     def test_excludes_mage_skin(self) -> None:
         """Should exclude Magento skin directory."""
         profile = get_platform_profile("openmage")
-        assert profile.is_excluded_path("skin/frontend/default/mytheme/style.css") is True
+        assert (
+            profile.is_excluded_path("skin/frontend/default/mytheme/style.css") is True
+        )

@@ -266,8 +266,7 @@ def resolve_preamble_ref(
 
     # Build reverse-lookup: sha256(value) → value
     reverse_map = {
-        hashlib.sha256(v.encode()).hexdigest(): v
-        for v in bundle_cache.values()
+        hashlib.sha256(v.encode()).hexdigest(): v for v in bundle_cache.values()
     }
 
     content = reverse_map.get(preamble_ref, "")
@@ -277,7 +276,7 @@ def resolve_preamble_ref(
     # Truncate oversized preambles (token proxy: 4 chars ≈ 1 token, cap at 800 tokens)
     _MAX_TOKENS = 800
     if len(content) // 4 > _MAX_TOKENS:
-        content = content[:_MAX_TOKENS * 4]
+        content = content[: _MAX_TOKENS * 4]
 
     return content
 

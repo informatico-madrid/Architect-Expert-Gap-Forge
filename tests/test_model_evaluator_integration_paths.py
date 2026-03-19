@@ -318,12 +318,8 @@ class TestCmdGenerateExamLoop:
             )
 
             with patch("src.audit.cli.load_persisted_sample") as mock_load:
-                with patch(
-                    "src.audit.cli.generate_exam_question"
-                ) as mock_gen:
-                    with patch(
-                        "src.audit.cli.persist_exam"
-                    ) as mock_persist:
+                with patch("src.audit.cli.generate_exam_question") as mock_gen:
+                    with patch("src.audit.cli.persist_exam") as mock_persist:
                         mock_load.return_value = samples
 
                         # Return exam records using ExamRecord.from_sample
@@ -434,12 +430,8 @@ class TestCmdScoreBatchProcessing:
 
             with patch("src.audit.cli.load_exam") as mock_load_exam:
                 with patch("src.audit.cli.load_inference") as mock_load_inf:
-                    with patch(
-                        "src.audit.cli.compute_scorecard"
-                    ) as mock_score:
-                        with patch(
-                            "src.audit.cli.generate_report"
-                        ) as mock_report:
+                    with patch("src.audit.cli.compute_scorecard") as mock_score:
+                        with patch("src.audit.cli.generate_report") as mock_report:
                             mock_load_exam.return_value = exams
                             # Make generate_report return the new (Path, AuditReport) tuple
                             mock_report.return_value = (
@@ -504,12 +496,8 @@ class TestCmdScoreBatchProcessing:
 
             with patch("src.audit.cli.load_exam") as mock_load_exam:
                 with patch("src.audit.cli.load_inference") as mock_load_inf:
-                    with patch(
-                        "src.audit.cli.compute_scorecard"
-                    ) as mock_score:
-                        with patch(
-                            "src.audit.cli.generate_report"
-                        ) as mock_report:
+                    with patch("src.audit.cli.compute_scorecard") as mock_score:
+                        with patch("src.audit.cli.generate_report") as mock_report:
                             mock_load_exam.return_value = exams
                             mock_report.return_value = (
                                 Path(args.audit_dir) / "audit_report_v11.md",
@@ -560,9 +548,7 @@ class TestCmdInferencePaths:
 
             with patch("src.audit.cli.load_exam") as mock_load_exam:
                 with patch("src.audit.cli.run_inference") as mock_infer:
-                    with patch(
-                        "src.audit.cli.persist_inference"
-                    ) as mock_persist:
+                    with patch("src.audit.cli.persist_inference") as mock_persist:
                         # Exam is available
                         mock_load_exam.return_value = [golden_exam]
                         mock_infer.return_value = [
@@ -610,13 +596,9 @@ class TestCmdInferencePaths:
             )
 
             with patch("src.audit.cli.load_exam") as mock_load_exam:
-                with patch(
-                    "src.audit.cli.load_persisted_sample"
-                ) as mock_load_sample:
+                with patch("src.audit.cli.load_persisted_sample") as mock_load_sample:
                     with patch("src.audit.cli.run_inference") as mock_infer:
-                        with patch(
-                            "src.audit.cli.persist_inference"
-                        ) as mock_persist:
+                        with patch("src.audit.cli.persist_inference") as mock_persist:
                             # Exam not found
                             mock_load_exam.side_effect = FileNotFoundError()
                             # Fall back to sample
@@ -663,9 +645,7 @@ class TestCmdInferencePaths:
 
             with patch("src.audit.cli.load_exam") as mock_load_exam:
                 with patch("src.audit.cli.run_inference") as mock_infer:
-                    with patch(
-                        "src.audit.cli.persist_inference"
-                    ) as mock_persist:
+                    with patch("src.audit.cli.persist_inference") as mock_persist:
                         # Exam is available
                         mock_load_exam.return_value = [golden_exam]
                         mock_infer.return_value = [
@@ -916,9 +896,7 @@ class TestCmdGenerateExamErrorPropagation:
             )
 
             with patch("src.audit.cli.load_persisted_sample") as mock_load:
-                with patch(
-                    "src.audit.cli.generate_exam_question"
-                ) as mock_gen:
+                with patch("src.audit.cli.generate_exam_question") as mock_gen:
                     mock_load.return_value = samples
                     # Simulate prompt generation failure
                     mock_gen.side_effect = PromptGenerationError(
@@ -1006,9 +984,7 @@ class TestExamLoadingFallback:
             )
 
             with patch("src.audit.cli.load_exam") as mock_load_exam:
-                with patch(
-                    "src.audit.cli.load_persisted_sample"
-                ) as mock_load_sample:
+                with patch("src.audit.cli.load_persisted_sample") as mock_load_sample:
                     with patch("src.audit.cli.run_inference") as mock_infer:
                         with patch("src.audit.cli.persist_inference"):
                             # Exam file doesn't exist - test FileNotFoundError handling
