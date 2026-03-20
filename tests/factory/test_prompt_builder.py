@@ -376,3 +376,137 @@ class TestRender:
         assert "$second" in result
         assert "1" in result
         assert "3" in result
+
+
+class TestPHPLegacyFunctions:
+    """Tests for PHP legacy functions in prompt_builder."""
+
+    def test_load_php_legacy_doctrine_nonexistent(self, tmp_path):
+        """Test load_php_legacy_doctrine returns empty string when file doesn't exist."""
+        result = pb_module.load_php_legacy_doctrine(tmp_path)
+        assert result == ""
+
+    def test_load_php_legacy_doctrine_existing_file(self, tmp_path):
+        """Test load_php_legacy_doctrine reads file when it exists."""
+        # Create the expected directory structure
+        php_dir = (
+            tmp_path
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+        )
+        php_dir.mkdir(parents=True)
+        doctrine_file = php_dir / "master_symfony_hex.md"
+        doctrine_file.write_text("# Symfony Doctrine\n\nSome content")
+
+        result = pb_module.load_php_legacy_doctrine(tmp_path)
+        assert "# Symfony Doctrine" in result
+        assert "Some content" in result
+
+    def test_load_php_platform_snippet_nonexistent(self, tmp_path):
+        """Test load_php_platform_snippet returns empty string when neither platform nor generic exists."""
+        # Create directory structure but no files
+        snippet_dir = (
+            tmp_path
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+            / "snippets"
+        )
+        snippet_dir.mkdir(parents=True)
+
+        result = pb_module.load_php_platform_snippet("nonexistent_platform", tmp_path)
+        assert result == ""
+
+    def test_load_php_platform_snippet_fallback_to_generic(self, tmp_path):
+        """Test load_php_platform_snippet falls back to generic_php when platform not found."""
+        # Create directory with only generic_php
+        snippet_dir = (
+            tmp_path
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+            / "snippets"
+        )
+        snippet_dir.mkdir(parents=True)
+        generic_file = snippet_dir / "generic_php.md"
+        generic_file.write_text("# Generic PHP\nPlatform-independent content")
+
+        result = pb_module.load_php_platform_snippet("wordpress", tmp_path)
+        assert "# Generic PHP" in result
+
+    def test_load_php_platform_snippet_existing_platform(self, tmp_path):
+        """Test load_php_platform_snippet reads platform-specific file when it exists."""
+        snippet_dir = (
+            tmp_path
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+            / "snippets"
+        )
+        snippet_dir.mkdir(parents=True)
+        platform_file = snippet_dir / "wordpress.md"
+        platform_file.write_text("# WordPress\nWordPress-specific content")
+
+        result = pb_module.load_php_platform_snippet("wordpress", tmp_path)
+        assert "# WordPress" in result
+        assert "WordPress-specific content" in result
+
+    def test_build_system_php_legacy_non_php_returns_empty(self):
+        """Test build_system_php_legacy returns empty string for non-PHP language."""
+        arch = {"LANGUAGE": "python", "PLATFORM": "django"}
+        result = pb_module.build_system_php_legacy(arch)
+        assert result == ""
+
+    def test_build_system_php_legacy_with_files(self, tmp_path):
+        """Test build_system_php_legacy builds prompt when PHP files exist."""
+        # Create directory structure
+        php_dir = (
+            tmp_path
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+        )
+        php_dir.mkdir(parents=True)
+
+        # Create doctrine file
+        doctrine_file = php_dir / "master_symfony_hex.md"
+        doctrine_file.write_text("# Symfony Doctrine Content")
+
+        # Create snippets directory and platform file
+        snippet_dir = php_dir / "snippets"
+        snippet_dir.mkdir(parents=True)
+        platform_file = snippet_dir / "wordpress.md"
+        platform_file.write_text("# WordPress Platform Content")
+
+        arch = {"LANGUAGE": "php", "PLATFORM": "wordpress", "LEGACY_ACTION": "migrate"}
+        result = pb_module.build_system_php_legacy(arch, base_dir=tmp_path)
+
+        # The function may use fallback if template is not available
+        # Either way, content should include doctrine and platform snippet
+        assert "Symfony Doctrine Content" in result
+        assert "WordPress Platform Content" in result
+
+    def test_build_system_php_legacy_missing_files_uses_fallback(self, tmp_path):
+        """Test build_system_php_legacy returns fallback when files don't exist."""
+        # Create empty directory structure
+        php_dir = (
+            tmp_path
+            / "configs"
+            / "stage_2_factory"
+            / "taxonomy"
+            / "php_legacy"
+        )
+        php_dir.mkdir(parents=True)
+
+        arch = {"LANGUAGE": "php", "PLATFORM": "nonexistent", "LEGACY_ACTION": "test"}
+        result = pb_module.build_system_php_legacy(arch, base_dir=tmp_path)
+
+        # Should return fallback content (doctrine + snippet inline)
+        assert "PHP Legacy Modernization Expert" in result
+        assert "Symfony Hexagonal Architecture" in result
