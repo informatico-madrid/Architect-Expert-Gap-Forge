@@ -349,3 +349,30 @@ class TestRender:
         """Test that braces in JSON are preserved."""
         result = pb_module._render('{"key": "$value"}', value="test")
         assert '{"key": "test"}' in result
+
+    def test_render_missing_variable(self):
+        """Test that missing variables are left unchanged (safe_substitute behavior)."""
+        result = pb_module._render("Hello $name, you have $count messages", name="Alice")
+        assert result == "Hello Alice, you have $count messages"
+
+    def test_render_missing_multiple_variables(self):
+        """Test that multiple missing variables are all left unchanged."""
+        template = "$greeting $name, your score is $score"
+        result = pb_module._render(template, name="Bob")
+        assert result == "$greeting Bob, your score is $score"
+
+    def test_render_no_variables_provided(self):
+        """Test that when no variables are provided, placeholders remain unchanged."""
+        template = "Hello $name"
+        result = pb_module._render(template)
+        assert result == "Hello $name"
+
+    def test_render_partial_variables(self):
+        """Test rendering with some variables provided and some missing."""
+        result = pb_module._render(
+            "$first $second $third", first="1", third="3"
+        )
+        # safe_substitute preserves order, but $second remains unchanged
+        assert "$second" in result
+        assert "1" in result
+        assert "3" in result
