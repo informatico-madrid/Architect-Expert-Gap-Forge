@@ -58,6 +58,10 @@ from datetime import datetime, timezone
 from itertools import product
 from typing import Any
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from src.audit.calibration_schema import (
     CALIBRATION_GRID,
     MIN_RESPONSE_WORDS,
@@ -72,6 +76,114 @@ from src.audit.calibration_schema import (
 from src.audit.inference import InferenceRouter
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# RICH CONSOLE & FORMATTING HELPERS
+# =============================================================================
+
+_console: Console | None = None
+
+
+def get_console() -> Console:
+    """Get a Rich console instance with auto-detection for TTY."""
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
+
+
+def print_startup_header(description: str) -> None:
+    """Print a styled header showing the calibration process."""
+    console = get_console()
+    console.print(
+        Panel(
+            "[bold]AEGF Calibration Engine[/]\n\n[bold cyan]Stage:[/bold] Inference Parameter Optimization\n\n[bold cyan]Purpose:[/bold] Grid search through parameter space to find optimal sampling configuration",
+            title="[bold green]AEGF Quality Gate[/bold green]",
+            border_style="green",
+            expand=True,
+        )
+    )
+    console.print()
+
+
+def print_section(title: str) -> None:
+    """Print a section divider with styled text."""
+    console = get_console()
+    console.print(f"\n[bold cyan]{'=' * 60}[/]\n[bold cyan]  {title}  [/]\n[bold cyan]{'=' * 60}[/]\n")
+
+
+def print_progress_message(message: str) -> None:
+    """Print a progress message."""
+    console = get_console()
+    console.print(f"[bold cyan]→ {message}[/]")
+
+
+def print_info_panel(message: str) -> None:
+    """Print an informational panel."""
+    console = get_console()
+    console.print(
+        Panel(
+            message,
+            title="[bold blue]Info[/bold blue]",
+            border_style="blue",
+        )
+    )
+
+
+def print_summary_table(report: CalibrationReport) -> None:
+    """Print a formatted summary table with calibration results."""
+    console = get_console()
+
+    table = Table(title="[bold]Calibration Summary[/bold]", show_header=True, header_style="bold cyan")
+    table.add_column("Metric", style="cyan", width=20)
+    table.add_column("Value", justify="right", style="white")
+
+    # Best profile metrics
+    table.add_row("Best Score", f"{report.best_score:.3f}")
+    table.add_row("Best Temperature", f"{report.best_profile.temperature:.2f}")
+    table.add_row("Best Top K", str(report.best_profile.top_k))
+    table.add_row("Best Min P", f"{report.best_profile.min_p:.2f}")
+    table.add_row("Best Repenalty", f"{report.best_profile.repetition_penalty:.2f}")
+
+    # Grid metrics
+    table.add_row("Total Prompts", str(report.total_prompts))
+    table.add_row("Total Profiles", str(report.total_profiles))
+    table.add_row("Total Evaluations", str(report.total_evaluations))
+
+    console.print(table)
+    console.print()
+
+
+def print_success_panel(message: str) -> None:
+    """Print a success panel with green styling."""
+    console = get_console()
+    console.print(
+        Panel(
+            f"[bold]{message}[/]",
+            title="[bold green]Calibration Complete[/bold green]",
+            border_style="green",
+            expand=True,
+        )
+    )
+
+
+def print_profile_summary(profile: SamplingProfile) -> None:
+    """Print a styled summary of the best profile."""
+    console = get_console()
+
+    profile_table = Table(title="[bold]Best Profile Configuration[/bold]", show_header=True, header_style="bold cyan")
+    profile_table.add_column("Parameter", style="cyan", width=15)
+    profile_table.add_column("Value", justify="right", style="white")
+
+    profile_table.add_row("Temperature", f"{profile.temperature:.2f}")
+    profile_table.add_row("Top K", str(profile.top_k))
+    profile_table.add_row("Min P", f"{profile.min_p:.2f}")
+    profile_table.add_row("Repetition Penalty", f"{profile.repetition_penalty:.2f}")
+    if profile.presence_penalty is not None:
+        profile_table.add_row("Presence Penalty", f"{profile.presence_penalty:.2f}")
+
+    console.print(profile_table)
+    console.print()
 
 
 # ======================================================================
@@ -3548,6 +3660,11 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    # Print startup header
+    print_startup_header(
+        "Inference parameter optimization using grid search and Professor Judge evaluation"
+    )
+
     # Load prompts
     with open(args.prompts, "r", encoding="utf-8") as f:
         prompts_data = json.load(f)
@@ -3558,10 +3675,13 @@ def main() -> None:
     else:
         prompts = prompts_data
 
+    print_progress_message(f"Loading {len(prompts)} calibration prompts")
+
     # Determine checkpoint directory for resume functionality
     checkpoint_dir = args.output_dir if args.resume else None
 
     # Run calibration
+    print_progress_message("Starting calibration grid search...")
     report = run_calibration(
         prompts=prompts,
         output_dir=args.output_dir,
@@ -3569,8 +3689,19 @@ def main() -> None:
         checkpoint_dir=checkpoint_dir,
     )
 
-    print(f"Calibration complete. Best score: {report.best_score:.3f}")
-    print(f"Best profile: {report.best_profile}")
+    # Print results using Rich
+    print_section("Calibration Results")
+    print_summary_table(report)
+
+    print_section("Best Profile")
+    print_profile_summary(report.best_profile)
+
+    # Success panel
+    print_success_panel(
+        f"[bold]Calibration completed successfully[/]\n\n"
+        f"[bold]Best Score:[/bold] {report.best_score:.3f}\n"
+        f"[bold]Results saved to:[/bold] {args.output_dir}/"
+    )
 
     sys.exit(0)
 
