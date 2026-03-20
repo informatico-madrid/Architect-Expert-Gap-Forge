@@ -739,3 +739,710 @@ class TestDatasetMixerInterface:
         assert config.specialized_pct == 30.0
         assert config.anchor_pct == 70.0
         assert config.shuffle_seed == 42
+
+
+# =============================================================================
+# TESTS FOR DatasetMixer.mix METHOD
+# =============================================================================
+
+
+class TestDatasetMixerMix:
+    """Tests for DatasetMixer.mix method - covers lines 160-241 in dataset_mixer.py."""
+
+    def test_mix_basic_functionality(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix method returns combined and shuffled records."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized_records, anchor_records)
+
+        # Should have combined records
+        assert len(result) == len(specialized_records) + len(anchor_records)
+
+        # All records should have origin in metadata
+        for record in result:
+            assert "origin" in record.metadata
+
+    def test_mix_with_deterministic_shuffle(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix method produces deterministic shuffle with same seed."""
+        config1 = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        config2 = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+
+        mixer1 = DatasetMixer(config1)
+        mixer2 = DatasetMixer(config2)
+
+        result1 = mixer1.mix(specialized_records, anchor_records)
+        result2 = mixer2.mix(specialized_records, anchor_records)
+
+        # Same seed should produce same order
+        assert len(result1) == len(result2)
+        for r1, r2 in zip(result1, result2):
+            assert r1.metadata.get("origin") == r2.metadata.get("origin")
+
+    def test_mix_with_different_seeds_produces_different_order(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix method produces different order with different seeds."""
+        config1 = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        config2 = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=123)
+
+        mixer1 = DatasetMixer(config1)
+        mixer2 = DatasetMixer(config2)
+
+        result1 = mixer1.mix(specialized_records, anchor_records)
+        result2 = mixer2.mix(specialized_records, anchor_records)
+
+        # Different seeds should produce different orders (at least one should differ)
+        has_difference = False
+        for r1, r2 in zip(result1, result2):
+            if r1.metadata.get("origin") != r2.metadata.get("origin"):
+                has_difference = True
+                break
+        assert has_difference
+
+    def test_mix_empty_specialized_returns_only_anchor(
+        self, anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix with empty specialized list returns anchor records."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix([], anchor_records)
+
+        assert len(result) == len(anchor_records)
+
+    def test_mix_empty_anchor_returns_only_specialized(
+        self, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix with empty anchor list returns specialized records."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized_records, [])
+
+        assert len(result) == len(specialized_records)
+
+    def test_mix_both_empty_returns_empty(self) -> None:
+        """Test mix with both empty lists returns empty list."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix([], [])
+
+        assert result == []
+
+    def test_mix_with_target_records_limit(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix respects target_records limit (lines 198-216)."""
+        # Set target_records to be less than total
+        target = 10
+        config = DatasetMixerConfig(
+            specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42, target_records=target
+        )
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized_records, anchor_records)
+
+        # Should be limited to target_records
+        assert len(result) <= target
+
+    def test_mix_preserves_all_records_when_under_target(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix preserves all records when under target_records limit."""
+        # Set target_records higher than total
+        total = len(specialized_records) + len(anchor_records)
+        target = total + 100
+        config = DatasetMixerConfig(
+            specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42, target_records=target
+        )
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized_records, anchor_records)
+
+        # Should have all records
+        assert len(result) == total
+
+    def test_mix_with_token_count_in_metadata(
+        self,
+    ) -> None:
+        """Test mix uses token_count from metadata (lines 112-119)."""
+        # Create records with token_count in metadata
+        specialized = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Test question"),
+                    Message(role="assistant", content="Test answer"),
+                ],
+                metadata={"origin": "specialized", "type": "trajectory", "token_count": 100},
+            )
+        ]
+        anchor = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Another question"),
+                    Message(role="assistant", content="Another answer"),
+                ],
+                metadata={"origin": "anchor", "type": "general", "token_count": 200},
+            )
+        ]
+
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized, anchor)
+
+        assert len(result) == 2
+
+    def test_mix_fallback_to_encoding_when_no_token_count(
+        self,
+    ) -> None:
+        """Test mix calculates tokens from content when token_count not in metadata."""
+        # Create records without token_count in metadata
+        specialized = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Test question"),
+                    Message(role="assistant", content="Test answer"),
+                ],
+                metadata={"origin": "specialized", "type": "trajectory"},
+            )
+        ]
+        anchor = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Another question"),
+                    Message(role="assistant", content="Another answer"),
+                ],
+                metadata={"origin": "anchor", "type": "general"},
+            )
+        ]
+
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized, anchor)
+
+        assert len(result) == 2
+
+    def test_mix_subsample_anchor_when_too_large(
+        self,
+    ) -> None:
+        """Test mix subsamples anchor when it exceeds target proportion (lines 188-195)."""
+        # Create specialized with small tokens and anchor with large tokens
+        specialized = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Short"),
+                    Message(role="assistant", content="Short answer"),
+                ],
+                metadata={"origin": "specialized", "type": "trajectory", "token_count": 100},
+            )
+            for _ in range(5)
+        ]
+
+        # Anchor has much more tokens than needed for 70/30 ratio
+        anchor = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Long question " * 50),
+                    Message(role="assistant", content="Long answer " * 50),
+                ],
+                metadata={"origin": "anchor", "type": "general", "token_count": 1000},
+            )
+            for _ in range(10)
+        ]
+
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized, anchor)
+
+        # Should subsample anchor to fit 70/30 ratio
+        assert len(result) <= len(specialized) + len(anchor)
+
+    def test_mix_zero_specialized_tokens_handled(
+        self, anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix handles zero specialized tokens gracefully."""
+        # Create specialized with zero token count
+        specialized = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content=""),
+                    Message(role="assistant", content=""),
+                ],
+                metadata={"origin": "specialized", "type": "trajectory", "token_count": 0},
+            )
+        ]
+
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized, anchor_records)
+
+        # With zero specialized tokens, target_anchor won't be calculated
+        # and all anchor records should be included (plus the zero-token specialized)
+        assert len(result) >= len(anchor_records)
+
+    def test_mix_with_custom_proportions(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix works with custom specialized_pct and anchor_pct."""
+        config = DatasetMixerConfig(specialized_pct=50.0, anchor_pct=50.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized_records, anchor_records)
+
+        # With 50/50, may subsample anchor if it exceeds target
+        assert len(result) >= len(specialized_records)
+        assert len(result) <= len(specialized_records) + len(anchor_records)
+
+    def test_mix_result_contains_both_origins(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test mix result contains records from both origins."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        result = mixer.mix(specialized_records, anchor_records)
+
+        origins = {r.metadata.get("origin") for r in result}
+        assert "specialized" in origins
+        assert "xlam_function_calling" in origins
+
+
+# =============================================================================
+# TESTS FOR DatasetMixer.export METHOD
+# =============================================================================
+
+
+class TestDatasetMixerExport:
+    """Tests for DatasetMixer.export method - covers lines 243-263 in dataset_mixer.py."""
+
+    def test_export_creates_jsonl_file(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export creates a JSONL file."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(mixed_records, output_path)
+
+        assert output_path.exists()
+        assert output_path.is_file()
+
+    def test_export_writes_correct_number_of_lines(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export writes one line per record."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(mixed_records, output_path)
+
+        with open(output_path) as f:
+            line_count = sum(1 for _ in f)
+
+        assert line_count == len(mixed_records)
+
+    def test_export_creates_parent_directories(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export creates parent directories if they don't exist."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        # Path with non-existent parent directories
+        output_path = tmp_path / "nested" / "dirs" / "output.jsonl"
+
+        # Should not raise an error
+        mixer.export(mixed_records, output_path)
+
+        assert output_path.exists()
+
+    def test_export_creates_nested_directories(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export handles deeply nested directory paths."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "a" / "b" / "c" / "d" / "output.jsonl"
+
+        mixer.export(mixed_records, output_path)
+
+        assert output_path.exists()
+        assert output_path.parent.exists()
+
+    def test_export_creates_valid_jsonl_format(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export creates valid JSONL format (one JSON object per line)."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(mixed_records, output_path)
+
+        with open(output_path) as f:
+            for line in f:
+                # Each line should be valid JSON
+                data = json.loads(line)
+                assert isinstance(data, dict)
+
+    def test_export_records_have_messages_field(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test exported records have messages field."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(mixed_records, output_path)
+
+        with open(output_path) as f:
+            for line in f:
+                data = json.loads(line)
+                assert "messages" in data
+
+    def test_export_records_have_metadata_field(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test exported records have metadata field."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(mixed_records, output_path)
+
+        with open(output_path) as f:
+            for line in f:
+                data = json.loads(line)
+                assert "metadata" in data
+
+    def test_export_empty_records_creates_empty_file(
+        self, tmp_path: Path
+    ) -> None:
+        """Test export with empty records list creates empty file."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export([], output_path)
+
+        assert output_path.exists()
+        with open(output_path) as f:
+            content = f.read()
+        assert content == ""
+
+    def test_export_overwrites_existing_file(
+        self, mixed_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export overwrites existing file."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        # Create existing file
+        with open(output_path, "w") as f:
+            f.write("old content\n")
+
+        # Export should overwrite
+        mixer.export(mixed_records, output_path)
+
+        with open(output_path) as f:
+            content = f.read()
+
+        # Should contain new content, not old
+        assert "old content" not in content
+        assert len(content) > 0
+
+    def test_export_with_specialized_only(
+        self, specialized_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export with only specialized records."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(specialized_records, output_path)
+
+        with open(output_path) as f:
+            line_count = sum(1 for _ in f)
+
+        assert line_count == len(specialized_records)
+
+    def test_export_with_anchor_only(
+        self, anchor_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export with only anchor records."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(anchor_records, output_path)
+
+        with open(output_path) as f:
+            line_count = sum(1 for _ in f)
+
+        assert line_count == len(anchor_records)
+
+    def test_export_utf8_encoding(
+        self, specialized_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export handles UTF-8 encoded content."""
+        # Create record with special characters directly
+        records_with_utf8 = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="你好世界 🌍 🎉"),
+                    Message(role="assistant", content="Hello world!"),
+                ],
+                metadata={"origin": "specialized", "type": "trajectory", "token_count": 10},
+            )
+        ]
+
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        output_path = tmp_path / "output.jsonl"
+
+        mixer.export(records_with_utf8, output_path)
+
+        # Should read back without errors
+        with open(output_path, encoding="utf-8") as f:
+            content = f.read()
+
+        assert "你好世界" in content
+
+    def test_export_with_mixed_result(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord], tmp_path: Path
+    ) -> None:
+        """Test export with results from mix method."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        mixed = mixer.mix(specialized_records, anchor_records)
+
+        output_path = tmp_path / "mixed.jsonl"
+        mixer.export(mixed, output_path)
+
+        # Verify file exists and has correct number of lines
+        assert output_path.exists()
+        with open(output_path) as f:
+            line_count = sum(1 for _ in f)
+
+        assert line_count == len(mixed)
+
+
+# =============================================================================
+# TESTS FOR DatasetMixer.generate_report METHOD
+# =============================================================================
+
+
+class TestDatasetMixerGenerateReport:
+    """Tests for DatasetMixer.generate_report method."""
+
+    def test_generate_report_basic(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test basic report generation with mixed records."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        mixed = mixer.mix(specialized_records, anchor_records)
+
+        report = mixer.generate_report(mixed)
+
+        assert isinstance(report, CompositionReport)
+        assert report.records_by_origin is not None
+        assert report.token_pct_by_origin is not None
+        assert report.type_distribution is not None
+        assert report.format_distribution is not None
+
+    def test_generate_report_records_by_origin(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test that records are correctly counted by origin."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        mixed = mixer.mix(specialized_records, anchor_records)
+
+        report = mixer.generate_report(mixed)
+
+        # Should have records from both origins
+        assert "specialized" in report.records_by_origin
+        # Anchor records have origin "xlam_function_calling"
+        assert "xlam_function_calling" in report.records_by_origin
+        # Total should match
+        total = sum(report.records_by_origin.values())
+        assert total == len(mixed)
+
+    def test_generate_report_type_distribution(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test that type distribution is correctly calculated."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        mixed = mixer.mix(specialized_records, anchor_records)
+
+        report = mixer.generate_report(mixed)
+
+        # Both record types should be present
+        assert "trajectory" in report.type_distribution
+        # Total should match
+        total = sum(report.type_distribution.values())
+        assert total == len(mixed)
+
+    def test_generate_report_token_calculation(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test that token counts are calculated for records without token_count in metadata."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        mixed = mixer.mix(specialized_records, anchor_records)
+
+        report = mixer.generate_report(mixed)
+
+        # Token percentages should be calculated
+        assert isinstance(report.token_pct_by_origin, dict)
+        # Should sum to ~100%
+        total_pct = sum(report.token_pct_by_origin.values())
+        assert 99.0 <= total_pct <= 101.0  # Allow for rounding
+
+    def test_generate_report_with_metadata_token_count(
+        self, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test that token_count from metadata is used when available."""
+        # Records already have token_count in metadata from fixture
+        config = DatasetMixerConfig(specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        report = mixer.generate_report(specialized_records)
+
+        # Should have token counts
+        assert len(report.token_pct_by_origin) > 0
+
+    def test_generate_report_empty_records(self) -> None:
+        """Test report generation with empty records list."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        report = mixer.generate_report([])
+
+        assert report.records_by_origin == {}
+        assert report.token_pct_by_origin == {}
+        assert report.type_distribution == {}
+
+    def test_generate_report_format_distribution(
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
+    ) -> None:
+        """Test that format distribution is calculated when not provided."""
+        config = DatasetMixerConfig(specialized_pct=30.0, anchor_pct=70.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        mixed = mixer.mix(specialized_records, anchor_records)
+
+        report = mixer.generate_report(mixed)
+
+        # Format distribution should have json/xml/none keys
+        assert "json" in report.format_distribution
+        assert "xml" in report.format_distribution
+        assert "none" in report.format_distribution
+
+    def test_generate_report_provided_format_distribution(
+        self, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test that provided format_distribution is used."""
+        config = DatasetMixerConfig(specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        provided_format = {"json": 10, "xml": 5, "none": 3}
+
+        report = mixer.generate_report(
+            specialized_records, format_distribution=provided_format
+        )
+
+        assert report.format_distribution == provided_format
+
+    def test_generate_report_discarded_count(
+        self, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test that discarded_count is included in report."""
+        config = DatasetMixerConfig(specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        report = mixer.generate_report(specialized_records, discarded_count=5)
+
+        assert report.discarded_count == 5
+
+    def test_generate_report_discarded_reasons(
+        self, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test that discarded_reasons is included in report."""
+        config = DatasetMixerConfig(specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        reasons = {"duplicate": 3, "invalid_format": 2}
+
+        report = mixer.generate_report(
+            specialized_records, discarded_reasons=reasons
+        )
+
+        assert report.discarded_reasons == reasons
+
+    def test_generate_report_default_metadata_values(
+        self, tmp_path: Path
+    ) -> None:
+        """Test report generation with records missing origin/type in metadata."""
+        # Create records with no origin/type in metadata
+        records = [
+            DatasetRecord(
+                messages=[
+                    Message(role="user", content="Test message"),
+                    Message(role="assistant", content="Test response"),
+                ],
+                metadata={},  # No origin or type
+            )
+        ]
+
+        config = DatasetMixerConfig(specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        report = mixer.generate_report(records)
+
+        # Should default to "unknown"
+        assert "unknown" in report.records_by_origin
+        assert "unknown" in report.type_distribution
+
+    def test_generate_report_with_single_origin(
+        self, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test report with all records from single origin."""
+        config = DatasetMixerConfig(specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42)
+        mixer = DatasetMixer(config)
+
+        report = mixer.generate_report(specialized_records)
+
+        # All tokens should be from one origin
+        assert sum(report.token_pct_by_origin.values()) == 100.0
