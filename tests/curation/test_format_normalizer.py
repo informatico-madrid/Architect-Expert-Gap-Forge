@@ -521,6 +521,585 @@ class TestEdgeCases:
 # =============================================================================
 
 
+class TestConvertAlpaca:
+    """Tests for FormatNormalizer._convert_alpaca method."""
+
+    def test_convert_alpaca_with_instruction_input_output(self) -> None:
+        """Test Alpaca conversion with instruction, input, and output fields."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "How do I configure a temperature sensor?",
+            "input": "I have an ESP32 with DHT22",
+            "output": "Create an ESPHome configuration...",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+        # User content should concatenate instruction and input with double newline
+        assert "How do I configure a temperature sensor?" in messages[0].content
+        assert "I have an ESP32 with DHT22" in messages[0].content
+        assert "\n\n" in messages[0].content
+
+        assert messages[1].content == "Create an ESPHome configuration..."
+
+    def test_convert_alpaca_minimal_with_instruction_and_output_only(self) -> None:
+        """Test Alpaca conversion with only instruction and output (no input)."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "What is Home Assistant?",
+            "output": "Home Assistant is an open-source home automation platform.",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[0].content == "What is Home Assistant?"
+        assert messages[1].role == "assistant"
+        assert messages[1].content == "Home Assistant is an open-source home automation platform."
+
+    def test_convert_alpaca_missing_instruction_raises_error(self) -> None:
+        """Test that missing instruction field raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "input": "Some input",
+            "output": "Some output",
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_alpaca(record)
+
+        assert "instruction" in str(exc_info.value).lower()
+        assert "output" in str(exc_info.value).lower()
+
+    def test_convert_alpaca_missing_output_raises_error(self) -> None:
+        """Test that missing output field raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "Some instruction",
+            "input": "Some input",
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_alpaca(record)
+
+        assert "instruction" in str(exc_info.value).lower()
+        assert "output" in str(exc_info.value).lower()
+
+    def test_convert_alpaca_missing_both_instruction_and_output(self) -> None:
+        """Test that missing both instruction and output raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "input": "Some input",
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_alpaca(record)
+
+        assert "instruction" in str(exc_info.value).lower()
+        assert "output" in str(exc_info.value).lower()
+
+    def test_convert_alpaca_empty_instruction(self) -> None:
+        """Test Alpaca conversion with empty instruction string."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "",
+            "output": "Some output",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        assert len(messages) == 2
+        assert messages[0].content == ""
+        assert messages[1].content == "Some output"
+
+    def test_convert_alpaca_empty_input(self) -> None:
+        """Test Alpaca conversion with empty input string (field present but empty)."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "The question",
+            "input": "",
+            "output": "The answer",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        # Empty input should not be concatenated - should just use instruction
+        assert messages[0].content == "The question"
+        assert messages[1].content == "The answer"
+
+    def test_convert_alpaca_empty_output(self) -> None:
+        """Test Alpaca conversion with empty output string."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "The question",
+            "output": "",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        assert len(messages) == 2
+        assert messages[0].content == "The question"
+        assert messages[1].content == ""
+
+    def test_convert_alpaca_instruction_input_concatenation_format(self) -> None:
+        """Test that instruction and input are concatenated with exactly double newline."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "Instruction text",
+            "input": "Input text",
+            "output": "Output text",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        # Check the exact concatenation format
+        expected_content = "Instruction text\n\nInput text"
+        assert messages[0].content == expected_content
+
+    def test_convert_alpaca_multiline_content_preserved(self) -> None:
+        """Test that multiline content in instruction/input/output is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "Line 1\nLine 2\nLine 3",
+            "input": "Input line 1\nInput line 2",
+            "output": "Output\nWith multiple\nLines",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        assert "\n" in messages[0].content
+        assert "Line 1" in messages[0].content
+        assert "Line 3" in messages[0].content
+        assert "Output\nWith multiple\nLines" in messages[1].content
+
+    def test_convert_alpaca_special_characters_preserved(self) -> None:
+        """Test that special characters in content are preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "instruction": "Use JSON: {\"key\": \"value\"}",
+            "input": "Code: `print('hello')`",
+            "output": "Answer with <html> tags",
+        }
+
+        messages = normalizer._convert_alpaca(record)
+
+        assert '{"key": "value"}' in messages[0].content
+        assert "print('hello')" in messages[0].content
+        assert "<html>" in messages[1].content
+
+
+class TestConvertShareGPT:
+    """Tests for FormatNormalizer._convert_sharegpt method."""
+
+    def test_convert_sharegpt_with_conversations(self) -> None:
+        """Test ShareGPT conversion with conversations array."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "How do I configure a sensor?"},
+                {"from": "gpt", "value": "Create an ESPHome configuration..."},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[0].content == "How do I configure a sensor?"
+        assert messages[1].role == "assistant"
+        assert messages[1].content == "Create an ESPHome configuration..."
+
+    def test_convert_sharegpt_minimal_single_turn(self) -> None:
+        """Test ShareGPT conversion with minimal single conversation turn."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Hello"},
+                {"from": "gpt", "value": "Hi there!"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_convert_sharegpt_missing_conversations_raises_error(self) -> None:
+        """Test that missing conversations array raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {"messages": [{"role": "user", "content": "test"}]}
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_sharegpt(record)
+
+        assert "conversations" in str(exc_info.value).lower()
+
+    def test_convert_sharegpt_invalid_conversations_type_raises_error(self) -> None:
+        """Test that non-list conversations raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {"conversations": "not a list"}
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_sharegpt(record)
+
+        assert "list" in str(exc_info.value).lower()
+
+    def test_convert_sharegpt_missing_from_field_raises_error(self) -> None:
+        """Test that missing 'from' field raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"value": "Some content"},
+            ]
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_sharegpt(record)
+
+        assert "from" in str(exc_info.value).lower()
+
+    def test_convert_sharegpt_missing_value_field_raises_error(self) -> None:
+        """Test that missing 'value' field raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human"},
+            ]
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_sharegpt(record)
+
+        assert "value" in str(exc_info.value).lower()
+
+    def test_convert_sharegpt_empty_conversation_array(self) -> None:
+        """Test ShareGPT conversion with empty conversations array."""
+        normalizer = FormatNormalizer()
+        record = {"conversations": []}
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert len(messages) == 0
+
+    def test_convert_sharegpt_role_mapping_human_to_user(self) -> None:
+        """Test that ShareGPT 'human' role maps to 'user'."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Question"},
+                {"from": "gpt", "value": "Answer"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_convert_sharegpt_role_mapping_gpt_to_assistant(self) -> None:
+        """Test that ShareGPT 'gpt' role maps to 'assistant'."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Question"},
+                {"from": "gpt", "value": "Answer"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert messages[1].role == "assistant"
+
+    def test_convert_sharegpt_role_mapping_tool(self) -> None:
+        """Test that ShareGPT 'tool' role maps to 'tool'."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Get weather"},
+                {"from": "gpt", "value": "<tool_call>get_weather</tool_call>"},
+                {"from": "tool", "value": "Sunny, 25C"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert messages[2].role == "tool"
+        assert messages[2].content == "Sunny, 25C"
+
+    def test_convert_sharegpt_role_mapping_system(self) -> None:
+        """Test that ShareGPT 'system' role maps to 'system'."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "system", "value": "You are a helpful assistant."},
+                {"from": "human", "value": "Hello"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert messages[0].role == "system"
+        assert messages[0].content == "You are a helpful assistant."
+
+    def test_convert_sharegpt_unknown_role_passes_through(self) -> None:
+        """Test that unknown ShareGPT roles pass through unchanged."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "custom_role", "value": "Custom message"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert messages[0].role == "custom_role"
+        assert messages[0].content == "Custom message"
+
+    def test_convert_sharegpt_multiline_content_preserved(self) -> None:
+        """Test that multiline content in conversations is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Line 1\nLine 2\nLine 3"},
+                {"from": "gpt", "value": "Response\nWith multiple\nLines"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert "\n" in messages[0].content
+        assert "Line 1" in messages[0].content
+        assert "Line 3" in messages[0].content
+        assert "Response\nWith multiple\nLines" in messages[1].content
+
+    def test_convert_sharegpt_special_characters_preserved(self) -> None:
+        """Test that special characters in content are preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Use JSON: {\"key\": \"value\"}"},
+                {"from": "gpt", "value": "Answer with <html> tags and `code`"},
+            ]
+        }
+
+        messages = normalizer._convert_sharegpt(record)
+
+        assert '{"key": "value"}' in messages[0].content
+        assert "<html>" in messages[1].content
+        assert "`code`" in messages[1].content
+
+
+class TestConvertOpenAIMessages:
+    """Tests for FormatNormalizer._convert_openai_messages method."""
+
+    def test_convert_openai_messages_with_messages_array(self) -> None:
+        """Test OpenAI Messages conversion with messages array."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "How do I configure a sensor?"},
+                {"role": "assistant", "content": "Create an ESPHome configuration..."},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert len(messages) == 3
+        assert messages[0].role == "system"
+        assert messages[0].content == "You are a helpful assistant."
+        assert messages[1].role == "user"
+        assert messages[1].content == "How do I configure a sensor?"
+        assert messages[2].role == "assistant"
+        assert messages[2].content == "Create an ESPHome configuration..."
+
+    def test_convert_openai_messages_minimal_single_turn(self) -> None:
+        """Test OpenAI Messages conversion with minimal single turn."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi there!"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_convert_openai_messages_missing_messages_raises_error(self) -> None:
+        """Test that missing messages array raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {"conversations": [{"from": "human", "value": "test"}]}
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_openai_messages(record)
+
+        assert "messages" in str(exc_info.value).lower()
+
+    def test_convert_openai_messages_invalid_messages_type_raises_error(self) -> None:
+        """Test that non-list messages raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {"messages": "not a list"}
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_openai_messages(record)
+
+        assert "list" in str(exc_info.value).lower()
+
+    def test_convert_openai_messages_missing_role_raises_error(self) -> None:
+        """Test that missing 'role' field raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"content": "Some content"},
+            ]
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_openai_messages(record)
+
+        assert "role" in str(exc_info.value).lower()
+
+    def test_convert_openai_messages_missing_content_raises_error(self) -> None:
+        """Test that missing 'content' field raises NormalizationError."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user"},
+            ]
+        }
+
+        with pytest.raises(NormalizationError) as exc_info:
+            normalizer._convert_openai_messages(record)
+
+        assert "content" in str(exc_info.value).lower()
+
+    def test_convert_openai_messages_empty_messages_array(self) -> None:
+        """Test OpenAI Messages conversion with empty messages array."""
+        normalizer = FormatNormalizer()
+        record = {"messages": []}
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert len(messages) == 0
+
+    def test_convert_openai_messages_role_mapping_system(self) -> None:
+        """Test that 'system' role is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": "Hello"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert messages[0].role == "system"
+        assert messages[0].content == "You are a helpful assistant."
+
+    def test_convert_openai_messages_role_mapping_user(self) -> None:
+        """Test that 'user' role is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user", "content": "Question"},
+                {"role": "assistant", "content": "Answer"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_convert_openai_messages_role_mapping_assistant(self) -> None:
+        """Test that 'assistant' role is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user", "content": "Question"},
+                {"role": "assistant", "content": "Answer"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert messages[1].role == "assistant"
+
+    def test_convert_openai_messages_role_mapping_tool(self) -> None:
+        """Test that 'tool' role is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user", "content": "Get weather"},
+                {"role": "assistant", "content": "<tool_call>get_weather</tool_call>"},
+                {"role": "tool", "content": "Sunny, 25C", "tool_call_id": "call_123"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert messages[2].role == "tool"
+        assert messages[2].content == "Sunny, 25C"
+
+    def test_convert_openai_messages_unknown_role_passes_through(self) -> None:
+        """Test that unknown roles pass through unchanged."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "custom_role", "content": "Custom message"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert messages[0].role == "custom_role"
+        assert messages[0].content == "Custom message"
+
+    def test_convert_openai_messages_multiline_content_preserved(self) -> None:
+        """Test that multiline content in messages is preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user", "content": "Line 1\nLine 2\nLine 3"},
+                {"role": "assistant", "content": "Response\nWith multiple\nLines"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert "\n" in messages[0].content
+        assert "Line 1" in messages[0].content
+        assert "Line 3" in messages[0].content
+        assert "Response\nWith multiple\nLines" in messages[1].content
+
+    def test_convert_openai_messages_special_characters_preserved(self) -> None:
+        """Test that special characters in content are preserved."""
+        normalizer = FormatNormalizer()
+        record = {
+            "messages": [
+                {"role": "user", "content": "Use JSON: {\"key\": \"value\"}"},
+                {"role": "assistant", "content": "Answer with <html> tags and `code`"},
+            ]
+        }
+
+        messages = normalizer._convert_openai_messages(record)
+
+        assert '{"key": "value"}' in messages[0].content
+        assert "<html>" in messages[1].content
+        assert "`code`" in messages[1].content
+
+
 class TestFormatNormalizerInterface:
     """
     Abstract interface tests for FormatNormalizer.
