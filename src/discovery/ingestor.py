@@ -29,6 +29,10 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.utils.metrics import get_metrics
+from src.utils.rich_helpers import (
+    create_table,
+    get_console,
+)
 
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
@@ -571,8 +575,27 @@ if __name__ == "__main__":
     if token:
         config = config.model_copy(update={"github_token": token})
 
+    # Rich terminal output setup
+    console = get_console()
+    console.print("\n[bold blue]=== AEGF Discovery Ingestor ===[/bold blue]")
+    console.print(f"[cyan]Category:[/cyan] {config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {config.mode}")
+    console.print(f"[cyan]Config:[/cyan] {config_path}")
+    console.print(f"[cyan]Limit:[/cyan] {config.limit} repos")
+    console.print(f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if args.dry_run else 'WRITE'}\n")
+
     engine = RepoIngestor(config)
-    engine.run(dry_run=args.dry_run)
+    repos = engine.run(dry_run=args.dry_run)
+
+    # Summary table
+    summary_table = create_table(title="[bold green]Discovery Summary[/bold green]")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", justify="right")
+    summary_table.add_row("Total discovered", str(len(repos)))
+    summary_table.add_row("Mode", "DRY-RUN" if args.dry_run else "WRITE")
+    console.print(summary_table)
+    console.print(f"\n[cyan]Repos:[/cyan] {', '.join(repos)}\n")
 
 
 def main():
@@ -602,8 +625,27 @@ def main():
     if token:
         config = config.model_copy(update={"github_token": token})
 
+    # Rich terminal output setup
+    console = get_console()
+    console.print("\n[bold blue]=== AEGF Discovery Ingestor ===[/bold blue]")
+    console.print(f"[cyan]Category:[/cyan] {config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {config.mode}")
+    console.print(f"[cyan]Config:[/cyan] {config_path}")
+    console.print(f"[cyan]Limit:[/cyan] {config.limit} repos")
+    console.print(f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if args.dry_run else 'WRITE'}\n")
+
     engine = RepoIngestor(config)
-    engine.run(dry_run=args.dry_run)
+    repos = engine.run(dry_run=args.dry_run)
+
+    # Summary table
+    summary_table = create_table(title="[bold green]Discovery Summary[/bold green]")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", justify="right")
+    summary_table.add_row("Total discovered", str(len(repos)))
+    summary_table.add_row("Mode", "DRY-RUN" if args.dry_run else "WRITE")
+    console.print(summary_table)
+    console.print(f"\n[cyan]Repos:[/cyan] {', '.join(repos)}\n")
 
 
 if __name__ == "__main__":
