@@ -56,9 +56,9 @@ def display_start_panel(use_case: str, mode: str, config_path: str) -> None:
     console = get_console()
 
     config_lines = [
-        f"[bold]Use Case:[/]\t{use_case}",
-        f"[bold]Mode:[/]\t{mode}",
-        f"[bold]Config:[/]\t{config_path}",
+        f"[bold]Use Case:[/bold]\t{use_case}",
+        f"[bold]Mode:[/bold]\t{mode}",
+        f"[bold]Config:[/bold]\t{config_path}",
     ]
 
     config_text = "\n".join(config_lines)

@@ -237,30 +237,30 @@ def display_startup_panel(args: argparse.Namespace) -> None:
 
     # Build configuration summary
     config_lines = [
-        f"[bold]Workers:[/]\t{args.workers}",
-        f"[bold]Model:[/]\t{args.model}",
-        f"[bold]Base URL:[/]\t{args.base_url}",
-        f"[bold]Seed:[/]\t{args.seed}",
+        f"[bold]Workers:[/bold]\t{args.workers}",
+        f"[bold]Model:[/bold]\t{args.model}",
+        f"[bold]Base URL:[/bold]\t{args.base_url}",
+        f"[bold]Seed:[/bold]\t{args.seed}",
     ]
 
     if args.theory:
         config_lines.extend(
             [
-                "[bold]Mode:[/]\tTHEORY",
-                f"[bold]Repetitions:[/]\t{args.theory_reps}",
+                "[bold]Mode:[/bold]\tTHEORY",
+                f"[bold]Repetitions:[/bold]\t{args.theory_reps}",
             ]
         )
     else:
         config_lines.extend(
             [
-                "[bold]Mode:[/]\tNORMAL",
-                f"[bold]Output:[/]\t{args.output or 'auto-generated'}",
+                "[bold]Mode:[/bold]\tNORMAL",
+                f"[bold]Output:[/bold]\t{args.output or 'auto-generated'}",
             ]
         )
 
     config_text = "\n".join(config_lines)
 
-    panel_title = "[bold cyan]AEGF Factory Pipeline - V11[/]"
+    panel_title = "[bold cyan]AEGF Factory Pipeline - V11[/bold cyan]"
     console.print(
         Panel(
             config_text,

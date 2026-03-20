@@ -236,7 +236,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     console.print("[dim]Starting backtracking rewrite pipeline...[/dim]")
-    start_time = datetime.now()
+    start_time = datetime.datetime.now()
 
     try:
         report = asyncio.run(rewrite_pipeline(args.input, args.output, cfg))
@@ -244,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"\n[dim]{report}[/dim]")
 
         # Calculate duration
-        end_time = datetime.now()
+        end_time = datetime.datetime.now()
         duration = (end_time - start_time).total_seconds()
         console.print(f"\n[dim]Total duration: {format_duration(duration)}[/dim]")
 

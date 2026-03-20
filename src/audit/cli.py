@@ -106,7 +106,7 @@ def print_startup_header(mode: str, description: str) -> None:
     console = get_console()
     console.print(
         Panel(
-            f"[bold]{description}[/]\n\n[bold cyan]Mode:[/bold] {mode.upper()}",
+            f"[bold]{description}[/bold]\n\n[bold cyan]Mode:[/bold cyan] {mode.upper()}",
             title="[bold green]AEGF Quality Gate[/bold green]",
             border_style="green",
             expand=True,
@@ -117,9 +117,9 @@ def print_startup_header(mode: str, description: str) -> None:
 def print_section(title: str, style: str = "bold blue") -> None:
     """Print a section divider with styled text."""
     console = get_console()
-    console.print(f"\n[{'{style}'}]{'=' * 60}[/]")
-    console.print(f"[{'{style}'}]  {title}  [/]")
-    console.print(f"[{'{style}'}]{'=' * 60}[/]\n")
+    console.print(f"\n[{style}]{'=' * 60}[/]")
+    console.print(f"[{style}]  {title}  [/]")
+    console.print(f"[{style}]{'=' * 60}[/]\n")
 
 
 def print_summary_table(metrics: dict[str, str | int | float], title: str = "Summary") -> None:

@@ -256,7 +256,7 @@ class DiscoveryMetrics:
 
 
 # Global metrics instance for easy import
-_default_metrics: Optional[DiscoveryMetrics] = None
+_default_metrics: Optional[DiscoveryMetrics] = None  # noqa: RUF015 - module-level default for singleton pattern
 
 
 def get_metrics() -> DiscoveryMetrics:
