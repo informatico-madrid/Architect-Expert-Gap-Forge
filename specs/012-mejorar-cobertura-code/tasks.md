@@ -39,10 +39,10 @@ description: "Task list for improving code coverage to 90%+"
 - [x] T004 Create fixture file for eval_bpb tests at tests/fixtures/eval_bpb_examples.json
 - [x] T005 Create fixture file for anchor_dataset tests at tests/fixtures/anchor_dataset_examples.json
 - [x] T006 Create fixture file for format_normalizer tests at tests/fixtures/format_normalizer_examples.json
-- [ ] T007 Create fixture file for dedup_and_validate tests at tests/fixtures/dedup_examples.json
-- [ ] T008 Create fixture file for dataset_mixer tests at tests/fixtures/dataset_mixer_examples.json
-- [ ] T009 [P] Create mock utilities for HuggingFace Hub at tests/fixtures/hf_hub_mock.py
-- [ ] T010 [P] Create mock utilities for inference clients at tests/fixtures/inference_mocks.py
+- [x] T007 Create fixture file for dedup_and_validate tests at tests/fixtures/dedup_examples.json
+- [x] T008 Create fixture file for dataset_mixer tests at tests/fixtures/dataset_mixer_examples.json
+- [x] T009 [P] Create mock utilities for HuggingFace Hub at tests/fixtures/hf_hub_mock.py
+- [x] T010 [P] Create mock utilities for inference clients at tests/fixtures/inference_mocks.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -65,8 +65,8 @@ description: "Task list for improving code coverage to 90%+"
 
 ### Implementation for User Story 1
 
-- [ ] T017 [US1] Verify all tests pass with `pytest tests/audit/test_eval_bpb.py tests/utils/test_logging.py tests/utils/test_cache_reset.py`
-- [ ] T018 [US1] Run coverage check: `pytest --cov=src/audit/eval_bpb --cov=src/utils/logging --cov=src/utils/cache_reset --cov-report=term-missing --cov-fail-under=90`
+- [x] T017 [US1] Verify all tests pass with `pytest tests/audit/test_eval_bpb.py tests/utils/test_logging.py tests/utils/test_cache_reset.py`
+- [x] T018 [US1] Run coverage check: `pytest --cov=src/audit/eval_bpb --cov=src/utils/logging --cov=src/utils/cache_reset --cov-report=term-missing --cov-fail-under=90`
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -80,11 +80,11 @@ description: "Task list for improving code coverage to 90%+"
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
+- [x] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
+- [x] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
+- [x] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
+- [x] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
+- [x] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
 - [ ] T024 [P] [US2] Create tests for detect_tool_format in tests/curation/test_dedup_and_validate.py
 - [ ] T025 [P] [US2] Create tests for validate_record in tests/curation/test_dedup_and_validate.py
 - [ ] T026 [P] [US2] Create tests for deduplicate_record in tests/curation/test_dedup_and_validate.py
@@ -121,7 +121,7 @@ description: "Task list for improving code coverage to 90%+"
 ### Implementation for User Story 3
 
 - [ ] T040 [US3] Verify all tests pass with `pytest tests/factory/test_agentic_teacher_client.py tests/factory/test_factory_config.py tests/factory/test_hard_query_builder.py tests/utils/test_python_ast_adapter.py tests/factory/test_prompt_builder.py`
-- [ ] T041 [US3] Run coverage check: `pytest --cov=src/factory/agentic_teacher_client --cov=src/factory/config --cov=src/factory/hard_query_builder --cov=src/utils/extractors/python_ast_adapter --cov=src/factory/prompt_builder --cov-report=term-missing --cov-fail-under=90`
+- [x] T041 [US3] Run coverage check: `pytest --cov=src/factory/agentic_teacher_client --cov=src/factory/config --cov=src/factory/hard_query_builder --cov=src/utils/extractors/python_ast_adapter --cov=src/factory/prompt_builder --cov-report=term-missing --cov-fail-under=90`
 
 **Checkpoint**: All user stories should now be independently functional
 

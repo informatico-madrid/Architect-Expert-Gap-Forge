@@ -31,9 +31,9 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 **Independent Test**: N/A - Setup phase
 
-- [ ] T001 Verify pytest is installed and run `pytest --version`
-- [ ] T002 Verify pyyaml is installed and run `python -c "import yaml; print(yaml.__version__)"`
-- [ ] T003 [P] Verify existing tests in tests/integration/ and tests/unit/ run correctly
+- [x] T001 Verify pytest is installed and run `pytest --version`
+- [x] T002 Verify pyyaml is installed and run `python -c "import yaml; print(yaml.__version__)"`
+- [x] T003 [P] Verify existing tests in tests/integration/ and tests/unit/ run correctly
 
 **Checkpoint**: Test environment ready
 
@@ -45,10 +45,10 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Review existing tests in tests/unit/test_ingestor_profile_filter.py for test patterns
-- [ ] T005 [P] Review existing tests in tests/integration/test_ingestor_git_recovery.py for patterns
-- [ ] T006 Create test fixtures directory tests/fixtures/yaml_configs/ for test YAML files
-- [ ] T007 Create sample valid YAML config file in tests/fixtures/yaml_configs/valid_config.yaml
+- [x] T004 Review existing tests in tests/unit/test_ingestor_profile_filter.py for test patterns
+- [x] T005 [P] Review existing tests in tests/integration/test_ingestor_git_recovery.py for patterns
+- [x] T006 Create test fixtures directory tests/fixtures/yaml_configs/ for test YAML files
+- [x] T007 Create sample valid YAML config file in tests/fixtures/yaml_configs/valid_config.yaml
 
 **Checkpoint**: Test patterns understood, fixtures ready - user story implementation can now begin
 
@@ -62,17 +62,17 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 ### Tests for User Story 1 (REQUIRED) ⚠️
 
-- [ ] T008 [P] [US1] Integration test for valid YAML loading in tests/integration/test_ingestor_yaml_load.py
-- [ ] T009 [P] [US1] Integration test for YAML with triple-dash bug in tests/integration/test_ingestor_yaml_load.py
-- [ ] T010 [P] [US1] Integration test for invalid YAML syntax in tests/integration/test_ingestor_yaml_load.py
+- [x] T008 [P] [US1] Integration test for valid YAML loading in tests/integration/test_ingestor_yaml_load.py
+- [x] T009 [P] [US1] Integration test for YAML with triple-dash bug in tests/integration/test_ingestor_yaml_load.py
+- [x] T010 [P] [US1] Integration test for invalid YAML syntax in tests/integration/test_ingestor_yaml_load.py
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Create tests/fixtures/yaml_configs/valid_config.yaml with all required fields
-- [ ] T012 [US1] Create tests/fixtures/yaml_configs/invalid_syntax.yaml with malformed YAML
-- [ ] T013 [US1] Implement test_load_valid_yaml_from_disk() in tests/integration/test_ingestor_yaml_load.py
-- [ ] T014 [US1] Implement test_load_yaml_with_triple_dash_bug() in tests/integration/test_ingestor_yaml_load.py
-- [ ] T015 [US1] Implement test_load_invalid_yaml_syntax() in tests/integration/test_ingestor_yaml_load.py
+- [x] T011 [US1] Create tests/fixtures/yaml_configs/valid_config.yaml with all required fields
+- [x] T012 [US1] Create tests/fixtures/yaml_configs/invalid_syntax.yaml with malformed YAML
+- [x] T013 [US1] Implement test_load_valid_yaml_from_disk() in tests/integration/test_ingestor_yaml_load.py
+- [x] T014 [US1] Implement test_load_yaml_with_triple_dash_bug() in tests/integration/test_ingestor_yaml_load.py
+- [x] T015 [US1] Implement test_load_invalid_yaml_syntax() in tests/integration/test_ingestor_yaml_load.py
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -86,15 +86,15 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 ### Tests for User Story 2 (REQUIRED) ⚠️
 
-- [ ] T016 [P] [US2] Unit test for missing required field in tests/unit/test_ingestor_yaml_validation.py
-- [ ] T017 [P] [US2] Unit test for invalid enum value in tests/unit/test_ingestor_yaml_validation.py
+- [x] T016 [P] [US2] Unit test for missing required field in tests/unit/test_ingestor_yaml_validation.py
+- [x] T017 [P] [US2] Unit test for invalid enum value in tests/unit/test_ingestor_yaml_validation.py
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] Create tests/fixtures/yaml_configs/missing_category.yaml without required field
-- [ ] T019 [US2] Create tests/fixtures/yaml_configs/invalid_mode.yaml with invalid enum value
-- [ ] T020 [US2] Implement test_missing_category_field_fails_validation() in tests/unit/test_ingestor_yaml_validation.py
-- [ ] T021 [US2] Implement test_invalid_mode_fails_validation() in tests/unit/test_ingestor_yaml_validation.py
+- [x] T018 [US2] Create tests/fixtures/yaml_configs/missing_category.yaml without required field
+- [x] T019 [US2] Create tests/fixtures/yaml_configs/invalid_mode.yaml with invalid enum value
+- [x] T020 [US2] Implement test_missing_category_field_fails_validation() in tests/unit/test_ingestor_yaml_validation.py
+- [x] T021 [US2] Implement test_invalid_mode_fails_validation() in tests/unit/test_ingestor_yaml_validation.py
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -108,13 +108,13 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 ### Tests for User Story 3 (REQUIRED) ⚠️
 
-- [ ] T022 [P] [US3] Integration test for CLI with valid config in tests/integration/test_ingestor_cli.py
-- [ ] T023 [P] [US3] Integration test for CLI with missing file in tests/integration/test_ingestor_cli.py
+- [x] T022 [P] [US3] Integration test for CLI with valid config in tests/integration/test_ingestor_cli.py
+- [x] T023 [P] [US3] Integration test for CLI with missing file in tests/integration/test_ingestor_cli.py
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Implement test_cli_loads_valid_yaml_config() using click runner in tests/integration/test_ingestor_cli.py
-- [ ] T025 [US3] Implement test_cli_fails_with_missing_file() using click runner in tests/integration/test_ingestor_cli.py
+- [x] T024 [US3] Implement test_cli_loads_valid_yaml_config() using click runner in tests/integration/test_ingestor_cli.py
+- [x] T025 [US3] Implement test_cli_fails_with_missing_file() using click runner in tests/integration/test_ingestor_cli.py
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -128,12 +128,12 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 ### Tests for User Story 4 (REQUIRED) ⚠️
 
-- [ ] T026 [P] [US4] Integration test for YAML document separator bug in tests/integration/test_ingestor_yaml_load.py
+- [x] T026 [P] [US4] Integration test for YAML document separator bug in tests/integration/test_ingestor_yaml_load.py
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Create tests/fixtures/yaml_configs/copyright_then_separator.yaml with '---' after copyright
-- [ ] T028 [US4] Implement test_yaml_document_separator_ignores_content_before() to detect the bug in tests/integration/test_ingestor_yaml_load.py
+- [x] T027 [US4] Create tests/fixtures/yaml_configs/copyright_then_separator.yaml with '---' after copyright
+- [x] T028 [US4] Implement test_yaml_document_separator_ignores_content_before() to detect the bug in tests/integration/test_ingestor_yaml_load.py
 
 ---
 
@@ -141,10 +141,10 @@ description: "Task list for Tests de Carga YAML para Ingestor"
 
 **Purpose**: Final validation and coverage improvements
 
-- [ ] T029 [P] Run all new tests with pytest and verify all pass
-- [ ] T030 Run pytest with coverage: pytest --cov=src.discovery.ingestor --cov-report=html
-- [ ] T031 Verify coverage meets >= 90% requirement for loader functions
-- [ ] T032 [P] Update existing test documentation in tests/README.md if exists
+- [X] T029 [P] Run all new tests with pytest and verify all pass
+- [x] T030 Run pytest with coverage: pytest --cov=src.discovery.ingestor --cov-report=html
+- [X] T031 Verify coverage meets >= 90% requirement for loader functions
+- [X] T032 [P] Update existing test documentation in tests/README.md if exists
 
 ---
 

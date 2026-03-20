@@ -1,0 +1,237 @@
+{
+  "description": "Fixture data for DedupAndValidate tests",
+  "detect_tool_format_cases": [
+    {
+      "name": "xml_tool_call_basic",
+      "messages": [
+        {"role": "user", "content": "Call the weather tool"},
+        {"role": "assistant", "content": "<tool_call><tool_name>get_weather</tool_name><tool_args>{\"location\": \"NYC\"}</tool_args></tool_call>"}
+      ],
+      "expected_format": "xml"
+    },
+    {
+      "name": "xml_tool_call_with_tags",
+      "messages": [
+        {"role": "user", "content": "Use the search tool"},
+        {"role": "assistant", "content": "<tool_call><tool_name>search</tool_name><tool_args>query=test</tool_args></tool_call><tool_call><tool_name>results</tool_name><tool_args>[]</tool_args></tool_call>"}
+      ],
+      "expected_format": "xml"
+    },
+    {
+      "name": "json_tool_call_basic",
+      "messages": [
+        {"role": "user", "content": "Get the weather"},
+        {"role": "assistant", "content": "{\"name\": \"get_weather\", \"arguments\": {\"location\": \"NYC\"}}"}
+      ],
+      "expected_format": "json"
+    },
+    {
+      "name": "json_tool_call_with_key",
+      "messages": [
+        {"role": "user", "content": "Run the function"},
+        {"role": "assistant", "content": "{\"tool_calls\": [{\"name\": \"run_function\", \"arguments\": {\"param\": \"value\"}}]}"}
+      ],
+      "expected_format": "json"
+    },
+    {
+      "name": "no_tool_calls",
+      "messages": [
+        {"role": "user", "content": "Hello, how are you?"},
+        {"role": "assistant", "content": "I'm doing well, thank you!"}
+      ],
+      "expected_format": "none"
+    },
+    {
+      "name": "empty_messages",
+      "messages": [],
+      "expected_format": "none"
+    },
+    {
+      "name": "mixed_content_no_tool_call",
+      "messages": [
+        {"role": "user", "content": "What is 2+2?"},
+        {"role": "assistant", "content": "The answer is 4. It's a simple math problem."}
+      ],
+      "expected_format": "none"
+    }
+  ],
+  "validate_record_cases": [
+    {
+      "name": "valid_record_no_tool_calls",
+      "messages": [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"}
+      ],
+      "expected_valid": true
+    },
+    {
+      "name": "invalid_record_with_xml_tool_call",
+      "messages": [
+        {"role": "user", "content": "Get weather"},
+        {"role": "assistant", "content": "<tool_call><tool_name>weather</tool_name></tool_call>"}
+      ],
+      "expected_valid": false,
+      "discard_reason": "tool_call_content"
+    },
+    {
+      "name": "invalid_record_with_json_tool_call",
+      "messages": [
+        {"role": "user", "content": "Run function"},
+        {"role": "assistant", "content": "{\"tool_calls\": [{\"name\": \"fn\"}]}"}
+      ],
+      "expected_valid": false,
+      "discard_reason": "tool_call_content"
+    },
+    {
+      "name": "invalid_record_with_tool_calls_tag",
+      "messages": [
+        {"role": "user", "content": "Call tool"},
+        {"role": "assistant", "content": "<tool_calls><tool_call><tool_name>test</tool_name></tool_call></tool_calls>"}
+      ],
+      "expected_valid": false,
+      "discard_reason": "tool_call_content"
+    },
+    {
+      "name": "invalid_record_with_name_arguments",
+      "messages": [
+        {"role": "user", "content": "Execute"},
+        {"role": "assistant", "content": "{\"name\": \"execute\", \"arguments\": {}}"}
+      ],
+      "expected_valid": false,
+      "discard_reason": "tool_call_content"
+    },
+    {
+      "name": "valid_record_with_special_chars",
+      "messages": [
+        {"role": "user", "content": "What is <html>?"},
+        {"role": "assistant", "content": "It's an HTML tag, not a tool call."}
+      ],
+      "expected_valid": true
+    }
+  ],
+  "deduplicate_cases": [
+    {
+      "name": "unique_record",
+      "messages": [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"}
+      ],
+      "is_unique": true
+    },
+    {
+      "name": "duplicate_record",
+      "messages": [
+        {"role": "user", "content": "What is Python?"},
+        {"role": "assistant", "content": "Python is a programming language."}
+      ],
+      "first_is_unique": true,
+      "second_is_unique": false,
+      "discard_reason": "duplicate"
+    },
+    {
+      "name": "whitespace_normalization",
+      "messages_first": [
+        {"role": "user", "content": "Hello    world"},
+        {"role": "assistant", "content": "Hi   there"}
+      ],
+      "messages_second": [
+        {"role": "user", "content": "Hello world"},
+        {"role": "assistant", "content": "Hi there"}
+      ],
+      "second_is_unique": false,
+      "reason": "Whitespace should be normalized for deduplication"
+    },
+    {
+      "name": "unicode_normalization",
+      "messages_first": [
+        {"role": "user", "content": "Café"},
+        {"role": "assistant", "content": "A coffee shop"}
+      ],
+      "messages_second": [
+        {"role": "user", "content": "Café"},
+        {"role": "assistant", "content": "A coffee shop"}
+      ],
+      "second_is_unique": false,
+      "reason": "Unicode NFC normalization should be applied"
+    }
+  ],
+  "normalize_for_hash_cases": [
+    {
+      "name": "multiple_spaces_collapsed",
+      "input": "Hello    world    test",
+      "expected": "Hello world test"
+    },
+    {
+      "name": "tabs_newlines_normalized",
+      "input": "Hello\n\tworld\t\ntest",
+      "expected": "Hello world test"
+    },
+    {
+      "name": "leading_trailing_whitespace",
+      "input": "   Hello world   ",
+      "expected": "Hello world"
+    },
+    {
+      "name": "no_change_needed",
+      "input": "Simple text",
+      "expected": "Simple text"
+    },
+    {
+      "name": "empty_string",
+      "input": "",
+      "expected": ""
+    }
+  ],
+  "process_batch_cases": [
+    {
+      "name": "all_valid_unique",
+      "records": [
+        {"messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}]},
+        {"messages": [{"role": "user", "content": "Q2"}, {"role": "assistant", "content": "A2"}]},
+        {"messages": [{"role": "user", "content": "Q3"}, {"role": "assistant", "content": "A3"}]}
+      ],
+      "expected_kept": 3,
+      "expected_discarded": 0
+    },
+    {
+      "name": "with_duplicates",
+      "records": [
+        {"messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}]},
+        {"messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}]},
+        {"messages": [{"role": "user", "content": "Q2"}, {"role": "assistant", "content": "A2"}]}
+      ],
+      "expected_kept": 2,
+      "expected_discarded": 1
+    },
+    {
+      "name": "with_tool_calls",
+      "records": [
+        {"messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}]},
+        {"messages": [{"role": "user", "content": "Call tool"}, {"role": "assistant", "content": "<tool_call>test</tool_call>"}]},
+        {"messages": [{"role": "user", "content": "Q2"}, {"role": "assistant", "content": "A2"}]}
+      ],
+      "expected_kept": 2,
+      "expected_discarded": 1
+    },
+    {
+      "name": "all_discarded",
+      "records": [
+        {"messages": [{"role": "user", "content": "Call"}, {"role": "assistant", "content": "<tool_call>x</tool_call>"}]},
+        {"messages": [{"role": "user", "content": "Call"}, {"role": "assistant", "content": "<tool_call>y</tool_call>"}]}
+      ],
+      "expected_kept": 0,
+      "expected_discarded": 2
+    },
+    {
+      "name": "mixed_scenarios",
+      "records": [
+        {"messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}]},
+        {"messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}]},
+        {"messages": [{"role": "user", "content": "Tool"}, {"role": "assistant", "content": "<tool_call>x</tool_call>"}]},
+        {"messages": [{"role": "user", "content": "Q2"}, {"role": "assistant", "content": "A2"}]}
+      ],
+      "expected_kept": 2,
+      "expected_discarded": 2
+    }
+  ]
+}
