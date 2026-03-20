@@ -1044,3 +1044,131 @@ class TestFastBraceScanUnclosed:
         assert close_pos == len(source) - 1
 
 
+class TestClassifyFileStyle:
+    """Tests for _classify_file_style function."""
+
+    def test_classify_empty_source(self) -> None:
+        """Test empty source returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        result = _classify_file_style("")
+        assert result == "LEGACY_PURE"
+
+    def test_classify_modernized_namespace_typed_constructor(self) -> None:
+        """Test namespace with typed constructor returns LEGACY_MODERNIZED."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+namespace App\\Model;
+class User {
+    public function __construct(int $id, string $name) {}
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_MODERNIZED"
+
+    def test_classify_hybrid_class_with_legacy_patterns(self) -> None:
+        """Test class with legacy patterns (mysql_query) returns HYBRID."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class Order {
+    public function process() {
+        global $db;
+        mysql_query("SELECT * FROM orders");
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "HYBRID"
+
+    def test_classify_hybrid_tep_db_query(self) -> None:
+        """Test class with tep_db_query returns HYBRID."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class Product {
+    public function getProducts() {
+        return tep_db_query("SELECT * FROM products");
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "HYBRID"
+
+    def test_classify_hybrid_wpdb(self) -> None:
+        """Test class with $wpdb returns HYBRID."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class Post {
+    public function getPost($id) {
+        global $wpdb;
+        return $wpdb->get_results("SELECT * FROM posts WHERE ID = $id");
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "HYBRID"
+
+    def test_classify_pure_global_db(self) -> None:
+        """Test global $db without class returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+global $db;
+function getData() {
+    global $db;
+    return $db->query("SELECT * FROM data");
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_PURE"
+
+    def test_classify_pure_top_level_functions(self) -> None:
+        """Test top-level functions without class returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+function processData($id) {
+    return $id * 2;
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_PURE"
+
+    def test_classify_pure_class_without_legacy(self) -> None:
+        """Test class without legacy patterns returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class User {
+    private $id;
+    public function getId() {
+        return $this->id;
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_PURE"
+
+
+class TestBuildExclusionSet:
+    """Tests for _build_exclusion_set function."""
+
+    def test_build_exclusion_set_basic(self) -> None:
+        """Test basic exclusion set building."""
+        from src.discovery.php_fragmenter import _build_exclusion_set
+
+        source = """<?php
+function test() {
+    $local = 1;
+    global $db;
+    require_once('file.php');
+}
+"""
+        exclusions = _build_exclusion_set(source)
+        # Should contain excluded items
+        assert isinstance(exclusions, frozenset)
+
+
