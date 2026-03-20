@@ -12,6 +12,9 @@ Applies shotgun DNA merge strategy to model weights.
 
 from __future__ import annotations
 
+from rich.console import Console
+from rich.panel import Panel
+
 
 def shotgun_merge(input_paths: list[str], output_path: str) -> None:
     """Apply shotgun DNA merge strategy.
@@ -32,4 +35,33 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, help="Output path")
     args = parser.parse_args()
 
+    # Create console for Rich output
+    console = Console()
+
+    # Display startup panel
+    console.print(
+        Panel(
+            f"[bold]Starting Shotgun DNA Merge[/]\n"
+            f"[dim]Inputs:[/] [cyan]{', '.join(args.inputs)}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold blue]Shotgun DNA Merge[/]",
+            border_style="blue",
+        )
+    )
+
+    # Perform merge
+    console.print("[bold cyan]Merging shotgun DNA weights...[/]")
     shotgun_merge(args.inputs, args.output)
+    console.print("[green]Shotgun DNA merge completed successfully![/]")
+
+    # Display summary panel
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Operation Complete[/]\n"
+            f"[dim]Inputs:[/] [cyan]{', '.join(args.inputs)}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold green]Summary[/]",
+            border_style="green",
+        )
+    )
