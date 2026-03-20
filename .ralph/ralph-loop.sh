@@ -476,8 +476,7 @@ REVIEW_EOF
             ;;
         goose)
             # Use goose with prompt piped directly (same as claude approach)
-            # Use --mode approve to disable automatic tool calls
-            # Use --max-turns 1 to force single response
+            # Use --quiet to suppress tool call output and get only model response
             # See: https://block.github.io/goose/docs/guides/goose-cli-commands
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM for review: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
@@ -485,11 +484,11 @@ REVIEW_EOF
                     OPENAI_HOST="$RALPH_VLLM_URL" \
                     OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    echo "$review_prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1
+                    echo "$review_prompt" | goose run -i - --quiet --no-session 2>&1
                 )
                 exit_code=$?
             else
-                review_output=$(echo "$review_prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1)
+                review_output=$(echo "$review_prompt" | goose run -i - --quiet --no-session 2>&1)
                 exit_code=$?
             fi
             ;;
@@ -626,13 +625,6 @@ $speckit_implement_instructions
 6. If the task has [VERIFY] tag: run the verification command and report results
 7. Commit (from $WORKTREE_PATH) with a descriptive message referencing the task ID
 
-## CRITICAL: BATCH TOOL EXECUTION (FOR LOCAL MODELS)
-- Execute ALL tool calls in a SINGLE response (parallel execution)
-- Do NOT wait for tool results before generating the next tool call
-- After all tools complete, output TASK_COMPLETE immediately
-- This is a SINGLE TASK execution, not multiple iterations
-- The loop expects ONE response per task, not multiple responses for tool calls
-
 ## When Done
 - Mark the task as [x] in $spec_dir/tasks.md
 - Append your progress to $progress_file:
@@ -677,8 +669,7 @@ run_work_agent() {
             ;;
         goose)
             # Use goose with prompt piped directly (same as claude approach)
-            # Use --mode approve to disable automatic tool calls
-            # Use --max-turns 1 to force single response
+            # Use --output-format text to force plain text output without tool calls
             # See: https://block.github.io/goose/docs/guides/goose-cli-commands
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM backend: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
@@ -686,11 +677,11 @@ run_work_agent() {
                     OPENAI_HOST="$RALPH_VLLM_URL" \
                     OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    echo "$prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1 | tee "$log_file"
+                    echo "$prompt" | goose run --no-session -i - --output-format text 2>&1 | tee "$log_file"
                 )
                 exit_code=$?
             else
-                output=$(echo "$prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1 | tee "$log_file")
+                output=$(echo "$prompt" | goose run --no-session -i - --output-format text 2>&1 | tee "$log_file")
                 exit_code=$?
             fi
             ;;

@@ -56,7 +56,6 @@ You are 100% autonomous. Your work persists through FILES ONLY.
 3. Follow the architecture in plan.md
 4. Run tests: pytest tests/ -x --tb=short
 5. Run lint: ruff check src/
-
 ## CRITICAL: BATCH TOOL EXECUTION (FOR LOCAL MODELS)
 - Execute ALL tool calls in a SINGLE response (parallel execution)
 - Do NOT wait for tool results before generating the next tool call
@@ -133,3 +132,4 @@ main() {
 }
 
 main "$@"
+
