@@ -101,6 +101,11 @@ class TestYamlTripleDashBug:
     """Tests for detection of YAML document separator (---) bug."""
 
     @pytest.fixture
+    def copyright_then_separator_path(self) -> Path:
+        """Path to the YAML fixture with copyright then separator."""
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "copyright_then_separator.yaml"
+
+    @pytest.fixture
     def yaml_with_triple_dash(self, tmp_path: Path) -> Path:
         """Create a YAML file with --- after copyright header (the bug)."""
         yaml_content = """# Architect-Expert-Gap-Forge (AEGF)
@@ -135,6 +140,26 @@ category: test_category
         # But the copyright is lost (expected behavior of ---)
         assert loaded_data is not None
         assert loaded_data.get("search_query") == "filename:manifest.json"
+
+    def test_yaml_copyright_then_separator_fixture(self, copyright_then_separator_path: Path) -> None:
+        """Test YAML file with copyright header followed by --- separator.
+
+        T026, T027, T028: Integration test for YAML document separator bug.
+        Uses the physical fixture file copyright_then_separator.yaml.
+        This test verifies that when --- appears after a copyright header,
+        yaml.safe_load() loads only content after the separator.
+        """
+        # Act
+        with open(copyright_then_separator_path, "r") as f:
+            loaded_data = yaml.safe_load(f)
+
+        # Assert - Content after --- is loaded correctly
+        # The copyright comments before --- are ignored (expected YAML behavior)
+        assert loaded_data is not None
+        assert isinstance(loaded_data, dict)
+        assert loaded_data.get("search_query") == "filename:manifest.json"
+        assert loaded_data.get("category") == "test_category"
+        assert loaded_data.get("mode") == "static"
 
     def test_yaml_with_triple_dash_multi_document_raises_error(self, tmp_path: Path) -> None:
         """Test that YAML with multiple documents raises ComposerError.
