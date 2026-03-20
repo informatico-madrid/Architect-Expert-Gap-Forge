@@ -41,6 +41,12 @@ from src.curation.dataset_mixer import (
     DatasetMixerConfig,
     load_specialized_records,
 )
+from src.utils.rich_helpers import (
+    create_table,
+    format_duration,
+    get_console,
+    print_error,
+)
 
 # Re-export defaults for CLI
 DEFAULT_MIN_WORDS = curator_pipeline.DEFAULT_MIN_WORDS
@@ -291,6 +297,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.error("Input file not found: %s", args.input)
         return 1
 
+    # Rich terminal output setup
+    console = get_console()
+    console.print("\n[bold blue]=== AEGF NeMo Curator Suite ===[/bold blue]")
+    console.print(f"[cyan]Phases:[/cyan] {args.input}")
+    console.print(f"[cyan]Output:[/cyan] {args.output}")
+    console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if not args.apply else 'WRITE'}\n")
+
     dry_run = not args.apply
     phases = "+".join(
         x
@@ -361,24 +374,36 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Phase 0 -- Exact dedup (in-memory)
     # -----------------------------------------------------------------------
     if args.do_exact_dedup:
+        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
+        console.print("[bold yellow]│ PHASE 0: Exact Deduplication                              │[/bold yellow]")
+        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print("[dim]SHA-256 exact deduplication...[/dim]")
+
         logger.info("Phase 0 -- Exact deduplication")
         records = load_jsonl(current_path, sample=args.sample)
         stats.total_input = stats.total_input or len(records)
         records = exact_dedup(records, stats)
+
         if not dry_run:
             tmp = _next_temp()
             write_jsonl(tmp, records)
             current_path = tmp
+            console.print(f"[green]✓[/green] Completed: {len(records)} records after deduplication")
         else:
             logger.info(
                 "[DRY-RUN] Would continue with %d records after exact dedup",
                 len(records),
             )
+            console.print(f"[dim]• Would continue with {len(records)} records[/dim]")
 
     # -----------------------------------------------------------------------
     # Phase 1 -- NeMo Curator filter (requires container)
     # -----------------------------------------------------------------------
     if args.do_filter:
+        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
+        console.print("[bold yellow]│ PHASE 1: NeMo Curator Filtering                           │[/bold yellow]")
+        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+
         if not _NEMO_AVAILABLE:
             logger.error(
                 "nemo-curator not installed.\n"
@@ -386,9 +411,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "  cd deploy/docker && docker compose up -d curator\n"
                 "  docker exec -it aegf_curator bash"
             )
+            print_error(console, "NeMo Curator not available", title="Error")
             return 1
+
         if dry_run:
             logger.info("[DRY-RUN] Would run NeMo filter pipeline on: %s", current_path)
+            console.print("[dim]Would run NeMo filter pipeline[/dim]")
         else:
             logger.info("Phase 1 -- NeMo Curator filtering")
             # JsonlWriter requires a DIRECTORY -- use mkdtemp, not a .jsonl file
@@ -396,24 +424,31 @@ def main(argv: Optional[List[str]] = None) -> int:
             pre_nemo_count = sum(
                 1 for line in open(current_path, "r", encoding="utf-8") if line.strip()
             )
-            run_nemo_filter_pipeline(
-                input_path=current_path,
-                output_path=nemo_dir,
-                min_words=args.min_words,
-                max_symbol_ratio=args.max_symbol_ratio,
-                max_non_alpha_ratio=args.max_non_alpha_ratio,
-                max_url_ratio=args.max_url_ratio,
-                max_no_endmark_ratio=args.max_no_endmark_ratio,
-                max_boilerplate_ratio=args.max_boilerplate_ratio,
-                max_repeated_lines=args.max_repeated_lines,
-                max_ngram_ratio=args.max_ngram_ratio,
-                ngram_size=args.ngram_size,
-            )
+
+            # Progress bar for NeMo filtering
+            console.print("[dim]Running filter pipeline...[/dim]")
+            with console.status("[bold blue]Filtering[/bold blue]"):
+                run_nemo_filter_pipeline(
+                    input_path=current_path,
+                    output_path=nemo_dir,
+                    min_words=args.min_words,
+                    max_symbol_ratio=args.max_symbol_ratio,
+                    max_non_alpha_ratio=args.max_non_alpha_ratio,
+                    max_url_ratio=args.max_url_ratio,
+                    max_no_endmark_ratio=args.max_no_endmark_ratio,
+                    max_boilerplate_ratio=args.max_boilerplate_ratio,
+                    max_repeated_lines=args.max_repeated_lines,
+                    max_ngram_ratio=args.max_ngram_ratio,
+                    ngram_size=args.ngram_size,
+                )
+
             # Merge NeMo shards -> single flat JSONL for next phase
             nemo_merged = _next_temp()
             post_nemo_count = _merge_jsonl_dir(nemo_dir, nemo_merged)
             removed_by_nemo = pre_nemo_count - post_nemo_count
             stats.nemo_filtered += removed_by_nemo
+
+            console.print(f"[green]✓[/green] Completed: {pre_nemo_count} → {post_nemo_count} records ({removed_by_nemo} removed)")
             logger.info(
                 "Phase 1 complete: %d --> %d records (%d removed by NeMo filters)",
                 pre_nemo_count,
@@ -426,63 +461,89 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Phase 2 -- Structural quality gate (in-memory)
     # -----------------------------------------------------------------------
     if args.do_structural:
+        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
+        console.print("[bold yellow]│ PHASE 2: Structural Quality Gate                          │[/bold yellow]")
+        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print("[dim]Syntax, think-depth, LDI filters...[/dim]")
+
         logger.info("Phase 2 -- Structural quality filter")
         if stats.total_input == 0:
             records = load_jsonl(current_path, sample=args.sample)
             stats.total_input = len(records)
         else:
             records = load_jsonl(current_path, sample=args.sample)
-        records = structural_quality_filter(
-            records,
-            stats,
-            min_think_chars=args.min_think_chars,
-            ldi_min_ratio=args.ldi_min_ratio,
-            check_attempt_completion=not args.no_attempt_check,
-        )
+
+        # Progress bar for structural filtering
+        console.print("[dim]Running structural quality filter...[/dim]")
+        with console.status("[bold blue]Structural filter[/bold blue]"):
+            records = structural_quality_filter(
+                records,
+                stats,
+                min_think_chars=args.min_think_chars,
+                ldi_min_ratio=args.ldi_min_ratio,
+                check_attempt_completion=not args.no_attempt_check,
+            )
+
         if not dry_run:
             tmp = _next_temp()
             write_jsonl(tmp, records)
             current_path = tmp
+            console.print(f"[green]✓[/green] Completed: {len(records)} records after structural filter")
         else:
             logger.info(
                 "[DRY-RUN] Would continue with %d records after structural filter",
                 len(records),
             )
+            console.print(f"[dim]• Would continue with {len(records)} records[/dim]")
 
     # -----------------------------------------------------------------------
     # Phase 3 -- Semantic dedup (in-memory)
     # -----------------------------------------------------------------------
     if args.do_dedup:
+        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
+        console.print("[bold yellow]│ PHASE 3: Semantic Deduplication                           │[/bold yellow]")
+        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print("[dim]MinHash-LSH deduplication...[/dim]")
+
         logger.info("Phase 3 -- Semantic deduplication")
         if stats.total_input == 0:
             records = load_jsonl(current_path, sample=args.sample)
             stats.total_input = len(records)
         else:
             records = load_jsonl(current_path, sample=args.sample)
-        records = semantic_dedup(
-            records,
-            stats,
-            threshold=args.dedup_threshold,
-            quality_cutoff=args.quality_cutoff,
-            num_perm=args.minhash_perms,
-            shingle_k=args.shingle_k,
-        )
+
+        # Progress bar for semantic dedup
+        console.print("[dim]Running MinHash-LSH deduplication...[/dim]")
+        with console.status("[bold blue]Semantic dedup[/bold blue]"):
+            records = semantic_dedup(
+                records,
+                stats,
+                threshold=args.dedup_threshold,
+                quality_cutoff=args.quality_cutoff,
+                num_perm=args.minhash_perms,
+                shingle_k=args.shingle_k,
+            )
+
         if not dry_run:
             tmp = _next_temp()
             write_jsonl(tmp, records)
             current_path = tmp
+            console.print(f"[green]✓[/green] Completed: {len(records)} records after semantic dedup")
         else:
             logger.info(
                 "[DRY-RUN] Would continue with %d records after semantic dedup",
                 len(records),
             )
+            console.print(f"[dim]• Would continue with {len(records)} records[/dim]")
 
     # -----------------------------------------------------------------------
     # Finalize
     # -----------------------------------------------------------------------
+    start_time = datetime.now()
     if dry_run:
         logger.info("[DRY-RUN] Final output not written (use --apply to write)")
         stats.total_output = 0
+        console.print("[yellow]DRY-RUN: No output written[/yellow]")
     else:
         # Move final temp to requested output
         shutil.copy(current_path, args.output)
@@ -492,8 +553,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info(
             "Final output written: %s (%d records)", args.output, stats.total_output
         )
+        console.print(f"[green]✓[/green] Output written: {args.output} ({stats.total_output} records)")
 
-    # Cleanup
+    # Cleanup temp files
     for f in temp_files:
         try:
             os.unlink(f)
@@ -505,6 +567,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         except OSError:
             pass
 
+    # Rich summary table and report
+    console.print("\n[bold cyan]=== CURATION SUMMARY ===[/bold cyan]")
+    summary_table = create_table(show_header=True, show_lines=False)
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", justify="right")
+
+    input_records = stats.total_input or 0
+    output_records = stats.total_output or 0
+    removed = input_records - output_records
+
+    summary_table.add_row("Input records", f"{input_records:,}")
+    summary_table.add_row("Output records", f"{output_records:,}")
+    summary_table.add_row("Records removed", f"{removed:,}")
+    summary_table.add_row("Filter rate", f"{(1 - output_records / input_records * 100):.1f}%" if input_records > 0 else "N/A")
+    if stats.nemo_filtered > 0:
+        summary_table.add_row("NeMo filtered", f"{stats.nemo_filtered:,}")
+
+    console.print(summary_table)
+
     # Report
     stats.print_report()
     if args.reports_dir:
@@ -513,6 +594,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             stats.as_dict(), args.reports_dir, f"curation_{timestamp}.json"
         )
         logger.info("Report saved: %s", report_path)
+        console.print(f"[dim]Report saved: {report_path}[/dim]")
+
+    end_time = datetime.now()
+    duration = (end_time - start_time).total_seconds()
+    console.print(f"\n[dim]Total duration: {format_duration(duration)}[/dim]")
 
     return 0
 
@@ -555,6 +641,13 @@ def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser)
         logger.error("Anchor configs not found: %s", anchor_configs_path)
         return 1
 
+    # Rich terminal output for mix-datasets command
+    console = get_console()
+    console.print("\n[bold blue]=== Mix Datasets Command ===[/bold blue]")
+    console.print(f"[cyan]Specialized:[/cyan] {specialized_path}")
+    console.print(f"[cyan]Anchor configs:[/cyan] {anchor_configs_path}")
+    console.print(f"[cyan]Output:[/cyan] {output_path}\n")
+
     logger.info(
         "Running mix-datasets: specialized=%s, anchors=%s, output=%s",
         specialized_path,
@@ -571,10 +664,12 @@ def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser)
             target_records=args.target_records,
         )
         mixer = DatasetMixer(config)
+        console.print("[dim]Created dataset mixer...[/dim]")
 
         # Load specialized records
         specialized_records = load_specialized_records(specialized_path)
         logger.info("Loaded %d specialized records", len(specialized_records))
+        console.print(f"[green]✓[/green] Loaded {len(specialized_records)} specialized records")
 
         # Load anchor configs and download
         from src.curation.anchor_dataset_downloader import (
@@ -584,16 +679,27 @@ def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser)
 
         anchor_configs = load_anchor_configs(anchor_configs_path)
         downloader = AnchorDatasetDownloader(anchor_configs)
-        anchor_records = downloader.download_all()
+
+        # Progress bar for downloading anchor datasets
+        console.print("[dim]Downloading anchor datasets...[/dim]")
+        with console.status("[bold blue]Downloading anchors[/bold blue]"):
+            anchor_records = downloader.download_all()
+
         logger.info("Downloaded %d anchor records", len(anchor_records))
+        console.print(f"[green]✓[/green] Downloaded {len(anchor_records)} anchor records")
 
         # Mix datasets
+        console.print("[dim]Mixing datasets ({:.0f}% specialized, {:.0f}% anchor)...[/dim]".format(
+            args.specialized_pct, args.anchor_pct
+        ))
         mixed_records = mixer.mix(specialized_records, anchor_records)
         logger.info("Mixed dataset has %d records", len(mixed_records))
+        console.print(f"[green]✓[/green] Mixed dataset: {len(mixed_records)} records")
 
         # Export to JSONL
         mixer.export(mixed_records, output_path)
         logger.info("Exported mixed dataset to %s", output_path)
+        console.print(f"[green]✓[/green] Exported to {output_path}")
 
         # Generate and export report
         report = mixer.generate_report(mixed_records)
@@ -606,11 +712,26 @@ def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser)
         if report_path:
             mixer.export_report(report, report_path)
             logger.info("Exported composition report to %s", report_path)
+            console.print(f"[green]✓[/green] Report: {report_path}")
+
+        # Print summary table
+        console.print("\n[bold cyan]=== COMPOSITION SUMMARY ===[/bold cyan]")
+        summary_table = create_table(show_header=True, show_lines=False)
+        summary_table.add_column("Dataset", style="cyan")
+        summary_table.add_column("Records", justify="right")
+        summary_table.add_column("Tokens %", justify="right")
+
+        for origin, count in report.records_by_origin.items():
+            pct = report.token_pct_by_origin.get(origin, 0)
+            summary_table.add_row(origin, f"{count:,}", f"{pct:.1f}%")
+
+        console.print(summary_table)
 
         return 0
 
     except Exception as e:
         logger.error("Error running mix-datasets: %s", e)
+        print_error(console, str(e), title="Error")
         import traceback
 
         traceback.print_exc()
