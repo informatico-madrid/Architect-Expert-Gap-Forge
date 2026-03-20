@@ -15,6 +15,7 @@ Copyright 2026 AEGF
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -1031,8 +1032,16 @@ class TestAnchorDatasetDownloaderDownload:
 
     def test_download_with_fallback_logs_info(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
         """Test that download method logs info when using fallback path."""
-        # Since datasets is not available, it will use the fallback
-        # Mock huggingface_hub to return empty list
+        # Remove datasets from sys.modules to simulate ImportError on import
+        sys.modules.pop("datasets", None)
+        monkeypatch.setitem(sys.modules, "datasets", MagicMock())
+
+        # Mock datasets.load_dataset to raise ImportError
+        mock_datasets = MagicMock()
+        mock_datasets.load_dataset.side_effect = ImportError("No module named 'datasets'")
+        monkeypatch.setitem(sys.modules, "datasets", mock_datasets)
+
+        # Mock huggingface_hub.list_repo_files to return empty list
         mock_list_repo_files = MagicMock(return_value=[])
         monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
 
@@ -1053,7 +1062,16 @@ class TestAnchorDatasetDownloaderDownload:
 
     def test_download_with_fallback_logs_warning(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
         """Test that download method logs warning when datasets library not available."""
-        # Mock huggingface_hub to return empty list (simulating fallback)
+        # Remove datasets from sys.modules to simulate ImportError on import
+        sys.modules.pop("datasets", None)
+        monkeypatch.setitem(sys.modules, "datasets", MagicMock())
+
+        # Mock datasets.load_dataset to raise ImportError
+        mock_datasets = MagicMock()
+        mock_datasets.load_dataset.side_effect = ImportError("No module named 'datasets'")
+        monkeypatch.setitem(sys.modules, "datasets", mock_datasets)
+
+        # Mock huggingface_hub.list_repo_files to return empty list
         mock_list_repo_files = MagicMock(return_value=[])
         monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
 
