@@ -24,8 +24,8 @@
 #   CLAUDE_CMD           Claude CLI binary (default: claude)
 #   GOOSE_MODEL          Goose model for work phase
 #   GOOSE_PROVIDER       Goose provider for work phase
-#   RALPH_VLLM_URL       vLLM API URL (default: http://192.168.1.201:4000)
-#   RALPH_VLLM_MODEL     vLLM model name (default: qwen3-5-35b-a3b-nvfp4)
+#   RALPH_VLLM_URL       vLLM API URL (default: http://localhost:4000)
+#   RALPH_VLLM_MODEL     vLLM model name (default: qwen3-30b-a3b-thinking-fp8)
 #   RALPH_VLLM_API_KEY   vLLM API key (default: EMPTY for local)
 #
 set -euo pipefail
@@ -45,14 +45,12 @@ RALPH_MAX_RETRIES="${RALPH_MAX_RETRIES:-5}"
 RALPH_YOLO="${RALPH_YOLO:-true}"
 
 # Test concurrency guard: limit how many pytest processes this loop allows
-RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:-1}"
+RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:-5}"
 
 # vLLM local backend configuration (for goose agent)
-RALPH_VLLM_URL="${RALPH_VLLM_URL:-http://192.168.1.201:4000}"
-RALPH_VLLM_MODEL="${RALPH_VLLM_MODEL:-qwen3-5-35b-a3b-nvfp4}"
-RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-}"
-# Use CUSTOM_VLLM_API_KEY because goose custom provider expects this env var
-CUSTOM_VLLM_API_KEY="${CUSTOM_VLLM_API_KEY:-${RALPH_VLLM_API_KEY:-}}"
+RALPH_VLLM_URL="${RALPH_VLLM_URL:-http://localhost:4000}"
+RALPH_VLLM_MODEL="${RALPH_VLLM_MODEL:-qwen3-30b-a3b-thinking-fp8}"
+RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-EMPTY}"
 
 # Worktree mode globals (T01)
 WORKTREE_ENABLED=true
@@ -175,12 +173,12 @@ VLLM BACKEND (for goose agent):
     When RALPH_VLLM_URL is set, goose will use the OpenAI-compatible
     API at that URL instead of external providers.
     Environment variables:
-    - RALPH_VLLM_URL      vLLM API URL (default: http://192.168.1.201:4000)
-    - RALPH_VLLM_MODEL    vLLM model name (default: qwen3-5-35b-a3b-nvfp4)
+    - RALPH_VLLM_URL      vLLM API URL (default: http://localhost:4000)
+    - RALPH_VLLM_MODEL    vLLM model name (default: qwen3-30b-a3b-thinking-fp8)
     - RALPH_VLLM_API_KEY  API key (default: EMPTY for local)
 
 Example:
-    RALPH_AGENT=goose RALPH_VLLM_URL=http://192.168.1.201:4000 .ralph/ralph-loop.sh specs/xxx
+    RALPH_AGENT=goose RALPH_VLLM_URL=http://localhost:4000 .ralph/ralph-loop.sh specs/xxx
 
 EOF
 }
@@ -237,7 +235,15 @@ parse_args() {
 # ============================================================================
 # State Management
 # ============================================================================
-STATE_FILE="$PROJECT_DIR/.ralph/state.json"
+
+# Extract SLUG from SPEC_DIR for per-spec state files
+# NOTE: SLUG, STATE_FILE, LOCK_FILE are defined after parse_args() in main()
+extract_slug() {
+    local spec_dir="$1"
+    local basename
+    basename=$(basename "$spec_dir")
+    echo "$basename"
+}
 
 read_state() {
     local key="$1"
@@ -357,9 +363,7 @@ CONTRADICTION_PHRASES=(
     "needs human"
     "manual intervention"
     "unable to"
-    "cannot complete"
-    "cannot do"
-    "cannot execute"
+    "not possible"
     "i cannot"
     "i can't"
     "beyond my capacity"
@@ -386,18 +390,7 @@ check_contradictions() {
 # ============================================================================
 check_completion_signal() {
     local output="$1"
-    # Look for TASK_COMPLETE as a standalone output line (not in quotes)
-    # Check last lines only
-    local last_lines
-    last_lines=$(echo "$output" | tail -3)
-    if echo "$last_lines" | grep -qF "TASK_COMPLETE"; then
-        # Make sure it's standalone, not quoted
-        if echo "$last_lines" | grep -qE "^TASK_COMPLETE$"; then
-            return 0
-        fi
-    fi
-    # Also check for promise format
-    if echo "$output" | grep -qF "<promise>DONE</promise>"; then
+    if echo "$output" | grep -qE "TASK_COMPLETE|<promise>DONE</promise>"; then
         return 0
     fi
     return 1
@@ -405,18 +398,7 @@ check_completion_signal() {
 
 check_all_complete_signal() {
     local output="$1"
-    # Look for ALL_TASKS_COMPLETE as a standalone output line (not in quotes)
-    # Check last lines only
-    local last_lines
-    last_lines=$(echo "$output" | tail -3)
-    if echo "$last_lines" | grep -qF "ALL_TASKS_COMPLETE"; then
-        # Make sure it's standalone, not quoted
-        if echo "$last_lines" | grep -qE "^ALL_TASKS_COMPLETE$"; then
-            return 0
-        fi
-    fi
-    # Also check for promise format
-    if echo "$output" | grep -qF "<promise>ALL_DONE</promise>"; then
+    if echo "$output" | grep -qE "ALL_TASKS_COMPLETE|<promise>ALL_DONE</promise>"; then
         return 0
     fi
     return 1
@@ -492,23 +474,20 @@ REVIEW_EOF
             exit_code=$?
             ;;
         goose)
-            # Goose: pass prompt directly via stdin (like claude -p flag)
+            # If vLLM is configured, use it for review as well
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM for review: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
                 review_output=$(
-                    echo "$review_prompt" | \
                     OPENAI_HOST="$RALPH_VLLM_URL" \
-                    OPENAI_API_KEY="$CUSTOM_VLLM_API_KEY" \
-                    CUSTOM_VLLM_API_KEY="$CUSTOM_VLLM_API_KEY" \
+                    OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    goose run -i - 2>&1
+                    goose run --recipe "$RALPH_DIR/recipes/ralph-review.yaml" 2>&1
                 )
                 exit_code=$?
             else
-                review_output=$(echo "$review_prompt" | \
-                    GOOSE_PROVIDER="${RALPH_REVIEWER_PROVIDER:-$GOOSE_PROVIDER}" \
-                    GOOSE_MODEL="${RALPH_REVIEWER_MODEL:-$GOOSE_MODEL}" \
-                    goose run -i - 2>&1)
+                review_output=$(GOOSE_PROVIDER="${RALPH_REVIEWER_PROVIDER:-$GOOSE_PROVIDER}" \
+                              GOOSE_MODEL="${RALPH_REVIEWER_MODEL:-$GOOSE_MODEL}" \
+                              goose run --recipe "$RALPH_DIR/recipes/ralph-review.yaml" 2>&1)
                 exit_code=$?
             fi
             ;;
@@ -688,32 +667,22 @@ run_work_agent() {
             exit_code=$?
             ;;
         goose)
-            # Goose: pass prompt directly via stdin (like claude -p flag)
-            # Write to temp file for logging reference and sync to worktree
-            mkdir -p "$PROJECT_DIR/.goose/ralph"
+            # Write prompt to task.md for goose recipe
             echo "$prompt" > "$PROJECT_DIR/.goose/ralph/task.md"
             
-            # Also copy to worktree for goose to find
-            if [[ "$WORKTREE_ENABLED" == "true" && -n "$WORKTREE_PATH" ]]; then
-                mkdir -p "$WORKTREE_PATH/.goose/ralph"
-                cp "$PROJECT_DIR/.goose/ralph/task.md" "$WORKTREE_PATH/.goose/ralph/task.md"
-            fi
-            
             # If vLLM is configured, set OpenAI environment variables for goose
-            # Note: goose uses CUSTOM_VLLM_API_KEY as defined in custom provider config
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM backend: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
+                # Configure goose to use OpenAI-compatible API with vLLM
                 output=$(
-                    echo "$prompt" | \
                     OPENAI_HOST="$RALPH_VLLM_URL" \
-                    OPENAI_API_KEY="$CUSTOM_VLLM_API_KEY" \
-                    CUSTOM_VLLM_API_KEY="$CUSTOM_VLLM_API_KEY" \
+                    OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    goose run -i - 2>&1 | tee "$log_file"
+                    goose run --recipe "$RALPH_DIR/recipes/ralph-work.yaml" 2>&1 | tee "$log_file"
                 )
                 exit_code=$?
             else
-                output=$(echo "$prompt" | goose run -i - 2>&1 | tee "$log_file")
+                output=$(goose run --recipe "$RALPH_DIR/recipes/ralph-work.yaml" 2>&1 | tee "$log_file")
                 exit_code=$?
             fi
             ;;
@@ -1063,8 +1032,36 @@ run_clean() {
 main() {
     parse_args "$@"
 
+    # Generate per-spec SLUG, STATE_FILE, and LOCK_FILE after args are parsed
+    if [[ -n "$SPEC_DIR" ]]; then
+        SLUG="$(extract_slug "$SPEC_DIR")"
+        STATE_FILE="$PROJECT_DIR/.ralph/state-${SLUG}.json"
+        LOCK_FILE="/tmp/ralph-lock-${SLUG}.lock"
+        
+        # Check if we should resume from existing per-spec state file
+        if [[ "$RESUME_MODE" == "true" && -f "$STATE_FILE" ]]; then
+            log_info "Resuming from existing state: $STATE_FILE"
+        elif [[ "$RESUME_MODE" == "true" && -f "$PROJECT_DIR/.ralph/state.json" ]]; then
+            # Backward compatibility: migrate from old state.json to per-spec file
+            log_info "Migrating from legacy state.json to $STATE_FILE"
+            cp "$PROJECT_DIR/.ralph/state.json" "$STATE_FILE"
+        fi
+    elif [[ "$RESUME_MODE" == "true" && -f "$PROJECT_DIR/.ralph/state.json" ]]; then
+        # Backward compatibility: extract slug from old state.json
+        SLUG="$(python3 -c "import json; print(json.load(open('$PROJECT_DIR/.ralph/state.json'))['name'])" 2>/dev/null || echo "legacy")"
+        STATE_FILE="$PROJECT_DIR/.ralph/state-${SLUG}.json"
+        LOCK_FILE="/tmp/ralph-lock-${SLUG}.lock"
+        log_info "Migrating legacy state.json to $STATE_FILE"
+        cp "$PROJECT_DIR/.ralph/state.json" "$STATE_FILE"
+    else
+        # Fallback for --clean or other modes without SPEC_DIR
+        SLUG=""
+        STATE_FILE="$PROJECT_DIR/.ralph/state.json"
+        LOCK_FILE="/tmp/ralph-test.lock"
+    fi
+
     # Trap EXIT for cleanup
-    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp"' EXIT
+    trap 'rm -f "$PROJECT_DIR/.ralph/state.json.tmp" rm -f "$LOCK_FILE" 2>/dev/null || true' EXIT
 
     # Convert relative SPEC_DIR to absolute path
     if [[ -n "$SPEC_DIR" && "$SPEC_DIR" != /* ]]; then
@@ -1208,7 +1205,6 @@ main() {
 
         # Re-read task counts each iteration (tasks.md may have changed)
         local counts_json
-        # Always recalculate from tasks.md to get fresh counts
         counts_json=$(python3 "$COUNT_SCRIPT" "$tasks_file")
         local total completed incomplete next_idx percent
         total=$(echo "$counts_json" | python3 -c "import json,sys; print(json.load(sys.stdin)['total'])")
@@ -1315,9 +1311,9 @@ main() {
         # Log memory before agent execution
         log_memory "before_agent"
 
-        # Acquire test lock to serialize test-heavy agent runs initiated by this loop
+        # Acquire per-spec lock to serialize test-heavy agent runs
         if (( RALPH_TEST_CONCURRENCY > 0 )); then
-            exec 9>/tmp/ralph-test.lock
+            exec 9>"$LOCK_FILE"
             flock -x 9
             agent_output=$(run_work_agent "$work_prompt" "$iter_log")
             agent_exit=$?

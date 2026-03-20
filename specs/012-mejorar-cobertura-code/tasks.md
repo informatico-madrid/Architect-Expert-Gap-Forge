@@ -80,11 +80,11 @@ description: "Task list for improving code coverage to 90%+"
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
+- [x] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
+- [x] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
+- [x] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
+- [x] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
+- [x] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
 - [x] T024 [P] [US2] Create tests for detect_tool_format in tests/curation/test_dedup_and_validate.py
 - [x] T025 [P] [US2] Create tests for validate_record in tests/curation/test_dedup_and_validate.py
 - [x] T026 [P] [US2] Create tests for deduplicate_record in tests/curation/test_dedup_and_validate.py
