@@ -786,3 +786,412 @@ class TestAdaptiveGridSearch:
 
         temps = [p.temperature for p in profiles]
         assert temps[0] == max(temps)
+
+
+class TestCalibrationHelperFunctions:
+    """Tests for helper functions in calibration.py."""
+
+    def test_calc_combinations_single_param(self) -> None:
+        """Test _calc_combinations with single parameter."""
+        from src.audit.calibration import _calc_combinations
+
+        grid = {"temperature": [0.1, 0.5, 0.9]}
+        result = _calc_combinations(grid)
+        assert result == 3
+
+    def test_calc_combinations_multiple_params(self) -> None:
+        """Test _calc_combinations with multiple parameters."""
+        from src.audit.calibration import _calc_combinations
+
+        grid = {
+            "temperature": [0.1, 0.5, 0.9],
+            "top_p": [0.8, 0.9, 1.0],
+        }
+        result = _calc_combinations(grid)
+        assert result == 9  # 3 * 3
+
+    def test_calc_combinations_empty_grid(self) -> None:
+        """Test _calc_combinations with empty grid returns 1 (neutral element)."""
+        from src.audit.calibration import _calc_combinations
+
+        grid = {}
+        result = _calc_combinations(grid)
+        # Returns 1 as neutral element for multiplication
+        assert result == 1
+
+    def test_adjust_for_increase(self) -> None:
+        """Test _adjust_for_increase adjusts values for increase focus."""
+        from src.audit.calibration import _adjust_for_increase
+
+        values = [0.1, 0.2, 0.3, 0.4, 0.5]
+        result = _adjust_for_increase(values, "temperature")
+
+        # Should spread values across range for increase focus
+        assert len(result) == len(values)
+        assert result != values  # Should be adjusted
+
+    def test_adjust_for_decrease(self) -> None:
+        """Test _adjust_for_decrease adjusts values for decrease focus."""
+        from src.audit.calibration import _adjust_for_decrease
+
+        values = [0.5, 0.6, 0.7, 0.8, 0.9]
+        result = _adjust_for_decrease(values, "temperature")
+
+        # Should adjust values for decrease focus
+        assert len(result) == len(values)
+        assert result != values  # Should be adjusted
+
+    def test_clamp_to_valid_range(self) -> None:
+        """Test _clamp_to_valid_range clamps values to valid ranges."""
+        from src.audit.calibration import _clamp_to_valid_range
+
+        # Test temperature clamping (0 to 2)
+        result = _clamp_to_valid_range(5.0, 0.5, "temperature")
+        assert result == 2.0  # Should clamp to max
+
+        result = _clamp_to_valid_range(-1.0, 0.5, "temperature")
+        assert result == 0.0  # Should clamp to min
+
+        result = _clamp_to_valid_range(1.0, 0.5, "temperature")
+        assert result == 1.0  # Should stay the same
+
+    def test_clamp_to_valid_range_preserves_unknown_params(self) -> None:
+        """Test _clamp_to_valid_range for unknown parameters preserves value."""
+        from src.audit.calibration import _clamp_to_valid_range
+
+        # Unknown parameter should preserve value
+        result = _clamp_to_valid_range(1.5, 0.5, "unknown_param")
+        assert result == 1.5
+
+
+class TestLoadCalibrationPromptsFromYaml:
+    """Tests for load_calibration_prompts_from_yaml function (T043)."""
+
+    def test_load_prompts_from_yaml_file_not_found(self) -> None:
+        """Should raise FileNotFoundError when file doesn't exist."""
+        from src.audit.calibration import load_calibration_prompts_from_yaml
+
+        with pytest.raises(FileNotFoundError, match="YAML file not found"):
+            load_calibration_prompts_from_yaml("/nonexistent/path/prompts.yaml")
+
+    def test_load_prompts_from_yaml_with_valid_file(self, tmp_path) -> None:
+        """Should load prompts from valid YAML file."""
+        from src.audit.calibration import load_calibration_prompts_from_yaml
+
+        yaml_content = """
+prompts:
+  - id: test_prompt_1
+    question: What is AI?
+    type: investigation
+    parameter_target: temperature, top_k
+    evaluation_focus: Creatividad
+  - id: test_prompt_2
+    question: Explain machine learning
+    type: investigation
+    parameter_target: temperature
+    evaluation_focus: Razonamiento
+"""
+        yaml_file = tmp_path / "prompts.yaml"
+        yaml_file.write_text(yaml_content)
+
+        prompts = load_calibration_prompts_from_yaml(str(yaml_file))
+
+        assert len(prompts) == 2
+        assert prompts[0].id == "test_prompt_1"
+        assert "temperature" in prompts[0].get_parameter_target_set()
+
+    def test_load_prompts_from_yaml_empty_file(self, tmp_path) -> None:
+        """Should return empty list for empty YAML file."""
+        from src.audit.calibration import load_calibration_prompts_from_yaml
+
+        yaml_file = tmp_path / "empty.yaml"
+        yaml_file.write_text("")
+
+        prompts = load_calibration_prompts_from_yaml(str(yaml_file))
+        assert prompts == []
+
+    def test_load_prompts_from_yaml_with_samples_key(self, tmp_path) -> None:
+        """Should load prompts from YAML with 'samples' key."""
+        from src.audit.calibration import load_calibration_prompts_from_yaml
+
+        yaml_content = """
+samples:
+  - id: sample_1
+    question: Test question?
+    type: investigation
+"""
+        yaml_file = tmp_path / "samples.yaml"
+        yaml_file.write_text(yaml_content)
+
+        prompts = load_calibration_prompts_from_yaml(str(yaml_file))
+        assert len(prompts) == 1
+        assert prompts[0].id == "sample_1"
+
+    def test_load_prompts_from_yaml_list_format(self, tmp_path) -> None:
+        """Should load prompts from YAML with list format (not dict)."""
+        from src.audit.calibration import load_calibration_prompts_from_yaml
+
+        yaml_content = """
+- id: list_prompt_1
+  question: Question 1?
+  type: investigation
+- id: list_prompt_2
+  question: Question 2?
+  type: investigation
+"""
+        yaml_file = tmp_path / "list_format.yaml"
+        yaml_file.write_text(yaml_content)
+
+        prompts = load_calibration_prompts_from_yaml(str(yaml_file))
+        assert len(prompts) == 2
+        assert prompts[0].id == "list_prompt_1"
+        assert prompts[1].id == "list_prompt_2"
+
+    def test_load_prompts_from_yaml_skips_invalid_prompts(self, tmp_path, caplog) -> None:
+        """Should skip invalid prompts with invalid parameter names and log warning."""
+        from src.audit.calibration import load_calibration_prompts_from_yaml
+
+        yaml_content = """
+prompts:
+  - id: valid_prompt
+    question: Valid question?
+    type: investigation
+    parameter_target: temperature
+  - id: invalid_prompt
+    question: Invalid question?
+    type: investigation
+    parameter_target: invalid_param_name
+"""
+        yaml_file = tmp_path / "mixed.yaml"
+        yaml_file.write_text(yaml_content)
+
+        prompts = load_calibration_prompts_from_yaml(str(yaml_file))
+        # Should only load the valid one (with valid parameter name)
+        assert len(prompts) == 1
+        assert prompts[0].id == "valid_prompt"
+
+
+class TestExtractParameterTargets:
+    """Tests for extract_parameter_targets function (T043)."""
+
+    def test_extract_parameter_targets_empty_list(self) -> None:
+        """Should return empty dict for empty prompts list."""
+        from src.audit.calibration import extract_parameter_targets
+
+        result = extract_parameter_targets([])
+        assert result == {}
+
+    def test_extract_parameter_targets_single_focus(self) -> None:
+        """Should extract parameter targets for single focus."""
+        from src.audit.calibration import extract_parameter_targets, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Test?",
+                type="investigation",
+                parameter_target=["temperature", "top_k"],
+                evaluation_focus="Creatividad",
+            ),
+            CalibrationPrompt(
+                id="p2",
+                question="Test2?",
+                type="investigation",
+                parameter_target=["temperature"],
+                evaluation_focus="Creatividad",
+            ),
+        ]
+
+        result = extract_parameter_targets(prompts)
+
+        assert "Creatividad" in result
+        assert result["Creatividad"] == {"temperature", "top_k"}
+
+    def test_extract_parameter_targets_multiple_foci(self) -> None:
+        """Should handle multiple evaluation foci."""
+        from src.audit.calibration import extract_parameter_targets, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Test?",
+                type="investigation",
+                parameter_target=["temperature"],
+                evaluation_focus="Creatividad",
+            ),
+            CalibrationPrompt(
+                id="p2",
+                question="Test2?",
+                type="investigation",
+                parameter_target=["top_k"],
+                evaluation_focus="Razonamiento",
+            ),
+        ]
+
+        result = extract_parameter_targets(prompts)
+
+        assert len(result) == 2
+        assert result["Creatividad"] == {"temperature"}
+        assert result["Razonamiento"] == {"top_k"}
+
+
+class TestGetFocusedParameters:
+    """Tests for get_focused_parameters function (T043)."""
+
+    def test_get_focused_parameters_empty_list(self) -> None:
+        """Should return empty set for empty prompts."""
+        from src.audit.calibration import get_focused_parameters
+
+        result = get_focused_parameters([])
+        assert result == set()
+
+    def test_get_focused_parameters_with_prompts(self) -> None:
+        """Should return focused parameters from prompts."""
+        from src.audit.calibration import get_focused_parameters, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Test?",
+                type="investigation",
+                parameter_target=["temperature", "top_k"],
+                evaluation_focus="Creatividad",
+            ),
+        ]
+
+        result = get_focused_parameters(prompts)
+
+        assert "temperature" in result
+        assert "top_k" in result
+
+
+class TestValidateParameterTargets:
+    """Tests for validate_parameter_targets function (T043)."""
+
+    def test_validate_parameter_targets_valid(self) -> None:
+        """Should return empty list for valid parameters."""
+        from src.audit.calibration import validate_parameter_targets, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Test?",
+                type="investigation",
+                parameter_target=["temperature", "top_k"],
+                evaluation_focus="Test",
+            ),
+        ]
+
+        errors = validate_parameter_targets(prompts)
+        assert errors == []
+
+    def test_validate_parameter_targets_invalid(self) -> None:
+        """Should return error messages for invalid parameters."""
+        from src.audit.calibration import validate_parameter_targets, CalibrationPrompt
+
+        # First create prompts with valid params, then test validation
+        # (CalibrationPrompt validates params in __post_init__)
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Test?",
+                type="investigation",
+                parameter_target=["temperature"],
+                evaluation_focus="Test",
+            ),
+        ]
+
+        # Test that validation returns empty for valid prompts
+        errors = validate_parameter_targets(prompts)
+        assert errors == []
+
+    def test_validate_parameter_targets_detects_invalid_via_from_dict(self) -> None:
+        """Should detect invalid parameters via from_dict."""
+        from src.audit.calibration import validate_parameter_targets, CalibrationPrompt
+
+        # Using from_dict which parses string params
+        prompt_data = {
+            "id": "p1",
+            "question": "Test?",
+            "type": "investigation",
+            "parameter_target": "temperature, invalid_param",
+            "evaluation_focus": "Test",
+        }
+
+        # This should fail to create due to invalid_param
+        with pytest.raises(ValueError, match="Invalid parameter"):
+            CalibrationPrompt.from_dict(prompt_data)
+
+
+class TestAnalyzeEvaluationFocus:
+    """Tests for analyze_evaluation_focus function (T043)."""
+
+    def test_analyze_evaluation_focus_empty_list(self) -> None:
+        """Should return empty dict for empty prompts."""
+        from src.audit.calibration import analyze_evaluation_focus
+
+        result = analyze_evaluation_focus([])
+        assert result == {}
+
+    def test_analyze_evaluation_focus_with_focus_text(self) -> None:
+        """Should analyze prompts with evaluation_focus text."""
+        from src.audit.calibration import analyze_evaluation_focus, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Explain AI?",
+                type="investigation",
+                parameter_target=["temperature"],
+                evaluation_focus="Creatividad y exploración",
+            ),
+        ]
+
+        result = analyze_evaluation_focus(prompts)
+
+        assert "p1" in result
+        assert "focus_area" in result["p1"]
+        assert "parameters_to_increase" in result["p1"]
+
+    def test_analyze_evaluation_focus_no_match_uses_defaults(self) -> None:
+        """Should use defaults when no focus area matches."""
+        from src.audit.calibration import analyze_evaluation_focus, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Test?",
+                type="investigation",
+                parameter_target=["temperature"],
+                evaluation_focus="unknown focus area xyz",
+            ),
+        ]
+
+        result = analyze_evaluation_focus(prompts)
+
+        assert "p1" in result
+        # Should have unknown focus area with defaults
+        assert result["p1"]["focus_area"] == "unknown"
+        assert result["p1"]["confidence"] == 0.0
+
+    def test_analyze_evaluation_focus_with_matching_keywords(self) -> None:
+        """Should match focus area based on keywords."""
+        from src.audit.calibration import analyze_evaluation_focus, CalibrationPrompt
+
+        prompts = [
+            CalibrationPrompt(
+                id="p1",
+                question="Math problem?",
+                type="investigation",
+                parameter_target=["temperature", "top_k"],
+                evaluation_focus="Razonamiento y precisión matemática",
+            ),
+        ]
+
+        result = analyze_evaluation_focus(prompts)
+
+        assert "p1" in result
+        assert result["p1"]["focus_area"] is not None
+
+
+

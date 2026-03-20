@@ -745,3 +745,302 @@ function process() {
         symbols = [d.target_symbol for d in deps]
 
         assert symbols == sorted(symbols), "Result must be sorted by target_symbol"
+
+
+class TestImplicitDependencyValidation:
+    """Tests for ImplicitDependency dataclass validation (T043)."""
+
+    def test_implicit_dependency_valid(self) -> None:
+        """Should create ImplicitDependency with valid values."""
+        from src.discovery.php_fragmenter import ImplicitDependency, DependencyType
+
+        dep = ImplicitDependency(
+            target_symbol="$db",
+            dependency_type=DependencyType.GLOBAL_VAR.value,
+            confidence=0.8,
+        )
+        assert dep.target_symbol == "$db"
+        assert dep.confidence == 0.8
+
+    def test_implicit_dependency_confidence_below_range(self) -> None:
+        """Should raise ValueError when confidence < 0.0."""
+        from src.discovery.php_fragmenter import ImplicitDependency
+
+        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
+            ImplicitDependency(
+                target_symbol="$db",
+                dependency_type="global_var",
+                confidence=-0.1,
+            )
+
+    def test_implicit_dependency_confidence_above_range(self) -> None:
+        """Should raise ValueError when confidence > 1.0."""
+        from src.discovery.php_fragmenter import ImplicitDependency
+
+        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
+            ImplicitDependency(
+                target_symbol="$db",
+                dependency_type="global_var",
+                confidence=1.5,
+            )
+
+    def test_implicit_dependency_invalid_dependency_type(self) -> None:
+        """Should raise ValueError when dependency_type is invalid."""
+        from src.discovery.php_fragmenter import ImplicitDependency
+
+        with pytest.raises(ValueError, match="dependency_type must be one of"):
+            ImplicitDependency(
+                target_symbol="$db",
+                dependency_type="invalid_type",
+                confidence=0.5,
+            )
+
+
+class TestPhpFragmentValidation:
+    """Tests for PhpFragment dataclass validation (T043)."""
+
+    def test_php_fragment_valid(self) -> None:
+        """Should create PhpFragment with valid values."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        fragment = PhpFragment(
+            name="test_func",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php function test_func() {}",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+        )
+        assert fragment.name == "test_func"
+        assert fragment.start_line == 1
+
+    def test_php_fragment_invalid_fragment_type(self) -> None:
+        """Should raise ValueError for invalid fragment_type."""
+        from src.discovery.php_fragmenter import PhpFragment
+
+        with pytest.raises(ValueError, match="fragment_type must be one of"):
+            PhpFragment(
+                name="test",
+                fragment_type="invalid_type",
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_invalid_file_style(self) -> None:
+        """Should raise ValueError for invalid file_style."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="file_style must be one of"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+                file_style="INVALID_STYLE",
+            )
+
+    def test_php_fragment_start_line_less_than_1(self) -> None:
+        """Should raise ValueError when start_line < 1."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="start_line must be >= 1"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=0,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_end_line_less_than_start(self) -> None:
+        """Should raise ValueError when end_line < start_line."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="end_line must be >= start_line"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=10,
+                end_line=5,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_invalid_preamble_ref_length(self) -> None:
+        """Should raise ValueError when preamble_ref is not 64 chars."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="preamble_ref must be 64-char SHA-256 hex"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref="short",
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_invalid_preamble_ref_hex(self) -> None:
+        """Should raise ValueError when preamble_ref is not valid hex."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="preamble_ref must be valid hexadecimal"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref="g" * 64,  # Invalid hex
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_line_count_property(self) -> None:
+        """Should return correct line count."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+        )
+        assert fragment.line_count == 10
+
+    def test_php_fragment_has_implicit_deps_property(self) -> None:
+        """Should return True when has implicit dependencies."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType, ImplicitDependency, DependencyType
+
+        dep = ImplicitDependency(
+            target_symbol="$db",
+            dependency_type=DependencyType.GLOBAL_VAR.value,
+            confidence=0.8,
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            implicit_deps=(dep,),
+        )
+        assert fragment.has_implicit_deps is True
+        assert fragment.has_signatures is False
+
+    def test_php_fragment_get_implicit_dep_symbols(self) -> None:
+        """Should return tuple of dependency symbols."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType, ImplicitDependency, DependencyType
+
+        dep = ImplicitDependency(
+            target_symbol="$db",
+            dependency_type=DependencyType.GLOBAL_VAR.value,
+            confidence=0.8,
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            implicit_deps=(dep,),
+        )
+        assert fragment.get_implicit_dep_symbols() == ("$db",)
+
+
+class TestFastBraceScanUnclosed:
+    """Additional tests for fast_brace_scan error paths (T043)."""
+
+    def test_unclosed_multiline_comment_returns_minus_1(self) -> None:
+        """Test unclosed multi-line comment returns -1."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = "function test() { /* unclosed comment"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == -1
+
+    def test_single_line_comment_not_affected(self) -> None:
+        """Test single-line comments don't affect brace matching."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = """function test() {
+    // } this is a comment
+    return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_string_brace_not_counted(self) -> None:
+        """Test braces inside double-quoted strings are not counted."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = """function test() {
+    $str = "{not a brace}";
+    return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_single_quoted_string_brace_not_counted(self) -> None:
+        """Test braces inside single-quoted strings are not counted."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = """function test() {
+    $str = '{not a brace}';
+    return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+
