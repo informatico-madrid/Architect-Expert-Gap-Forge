@@ -33,6 +33,9 @@ from src.utils.metrics import get_metrics
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
 
+# --- Project Root ---
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+
 
 class DiscoveryConfig(BaseModel):
     """Agnostic schema for repository discovery settings."""
@@ -557,7 +560,8 @@ if __name__ == "__main__":
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    with open(args.config, "r") as f:
+    config_path = PROJECT_ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
+    with open(config_path, "r") as f:
         config_data = yaml.safe_load(f)
 
     config = DiscoveryConfig(**config_data)
@@ -569,3 +573,38 @@ if __name__ == "__main__":
 
     engine = RepoIngestor(config)
     engine.run(dry_run=args.dry_run)
+
+
+def main():
+    """Entry point for CLI execution."""
+    load_dotenv()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Agnostic Repo Ingestor")
+    parser.add_argument(
+        "--config", "-c", required=True, help="Path to YAML config file"
+    )
+    parser.add_argument("--dry-run", action="store_true")
+
+    args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+
+    config_path = PROJECT_ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
+    with open(config_path, "r") as f:
+        config_data = yaml.safe_load(f)
+
+    config = DiscoveryConfig(**config_data)
+
+    # Environment override for security
+    token = os.getenv("GITHUB_TOKEN")
+    if token:
+        config = config.model_copy(update={"github_token": token})
+
+    engine = RepoIngestor(config)
+    engine.run(dry_run=args.dry_run)
+
+
+if __name__ == "__main__":
+    main()
