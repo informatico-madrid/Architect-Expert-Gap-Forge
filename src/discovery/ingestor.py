@@ -28,9 +28,10 @@ import requests
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from src.utils.metrics import get_metrics
 from src.utils.rich_helpers import (
-    create_table,
     get_console,
 )
 
@@ -309,26 +310,41 @@ class RepoIngestor:
         """Atomic Git synchronization."""
         self.raw_path.mkdir(parents=True, exist_ok=True)
 
-        for repo_id in repos:
-            try:
-                owner, name = repo_id.split("/")
-                target = self.raw_path / owner / name
-            except ValueError:
-                continue
+        # Rich progress bar for repo operations
+        console = get_console()
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]Fetching repositories[/]"),
+            BarColumn(bar_width=20),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("•"),
+            TaskProgressColumn(),
+            console=console,
+        ) as progress:
+            total_repos = len(repos)
+            fetch_task = progress.add_task("Syncing repos...", total=total_repos)
 
-            if dry_run:
-                logger.info("[DRY-RUN] Syncing %s", repo_id)
-                continue
+            for repo_id in repos:
+                try:
+                    owner, name = repo_id.split("/")
+                    target = self.raw_path / owner / name
+                except ValueError:
+                    continue
 
-            # T030c: Measure fetch time and track as file processing
-            fetch_start = time.perf_counter()
-            if target.exists():
-                self._update_repo(repo_id, target)
-            else:
-                self._clone_repo(repo_id, target)
-            fetch_latency = time.perf_counter() - fetch_start
-            self._metrics.record_file_processing_time(name, fetch_latency)
-            self._metrics.increment_files_processed(name)
+                if dry_run:
+                    logger.info("[DRY-RUN] Syncing %s", repo_id)
+                else:
+                    # T030c: Measure fetch time and track as file processing
+                    fetch_start = time.perf_counter()
+                    if target.exists():
+                        self._update_repo(repo_id, target)
+                    else:
+                        self._clone_repo(repo_id, target)
+                    fetch_latency = time.perf_counter() - fetch_start
+                    self._metrics.record_file_processing_time(name, fetch_latency)
+                    self._metrics.increment_files_processed(name)
+
+                progress.advance(fetch_task)
 
     def _clone_repo(self, repo_id: str, target: Path) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -548,6 +564,21 @@ class RepoIngestor:
         self.fetch(repos, dry_run=dry_run)
         return repos
 
+    def print_summary(self, repos: List[str], dry_run: bool = False) -> None:
+        """Print a Rich-formatted summary panel."""
+        console = get_console()
+        console.print()
+        console.print(
+            Panel(
+                f"\n[cyan]Total repos processed:[/cyan] [bold]{len(repos)}[/bold]\n"
+                f"[cyan]Mode:[/cyan] [bold]{'DRY-RUN' if dry_run else 'WRITE'}[/bold]\n"
+                f"[cyan]Output:[/cyan] [bold]{self.raw_path}[/bold]\n"
+                f"[cyan]Category:[/cyan] [bold]{self.cfg.category}[/bold]",
+                title="[bold green]Discovery Complete[/bold green]",
+                border_style="green",
+            )
+        )
+
 
 if __name__ == "__main__":
     load_dotenv()
@@ -588,14 +619,11 @@ if __name__ == "__main__":
     engine = RepoIngestor(config)
     repos = engine.run(dry_run=args.dry_run)
 
-    # Summary table
-    summary_table = create_table(title="[bold green]Discovery Summary[/bold green]")
-    summary_table.add_column("Metric", style="cyan")
-    summary_table.add_column("Value", justify="right")
-    summary_table.add_row("Total discovered", str(len(repos)))
-    summary_table.add_row("Mode", "DRY-RUN" if args.dry_run else "WRITE")
-    console.print(summary_table)
-    console.print(f"\n[cyan]Repos:[/cyan] {', '.join(repos)}\n")
+    # Rich summary panel
+    engine.print_summary(repos, dry_run=args.dry_run)
+    console.print("\n[cyan]Processed repositories:[/cyan]\n")
+    for i, repo in enumerate(repos, 1):
+        console.print(f"  [cyan]{i}.[/cyan] [bold]{repo}[/bold]")
 
 
 def main():
@@ -638,14 +666,11 @@ def main():
     engine = RepoIngestor(config)
     repos = engine.run(dry_run=args.dry_run)
 
-    # Summary table
-    summary_table = create_table(title="[bold green]Discovery Summary[/bold green]")
-    summary_table.add_column("Metric", style="cyan")
-    summary_table.add_column("Value", justify="right")
-    summary_table.add_row("Total discovered", str(len(repos)))
-    summary_table.add_row("Mode", "DRY-RUN" if args.dry_run else "WRITE")
-    console.print(summary_table)
-    console.print(f"\n[cyan]Repos:[/cyan] {', '.join(repos)}\n")
+    # Rich summary panel
+    engine.print_summary(repos, dry_run=args.dry_run)
+    console.print("\n[cyan]Processed repositories:[/cyan]\n")
+    for i, repo in enumerate(repos, 1):
+        console.print(f"  [cyan]{i}.[/cyan] [bold]{repo}[/bold]")
 
 
 if __name__ == "__main__":
