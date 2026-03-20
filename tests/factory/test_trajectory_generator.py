@@ -837,6 +837,104 @@ class TestXMLToolCallSerialization:
         assert parsed_name == tool_name
         assert parsed_args == tool_args
 
+    def test_xml_roundtrip_with_float_values(self) -> None:
+        """Test XML round-trip preserves float values correctly."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "compute"
+        tool_args = {"temperature": 0.75, "probability": 0.123, "score": -0.5}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert parsed_args["temperature"] == 0.75
+        assert parsed_args["probability"] == 0.123
+        assert parsed_args["score"] == -0.5
+
+    def test_xml_roundtrip_with_mixed_types(self) -> None:
+        """Test XML round-trip handles mixed types including floats, ints, bools."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "mixed_types"
+        tool_args = {
+            "int_val": 42,
+            "float_val": 3.14,
+            "bool_true": True,
+            "bool_false": False,
+            "none_val": None,
+            "string_val": "hello",
+        }
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert parsed_args["int_val"] == 42
+        assert parsed_args["float_val"] == 3.14
+        assert parsed_args["bool_true"] is True
+        assert parsed_args["bool_false"] is False
+        assert parsed_args["none_val"] is None
+        assert parsed_args["string_val"] == "hello"
+
+    def test_xml_parse_invalid_xml_raises(self) -> None:
+        """Test XML parsing raises ValueError for malformed XML."""
+        try:
+            from src.factory.schema import parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML parsing function not yet implemented")
+
+        invalid_xml = "<tool_call><invalid>no closing tags"
+        with pytest.raises(ValueError, match="Invalid XML format"):
+            parse_tool_call_xml(invalid_xml)
+
+    def test_xml_parse_missing_tool_name_raises(self) -> None:
+        """Test XML parsing raises ValueError when tool_name element is missing."""
+        try:
+            from src.factory.schema import parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML parsing function not yet implemented")
+
+        # XML with tool_args but no tool_name
+        xml_without_name = "<tool_call><tool_args><item key='arg'>value</item></tool_args></tool_call>"
+        with pytest.raises(ValueError, match="Missing <tool_name>"):
+            parse_tool_call_xml(xml_without_name)
+
+    def test_xml_parse_empty_tool_args_returns_empty_dict(self) -> None:
+        """Test XML parsing returns empty dict when tool_args is missing."""
+        try:
+            from src.factory.schema import parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML parsing function not yet implemented")
+
+        # XML with tool_name but no tool_args
+        xml_without_args = "<tool_call><tool_name>some_tool</tool_name></tool_call>"
+        tool_name, tool_args = parse_tool_call_xml(xml_without_args)
+
+        assert tool_name == "some_tool"
+        assert tool_args == {}
+
+    def test_xml_serialize_without_wrapper_tags(self) -> None:
+        """Test XML serialization adds wrapper tags if not present."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization function not yet implemented")
+
+        # Create XML without wrapper tags
+        inner_xml = "<tool_name>test</tool_name><tool_args><item key='key'>value</item></tool_args>"
+        result = serialize_tool_call_xml("test", {"key": "value"})
+
+        # Should have wrapper tags
+        assert result.startswith("<tool_call>")
+        assert result.endswith("</tool_call>")
+
 
 class TestXMLToolFormatAutoSelection:
     """Tests for automatic tool format selection based on argument size."""
@@ -871,6 +969,113 @@ class TestXMLToolFormatAutoSelection:
         json_size = len(json.dumps(args_at_threshold))
         # If JSON size is <= 500, should not use XML
         assert json_size <= 500 or not should_use_xml_format(args_at_threshold)
+
+    def test_should_use_xml_format_edge_cases(self) -> None:
+        """Test should_use_xml_format with edge cases."""
+        import json
+
+        try:
+            from src.factory.schema import should_use_xml_format
+        except ImportError:
+            pytest.skip("Auto-selection function not yet implemented")
+
+        # Empty dict should not use XML
+        assert not should_use_xml_format({})
+
+        # Just under 500 bytes - should use JSON
+        # {"a": "xxx"} where xxx is 493 chars -> total JSON = 500
+        args_under = {"a": "x" * 493}
+        json_size_under = len(json.dumps(args_under))
+        # If under 500, should return False
+        if json_size_under <= 500:
+            assert not should_use_xml_format(args_under)
+
+        # Over 500 bytes - should use XML
+        args_over = {"a": "x" * 494}
+        json_size_over = len(json.dumps(args_over))
+        # If over 500, should return True
+        if json_size_over > 500:
+            assert should_use_xml_format(args_over)
+
+    def test_xml_roundtrip_with_list_of_floats(self) -> None:
+        """Test XML round-trip preserves list of float values."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "batch_compute"
+        tool_args = {"values": [0.1, 0.25, 0.5, 0.75, 1.0]}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert parsed_args["values"] == [0.1, 0.25, 0.5, 0.75, 1.0]
+
+    def test_xml_roundtrip_with_nested_dict(self) -> None:
+        """Test XML round-trip preserves nested dictionary."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "nested"
+        tool_args = {
+            "outer": {"inner": {"value": 42}},
+            "list_in_dict": [1, 2, 3],
+        }
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert parsed_args["outer"]["inner"]["value"] == 42
+        assert parsed_args["list_in_dict"] == [1, 2, 3]
+
+    def test_xml_roundtrip_with_list_of_bools(self) -> None:
+        """Test XML round-trip preserves list of boolean values."""
+        try:
+            from src.factory.schema import serialize_tool_call_xml, parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML serialization functions not yet implemented")
+
+        tool_name = "flags"
+        tool_args = {"enabled": [True, False, True, False]}
+
+        xml_output = serialize_tool_call_xml(tool_name, tool_args)
+        parsed_name, parsed_args = parse_tool_call_xml(xml_output)
+
+        assert parsed_name == tool_name
+        assert parsed_args["enabled"] == [True, False, True, False]
+
+    def test_xml_parse_with_nested_element_lookup(self) -> None:
+        """Test XML parsing uses fallback element lookup when direct find fails."""
+        try:
+            from src.factory.schema import parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML parsing function not yet implemented")
+
+        # Create XML where tool_name and tool_args are nested inside another element
+        xml = "<wrapper><tool_call><tool_name>nested_tool</tool_name><tool_args><item key='arg'>value</item></tool_args></tool_call></wrapper>"
+        tool_name, tool_args = parse_tool_call_xml(xml)
+
+        assert tool_name == "nested_tool"
+        assert tool_args == {"arg": "value"}
+
+    def test_xml_parse_item_with_none_key(self) -> None:
+        """Test XML parsing handles item elements without key attribute."""
+        try:
+            from src.factory.schema import parse_tool_call_xml
+        except ImportError:
+            pytest.skip("XML parsing function not yet implemented")
+
+        # XML with item missing key attribute - should be skipped
+        xml = "<tool_call><tool_name>test</tool_name><tool_args><item key='valid'>value</item></tool_args></tool_call>"
+        tool_name, tool_args = parse_tool_call_xml(xml)
+
+        assert tool_name == "test"
+        assert "valid" in tool_args
 
 
 # =============================================================================

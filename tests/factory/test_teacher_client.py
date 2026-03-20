@@ -707,6 +707,248 @@ class TestTeacherClientNonRetryableErrors:
         assert mock_client.post.call_count == 1
 
 
+class TestTeacherClientProviderErrors:
+    """Tests for provider selection errors."""
+
+    def test_select_provider_raises_for_unsupported_provider(self) -> None:
+        """Test that _select_provider raises ValueError for unsupported provider."""
+        from src.factory.agentic_teacher_client import TeacherModelClient
+
+        config = TeacherModelConfig(
+            provider="unsupported_provider",
+            model_name="test-model",
+            api_key_env="TEST_API_KEY",
+            max_retries=1,
+        )
+
+        # Act & Assert - ValueError is raised in __init__ when creating the client
+        with pytest.raises(ValueError, match="Unsupported provider"):
+            TeacherModelClient(config)
+
+    def test_get_provider_raises_for_unsupported_provider(self) -> None:
+        """Test that get_provider raises ValueError for unsupported provider."""
+        from src.factory.agentic_teacher_client import get_provider
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Unsupported provider"):
+            get_provider("unsupported_provider")
+
+    def test_get_provider_case_insensitive(self) -> None:
+        """Test that get_provider is case insensitive."""
+        from src.factory.agentic_teacher_client import get_provider, OpenAIProvider
+
+        # Act
+        provider = get_provider("OPENAI")
+
+        # Assert
+        assert provider == OpenAIProvider
+
+
+class TestTeacherClientSeedErrors:
+    """Tests for seed-related error handling."""
+
+    @pytest.mark.asyncio
+    async def test_completed_seed_raises_teacher_api_error(
+        self,
+        teacher_config_openai: TeacherModelConfig,
+    ) -> None:
+        """Test that calling generate with completed seed raises TeacherAPIError."""
+        from src.factory.agentic_teacher_client import TeacherModelClient
+
+        # Create checkpoint with completed seed
+        checkpoint = GenerationCheckpoint()
+        checkpoint.mark_done("ha_seed_completed")
+
+        client = TeacherModelClient(teacher_config_openai, checkpoint=checkpoint)
+
+        # Act & Assert
+        with pytest.raises(TeacherAPIError, match="already completed"):
+            await client.generate("test prompt", seed_id="ha_seed_completed")
+
+
+class TestTeacherClientTimeoutErrors:
+    """Tests for timeout error handling."""
+
+    @pytest.mark.asyncio
+    @patch("src.factory.agentic_teacher_client.httpx.AsyncClient")
+    @patch("src.factory.agentic_teacher_client.asyncio.sleep")
+    async def test_timeout_retry_with_exponential_backoff(
+        self,
+        mock_sleep: AsyncMock,
+        mock_async_client_cls: MagicMock,
+        teacher_config_openai: TeacherModelConfig,
+        sample_prompt: str,
+    ) -> None:
+        """Test that timeout exceptions are retried with exponential backoff."""
+        # Arrange
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
+        mock_async_client_cls.return_value.__aenter__.return_value = mock_client
+
+        # Use config with small retries for faster test
+        config = TeacherModelConfig(
+            provider="openai",
+            model_name="gpt-4o",
+            api_key_env="OPENAI_API_KEY",
+            request_delay_ms=100,
+            max_retries=2,
+            backoff_factor=2,
+            request_timeout_seconds=120,
+        )
+
+        from src.factory.agentic_teacher_client import TeacherModelClient
+
+        client = TeacherModelClient(config)
+
+        # Act & Assert
+        with pytest.raises(TeacherAPIError, match="timeout"):
+            await client.generate(sample_prompt)
+
+        # Should have retried max_retries + 1 times
+        assert mock_client.post.call_count == config.max_retries + 1
+        # Should have slept between retries
+        assert mock_sleep.call_count >= config.max_retries
+
+    @pytest.mark.asyncio
+    @patch("src.factory.agentic_teacher_client.httpx.AsyncClient")
+    @patch("src.factory.agentic_teacher_client.asyncio.sleep")
+    async def test_timeout_succeeds_on_retry(
+        self,
+        mock_sleep: AsyncMock,
+        mock_async_client_cls: MagicMock,
+        teacher_config_openai: TeacherModelConfig,
+        sample_prompt: str,
+    ) -> None:
+        """Test that timeout followed by success returns content."""
+        # Arrange
+        timeout_error = httpx.TimeoutException("Request timeout")
+        success_response = MagicMock()
+        success_response.status_code = 200
+        success_response.json.return_value = {
+            "choices": [{"message": {"content": "Success after timeout retry"}}]
+        }
+        success_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=[timeout_error, success_response])
+        mock_async_client_cls.return_value.__aenter__.return_value = mock_client
+
+        from src.factory.agentic_teacher_client import TeacherModelClient
+
+        client = TeacherModelClient(teacher_config_openai)
+
+        # Act
+        result = await client.generate(sample_prompt)
+
+        # Assert
+        assert result == "Success after timeout retry"
+        assert mock_client.post.call_count == 2
+
+
+class TestTeacherClientGenericErrors:
+    """Tests for generic exception handling in retry loop."""
+
+    @pytest.mark.asyncio
+    @patch("src.factory.agentic_teacher_client.httpx.AsyncClient")
+    @patch("src.factory.agentic_teacher_client.asyncio.sleep")
+    async def test_generic_exception_retry(
+        self,
+        mock_sleep: AsyncMock,
+        mock_async_client_cls: MagicMock,
+        teacher_config_openai: TeacherModelConfig,
+        sample_prompt: str,
+    ) -> None:
+        """Test that generic exceptions trigger retry."""
+        # Arrange
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=RuntimeError("Unexpected error"))
+        mock_async_client_cls.return_value.__aenter__.return_value = mock_client
+
+        from src.factory.agentic_teacher_client import TeacherModelClient
+
+        client = TeacherModelClient(teacher_config_openai)
+
+        # Act & Assert
+        with pytest.raises(TeacherAPIError):
+            await client.generate(sample_prompt)
+
+        # Should have retried max_retries + 1 times
+        assert mock_client.post.call_count == teacher_config_openai.max_retries + 1
+
+    @pytest.mark.asyncio
+    @patch("src.factory.agentic_teacher_client.httpx.AsyncClient")
+    @patch("src.factory.agentic_teacher_client.asyncio.sleep")
+    async def test_generic_exception_succeeds_on_retry(
+        self,
+        mock_sleep: AsyncMock,
+        mock_async_client_cls: MagicMock,
+        teacher_config_openai: TeacherModelConfig,
+        sample_prompt: str,
+    ) -> None:
+        """Test that generic exception followed by success returns content."""
+        # Arrange
+        success_response = MagicMock()
+        success_response.status_code = 200
+        success_response.json.return_value = {
+            "choices": [{"message": {"content": "Success after error retry"}}]
+        }
+        success_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(
+            side_effect=[RuntimeError("Unexpected error"), success_response]
+        )
+        mock_async_client_cls.return_value.__aenter__.return_value = mock_client
+
+        from src.factory.agentic_teacher_client import TeacherModelClient
+
+        client = TeacherModelClient(teacher_config_openai)
+
+        # Act
+        result = await client.generate(sample_prompt)
+
+        # Assert
+        assert result == "Success after error retry"
+        assert mock_client.post.call_count == 2
+
+
+class TestProviderResponseParsing:
+    """Tests for response parsing error handling."""
+
+    def test_openai_parse_missing_choices_key(self) -> None:
+        """Test that OpenAI provider raises error for missing choices key."""
+        from src.factory.agentic_teacher_client import OpenAIProvider
+
+        provider = OpenAIProvider()
+        response = {}  # Missing "choices" key
+
+        # Act & Assert - KeyError propagates from _parse_response
+        with pytest.raises(KeyError):
+            provider._parse_response(response)
+
+    def test_anthropic_parse_missing_content_key(self) -> None:
+        """Test that Anthropic provider raises error for missing content key."""
+        from src.factory.agentic_teacher_client import AnthropicProvider
+
+        provider = AnthropicProvider()
+        response = {}  # Missing "content" key
+
+        # Act & Assert - KeyError propagates from _parse_response
+        with pytest.raises(KeyError):
+            provider._parse_response(response)
+
+    def test_gemini_parse_missing_candidates_key(self) -> None:
+        """Test that Gemini provider raises error for missing candidates key."""
+        from src.factory.agentic_teacher_client import GeminiProvider
+
+        provider = GeminiProvider()
+        response = {}  # Missing "candidates" key
+
+        # Act & Assert - KeyError propagates from _parse_response
+        with pytest.raises(KeyError):
+            provider._parse_response(response)
+
+
 # =============================================================================
 # INTEGRATION WITH CONFIG
 # =============================================================================

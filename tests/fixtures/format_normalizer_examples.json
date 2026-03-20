@@ -1,0 +1,428 @@
+{
+  "description": "Fixture data for FormatNormalizer tests",
+  "detect_format_cases": [
+    {
+      "name": "alpaca_basic",
+      "record": {
+        "instruction": "What is Python?",
+        "output": "Python is a programming language."
+      },
+      "expected_format": "alpaca"
+    },
+    {
+      "name": "alpaca_with_input",
+      "record": {
+        "instruction": "Fix this code",
+        "input": "def foo():\n    return 42",
+        "output": "Here's the fixed code..."
+      },
+      "expected_format": "alpaca"
+    },
+    {
+      "name": "sharegpt_basic",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Hello"},
+          {"from": "gpt", "value": "Hi there"}
+        ]
+      },
+      "expected_format": "sharegpt"
+    },
+    {
+      "name": "sharegpt_with_tools",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Get weather"},
+          {"from": "gpt", "value": "<tool_call>weather</tool_call>"},
+          {"from": "tool", "value": "Sunny"},
+          {"from": "gpt", "value": "It's sunny today"}
+        ]
+      },
+      "expected_format": "sharegpt"
+    },
+    {
+      "name": "openai_messages_basic",
+      "record": {
+        "messages": [
+          {"role": "user", "content": "Hello"},
+          {"role": "assistant", "content": "Hi"}
+        ]
+      },
+      "expected_format": "openai_messages"
+    },
+    {
+      "name": "openai_messages_with_system",
+      "record": {
+        "messages": [
+          {"role": "system", "content": "You are helpful."},
+          {"role": "user", "content": "Hi"},
+          {"role": "assistant", "content": "Hello!"}
+        ]
+      },
+      "expected_format": "openai_messages"
+    },
+    {
+      "name": "unknown_format",
+      "record": {
+        "some_field": "value",
+        "other_field": 123
+      },
+      "expected_format": "unknown"
+    },
+    {
+      "name": "partial_alpaca_missing_output",
+      "record": {
+        "instruction": "Only instruction"
+      },
+      "expected_format": "unknown"
+    },
+    {
+      "name": "priority_openai_over_alpaca",
+      "record": {
+        "messages": [{"role": "user", "content": "Hi"}],
+        "instruction": "Has instruction too",
+        "output": "Has output too"
+      },
+      "expected_format": "openai_messages"
+    }
+  ],
+  "convert_alpaca_cases": [
+    {
+      "name": "basic_instruction_output",
+      "record": {
+        "instruction": "What is Python?",
+        "output": "Python is a programming language."
+      },
+      "expected_messages": [
+        {"role": "user", "content": "What is Python?"},
+        {"role": "assistant", "content": "Python is a programming language."}
+      ]
+    },
+    {
+      "name": "with_input_field",
+      "record": {
+        "instruction": "Fix this code",
+        "input": "def foo():\n    return 42",
+        "output": "Here's the fixed version..."
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Fix this code\n\ndef foo():\n    return 42"},
+        {"role": "assistant", "content": "Here's the fixed version..."}
+      ]
+    },
+    {
+      "name": "empty_input_omitted",
+      "record": {
+        "instruction": "Simple question",
+        "input": "",
+        "output": "Simple answer"
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Simple question"},
+        {"role": "assistant", "content": "Simple answer"}
+      ]
+    },
+    {
+      "name": "multiline_content",
+      "record": {
+        "instruction": "Write code\nWith multiple\nLines",
+        "input": "Input here",
+        "output": "Output\nAlso multiline"
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Write code\nWith multiple\nLines\n\nInput here"},
+        {"role": "assistant", "content": "Output\nAlso multiline"}
+      ]
+    },
+    {
+      "name": "missing_instruction_error",
+      "record": {
+        "output": "Only output"
+      },
+      "expected_error": "Alpaca format requires both 'instruction' and 'output' fields"
+    },
+    {
+      "name": "missing_output_error",
+      "record": {
+        "instruction": "Only instruction"
+      },
+      "expected_error": "Alpaca format requires both 'instruction' and 'output' fields"
+    }
+  ],
+  "convert_sharegpt_cases": [
+    {
+      "name": "basic_human_gpt",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Hello"},
+          {"from": "gpt", "value": "Hi there"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"}
+      ]
+    },
+    {
+      "name": "multi_turn_conversation",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Q1"},
+          {"from": "gpt", "value": "A1"},
+          {"from": "human", "value": "Q2"},
+          {"from": "gpt", "value": "A2"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Q1"},
+        {"role": "assistant", "content": "A1"},
+        {"role": "user", "content": "Q2"},
+        {"role": "assistant", "content": "A2"}
+      ]
+    },
+    {
+      "name": "with_system_message",
+      "record": {
+        "conversations": [
+          {"from": "system", "value": "You are helpful."},
+          {"from": "human", "value": "Hi"},
+          {"from": "gpt", "value": "Hello!"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "system", "content": "You are helpful."},
+        {"role": "user", "content": "Hi"},
+        {"role": "assistant", "content": "Hello!"}
+      ]
+    },
+    {
+      "name": "with_tool_role",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Get weather"},
+          {"from": "gpt", "value": "<tool_call>weather</tool_call>"},
+          {"from": "tool", "value": "Sunny, 25C"},
+          {"from": "gpt", "value": "The weather is sunny at 25°C"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Get weather"},
+        {"role": "assistant", "content": "<tool_call>weather</tool_call>"},
+        {"role": "tool", "content": "Sunny, 25C"},
+        {"role": "assistant", "content": "The weather is sunny at 25°C"}
+      ]
+    },
+    {
+      "name": "unknown_role_passthrough",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Question"},
+          {"from": "custom_role", "value": "Custom response"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Question"},
+        {"role": "custom_role", "content": "Custom response"}
+      ]
+    },
+    {
+      "name": "missing_conversations_error",
+      "record": {
+        "other_field": "value"
+      },
+      "expected_error": "ShareGPT format requires 'conversations' array"
+    },
+    {
+      "name": "invalid_conversations_type_error",
+      "record": {
+        "conversations": "not a list"
+      },
+      "expected_error": "ShareGPT 'conversations' must be a list"
+    },
+    {
+      "name": "missing_from_field_error",
+      "record": {
+        "conversations": [
+          {"value": "Only value"}
+        ]
+      },
+      "expected_error": "Each conversation turn must have 'from' and 'value' fields"
+    },
+    {
+      "name": "missing_value_field_error",
+      "record": {
+        "conversations": [
+          {"from": "human"}
+        ]
+      },
+      "expected_error": "Each conversation turn must have 'from' and 'value' fields"
+    }
+  ],
+  "convert_openai_messages_cases": [
+    {
+      "name": "basic_user_assistant",
+      "record": {
+        "messages": [
+          {"role": "user", "content": "Hello"},
+          {"role": "assistant", "content": "Hi there"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there"}
+      ]
+    },
+    {
+      "name": "with_system_message",
+      "record": {
+        "messages": [
+          {"role": "system", "content": "You are a helpful assistant."},
+          {"role": "user", "content": "Hi"},
+          {"role": "assistant", "content": "Hello!"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hi"},
+        {"role": "assistant", "content": "Hello!"}
+      ]
+    },
+    {
+      "name": "with_function_call",
+      "record": {
+        "messages": [
+          {"role": "user", "content": "What's the weather?"},
+          {"role": "assistant", "content": "", "function_call": {"name": "get_weather", "arguments": "{}"}},
+          {"role": "tool", "content": "Sunny", "tool_call_id": "call_123"},
+          {"role": "assistant", "content": "It's sunny today!"}
+        ]
+      },
+      "expected_messages": [
+        {"role": "user", "content": "What's the weather?"},
+        {"role": "assistant", "content": ""},
+        {"role": "tool", "content": "Sunny"},
+        {"role": "assistant", "content": "It's sunny today!"}
+      ]
+    },
+    {
+      "name": "missing_messages_error",
+      "record": {
+        "other": "data"
+      },
+      "expected_error": "OpenAI Messages format requires 'messages' array"
+    },
+    {
+      "name": "invalid_messages_type_error",
+      "record": {
+        "messages": "not a list"
+      },
+      "expected_error": "'messages' must be a list"
+    },
+    {
+      "name": "missing_role_error",
+      "record": {
+        "messages": [
+          {"content": "Only content"}
+        ]
+      },
+      "expected_error": "Each message must have 'role' and 'content' fields"
+    },
+    {
+      "name": "missing_content_error",
+      "record": {
+        "messages": [
+          {"role": "user"}
+        ]
+      },
+      "expected_error": "Each message must have 'role' and 'content' fields"
+    }
+  ],
+  "convert_full_cases": [
+    {
+      "name": "alpaca_with_metadata",
+      "record": {
+        "instruction": "Test question",
+        "output": "Test answer",
+        "origin": "synthetic",
+        "type": "instruction",
+        "use_case": "qa"
+      },
+      "expected_format": "alpaca",
+      "expected_message_count": 2,
+      "expected_metadata": {
+        "origin": "synthetic",
+        "type": "instruction",
+        "use_case": "qa"
+      }
+    },
+    {
+      "name": "sharegpt_with_token_count",
+      "record": {
+        "conversations": [
+          {"from": "human", "value": "Hi"},
+          {"from": "gpt", "value": "Hello"}
+        ],
+        "token_count": 42
+      },
+      "expected_format": "sharegpt",
+      "expected_message_count": 2,
+      "expected_metadata": {
+        "token_count": 42
+      }
+    },
+    {
+      "name": "openai_with_seed_id",
+      "record": {
+        "messages": [
+          {"role": "user", "content": "Hello"},
+          {"role": "assistant", "content": "Hi"}
+        ],
+        "seed_id": 12345
+      },
+      "expected_format": "openai_messages",
+      "expected_message_count": 2,
+      "expected_metadata": {
+        "seed_id": 12345
+      }
+    },
+    {
+      "name": "unknown_format_error",
+      "record": {
+        "unknown_field": "value"
+      },
+      "expected_error": "Cannot normalize record"
+    },
+    {
+      "name": "preserved_fields_only",
+      "record": {
+        "instruction": "Q",
+        "output": "A",
+        "origin": "test",
+        "type": "instruction",
+        "use_case": "test",
+        "token_count": 10,
+        "seed_id": 1
+      },
+      "expected_format": "alpaca",
+      "expected_metadata": {
+        "origin": "test",
+        "type": "instruction",
+        "use_case": "test",
+        "token_count": 10,
+        "seed_id": 1
+      }
+    },
+    {
+      "name": "non_preserved_fields_filtered",
+      "record": {
+        "instruction": "Q",
+        "output": "A",
+        "extra_field": "should be filtered",
+        "another_field": 123,
+        "random_list": ["a", "b"]
+      },
+      "expected_format": "alpaca",
+      "expected_metadata": {}
+    }
+  ]
+}

@@ -7,8 +7,7 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 from src.utils.cache_reset import reset_all_caches, log_memory_usage
 
@@ -107,3 +106,110 @@ class TestCacheResetIntegration:
         """Should be callable without arguments."""
         # Should not raise
         log_memory_usage()
+
+
+class TestCacheResetEdgeCases:
+    """Tests for edge cases in cache reset."""
+
+    def test_adapter_cache_attribute_missing(self, capsys) -> None:
+        """Should handle missing _adapter_cache attribute."""
+        # First import the factory to ensure it's in sys.modules
+        from src.utils.extractors import factory as factory_module
+
+        original_cache = getattr(factory_module, '_adapter_cache', None)
+        if hasattr(factory_module, '_adapter_cache'):
+            delattr(factory_module, '_adapter_cache')
+        try:
+            result = reset_all_caches()
+            # Should return False for adapter_cache
+            assert result["adapter_cache"] is False
+        finally:
+            # Restore the attribute
+            if original_cache is not None:
+                factory_module._adapter_cache = original_cache
+
+    def test_scorecard_cache_attribute_missing(self, capsys) -> None:
+        """Should handle missing _domain_patterns_cache in scorecard."""
+        from src.audit import scorecard
+        original_cache = getattr(scorecard, '_domain_patterns_cache', None)
+        if hasattr(scorecard, '_domain_patterns_cache'):
+            delattr(scorecard, '_domain_patterns_cache')
+        try:
+            result = reset_all_caches()
+            # Should return False for scorecard_domain_patterns_cache
+            assert result["scorecard_domain_patterns_cache"] is False
+        finally:
+            if original_cache is not None:
+                scorecard._domain_patterns_cache = original_cache
+
+    def test_metrics_attribute_missing(self, capsys) -> None:
+        """Should handle missing _default_metrics in metrics."""
+        from src.utils import metrics
+        original_metrics = getattr(metrics, '_default_metrics', None)
+        if hasattr(metrics, '_default_metrics'):
+            delattr(metrics, '_default_metrics')
+        try:
+            result = reset_all_caches()
+            # Should return False for default_metrics
+            assert result["default_metrics"] is False
+        finally:
+            if original_metrics is not None:
+                metrics._default_metrics = original_metrics
+
+    def test_production_v11_not_present(self) -> None:
+        """Should handle missing production_v11 module."""
+        # Temporarily remove production_v11 from sys.modules
+        original_module = sys.modules.get("src.factory.production_v11")
+        if "src.factory.production_v11" in sys.modules:
+            del sys.modules["src.factory.production_v11"]
+        try:
+            result = reset_all_caches()
+            # Should return False for production_v11_taxonomy
+            assert result["production_v11_taxonomy"] is False
+        finally:
+            # Restore the original module
+            if original_module is not None:
+                sys.modules["src.factory.production_v11"] = original_module
+
+    def test_agentic_gen_not_present(self) -> None:
+        """Should handle missing agentic_gen module."""
+        # Temporarily remove agentic_gen from sys.modules
+        original_module = sys.modules.get("src.factory.agentic_gen")
+        if "src.factory.agentic_gen" in sys.modules:
+            del sys.modules["src.factory.agentic_gen"]
+        try:
+            result = reset_all_caches()
+            # Should return False for agentic_gen_taxonomy
+            assert result["agentic_gen_taxonomy"] is False
+        finally:
+            # Restore the original module
+            if original_module is not None:
+                sys.modules["src.factory.agentic_gen"] = original_module
+
+
+class TestLogMemoryUsageEdgeCases:
+    """Tests for edge cases in log_memory_usage."""
+
+    def test_psutil_import_fails(self, capsys) -> None:
+        """Should handle psutil import failure."""
+        with patch.dict("sys.modules", {"psutil": None}):
+            # Need to reimport to trigger the branch
+            import importlib
+            import src.utils.cache_reset as cache_reset_module
+            importlib.reload(cache_reset_module)
+            # Now test with psutil not available
+            cache_reset_module.log_memory_usage()
+            captured = capsys.readouterr()
+            # Should fall back to resource or show unavailable
+            assert "Memory usage" in captured.err or "unavailable" in captured.err.lower()
+
+    def test_resource_unavailable(self, capsys) -> None:
+        """Should handle resource module unavailable."""
+        with patch.dict("sys.modules", {"psutil": None, "resource": None}):
+            import importlib
+            import src.utils.cache_reset as cache_reset_module
+            importlib.reload(cache_reset_module)
+            cache_reset_module.log_memory_usage()
+            captured = capsys.readouterr()
+            # Should show unavailable
+            assert "unavailable" in captured.err.lower()

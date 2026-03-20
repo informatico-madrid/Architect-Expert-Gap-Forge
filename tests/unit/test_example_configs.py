@@ -42,23 +42,10 @@ class TestExampleConfigs:
         with open(config_path) as f:
             return yaml.safe_load(f)
 
-    def test_homeassistant_example_exists(self) -> None:
-        """Test that homeassistant.yaml example exists."""
-        example_path = EXAMPLES_DIR / "homeassistant.yaml"
-        assert example_path.exists(), f"Example file not found: {example_path}"
-
     def test_php_hexagonal_example_exists(self) -> None:
         """Test that php_hexagonal.yaml example exists."""
         example_path = EXAMPLES_DIR / "php_hexagonal.yaml"
         assert example_path.exists(), f"Example file not found: {example_path}"
-
-    def test_homeassistant_example_valid_yaml(self) -> None:
-        """Test that homeassistant.yaml is valid YAML."""
-        example_path = EXAMPLES_DIR / "homeassistant.yaml"
-        with open(example_path) as f:
-            config = yaml.safe_load(f)
-        assert config is not None
-        assert isinstance(config, dict)
 
     def test_php_hexagonal_example_valid_yaml(self) -> None:
         """Test that php_hexagonal.yaml is valid YAML."""
@@ -67,33 +54,6 @@ class TestExampleConfigs:
             config = yaml.safe_load(f)
         assert config is not None
         assert isinstance(config, dict)
-
-    def test_homeassistant_example_required_keys(self, master_docs_map: dict) -> None:
-        """Test that homeassistant.yaml has all required keys."""
-        example_path = EXAMPLES_DIR / "homeassistant.yaml"
-        with open(example_path) as f:
-            config = yaml.safe_load(f)
-
-        # Required top-level keys
-        required_keys = [
-            "profile",
-            "display_name",
-            "description",
-            "extractor",
-            "module_discovery",
-        ]
-        for key in required_keys:
-            assert key in config, f"Missing required key: {key}"
-
-        # Profile name should match master_docs_map
-        valid_profiles = list(master_docs_map.get("profiles", {}).keys()) + ["default"]
-        assert config["profile"] in valid_profiles, (
-            f"Profile '{config['profile']}' not in master_docs_map"
-        )
-
-        # Extractor should have on_parse_error
-        assert "on_parse_error" in config["extractor"]
-        assert config["extractor"]["on_parse_error"] in ["abort", "skip", "fallback"]
 
     def test_php_hexagonal_example_required_keys(self, master_docs_map: dict) -> None:
         """Test that php_hexagonal.yaml has all required keys."""

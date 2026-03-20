@@ -148,3 +148,154 @@ class TestPythonAstAdapter:
         from src.utils.extractors.base import ExtractorAdapter
 
         assert isinstance(adapter, ExtractorAdapter)
+
+
+class TestPythonAstAdapterRegexFallback:
+    """Test suite for regex fallback extraction in PythonAstAdapter."""
+
+    def test_extract_with_regex_relative_imports(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should extract relative imports."""
+        # Create a file with relative imports
+        # Note: The regex pattern r"from\s+(\.[.\w]*)\s+import" captures
+        # relative paths like .sub, ..utils, etc. (not single dots)
+        test_file = tmp_path / "relative_imports.py"
+        test_file.write_text(
+            "from .sub import module_a\n"
+            "from ..utils import helper\n"
+            "from ...package import something\n"
+        )
+
+        deps = adapter._extract_with_regex(test_file)
+
+        # Should find relative imports (with .py suffix per the code)
+        relative_deps = [d for d in deps if d.module_type == "relative"]
+        assert len(relative_deps) > 0
+
+    def test_extract_with_regex_regular_imports(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should extract regular imports."""
+        test_file = tmp_path / "regular_imports.py"
+        test_file.write_text(
+            "import os\n"
+            "import sys\n"
+            "import requests\n"
+            "import numpy as np\n"
+        )
+
+        deps = adapter._extract_with_regex(test_file)
+
+        dep_names = [d.name for d in deps]
+        assert "os" in dep_names
+        assert "sys" in dep_names
+        assert "requests" in dep_names
+        assert "numpy" in dep_names
+
+    def test_extract_with_regex_mixed_imports(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should handle mixed import styles."""
+        test_file = tmp_path / "mixed_imports.py"
+        test_file.write_text(
+            "import json\n"
+            "from .local import something\n"
+            "import pandas\n"
+        )
+
+        deps = adapter._extract_with_regex(test_file)
+
+        dep_names = [d.name for d in deps]
+        assert "json" in dep_names
+        assert "pandas" in dep_names
+        # Relative imports should be detected
+        relative_deps = [d for d in deps if d.module_type == "relative"]
+        assert len(relative_deps) > 0
+
+    def test_extract_with_regex_file_read_error(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should return empty list on file read error."""
+        # Use a non-existent file
+        nonexistent_file = tmp_path / "nonexistent.py"
+
+        deps = adapter._extract_with_regex(nonexistent_file)
+
+        assert deps == []
+
+    def test_extract_with_regex_classifies_stdlib(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should classify stdlib modules correctly."""
+        test_file = tmp_path / "stdlib_imports.py"
+        test_file.write_text(
+            "import os\n"
+            "import sys\n"
+            "import json\n"
+        )
+
+        deps = adapter._extract_with_regex(test_file)
+
+        stdlib_deps = [d for d in deps if d.module_type == "stdlib"]
+        dep_names = [d.name for d in stdlib_deps]
+        assert "os" in dep_names
+        assert "sys" in dep_names
+        assert "json" in dep_names
+
+    def test_extract_with_regex_classifies_external(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should classify external modules correctly."""
+        test_file = tmp_path / "external_imports.py"
+        test_file.write_text(
+            "import requests\n"
+            "import numpy\n"
+            "import torch\n"
+        )
+
+        deps = adapter._extract_with_regex(test_file)
+
+        external_deps = [d for d in deps if d.module_type == "external"]
+        dep_names = [d.name for d in external_deps]
+        assert "requests" in dep_names
+        assert "numpy" in dep_names
+        assert "torch" in dep_names
+
+    def test_extract_with_regex_avoids_duplicates(
+        self, adapter: PythonAstAdapter, tmp_path: Path
+    ) -> None:
+        """_extract_with_regex should not include duplicate dependencies."""
+        test_file = tmp_path / "duplicate_imports.py"
+        test_file.write_text(
+            "import os\n"
+            "import os\n"
+            "import sys\n"
+            "import os as operating_system\n"
+        )
+
+        deps = adapter._extract_with_regex(test_file)
+
+        # Should only have unique dependencies
+        dep_names = [d.name for d in deps]
+        assert dep_names.count("os") == 1
+        assert dep_names.count("sys") == 1
+
+    def test_classify_module_stdlib(self, adapter: PythonAstAdapter) -> None:
+        """_classify_module should return 'stdlib' for known stdlib modules."""
+        assert adapter._classify_module("os") == "stdlib"
+        assert adapter._classify_module("sys") == "stdlib"
+        assert adapter._classify_module("json") == "stdlib"
+        assert adapter._classify_module("typing") == "stdlib"
+
+    def test_classify_module_external(self, adapter: PythonAstAdapter) -> None:
+        """_classify_module should return 'external' for known external modules."""
+        assert adapter._classify_module("requests") == "external"
+        assert adapter._classify_module("numpy") == "external"
+        assert adapter._classify_module("pandas") == "external"
+        assert adapter._classify_module("django") == "external"
+
+    def test_classify_module_unknown(self, adapter: PythonAstAdapter) -> None:
+        """_classify_module should return 'external' for unknown modules."""
+        assert adapter._classify_module("unknown_module_xyz") == "external"
+        assert adapter._classify_module("mystery_package") == "external"
