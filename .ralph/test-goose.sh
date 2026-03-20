@@ -15,7 +15,8 @@ RALPH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # vLLM configuration
 RALPH_VLLM_URL="${RALPH_VLLM_URL:-http://localhost:4000}"
 RALPH_VLLM_MODEL="${RALPH_VLLM_MODEL:-qwen3-30b-a3b-thinking-fp8}"
-RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-EMPTY}"
+# Use CUSTOM_VLLM_LOCAL_API_KEY if set, otherwise default to EMPTY
+RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-${CUSTOM_VLLM_LOCAL_API_KEY:-EMPTY}}"
 
 # Colors
 RED='\033[0;31m'

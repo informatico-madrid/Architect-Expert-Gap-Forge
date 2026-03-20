@@ -80,18 +80,12 @@ description: "Task list for improving code coverage to 90%+"
 
 ### Tests for User Story 2
 
-- [x] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
-- [x] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
-- [x] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
-- [x] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
-- [x] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
+- [ ] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
+- [ ] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
+- [ ] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
+- [ ] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
+- [ ] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
 - [x] T024 [P] [US2] Create tests for detect_tool_format in tests/curation/test_dedup_and_validate.py
- - [ ] T019 [P] [US2] Create tests for AnchorDatasetDownloader.download in tests/curation/test_anchor_dataset_downloader.py
- - [ ] T020 [P] [US2] Create tests for AnchorDatasetDownloader.parse in tests/curation/test_anchor_dataset_downloader.py
- - [ ] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
- - [ ] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
- - [ ] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
- - [x] T024 [P] [US2] Create tests for detect_tool_format in tests/curation/test_dedup_and_validate.py
 - [x] T025 [P] [US2] Create tests for validate_record in tests/curation/test_dedup_and_validate.py
 - [x] T026 [P] [US2] Create tests for deduplicate_record in tests/curation/test_dedup_and_validate.py
 - [x] T027 [P] [US2] Create tests for _convert_alpaca in tests/curation/test_format_normalizer.py
@@ -103,8 +97,6 @@ description: "Task list for improving code coverage to 90%+"
 
 ### Implementation for User Story 2
 
-- [x] T033 [US2] Verify all tests pass with `pytest tests/curation/test_anchor_dataset_downloader.py tests/curation/test_dedup_and_validate.py tests/curation/test_format_normalizer.py tests/curation/test_dataset_mixer.py`
-- [x] T034 [US2] Run coverage check: `pytest --cov=src/curation/anchor_dataset_downloader --cov=src/curation/dedup_and_validate --cov=src/curation/format_normalizer --cov=src/curation/dataset_mixer --cov-report=term-missing --cov-fail-under=90`
  - [ ] T033 [US2] Verify all tests pass with `pytest tests/curation/test_anchor_dataset_downloader.py tests/curation/test_dedup_and_validate.py tests/curation/test_format_normalizer.py tests/curation/test_dataset_mixer.py`
  - [ ] T034 [US2] Run coverage check: `pytest --cov=src/curation/anchor_dataset_downloader --cov=src/curation/dedup_and_validate --cov=src/curation/format_normalizer --cov=src/curation/dataset_mixer --cov-report=term-missing --cov-fail-under=90`
 

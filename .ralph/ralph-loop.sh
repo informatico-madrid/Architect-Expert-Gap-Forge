@@ -25,6 +25,7 @@
 #   RALPH_VLLM_URL       vLLM API URL (default: http://localhost:4000)
 #   RALPH_VLLM_MODEL     vLLM model name (default: qwen3-30b-a3b-thinking-fp8)
 #   RALPH_VLLM_API_KEY   vLLM API key (default: EMPTY for local)
+#   CUSTOM_VLLM_LOCAL_API_KEY Custom API key for local vLLM (e.g., sk-master-bunker-2026)
 #
 set -euo pipefail
 
@@ -48,7 +49,8 @@ RALPH_TEST_CONCURRENCY="${RALPH_TEST_CONCURRENCY:-5}"
 # vLLM local backend configuration (for goose agent)
 RALPH_VLLM_URL="${RALPH_VLLM_URL:-http://localhost:4000}"
 RALPH_VLLM_MODEL="${RALPH_VLLM_MODEL:-qwen3-30b-a3b-thinking-fp8}"
-RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-EMPTY}"
+# Use CUSTOM_VLLM_LOCAL_API_KEY if set, otherwise default to EMPTY
+RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-${CUSTOM_VLLM_LOCAL_API_KEY:-EMPTY}}"
 
 # Worktree mode globals (T01)
 WORKTREE_ENABLED=true
@@ -173,7 +175,8 @@ VLLM BACKEND (for goose agent):
     Environment variables:
     - RALPH_VLLM_URL      vLLM API URL (default: http://localhost:4000)
     - RALPH_VLLM_MODEL    vLLM model name (default: qwen3-30b-a3b-thinking-fp8)
-    - RALPH_VLLM_API_KEY  API key (default: EMPTY for local)
+    - RALPH_VLLM_API_KEY  API key (default: EMPTY for local, or use CUSTOM_VLLM_LOCAL_API_KEY)
+    - CUSTOM_VLLM_LOCAL_API_KEY  Custom API key for local vLLM (e.g., sk-master-bunker-2026)
 
 Example:
     RALPH_AGENT=goose RALPH_VLLM_URL=http://localhost:4000 .ralph/ralph-loop.sh specs/xxx
