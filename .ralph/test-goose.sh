@@ -102,13 +102,14 @@ main() {
     echo ""
 
     # Execute goose with prompt piped directly (same as ralph-loop.sh)
-    # Use --no-session to avoid JSONL tool calls and get plain text output
+    # Use --quiet to suppress tool call output and get only model response
+    # See: https://block.github.io/goose/docs/guides/goose-cli-commands
     local output
     output=$(
         OPENAI_HOST="$RALPH_VLLM_URL" \
         OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
         GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-        echo "$prompt" | goose run -i - --no-session 2>&1
+        echo "$prompt" | goose run -i - --quiet --no-session 2>&1
     ) || true
 
     echo ""
