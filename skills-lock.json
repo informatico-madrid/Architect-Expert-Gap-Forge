@@ -16,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "69e5dcb55497cc5f1ecfa1ec31c9cd9b110f528c1c721a5e1480f44638779a7d"
     },
+    "rich-terminal-output": {
+      "source": "autumnsgrove/groveengine",
+      "sourceType": "github",
+      "computedHash": "9aeee81fd27b167f7747a14ac20057e74427a35c4d94595136dafbd8e0d2f40b"
+    },
     "vllm-deploy-docker": {
       "source": "vllm-project/vllm-skills",
       "sourceType": "github",

@@ -12,6 +12,19 @@
 # Profile name
 profile: php_hexagonal
 
+# Top-level processor fields required by `ProcessingConfig`
+# Category is the logical folder under `raw_subdir` where clones are located
+category: php_hexagonal
+
+# Base directory for discovery/processing
+base_dir: .
+
+# Where raw repository clones are stored
+raw_subdir: data/raw
+
+# Where the processor will emit bundles
+output_subdir: data/raw
+
 # Profile display name
 display_name: "PHP Hexagonal Architecture Expert"
 

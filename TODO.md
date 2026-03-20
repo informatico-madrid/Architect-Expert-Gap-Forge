@@ -1,6 +1,9 @@
 ## 🔎 Self-Audit — Key Deviations (actionable)
 The following issues were discovered during an automated/manual scan. These are prioritized by impact and mapped to simple remediation actions.
 
+### MEJORAR SALIDA TERMINAL 
+python -m src.discovery.processor_cli SALE APEGOTONADO TODO. MEJOR UNA SALIDA BASH PROFESIONAL INVESTIGAR SKILL 
+
 ### [ ] STAGE 6: Optimización de Paralelismo para Calibración
 
 **Contexto actual**: La calibración secuencialmente:
