@@ -476,17 +476,18 @@ REVIEW_EOF
             ;;
         goose)
             # Use goose with prompt piped directly (same as claude approach)
+            # Use --no-session to avoid JSONL tool calls and get plain text output
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM for review: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
                 review_output=$(
                     OPENAI_HOST="$RALPH_VLLM_URL" \
                     OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    echo "$review_prompt" | goose run -i - 2>&1
+                    echo "$review_prompt" | goose run -i - --no-session 2>&1
                 )
                 exit_code=$?
             else
-                review_output=$(echo "$review_prompt" | goose run -i - 2>&1)
+                review_output=$(echo "$review_prompt" | goose run -i - --no-session 2>&1)
                 exit_code=$?
             fi
             ;;
@@ -667,17 +668,18 @@ run_work_agent() {
             ;;
         goose)
             # Use goose with prompt piped directly (same as claude approach)
+            # Use --no-session to avoid JSONL tool calls and get plain text output
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM backend: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
                 output=$(
                     OPENAI_HOST="$RALPH_VLLM_URL" \
                     OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    echo "$prompt" | goose run -i - 2>&1 | tee "$log_file"
+                    echo "$prompt" | goose run -i - --no-session 2>&1 | tee "$log_file"
                 )
                 exit_code=$?
             else
-                output=$(echo "$prompt" | goose run -i - 2>&1 | tee "$log_file")
+                output=$(echo "$prompt" | goose run -i - --no-session 2>&1 | tee "$log_file")
                 exit_code=$?
             fi
             ;;

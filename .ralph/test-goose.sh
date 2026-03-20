@@ -81,6 +81,8 @@ You are 100% autonomous. Your work persists through FILES ONLY.
 - Do not ask for human input — you are fully autonomous
 
 ## RESPONSE FORMAT REQUIREMENTS
+- Output plain text ONLY (NO JSON, NO JSONL, NO tool calls like ▸ shell or ▸ write)
+- Do NOT use any tool calls - just execute the task and report the result
 - If you complete the task successfully, output exactly: TASK_COMPLETE
 - If all tasks are complete, output exactly: ALL_TASKS_COMPLETE
 - Do NOT add any additional text after these markers
@@ -100,12 +102,13 @@ main() {
     echo ""
 
     # Execute goose with prompt piped directly (same as ralph-loop.sh)
+    # Use --no-session to avoid JSONL tool calls and get plain text output
     local output
     output=$(
         OPENAI_HOST="$RALPH_VLLM_URL" \
         OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
         GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-        echo "$prompt" | goose run -i - 2>&1
+        echo "$prompt" | goose run -i - --no-session 2>&1
     ) || true
 
     echo ""
