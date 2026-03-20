@@ -135,7 +135,7 @@ description: "Task list for improving code coverage to 90%+"
 - [x] T043 [P] Verify total coverage >= 90% in coverage.xml (ACHIEVED: 93.85% - coverage.xml shows 0.9385 line-rate)
 - [x] T044 [P] Update .gitignore if any new fixture files need exclusion (NO CHANGE NEEDED - fixtures properly tracked, pycache already ignored)
 - [x] T045 [P] Document coverage improvements in docs/coverage_report.md
-- [] T046 [P] Test coverage ``make coverage` must reach 90%. total coverage 90% requiered
+- [ ] T046 [P] Test coverage ``make coverage` must reach 90%. total coverage 90% requiered
 ---
 
 ## Dependencies & Execution Order
