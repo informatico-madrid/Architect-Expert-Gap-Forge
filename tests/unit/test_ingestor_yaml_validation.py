@@ -19,6 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from src.discovery.ingestor import DiscoveryConfig
@@ -26,6 +27,11 @@ from src.discovery.ingestor import DiscoveryConfig
 
 class TestYamlRequiredFieldValidation:
     """Unit tests for required field validation in DiscoveryConfig."""
+
+    @pytest.fixture
+    def missing_category_yaml_path(self) -> Path:
+        """Path to the YAML config fixture missing required 'category' field."""
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "missing_category.yaml"
 
     def test_missing_category_field_raises_validation_error(self) -> None:
         """Test that missing required field 'category' raises ValidationError.
@@ -43,6 +49,24 @@ class TestYamlRequiredFieldValidation:
         # Act & Assert - Should raise ValidationError
         with pytest.raises(ValidationError) as exc_info:
             DiscoveryConfig(**config_dict)
+
+        # Verify the error mentions 'category'
+        error_messages = str(exc_info.value).lower()
+        assert "category" in error_messages
+
+    def test_missing_category_field_fails_validation(self, missing_category_yaml_path: Path) -> None:
+        """Test that missing required field 'category' in YAML file raises ValidationError.
+
+        T020: Unit test for missing required field validation using YAML fixture file.
+        This test loads the actual YAML fixture and verifies it fails validation.
+        """
+        # Arrange - Load YAML from fixture file
+        with open(missing_category_yaml_path, "r") as f:
+            config_data = yaml.safe_load(f)
+
+        # Act & Assert - Should raise ValidationError when creating DiscoveryConfig
+        with pytest.raises(ValidationError) as exc_info:
+            DiscoveryConfig(**config_data)
 
         # Verify the error mentions 'category'
         error_messages = str(exc_info.value).lower()
@@ -97,6 +121,11 @@ class TestYamlRequiredFieldValidation:
 class TestYamlEnumValidation:
     """Unit tests for enum field validation in DiscoveryConfig."""
 
+    @pytest.fixture
+    def invalid_mode_yaml_path(self) -> Path:
+        """Path to the YAML config fixture with invalid 'mode' enum value."""
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "invalid_mode.yaml"
+
     def test_invalid_mode_value_raises_validation_error(self) -> None:
         """Test that invalid enum value for 'mode' raises ValidationError.
 
@@ -113,6 +142,24 @@ class TestYamlEnumValidation:
         # Act & Assert - Should raise ValidationError
         with pytest.raises(ValidationError) as exc_info:
             DiscoveryConfig(**config_dict)
+
+        # Verify the error mentions 'mode'
+        error_messages = str(exc_info.value).lower()
+        assert "mode" in error_messages
+
+    def test_invalid_mode_fails_validation(self, invalid_mode_yaml_path: Path) -> None:
+        """Test that invalid enum value 'mode' in YAML file raises ValidationError.
+
+        T021: Unit test for invalid enum value validation using YAML fixture file.
+        This test loads the actual YAML fixture and verifies it fails validation.
+        """
+        # Arrange - Load YAML from fixture file
+        with open(invalid_mode_yaml_path, "r") as f:
+            config_data = yaml.safe_load(f)
+
+        # Act & Assert - Should raise ValidationError when creating DiscoveryConfig
+        with pytest.raises(ValidationError) as exc_info:
+            DiscoveryConfig(**config_data)
 
         # Verify the error mentions 'mode'
         error_messages = str(exc_info.value).lower()
