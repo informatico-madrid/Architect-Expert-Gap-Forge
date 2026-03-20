@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from src.curation.dedup_and_validate import DedupAndValidate
+from src.curation.dedup_and_validate import DedupAndValidate, detect_tool_format
 from src.utils.schema import DatasetRecord, Message, CompositionReport
 
 logger = logging.getLogger(__name__)
@@ -711,3 +711,131 @@ class TestDedupValidateInterface:
         dedup.reset()
         assert dedup.discarded_count == 0
         assert dedup.discard_reasons == {}
+
+
+# =============================================================================
+# TESTS FOR detect_tool_format
+# =============================================================================
+
+
+class TestDetectToolFormat:
+    """Tests for detect_tool_format function."""
+
+    def test_detect_tool_format_xml(self) -> None:
+        """Test that XML tool call format is detected correctly."""
+        messages = [
+            {"role": "user", "content": "What's the weather?"},
+            {"role": "assistant", "content": "<tool_call><tool_name>get_weather</tool_name></tool_call>"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_json(self) -> None:
+        """Test that JSON tool call format is detected correctly."""
+        messages = [
+            {"role": "user", "content": "Call the function"},
+            {"role": "assistant", "content": '{"name": "get_weather", "arguments": {"location": "NYC"}}'},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "json"
+
+    def test_detect_tool_format_none(self) -> None:
+        """Test that no tool calls returns 'none'."""
+        messages = [
+            {"role": "user", "content": "Hello, how are you?"},
+            {"role": "assistant", "content": "I'm doing well, thank you!"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "none"
+
+    def test_detect_tool_format_empty_messages(self) -> None:
+        """Test that empty messages list returns 'none'."""
+        messages: list[dict[str, Any]] = []
+        result = detect_tool_format(messages)
+        assert result == "none"
+
+    def test_detect_tool_format_xml_takes_precedence(self) -> None:
+        """Test that XML format takes precedence over JSON when both present."""
+        messages = [
+            {"role": "user", "content": "Call a function"},
+            {"role": "assistant", "content": "<tool_call><tool_name>test</tool_name></tool_call>"},
+            {"role": "assistant", "content": '{"name": "json_func", "arguments": {}}'},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_mixed_messages(self) -> None:
+        """Test tool format detection with mixed message content."""
+        messages = [
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi there"},
+            {"role": "user", "content": "Use the tool"},
+            {"role": "assistant", "content": "<tool_call><tool_name>search</tool_name></tool_call>"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_tool_call_tag(self) -> None:
+        """Test detection of <tool_call> tag."""
+        messages = [
+            {"role": "assistant", "content": "<tool_call>get_weather location='NYC'</tool_call>"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_tool_args_tag(self) -> None:
+        """Test detection of <tool_args> tag."""
+        messages = [
+            {"role": "assistant", "content": "<tool_args>{\"location\": \"NYC\"}</tool_args>"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_json_tool_calls_key(self) -> None:
+        """Test detection of 'tool_calls' key in JSON."""
+        messages = [
+            {"role": "assistant", "content": '{"tool_calls": [{"name": "func", "arguments": {}}]}'},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "json"
+
+    def test_detect_tool_format_json_name_and_arguments(self) -> None:
+        """Test detection of 'name' and 'arguments' pattern."""
+        messages = [
+            {"role": "assistant", "content": '"name": "my_function", "arguments": {"arg1": "value1"}'},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "json"
+
+    def test_detect_tool_format_case_insensitive(self) -> None:
+        """Test that detection is case insensitive for XML tags."""
+        messages = [
+            {"role": "assistant", "content": "<TOOL_CALL><TOOL_NAME>test</TOOL_NAME></TOOL_CALL>"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_message_without_content_key(self) -> None:
+        """Test handling of messages without content key."""
+        messages = [
+            {"role": "user"},  # No content key
+            {"role": "assistant", "content": "Hello"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "none"
+
+    def test_detect_tool_format_multiple_xml_in_content(self) -> None:
+        """Test detection when multiple XML tool calls are in same content."""
+        messages = [
+            {"role": "assistant", "content": "<tool_call><tool_name>func1</tool_name></tool_call> and <tool_call><tool_name>func2</tool_name></tool_call>"},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "xml"
+
+    def test_detect_tool_format_multiple_json_in_content(self) -> None:
+        """Test detection when multiple JSON tool calls are in same content."""
+        messages = [
+            {"role": "assistant", "content": '{"tool_calls": [{"name": "func1"}]}, {"tool_calls": [{"name": "func2"}]}'},
+        ]
+        result = detect_tool_format(messages)
+        assert result == "json"
