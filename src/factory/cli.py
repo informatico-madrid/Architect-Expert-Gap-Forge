@@ -20,6 +20,9 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 from src.factory.config import (
     DEFAULT_API_KEY,
@@ -30,6 +33,17 @@ from src.factory.config import (
 from src.factory.pipeline_runner import main_async
 
 logger = logging.getLogger(__name__)
+
+# Rich console for terminal output
+_console: Console | None = None
+
+
+def get_console() -> Console:
+    """Get or create the Rich console instance."""
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
 
 
 def configure_logger() -> None:
@@ -213,6 +227,75 @@ Usage examples:
     return parser.parse_args()
 
 
+def display_startup_panel(args: argparse.Namespace) -> None:
+    """Display a startup panel with pipeline configuration.
+
+    Args:
+        args: Parsed command-line arguments.
+    """
+    console = get_console()
+
+    # Build configuration summary
+    config_lines = [
+        f"[bold]Workers:[/]\t{args.workers}",
+        f"[bold]Model:[/]\t{args.model}",
+        f"[bold]Base URL:[/]\t{args.base_url}",
+        f"[bold]Seed:[/]\t{args.seed}",
+    ]
+
+    if args.theory:
+        config_lines.extend(
+            [
+                "[bold]Mode:[/]\tTHEORY",
+                f"[bold]Repetitions:[/]\t{args.theory_reps}",
+            ]
+        )
+    else:
+        config_lines.extend(
+            [
+                "[bold]Mode:[/]\tNORMAL",
+                f"[bold]Output:[/]\t{args.output or 'auto-generated'}",
+            ]
+        )
+
+    config_text = "\n".join(config_lines)
+
+    panel_title = "[bold cyan]AEGF Factory Pipeline - V11[/]"
+    console.print(
+        Panel(
+            config_text,
+            title=panel_title,
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
+
+def display_summary_panel(stats: dict) -> None:
+    """Display a summary panel after pipeline completion.
+
+    Args:
+        stats: Dictionary with pipeline statistics.
+    """
+    console = get_console()
+
+    # Build summary table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right")
+
+    for metric, value in stats.items():
+        table.add_row(metric, str(value))
+
+    panel = Panel(
+        table,
+        title="[bold green]Pipeline Summary[/]",
+        border_style="green",
+        padding=(1, 2),
+    )
+    console.print(panel)
+
+
 def main() -> None:
     """Main entry point for the CLI.
 
@@ -225,6 +308,9 @@ def main() -> None:
     configure_logger()
     args = parse_args()
     random.seed(args.seed)
+
+    # Display Rich startup panel
+    display_startup_panel(args)
 
     # Resolve project base directory (data_factory/)
     base_dir = Path(__file__).resolve().parent.parent.parent

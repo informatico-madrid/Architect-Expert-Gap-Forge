@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
+from rich.console import Console
 
 from src.factory.config import (
     DIST_NOMINAL,
@@ -1121,7 +1122,10 @@ async def main_async(args):
         await asyncio.gather(*tasks)
 
         tracker.close()
-        print(tracker.summary())
+        summary = tracker.summary()
+        console = Console()
+        console.print("\n[bold cyan]Theory Mode Summary:[/]")
+        console.print(summary)
         return
 
     # ================================================================
@@ -1332,4 +1336,7 @@ async def main_async(args):
     await asyncio.gather(*tasks)
 
     tracker.close()
-    print(tracker.summary())
+    summary = tracker.summary()
+    console = Console()
+    console.print("\n[bold cyan]Diversified Mode Summary:[/]")
+    console.print(summary)
