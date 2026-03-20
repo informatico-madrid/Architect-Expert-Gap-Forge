@@ -21,11 +21,102 @@ import logging
 import random
 from pathlib import Path
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 from tqdm import tqdm
 
 from src.factory.config import load_factory_config
 from src.factory.schema import TrajectoryMode
 from src.factory.trajectory_generator import TrajectoryGenerator
+
+# ══════════════════════════════════════════════════════════════════════
+# RICH TERMINAL OUTPUT
+# ══════════════════════════════════════════════════════════════════════
+
+_console: Console | None = None
+
+
+def get_console() -> Console:
+    """Get or create the Rich console instance."""
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
+
+
+def display_start_panel(use_case: str, mode: str, config_path: str) -> None:
+    """Display a startup panel with configuration.
+
+    Args:
+        use_case: The use case being processed.
+        mode: Generation mode (explicit, hard_query, no_call).
+        config_path: Path to configuration file.
+    """
+    console = get_console()
+
+    config_lines = [
+        f"[bold]Use Case:[/]\t{use_case}",
+        f"[bold]Mode:[/]\t{mode}",
+        f"[bold]Config:[/]\t{config_path}",
+    ]
+
+    config_text = "\n".join(config_lines)
+
+    panel_title = "[bold cyan]AEGF V10-MT Trajectory Generator[/]"
+    console.print(
+        Panel(
+            config_text,
+            title=panel_title,
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
+
+def display_summary_panel(records_generated: int, output_path: str, dry_run: bool) -> None:
+    """Display a summary panel after generation completion.
+
+    Args:
+        records_generated: Number of records generated.
+        output_path: Path to output file.
+        dry_run: Whether this was a dry run.
+    """
+    console = get_console()
+
+    # Build summary table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right")
+
+    table.add_row("Records Generated", str(records_generated))
+    table.add_row("Output Path", output_path)
+    table.add_row("Dry Run", "Yes" if dry_run else "No")
+
+    panel = Panel(
+        table,
+        title="[bold green]Generation Complete[/]",
+        border_style="green",
+        padding=(1, 2),
+    )
+    console.print(panel)
+
+
+def display_error_panel(error_message: str) -> None:
+    """Display an error panel.
+
+    Args:
+        error_message: The error message to display.
+    """
+    console = get_console()
+
+    panel = Panel(
+        f"[red]{error_message}[/]",
+        title="[bold red]Error[/]",
+        border_style="red",
+        padding=(1, 2),
+    )
+    console.print(panel)
 
 # ══════════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -289,14 +380,16 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
         config_path = base_dir / "configs" / "stage_2_factory" / "config.homeassistant.yaml"
 
     if not config_path.exists():
-        print(f"Error: Config file not found: {config_path}", file=sys.stderr)
+        console = get_console()
+        console.print(f"[bold red]Error:[/] Config file not found: {config_path}")
         sys.exit(1)
 
     # Load configuration
     try:
         factory_config = load_factory_config(config_path)
     except Exception as e:
-        print(f"Error loading config: {e}", file=sys.stderr)
+        console = get_console()
+        console.print(f"[bold red]Error loading config:[/] {e}")
         sys.exit(1)
 
     # Get config values (use CLI overrides if provided)
@@ -320,24 +413,20 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
     # Determine output path
     output_path = base_dir / output_path_str
 
-    print("=== Generate Trajectories ===")
-    print(f"Use case: {use_case}")
-    print(f"Mode: {args.mode}")
-    print(f"Config: {config_path}")
-    print(f"Output: {output_path}")
-    print(f"Target records: {target_records}")
-    print(f"Dry run: {is_dry_run}")
-    print()
+    # Display Rich startup panel
+    display_start_panel(use_case, args.mode, str(config_path))
 
     if is_dry_run:
-        print("[DRY RUN] No output will be written.")
+        console = get_console()
+        console.print("[bold yellow][DRY RUN][/] No output will be written.")
         return
 
     # Load seed examples
     seeds_path = base_dir / "tests" / "fixtures" / "seed_examples.yaml"
     if not seeds_path.exists():
-        print(f"Error: Seeds file not found: {seeds_path}", file=sys.stderr)
-        print("Please create tests/fixtures/seed_examples.yaml with seed data.")
+        console = get_console()
+        console.print(f"[bold red]Error:[/] Seeds file not found: {seeds_path}")
+        console.print("[dim]Please create tests/fixtures/seed_examples.yaml with seed data.[/]")
         sys.exit(1)
 
     try:
@@ -346,12 +435,14 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
         with open(seeds_path, encoding="utf-8") as f:
             seeds_data = yaml.safe_load(f)
     except Exception as e:
-        print(f"Error loading seeds: {e}", file=sys.stderr)
+        console = get_console()
+        console.print(f"[bold red]Error loading seeds:[/] {e}")
         sys.exit(1)
 
     seeds = seeds_data.get("seeds", [])
     if not seeds:
-        print("Error: No seeds found in seed file.", file=sys.stderr)
+        console = get_console()
+        console.print("[bold red]Error:[/] No seeds found in seed file.")
         sys.exit(1)
 
     # Initialize trajectory generator
@@ -365,13 +456,15 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
         seed=args.seed,
     )
 
-    # Generate trajectories with progress bar
-    print(f"Generating {target_records} trajectories...")
+    # Generate trajectories with Rich progress bar
+    console = get_console()
+    console.print(f"[bold]Generating {target_records} trajectories...[/]")
+
+    records_to_generate = min(target_records, len(seeds) * 10)  # Reuse seeds if needed
 
     async def generate_all() -> list[dict]:
         """Generate all trajectories asynchronously."""
         results = []
-        records_to_generate = min(target_records, len(seeds) * 10)  # Reuse seeds if needed
 
         with tqdm(total=records_to_generate, desc="Generating", unit="record") as pbar:
             for i in range(records_to_generate):
@@ -420,7 +513,8 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
         for record in results:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-    print(f"\nDone! Generated {len(results)} trajectories to {output_path}")
+    # Display Rich summary panel
+    display_summary_panel(len(results), str(output_path), is_dry_run)
 
 
 if __name__ == "__main__":
