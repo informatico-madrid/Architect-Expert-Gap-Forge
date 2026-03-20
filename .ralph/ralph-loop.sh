@@ -476,7 +476,8 @@ REVIEW_EOF
             ;;
         goose)
             # Use goose with prompt piped directly (same as claude approach)
-            # Use --output-format text to force plain text output without tool calls
+            # Use --mode approve to disable automatic tool calls
+            # Use --max-turns 1 to force single response
             # See: https://block.github.io/goose/docs/guides/goose-cli-commands
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM for review: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
@@ -484,11 +485,11 @@ REVIEW_EOF
                     OPENAI_HOST="$RALPH_VLLM_URL" \
                     OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    echo "$review_prompt" | goose run --no-session -i - --output-format text 2>&1
+                    echo "$review_prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1
                 )
                 exit_code=$?
             else
-                review_output=$(echo "$review_prompt" | goose run --no-session -i - --output-format text 2>&1)
+                review_output=$(echo "$review_prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1)
                 exit_code=$?
             fi
             ;;
@@ -669,7 +670,8 @@ run_work_agent() {
             ;;
         goose)
             # Use goose with prompt piped directly (same as claude approach)
-            # Use --output-format text to force plain text output without tool calls
+            # Use --mode approve to disable automatic tool calls
+            # Use --max-turns 1 to force single response
             # See: https://block.github.io/goose/docs/guides/goose-cli-commands
             if [[ -n "${RALPH_VLLM_URL:-}" ]]; then
                 log_info "Using vLLM backend: $RALPH_VLLM_URL with model: $RALPH_VLLM_MODEL"
@@ -677,11 +679,11 @@ run_work_agent() {
                     OPENAI_HOST="$RALPH_VLLM_URL" \
                     OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
                     GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-                    echo "$prompt" | goose run --no-session -i - --output-format text 2>&1 | tee "$log_file"
+                    echo "$prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1 | tee "$log_file"
                 )
                 exit_code=$?
             else
-                output=$(echo "$prompt" | goose run --no-session -i - --output-format text 2>&1 | tee "$log_file")
+                output=$(echo "$prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1 | tee "$log_file")
                 exit_code=$?
             fi
             ;;

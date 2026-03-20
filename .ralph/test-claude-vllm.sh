@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Test script para verificar el formato de respuesta de goose
-# Este script NO ejecuta el ralph-loop, solo prueba goose directamente
+# Test script para verificar Claude con vLLM local
+# Este script NO ejecuta el ralph-loop, solo prueba claude directamente
 #
 
 set -euo pipefail
@@ -15,7 +15,6 @@ RALPH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # vLLM configuration
 RALPH_VLLM_URL="${RALPH_VLLM_URL:-http://localhost:4000}"
 RALPH_VLLM_MODEL="${RALPH_VLLM_MODEL:-qwen3-30b-a3b-thinking-fp8}"
-# Use CUSTOM_VLLM_LOCAL_API_KEY if set, otherwise default to EMPTY
 RALPH_VLLM_API_KEY="${RALPH_VLLM_API_KEY:-${CUSTOM_VLLM_LOCAL_API_KEY:-EMPTY}}"
 
 # Colors
@@ -48,7 +47,7 @@ You are 100% autonomous. Your work persists through FILES ONLY.
 
 ## Your Current Task (index 0)
 ```
-[T1] Crear un archivo de prueba /tmp/test_ralph_output.txt con el contenido "TASK_COMPLETE" para verificar el formato de respuesta de goose.
+[T1] Crear un archivo de prueba /tmp/test_claude_output.txt con el contenido "TEST_SUCCESS_CLAUDE_12345"
 ```
 
 ## Execution Rules
@@ -57,28 +56,10 @@ You are 100% autonomous. Your work persists through FILES ONLY.
 3. Follow the architecture in plan.md
 4. Run tests: pytest tests/ -x --tb=short
 5. Run lint: ruff check src/
-6. If the task has [VERIFY] tag: run the verification command and report results
-7. Commit with a descriptive message referencing the task ID
 
 ## When Done
 - Mark the task as [x] in /mnt/bunker_data/ai/data_factory/specs/012-mejorar-cobertura-code/tasks.md
 - Append your progress to /mnt/bunker_data/ai/data_factory/progress.txt
-- Output: TASK_COMPLETE
-
-## If ALL tasks in tasks.md are now [x]:
-- Output: ALL_TASKS_COMPLETE
-
-## If you CANNOT complete the task:
-- Do NOT output TASK_COMPLETE
-- Document what blocked you in progress.txt
-- The loop will retry with a fresh context
-
-## FORBIDDEN
-- Do not mark tasks [x] unless they are actually verified working
-- Do not skip tests or lint checks
-- Do not edit files outside the worktree
-- Do not hallucinate dependencies not in plan.md
-- Do not ask for human input — you are fully autonomous
 
 ## RESPONSE FORMAT REQUIREMENTS
 - Output plain text ONLY (NO JSON, NO JSONL, NO tool calls like ▸ shell or ▸ write)
@@ -104,24 +85,19 @@ main() {
     local prompt
     prompt=$(build_test_prompt)
 
-    log_info "Executing goose with vLLM: $RALPH_VLLM_URL"
+    log_info "Executing claude with vLLM: $RALPH_VLLM_URL"
     log_info "Model: $RALPH_VLLM_MODEL"
     echo ""
 
-    # Execute goose with prompt piped directly (same as ralph-loop.sh)
-    # Use --mode approve to disable automatic tool calls
-    # Use --max-turns 1 to force single response
+    # Execute claude with prompt piped directly
     local output
     output=$(
-        OPENAI_HOST="$RALPH_VLLM_URL" \
-        OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
-        GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-        echo "$prompt" | goose run --no-session -i - --mode approve --max-turns 1 2>&1
+        echo "$prompt" | claude -p --dangerously-skip-permissions 2>&1
     ) || true
 
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "OUTPUT FROM GOOSE:"
+    echo "OUTPUT FROM CLAUDE:"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "$output"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -138,11 +114,11 @@ main() {
     fi
 
     # Check if file was created
-    if [[ -f "/tmp/test_ralph_output.txt" ]]; then
-        log_ok "✓ File /tmp/test_ralph_output.txt was created"
-        log_info "Content: $(cat /tmp/test_ralph_output.txt)"
+    if [[ -f "/tmp/test_claude_output.txt" ]]; then
+        log_ok "✓ File /tmp/test_claude_output.txt was created"
+        log_info "Content: $(cat /tmp/test_claude_output.txt)"
     else
-        log_warn "✗ File /tmp/test_ralph_output.txt was NOT created"
+        log_warn "✗ File /tmp/test_claude_output.txt was NOT created"
     fi
 
     echo ""
