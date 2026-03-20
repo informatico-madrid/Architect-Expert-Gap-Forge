@@ -1315,7 +1315,16 @@ class TestInferenceCoreLoopCoverage:
         changelog = "Changelog content"
         jinja_guide = "Jinja guide content"
 
-        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = (
                 "Gap Analysis:\nMissing type hints\nNeeds error handling"
