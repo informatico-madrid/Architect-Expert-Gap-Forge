@@ -30,6 +30,8 @@ from src.utils.rich_helpers import (
     create_table,
     get_console,
 )
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.panel import Panel
 
 # --- Project Root ---
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
@@ -123,23 +125,46 @@ def main(args: Optional[list] = None) -> int:
 
         config = ProcessingConfig(**config_data)
 
-        # Rich startup header
-        console.print("\n[bold blue]=== AEGF Module-Aware Processor ===[/bold blue]")
-        console.print(f"[cyan]Base Directory:[/cyan] {config.base_dir}")
-        console.print(f"[cyan]Category:[/cyan] {config.category}")
-        console.print(f"[cyan]Raw Subdir:[/cyan] {config.raw_subdir}")
-        console.print(f"[cyan]Output Subdir:[/cyan] {config.output_subdir}")
-        console.print(f"[cyan]Profile:[/cyan] {config.profile}\n")
+        # Rich startup header with Panel
+        console.print(Panel(
+            "\n[bold]AEGF Module-Aware Processor V2[/bold]\n\n"
+            f"[cyan]Base Directory:[/] {config.base_dir}\n"
+            f"[cyan]Category:[/] {config.category}\n"
+            f"[cyan]Raw Subdir:[/] {config.raw_subdir}\n"
+            f"[cyan]Output Subdir:[/] {config.output_subdir}\n"
+            f"[cyan]Profile:[/] {config.profile}",
+            title="[bold blue]Configuration[/bold blue]",
+            border_style="blue",
+        ))
 
-        # Run processor
+        # Run processor with progress tracking
         processor = RepoProcessor(config)
-        processor.run()
 
-        # Rich summary table
-        console.print("[bold green]=== Processing Summary ===[/bold green]")
+        # Create progress bar for processing
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]Processing repositories...[/]"),
+            BarColumn(),
+            TaskProgressColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("[cyan]Scanning modules...", total=None)
+
+            # Run the processor
+            processor.run()
+
+            # Update progress based on modules found
+            modules_found = processor._stats.get("modules_found", 0)
+            if modules_found > 0:
+                progress.update(task, total=modules_found, completed=modules_found)
+            else:
+                progress.update(task, completed=1)
+
+        # Rich summary table with styled header
+        console.print("\n[bold green]=== Processing Summary ===[/bold green]")
         summary_table = create_table(title="[bold cyan]Processor Results[/bold cyan]")
-        summary_table.add_column("Metric", style="cyan")
-        summary_table.add_column("Value", justify="right")
+        summary_table.add_column("Metric", style="cyan bold")
+        summary_table.add_column("Value", justify="right", style="green")
         summary_table.add_row("Modules Found", str(processor._stats.get("modules_found", 0)))
         summary_table.add_row("Type 1 Units", str(processor._stats.get("TYPE1_FUNCTIONAL_UNIT", 0)))
         summary_table.add_row("Type 3 Logic Only", str(processor._stats.get("TYPE3_LOGIC_ONLY", 0)))
@@ -147,15 +172,36 @@ def main(args: Optional[list] = None) -> int:
         summary_table.add_row("Type 5 Governance", str(processor._stats.get("TYPE5_GOVERNANCE_RULES", 0)))
         summary_table.add_row("Parse Errors", str(processor._stats.get("parse_errors", 0)))
         console.print(summary_table)
-        console.print(f"\n[cyan]Output:[/cyan] {config.base_dir / config.output_subdir}\n")
+
+        # Success panel
+        console.print(
+            Panel(
+                f"[green]✓ Processing completed successfully[/]\n\n"
+                f"[cyan]Output directory:[/] {config.base_dir / config.output_subdir}\n\n"
+                f"[bold]Total Modules Processed:[/bold] [green]{processor._stats.get('modules_found', 0)}[/green]",
+                title="[bold green]Success[/bold green]",
+                border_style="green",
+            )
+        )
 
         logger.info("Processor completed successfully")
         return 0
 
     except Exception as e:
         logger.critical("Processor failed: %s", e)
-        console.print(f"\n[bold red]Error:[/bold red] {e}\n")
+
+        # Error panel
+        console.print(
+            Panel(
+                f"[red]Exception:[/red] {type(e).__name__}\n\n"
+                f"[red]{str(e)}[/]",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+            )
+        )
+
         if parsed.verbose:
+            console.print("\n[bold red]Traceback:[/bold red]")
             import traceback
 
             traceback.print_exc()
