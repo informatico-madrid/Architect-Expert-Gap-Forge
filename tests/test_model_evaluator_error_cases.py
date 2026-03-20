@@ -36,7 +36,16 @@ class TestGapAnalysisErrorCases:
 
     def test_empty_gap_analysis_response_raises_error(self, golden_sample: Any) -> None:
         """generate_gap_analysis must raise PromptGenerationError when response is empty."""
-        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = ""  # Empty response
             mock_router.return_value.professor.return_value = mock_client
@@ -53,7 +62,14 @@ class TestExamGenerationErrorCases:
 
     def test_invalid_json_response_raises_error(self, golden_sample: Any) -> None:
         """generate_exam_question must raise PromptGenerationError on invalid JSON."""
-        with patch("src.audit.exam_builder._get_inference_router") as mock_router:
+        with patch("src.audit.exam_builder._get_prompt_manager") as mock_pm, patch(
+            "src.audit.exam_builder._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = "{ invalid json"  # Invalid
             mock_router.return_value.professor.return_value = mock_client
@@ -71,7 +87,14 @@ class TestExamGenerationErrorCases:
             "target_patterns": ["pattern 1"],
         }
 
-        with patch("src.audit.exam_builder._get_inference_router") as mock_router:
+        with patch("src.audit.exam_builder._get_prompt_manager") as mock_pm, patch(
+            "src.audit.exam_builder._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(
                 incomplete_response
@@ -89,7 +112,14 @@ class TestExamGenerationErrorCases:
             "target_patterns": ["pattern 1"],
         }
 
-        with patch("src.audit.exam_builder._get_inference_router") as mock_router:
+        with patch("src.audit.exam_builder._get_prompt_manager") as mock_pm, patch(
+            "src.audit.exam_builder._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_client.generate_with_retry.return_value = json.dumps(
                 incomplete_response
@@ -106,16 +136,18 @@ class TestJudgeScoringErrorCases:
 
     def test_invalid_judge_json_response_raises_error(self, golden_exam: Any) -> None:
         """llm_judge_score must raise on invalid JSON from judge."""
-        with patch("src.audit.judge._get_inference_router") as mock_router:
-            with patch("src.audit.judge._get_prompt_manager") as mock_pm:
-                mock_pm_instance = MagicMock()
-                mock_pm_instance.format.return_value = "test prompt"
-                mock_pm_instance.system.return_value = "system prompt"
-                mock_pm.return_value = mock_pm_instance
+        with (
+            patch("src.audit.judge._get_inference_router") as mock_router,
+            patch("src.audit.judge._get_prompt_manager") as mock_pm,
+        ):
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
 
-                mock_client = MagicMock()
-                mock_client.generate_with_retry.return_value = "{ not valid json"
-                mock_router.return_value.professor.return_value = mock_client
+            mock_client = MagicMock()
+            mock_client.generate_with_retry.return_value = "{ not valid json"
+            mock_router.return_value.professor.return_value = mock_client
 
             with pytest.raises(PromptGenerationError, match="LLM judge failed"):
                 llm_judge_score(
@@ -136,16 +168,18 @@ class TestJudgeScoringErrorCases:
             "reasoning": "judgment text",
         }
 
-        with patch("src.audit.judge._get_inference_router") as mock_router:
-            with patch("src.audit.judge._get_prompt_manager") as mock_pm:
-                mock_pm_instance = MagicMock()
-                mock_pm_instance.format.return_value = "test prompt"
-                mock_pm_instance.system.return_value = "system prompt"
-                mock_pm.return_value = mock_pm_instance
+        with (
+            patch("src.audit.judge._get_inference_router") as mock_router,
+            patch("src.audit.judge._get_prompt_manager") as mock_pm,
+        ):
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
 
-                mock_client = MagicMock()
-                mock_client.generate_with_retry.return_value = json.dumps(incomplete)
-                mock_router.return_value.professor.return_value = mock_client
+            mock_client = MagicMock()
+            mock_client.generate_with_retry.return_value = json.dumps(incomplete)
+            mock_router.return_value.professor.return_value = mock_client
 
             with pytest.raises(PromptGenerationError, match="Missing key 'baseline'"):
                 llm_judge_score(
@@ -166,16 +200,18 @@ class TestJudgeScoringErrorCases:
             "reasoning": "judgment text",
         }
 
-        with patch("src.audit.judge._get_inference_router") as mock_router:
-            with patch("src.audit.judge._get_prompt_manager") as mock_pm:
-                mock_pm_instance = MagicMock()
-                mock_pm_instance.format.return_value = "test prompt"
-                mock_pm_instance.system.return_value = "system prompt"
-                mock_pm.return_value = mock_pm_instance
+        with (
+            patch("src.audit.judge._get_inference_router") as mock_router,
+            patch("src.audit.judge._get_prompt_manager") as mock_pm,
+        ):
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
 
-                mock_client = MagicMock()
-                mock_client.generate_with_retry.return_value = json.dumps(incomplete)
-                mock_router.return_value.professor.return_value = mock_client
+            mock_client = MagicMock()
+            mock_client.generate_with_retry.return_value = json.dumps(incomplete)
+            mock_router.return_value.professor.return_value = mock_client
 
             with pytest.raises(PromptGenerationError, match="Missing key 'adapter'"):
                 llm_judge_score(
@@ -196,16 +232,18 @@ class TestJudgeScoringErrorCases:
             "adapter": {"ha_modernity": 0.9},
         }
 
-        with patch("src.audit.judge._get_inference_router") as mock_router:
-            with patch("src.audit.judge._get_prompt_manager") as mock_pm:
-                mock_pm_instance = MagicMock()
-                mock_pm_instance.format.return_value = "test prompt"
-                mock_pm_instance.system.return_value = "system prompt"
-                mock_pm.return_value = mock_pm_instance
+        with (
+            patch("src.audit.judge._get_inference_router") as mock_router,
+            patch("src.audit.judge._get_prompt_manager") as mock_pm,
+        ):
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
 
-                mock_client = MagicMock()
-                mock_client.generate_with_retry.return_value = json.dumps(incomplete)
-                mock_router.return_value.professor.return_value = mock_client
+            mock_client = MagicMock()
+            mock_client.generate_with_retry.return_value = json.dumps(incomplete)
+            mock_router.return_value.professor.return_value = mock_client
 
             with pytest.raises(PromptGenerationError, match="Missing key 'reasoning'"):
                 llm_judge_score(
@@ -227,16 +265,18 @@ class TestJudgeScoringErrorCases:
             "reasoning": "judgment text",
         }
 
-        with patch("src.audit.judge._get_inference_router") as mock_router:
-            with patch("src.audit.judge._get_prompt_manager") as mock_pm:
-                mock_pm_instance = MagicMock()
-                mock_pm_instance.format.return_value = "test prompt"
-                mock_pm_instance.system.return_value = "system prompt"
-                mock_pm.return_value = mock_pm_instance
+        with (
+            patch("src.audit.judge._get_inference_router") as mock_router,
+            patch("src.audit.judge._get_prompt_manager") as mock_pm,
+        ):
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
 
-                mock_client = MagicMock()
-                mock_client.generate_with_retry.return_value = json.dumps(incomplete_dims)
-                mock_router.return_value.professor.return_value = mock_client
+            mock_client = MagicMock()
+            mock_client.generate_with_retry.return_value = json.dumps(incomplete_dims)
+            mock_router.return_value.professor.return_value = mock_client
 
             # Should NOT raise — missing dimensions are filled with 0.5 default
             result = llm_judge_score(

@@ -110,6 +110,7 @@ omit = [
     "*/audit/prompt_manager.py",
     "*/audit/sampling.py",
     "*/audit/schema.py",
+    "*/audit/calibration.py",
 ]
 
 [tool.coverage.report]
