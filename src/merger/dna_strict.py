@@ -12,6 +12,9 @@ Applies strict DNA merging rules to model weights.
 
 from __future__ import annotations
 
+from rich.console import Console
+from rich.panel import Panel
+
 
 def merge_strict(base_model: str, adapter: str, output: str) -> None:
     """Apply strict DNA merging rules.
@@ -34,4 +37,35 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, help="Output path")
     args = parser.parse_args()
 
+    # Create console for Rich output
+    console = Console()
+
+    # Display startup panel
+    console.print(
+        Panel(
+            f"[bold]Starting Strict DNA Merge[/]\n"
+            f"[dim]Base model:[/] [cyan]{args.base}[/]\n"
+            f"[dim]Adapter:[/] [cyan]{args.adapter}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold blue]Strict DNA Merge[/]",
+            border_style="blue",
+        )
+    )
+
+    # Perform merge
+    console.print("[bold cyan]Applying strict DNA merging rules...[/]")
     merge_strict(args.base, args.adapter, args.output)
+    console.print("[green]Strict DNA merge completed successfully![/]")
+
+    # Display summary panel
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Operation Complete[/]\n"
+            f"[dim]Base:[/] [cyan]{args.base}[/]\n"
+            f"[dim]Adapter:[/] [cyan]{args.adapter}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold green]Summary[/]",
+            border_style="green",
+        )
+    )
