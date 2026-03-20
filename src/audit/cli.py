@@ -37,6 +37,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.audit.config import (
     DEFAULT_ADAPTER_MODEL,
@@ -80,10 +84,81 @@ from src.audit.scorecard import compute_scorecard
 from src.utils.doc_loader import load_master_docs
 
 # ======================================================================
-# LOGGING
+# LOGGING & RICH CONSOLE
 # ======================================================================
 
 logger = logging.getLogger(__name__)
+
+# Rich console instance with TTY auto-detection
+_console: Console | None = None
+
+
+def get_console() -> Console:
+    """Get a Rich console instance with auto-detection for TTY."""
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
+
+
+def print_startup_header(mode: str, description: str) -> None:
+    """Print a styled header showing the CLI mode and description."""
+    console = get_console()
+    console.print(
+        Panel(
+            f"[bold]{description}[/]\n\n[bold cyan]Mode:[/bold] {mode.upper()}",
+            title="[bold green]AEGF Quality Gate[/bold green]",
+            border_style="green",
+            expand=True,
+        )
+    )
+
+
+def print_section(title: str, style: str = "bold blue") -> None:
+    """Print a section divider with styled text."""
+    console = get_console()
+    console.print(f"\n[{'{style}'}]{'=' * 60}[/]")
+    console.print(f"[{'{style}'}]  {title}  [/]")
+    console.print(f"[{'{style}'}]{'=' * 60}[/]\n")
+
+
+def print_summary_table(metrics: dict[str, str | int | float], title: str = "Summary") -> None:
+    """Print a formatted summary table with metrics."""
+    console = get_console()
+    table = Table(title=f"[bold]{title}[/bold]", show_header=True, header_style="bold cyan")
+    table.add_column("Metric", style="cyan", width=20)
+    table.add_column("Value", justify="right", style="white")
+
+    for metric, value in metrics.items():
+        table.add_row(metric, str(value))
+
+    console.print(table)
+
+
+def print_success_panel(message: str, title: str = "Success") -> None:
+    """Print a success panel with green styling."""
+    console = get_console()
+    console.print(
+        Panel(
+            message,
+            title=f"[bold green]{title}[/bold green]",
+            border_style="green",
+            expand=True,
+        )
+    )
+
+
+def print_error_panel(message: str, title: str = "Error") -> None:
+    """Print an error panel with red styling."""
+    console = get_console()
+    console.print(
+        Panel(
+            message,
+            title=f"[bold red]{title}[/bold red]",
+            border_style="red",
+            expand=True,
+        )
+    )
 
 
 class CLIError(Exception):
@@ -101,25 +176,41 @@ CFG = _get_config()
 
 def cmd_sample(args: argparse.Namespace) -> None:
     """Extract and persist a stratified evaluation sample."""
+    console = get_console()
+
     sample_path = Path(args.audit_dir) / "eval_sample.json"
     if sample_path.exists() and not args.force:
         logger.info(
             "Sample already exists at %s (use --force to regenerate)", sample_path
         )
         samples = load_persisted_sample(args.audit_dir)
-    else:
-        if not args.dataset:
-            raise CLIError("--dataset is required for 'sample' mode")
-        records = load_dataset(args.dataset)
+        print_success_panel(f"Sample already exists at {sample_path}")
+        console.print(f"  [bold]Loaded:[/bold] {len(samples)} records")
+        dist = Counter(s.example_type for s in samples)
+        print_summary_table(dict(dist), "Sample Distribution")
+        return
 
-        gap_dir = Path(args.gap_dir)
-        master, changelog, jinja_guide = load_master_docs(gap_dir)
+    if not args.dataset:
+        raise CLIError("--dataset is required for 'sample' mode")
 
-        samples = stratified_sample(records, args.sample_size)
+    records = load_dataset(args.dataset)
+    gap_dir = Path(args.gap_dir)
+    master, changelog, jinja_guide = load_master_docs(gap_dir)
 
-        # SampleRecord is frozen — use dataclasses.replace() to create enriched copies.
-        enriched: list[SampleRecord] = []
-        for s in samples:
+    samples = stratified_sample(records, args.sample_size)
+
+    # SampleRecord is frozen — use dataclasses.replace() to create enriched copies.
+    enriched: list[SampleRecord] = []
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]Processing samples...[/]"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        transient=True,
+    ) as progress:
+        total = len(samples)
+        task = progress.add_task("Generating gap analysis...", total=total)
+
+        for idx, s in enumerate(samples, 1):
             replacements: dict[str, str] = {}
             if not (s.reference_standards and s.reference_standards.strip()):
                 # Format reference standards using domain-agnostic config-driven logic
@@ -151,21 +242,30 @@ def cmd_sample(args: argparse.Namespace) -> None:
                         f"Gap analysis generation failed for {s.id}: {exc}"
                     ) from exc
             enriched.append(s_enriched)
-        samples = enriched
+            progress.update(task, advance=1)
 
-        persist_sample(samples, args.audit_dir)
+    samples = enriched
+    persist_sample(samples, args.audit_dir)
 
+    # Print summary with Rich table
     dist = Counter(s.example_type for s in samples)
-    logger.info("Sample distribution: %s", dict(dist))
+    print_success_panel(
+        f"Sample persisted successfully to {sample_path}",
+        "Sample Complete",
+    )
+    print_summary_table(dict(dist), "Sample Distribution")
 
 
 def cmd_generate_exam(args: argparse.Namespace) -> None:
     """Professor model generates novel exam questions from the persisted sample."""
+    console = get_console()
     exam_path = Path(args.audit_dir) / "eval_exam.json"
+
     if exam_path.exists() and not args.force:
         logger.info("Exam already exists at %s (use --force to regenerate)", exam_path)
         exam_records = load_exam(args.audit_dir)
-        logger.info("Loaded %d existing exam questions", len(exam_records))
+        print_success_panel(f"Exam already exists at {exam_path}")
+        console.print(f"  [bold]Loaded:[/bold] {len(exam_records)} exam questions")
         return
 
     samples = load_persisted_sample(args.audit_dir)
@@ -182,46 +282,53 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
         )
 
     judge_model = args.judge_model
-    logger.info(
-        "Generating %d exam questions with professor model: %s",
-        len(samples),
-        judge_model,
-    )
+    total_samples = len(samples)
+    console.print(f"[cyan]Generating {total_samples} exam questions with professor model:[/cyan] {judge_model}")
 
     exam_records: list[ExamRecord] = []
-    for idx, sample in enumerate(samples, 1):
-        logger.info(
-            "[%d/%d] Generating exam for %s (%s)",
-            idx,
-            len(samples),
-            sample.id,
-            sample.fragment_name,
-        )
-        try:
-            record = generate_exam_question(
-                sample=sample,
-                judge_model=judge_model,
-                api_url=args.api_url,
-                retries=args.retries,
-                retry_delay=args.retry_delay,
-                professor_backend=args.professor_backend,
-                gemini_model=args.gemini_model,
-                validate=args.validate,
-            )
-        except PromptGenerationError as exc:
-            # Propagated from generate_exam_question; tested via mock failure
-            logger.error("Exam generation failed for %s: %s", sample.id, exc)
-            raise CLIError(f"Exam generation failed for {sample.id}: {exc}") from exc
-        exam_records.append(record)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]  {task.description}[/]"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        transient=False,
+    ) as progress:
+        task = progress.add_task("Generating exam questions...", total=total_samples)
+        for idx, sample in enumerate(samples, 1):
+            progress.update(task, description=f"[cyan]{sample.id}[/]")
+            try:
+                record = generate_exam_question(
+                    sample=sample,
+                    judge_model=judge_model,
+                    api_url=args.api_url,
+                    retries=args.retries,
+                    retry_delay=args.retry_delay,
+                    professor_backend=args.professor_backend,
+                    gemini_model=args.gemini_model,
+                    validate=args.validate,
+                )
+            except PromptGenerationError as exc:
+                # Propagated from generate_exam_question; tested via mock failure
+                logger.error("Exam generation failed for %s: %s", sample.id, exc)
+                raise CLIError(f"Exam generation failed for {sample.id}: {exc}") from exc
+            exam_records.append(record)
+            progress.update(task, advance=1)
 
     persist_exam(exam_records, args.audit_dir)
     generated = sum(
         1 for r in exam_records if r.exam_question and r.exam_question != r.user_prompt
     )
-    logger.info(
-        "Exam generation complete: %d/%d questions generated by professor",
-        generated,
-        len(samples),
+
+    # Print summary
+    print_success_panel(
+        f"Exam persisted to {exam_path}",
+        "Exam Generation Complete",
+    )
+    print_summary_table(
+        {
+            "Total Questions": total_samples,
+            "Professor Generated": f"{generated}/{total_samples}",
+        },
+        "Exam Summary",
     )
 
 
@@ -277,6 +384,7 @@ def cmd_adapter(args: argparse.Namespace) -> None:
 
 def cmd_score(args: argparse.Namespace) -> None:
     """LLM-as-Judge scores adapter vs baseline and generates the audit report."""
+    console = get_console()
     try:
         exam_records = load_exam(args.audit_dir)
     except FileNotFoundError:
@@ -293,40 +401,49 @@ def cmd_score(args: argparse.Namespace) -> None:
     adapter_map = {r.record_id: r for r in adapter_results}
     judge_model = args.judge_model
 
-    logger.info(
-        "Scoring %d records with judge model: %s", len(exam_records), judge_model
-    )
-    scorecards: list[ScoreCard] = []
     total = len(exam_records)
-    for idx, exam in enumerate(exam_records, 1):
-        base_r = baseline_map.get(exam.id)
-        adapt_r = adapter_map.get(exam.id)
-        if not base_r or not adapt_r:
-            logger.warning(
-                "[%d/%d] Missing inference for %s — skipping", idx, total, exam.id
+    console.print(f"[cyan]Scoring {total} records with judge model:[/cyan] {judge_model}")
+
+    scorecards: list[ScoreCard] = []
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]  {task.description}[/]"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        transient=False,
+    ) as progress:
+        task = progress.add_task("Scoring records...", total=total)
+        for idx, exam in enumerate(exam_records, 1):
+            progress.update(task, description=f"[cyan]{exam.id}[/]")
+            base_r = baseline_map.get(exam.id)
+            adapt_r = adapter_map.get(exam.id)
+            if not base_r or not adapt_r:
+                logger.warning(
+                    "[%d/%d] Missing inference for %s — skipping", idx, total, exam.id
+                )
+                progress.update(task, advance=1)
+                continue
+            logger.info("[%d/%d] Judging %s", idx, total, exam.id)
+            # First, call the judge to get the normalized response
+            judge_resp = llm_judge_score(
+                exam=exam,
+                baseline_resp=base_r.response,
+                adapter_resp=adapt_r.response,
+                judge_model=judge_model,
+                api_url=args.api_url,
+                retries=args.retries,
+                retry_delay=args.retry_delay,
+                professor_backend=args.professor_backend,
+                gemini_model=args.gemini_model,
+                validate=args.validate,
             )
-            continue
-        logger.info("[%d/%d] Judging %s", idx, total, exam.id)
-        # First, call the judge to get the normalized response
-        judge_resp = llm_judge_score(
-            exam=exam,
-            baseline_resp=base_r.response,
-            adapter_resp=adapt_r.response,
-            judge_model=judge_model,
-            api_url=args.api_url,
-            retries=args.retries,
-            retry_delay=args.retry_delay,
-            professor_backend=args.professor_backend,
-            gemini_model=args.gemini_model,
-            validate=args.validate,
-        )
-        # Then compute the scorecard with the judge response
-        sc = compute_scorecard(
-            exam=exam,
-            judge_resp=judge_resp,
-            adapter_resp=adapt_r.response,
-        )
-        scorecards.append(sc)
+            # Then compute the scorecard with the judge response
+            sc = compute_scorecard(
+                exam=exam,
+                judge_resp=judge_resp,
+                adapter_resp=adapt_r.response,
+            )
+            scorecards.append(sc)
+            progress.update(task, advance=1)
 
     report = AuditReport(
         timestamp=datetime.now(timezone.utc).isoformat(),
@@ -347,46 +464,95 @@ def cmd_score(args: argparse.Namespace) -> None:
         adapter_results,
         args.audit_dir,
     )
-    print(f"\n{'=' * 64}")
-    print(f"  AEGF QUALITY GATE — FINAL GRADE: {report.final_grade}/100")
-    print(f"  Verdict: {report.verdict}")
-    print(f"  Report:  {report_path}")
-    print(f"{'=' * 64}\n")
+
+    # Print Rich formatted final report
+    console.print("\n")
+    console.print(
+        Panel(
+            f"[bold]Final Grade:[/bold] {report.final_grade}/100\n\n"
+            f"[bold]Verdict:[/bold] {report.verdict}\n\n"
+            f"[bold]Report:[/bold] {report_path}",
+            title="[bold green]AEGF Quality Gate — Final Report[/bold green]",
+            border_style="green",
+            expand=True,
+        )
+    )
 
 
 def cmd_full(args: argparse.Namespace) -> None:
     """Run the full 5-stage evaluation pipeline."""
+    console = get_console()
     if args.validate:
         args.sample_size = 1
         args.force = True
         logger.info(
             "Validate mode: sample_size=1, force=True — minimal-token end-to-end flow test"
         )
-    logger.info("=== AEGF Quality Gate — High-Fidelity Exam Pipeline ===")
 
-    logger.info("--- Stage 1/5: Stratified Sampling ---")
-    cmd_sample(args)
+    console.print(
+        Panel(
+            "[bold]Starting Full Pipeline[/bold]\n"
+            "[cyan]5 stages:[/cyan]\n"
+            "  1. Stratified Sampling\n"
+            "  2. Exam Generation (Professor)\n"
+            "  3. Baseline Inference\n"
+            "  4. Adapter Inference\n"
+            "  5. LLM-as-Judge Scoring",
+            title="[bold]AEGF Quality Gate Pipeline[/bold]",
+            border_style="green",
+            expand=True,
+        )
+    )
 
-    logger.info("--- Stage 2/5: Exam Generation (Professor) ---")
-    cmd_generate_exam(args)
+    # Track stages with progress
+    stages = [
+        ("Stage 1/5: Stratified Sampling", cmd_sample),
+        ("Stage 2/5: Exam Generation (Professor)", cmd_generate_exam),
+        ("Stage 3/5: Baseline Inference", lambda a: cmd_baseline(args)),
+        ("Stage 4/5: Adapter Inference", lambda a: cmd_adapter(args)),
+        ("Stage 5/5: LLM-as-Judge Scoring", cmd_score),
+    ]
 
-    logger.info("--- Stage 3/5: Baseline Inference ---")
-    args.model = None
-    cmd_baseline(args)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[bold blue]{task.description}[/]"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    ) as progress:
+        total_stages = len(stages)
+        stage_task = progress.add_task("Running pipeline stages...", total=total_stages)
 
-    logger.info("--- Stage 4/5: Adapter Inference ---")
-    args.model = None
-    cmd_adapter(args)
-
-    logger.info("--- Stage 5/5: LLM-as-Judge Scoring ---")
-    cmd_score(args)
+        for idx, (stage_name, handler) in enumerate(stages, 1):
+            progress.update(stage_task, description=f"[cyan]{stage_name}[/]")
+            try:
+                if handler == cmd_sample or handler == cmd_generate_exam or handler == cmd_score:
+                    handler(args)
+                else:
+                    # For baseline/adapter, we need to reset model
+                    original_model = args.model
+                    args.model = None
+                    handler(args)
+                    args.model = original_model
+            except Exception as e:
+                logger.error("Stage failed: %s", stage_name)
+                console.print(f"[red]Stage failed:[/red] {stage_name}")
+                raise e
+            progress.update(stage_task, advance=1)
 
 
 def cmd_calibrate(args: argparse.Namespace) -> None:
     """Run inference parameter calibration (Stage 6)."""
     import json
 
-    logger.info("=== AEGF Inference Calibration Suite (Stage 6) ===")
+    console = get_console()
+    console.print(
+        Panel(
+            "[bold]Inference Parameter Calibration[/bold]\n"
+            "[cyan]Testing parameter combinations[/cyan] to find optimal configuration",
+            title="[bold]Stage 6: Calibration[/bold]",
+            border_style="blue",
+            expand=True,
+        )
+    )
 
     # Load prompts from file or from existing exam/sample
     prompts: list[dict[str, str]] = []
@@ -490,14 +656,20 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         judge_client=judge_client,
     )
 
-    # Print summary
-    print(f"\n{'=' * 64}")
-    print("  AEGF INFERENCE CALIBRATION — COMPLETE")
-    print(f"  Best Score: {report.best_score:.3f}")
-    print(f"  Best Profile: {report.best_profile}")
-    print(f"  Total Iterations: {report.total_iterations}")
-    print(f"  Output: {args.output_dir}")
-    print(f"{'=' * 64}\n")
+    # Print Rich formatted summary
+    console = get_console()
+    console.print("\n")
+    console.print(
+        Panel(
+            f"[bold]Best Score:[/bold] {report.best_score:.3f}\n\n"
+            f"[bold]Best Profile:[/bold] {report.best_profile}\n\n"
+            f"[bold]Total Iterations:[/bold] {report.total_iterations}\n\n"
+            f"[bold]Output:[/bold] {args.output_dir}",
+            title="[bold green]AEGF Inference Calibration — Complete[/bold green]",
+            border_style="green",
+            expand=True,
+        )
+    )
 
 
 # ======================================================================
@@ -737,6 +909,18 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
+    # Print startup header with Rich
+    mode_descriptions = {
+        "sample": "Stratified Sampling",
+        "generate-exam": "Professor Exam Generation",
+        "baseline": "Baseline Inference",
+        "adapter": "Adapter Inference",
+        "score": "LLM-as-Judge Scoring",
+        "full": "Full Pipeline (All Stages)",
+        "calibrate": "Inference Parameter Calibration",
+    }
+    print_startup_header(args.mode, mode_descriptions.get(args.mode, "Unknown Mode"))
+
     dispatch = {
         "sample": cmd_sample,
         "generate-exam": cmd_generate_exam,
@@ -753,6 +937,7 @@ def main() -> None:
             handler(args)
         except CLIError as exc:
             logger.error("%s", exc)
+            print_error_panel(str(exc), "CLI Error")
             sys.exit(1)
     else:
         parser.print_help()
