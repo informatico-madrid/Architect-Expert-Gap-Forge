@@ -1208,6 +1208,11 @@ class TestAnchorDatasetDownloaderDownloadViaHub:
 
         mock_hf_hub_download = MagicMock(return_value="/tmp/train.json")
 
+        # Mock tiktoken.get_encoding before instantiating AnchorDatasetDownloader
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.encode = MagicMock(return_value=[1, 2, 3])  # Mock encode method
+        monkeypatch.setattr("tiktoken.get_encoding", MagicMock(return_value=mock_tokenizer))
+
         monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
         monkeypatch.setattr("huggingface_hub.hf_hub_download", mock_hf_hub_download)
         monkeypatch.setattr("builtins.open", MagicMock(return_value=mock_file))
@@ -1791,3 +1796,79 @@ class TestLoadAnchorConfigs:
         assert configs[1].split == "train"  # default
         assert configs[1].format == "sharegpt"  # default
         assert configs[1].token_budget_pct == 25.5
+
+
+class TestDownloadViaHubJsonParsing:
+    """Tests for JSON parsing fallback in _download_via_hub."""
+
+    def test_download_via_hub_json_decode_error_fallback(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that _download_via_hub tries literal_eval when JSON fails."""
+        mock_files = ["data/train.jsonl"]
+        mock_list_repo_files = MagicMock(return_value=mock_files)
+
+        # Return content that fails JSON but works with literal_eval
+        mock_file = MagicMock()
+        mock_file.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value="[(1, 2, 3)]")))
+        mock_file.__exit__ = MagicMock(return_value=False)
+
+        mock_hf_hub_download = MagicMock(return_value="/tmp/train.jsonl")
+
+        # Mock tiktoken
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.encode = MagicMock(return_value=[1, 2, 3])
+        monkeypatch.setattr("tiktoken.get_encoding", MagicMock(return_value=mock_tokenizer))
+
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+        monkeypatch.setattr("huggingface_hub.hf_hub_download", mock_hf_hub_download)
+        monkeypatch.setattr("builtins.open", MagicMock(return_value=mock_file))
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Should handle the case gracefully (may log warning)
+        list(downloader._download_via_hub(config))
+        # The result may be empty if parsing fails completely
+
+
+class TestExportCreatesDirectories:
+    """Tests for export method creating parent directories."""
+
+    def test_export_creates_parent_directories(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that export creates parent directories if they don't exist."""
+        # Mock tiktoken
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.encode = MagicMock(return_value=[1, 2, 3])
+        monkeypatch.setattr("tiktoken.get_encoding", MagicMock(return_value=mock_tokenizer))
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [
+            DatasetRecord(
+                messages=[Message(role="user", content="Hello")],
+                metadata={"origin": "test"},
+            )
+        ]
+
+        # Export to nested path
+        output_path = tmp_path / "subdir" / "nested" / "output.jsonl"
+
+        downloader.export(records, output_path)
+
+        assert output_path.exists()
+
+

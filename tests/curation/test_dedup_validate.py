@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from src.curation.dedup_and_validate import DedupAndValidate, detect_tool_format
+from src.curation.dedup_and_validate import DedupAndValidate, DeduplicationError, detect_tool_format
 from src.utils.schema import DatasetRecord, Message, CompositionReport
 
 logger = logging.getLogger(__name__)
@@ -839,3 +839,600 @@ class TestDetectToolFormat:
         ]
         result = detect_tool_format(messages)
         assert result == "json"
+
+
+# =============================================================================
+# TESTS FOR validate_record
+# =============================================================================
+
+
+class TestValidateRecord:
+    """Tests for DedupAndValidate.validate_record method."""
+
+    def test_validate_record_returns_true_for_valid_record(self) -> None:
+        """Test that validate_record returns True for record without tool calls."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello"),
+                Message(role="assistant", content="Hi there, how can I help?"),
+            ],
+            metadata={"seed_id": "valid_record"},
+        )
+        result = dedup.validate_record(record)
+        assert result is True
+        assert dedup.discarded_count == 0
+
+    def test_validate_record_returns_false_for_xml_tool_call(self) -> None:
+        """Test that validate_record returns False for record with XML tool call."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Get weather"),
+                Message(
+                    role="assistant",
+                    content="<tool_call><tool_name>get_weather</tool_name></tool_call>",
+                ),
+            ],
+            metadata={"seed_id": "xml_tool_call"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+        assert dedup.discarded_count == 1
+        assert "tool_call_content" in dedup.discard_reasons
+        assert dedup.discard_reasons["tool_call_content"] == 1
+
+    def test_validate_record_returns_false_for_tool_call_tag(self) -> None:
+        """Test that validate_record detects <tool_call> tag."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="assistant", content="<tool_call>get_weather location='NYC'</tool_call>"),
+            ],
+            metadata={"seed_id": "tool_call_tag"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_returns_false_for_tool_calls_tag(self) -> None:
+        """Test that validate_record detects <tool_calls> tag."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="assistant", content="<tool_calls><tool_call><tool_name>func</tool_name></tool_call></tool_calls>"),
+            ],
+            metadata={"seed_id": "tool_calls_tag"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_returns_false_for_json_tool_call(self) -> None:
+        """Test that validate_record detects JSON format tool calls."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(
+                    role="assistant",
+                    content='{"tool_calls": [{"name": "get_weather", "arguments": {"location": "NYC"}}]}',
+                ),
+            ],
+            metadata={"seed_id": "json_tool_call"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_returns_false_for_json_name_and_arguments(self) -> None:
+        """Test that validate_record detects 'name' and 'arguments' pattern."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="assistant", content='"name": "my_function", "arguments": {"arg": "value"}'),
+            ],
+            metadata={"seed_id": "json_name_args"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_case_insensitive(self) -> None:
+        """Test that tool call detection is case insensitive."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="assistant", content="<TOOL_CALL><TOOL_NAME>test</TOOL_NAME></TOOL_CALL>"),
+            ],
+            metadata={"seed_id": "uppercase_tool_call"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_with_empty_messages(self) -> None:
+        """Test that validate_record returns True for record with empty messages."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[],
+            metadata={"seed_id": "empty_messages"},
+        )
+        result = dedup.validate_record(record)
+        assert result is True
+        assert dedup.discarded_count == 0
+
+    def test_validate_record_tool_call_in_first_message(self) -> None:
+        """Test that tool call in first message is detected."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="<tool_call>test</tool_call>"),
+                Message(role="assistant", content="Response"),
+            ],
+            metadata={"seed_id": "first_message"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+        assert dedup.discarded_count == 1
+
+    def test_validate_record_tool_call_in_user_message(self) -> None:
+        """Test that tool call in user message is detected."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Use the tool <tool_call>get_data</tool_call>"),
+                Message(role="assistant", content="Here is the data"),
+            ],
+            metadata={"seed_id": "user_message_tool_call"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_multiple_tool_calls_same_message(self) -> None:
+        """Test detection when multiple tool call patterns in same message."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(
+                    role="assistant",
+                    content="<tool_call><tool_name>func1</tool_name></tool_call> and {\"tool_calls\": [{\"name\": \"func2\"}]}",
+                ),
+            ],
+            metadata={"seed_id": "multiple_tool_calls"},
+        )
+        result = dedup.validate_record(record)
+        # First pattern match returns False
+        assert result is False
+
+    def test_validate_record_tracks_discard_reasons(self) -> None:
+        """Test that validate_record properly tracks discard reasons."""
+        dedup = DedupAndValidate()
+
+        # First invalid record
+        record1 = DatasetRecord(
+            messages=[Message(role="assistant", content="<tool_call>test</tool_call>")],
+            metadata={"seed_id": "invalid_1"},
+        )
+        result1 = dedup.validate_record(record1)
+        assert result1 is False
+
+        # Second invalid record
+        record2 = DatasetRecord(
+            messages=[Message(role="assistant", content="<tool_call>test2</tool_call>")],
+            metadata={"seed_id": "invalid_2"},
+        )
+        result2 = dedup.validate_record(record2)
+        assert result2 is False
+
+        # Valid record
+        record3 = DatasetRecord(
+            messages=[Message(role="assistant", content="Normal response")],
+            metadata={"seed_id": "valid"},
+        )
+        result3 = dedup.validate_record(record3)
+        assert result3 is True
+
+        assert dedup.discarded_count == 2
+        assert dedup.discard_reasons["tool_call_content"] == 2
+
+    def test_validate_record_system_message_with_tool_call(self) -> None:
+        """Test that tool calls in system messages are detected."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="system", content="<tool_call>system_tool</tool_call>"),
+                Message(role="user", content="Hello"),
+            ],
+            metadata={"seed_id": "system_tool_call"},
+        )
+        result = dedup.validate_record(record)
+        assert result is False
+
+    def test_validate_record_with_only_system_message(self) -> None:
+        """Test validation with only system message containing no tool calls."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="system", content="You are a helpful assistant."),
+            ],
+            metadata={"seed_id": "system_only"},
+        )
+        result = dedup.validate_record(record)
+        assert result is True
+        assert dedup.discarded_count == 0
+
+
+# =============================================================================
+# TESTS FOR deduplicate_record
+# =============================================================================
+
+
+class TestDeduplicateRecord:
+    """Tests for DedupAndValidate.deduplicate_record method."""
+
+    def test_deduplicate_record_returns_true_for_unique_record(self) -> None:
+        """Test that deduplicate_record returns True for a unique record."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello"),
+                Message(role="assistant", content="Hi there"),
+            ],
+            metadata={"seed_id": "unique_record"},
+        )
+        result = dedup.deduplicate_record(record)
+        assert result is True
+
+    def test_deduplicate_record_returns_false_for_duplicate(self) -> None:
+        """Test that deduplicate_record returns False for a duplicate record."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello"),
+                Message(role="assistant", content="Hi there"),
+            ],
+            metadata={"seed_id": "first_record"},
+        )
+        # First record is unique
+        result1 = dedup.deduplicate_record(record)
+        assert result1 is True
+        assert dedup.discarded_count == 0
+
+        # Same record is duplicate
+        record2 = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello"),
+                Message(role="assistant", content="Hi there"),
+            ],
+            metadata={"seed_id": "duplicate_record"},
+        )
+        result2 = dedup.deduplicate_record(record2)
+        assert result2 is False
+        assert dedup.discarded_count == 1
+        assert "duplicate" in dedup.discard_reasons
+        assert dedup.discard_reasons["duplicate"] == 1
+
+    def test_deduplicate_record_tracks_multiple_duplicates(self) -> None:
+        """Test that multiple duplicate records are tracked correctly."""
+        dedup = DedupAndValidate()
+
+        # First unique record
+        record1 = DatasetRecord(
+            messages=[Message(role="user", content="Question 1")],
+            metadata={"seed_id": "unique_1"},
+        )
+        dedup.deduplicate_record(record1)
+
+        # Duplicate of record1
+        record2 = DatasetRecord(
+            messages=[Message(role="user", content="Question 1")],
+            metadata={"seed_id": "dup_1"},
+        )
+        dedup.deduplicate_record(record2)
+
+        # Duplicate of record1 again
+        record3 = DatasetRecord(
+            messages=[Message(role="user", content="Question 1")],
+            metadata={"seed_id": "dup_2"},
+        )
+        dedup.deduplicate_record(record3)
+
+        assert dedup.discarded_count == 2
+        assert dedup.discard_reasons["duplicate"] == 2
+
+    def test_deduplicate_record_different_content_is_unique(self) -> None:
+        """Test that records with different content are treated as unique."""
+        dedup = DedupAndValidate()
+
+        record1 = DatasetRecord(
+            messages=[Message(role="user", content="Question 1")],
+            metadata={"seed_id": "q1"},
+        )
+        result1 = dedup.deduplicate_record(record1)
+        assert result1 is True
+
+        record2 = DatasetRecord(
+            messages=[Message(role="user", content="Question 2")],
+            metadata={"seed_id": "q2"},
+        )
+        result2 = dedup.deduplicate_record(record2)
+        assert result2 is True
+
+        record3 = DatasetRecord(
+            messages=[Message(role="user", content="Question 3")],
+            metadata={"seed_id": "q3"},
+        )
+        result3 = dedup.deduplicate_record(record3)
+        assert result3 is True
+
+        assert dedup.discarded_count == 0
+
+    def test_deduplicate_record_with_empty_messages(self) -> None:
+        """Test deduplication with empty messages list."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[],
+            metadata={"seed_id": "empty"},
+        )
+        result = dedup.deduplicate_record(record)
+        assert result is True
+        # Empty messages should produce a hash
+        assert len(dedup._seen_hashes) == 1
+
+    def test_deduplicate_record_whitespace_normalization(self) -> None:
+        """Test that whitespace is normalized for hash computation."""
+        dedup = DedupAndValidate()
+
+        # Record with extra whitespace
+        record1 = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello    world"),
+            ],
+            metadata={"seed_id": "extra_spaces"},
+        )
+        result1 = dedup.deduplicate_record(record1)
+        assert result1 is True
+
+        # Record with same content but different whitespace
+        record2 = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello world"),
+            ],
+            metadata={"seed_id": "normal_spaces"},
+        )
+        result2 = dedup.deduplicate_record(record2)
+        # These should be considered duplicates due to normalization
+        assert result2 is False
+        assert dedup.discarded_count == 1
+
+    def test_deduplicate_record_unicode_normalization(self) -> None:
+        """Test that unicode is normalized for hash computation."""
+        dedup = DedupAndValidate()
+
+        # Record with composed unicode (é as single character)
+        record1 = DatasetRecord(
+            messages=[
+                Message(role="user", content="café"),
+            ],
+            metadata={"seed_id": "composed"},
+        )
+        result1 = dedup.deduplicate_record(record1)
+        assert result1 is True
+
+        # Record with decomposed unicode (e + combining accent)
+        record2 = DatasetRecord(
+            messages=[
+                Message(role="user", content="café"),  # Same visual representation
+            ],
+            metadata={"seed_id": "decomposed"},
+        )
+        result2 = dedup.deduplicate_record(record2)
+        # These should be considered duplicates due to NFC normalization
+        assert result2 is False
+
+    def test_deduplicate_record_role_matters_for_hash(self) -> None:
+        """Test that different roles produce different hashes."""
+        dedup = DedupAndValidate()
+
+        # Record with user role
+        record1 = DatasetRecord(
+            messages=[Message(role="user", content="Hello")],
+            metadata={"seed_id": "user_role"},
+        )
+        result1 = dedup.deduplicate_record(record1)
+        assert result1 is True
+
+        # Record with same content but assistant role
+        record2 = DatasetRecord(
+            messages=[Message(role="assistant", content="Hello")],
+            metadata={"seed_id": "assistant_role"},
+        )
+        result2 = dedup.deduplicate_record(record2)
+        assert result2 is True  # Different role = different hash
+
+    def test_deduplicate_record_message_order_matters(self) -> None:
+        """Test that message order affects the hash."""
+        dedup = DedupAndValidate()
+
+        # Record with user then assistant
+        record1 = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello"),
+                Message(role="assistant", content="Hi"),
+            ],
+            metadata={"seed_id": "order_1"},
+        )
+        result1 = dedup.deduplicate_record(record1)
+        assert result1 is True
+
+        # Record with reversed order
+        record2 = DatasetRecord(
+            messages=[
+                Message(role="assistant", content="Hi"),
+                Message(role="user", content="Hello"),
+            ],
+            metadata={"seed_id": "order_2"},
+        )
+        result2 = dedup.deduplicate_record(record2)
+        assert result2 is True  # Different order = different hash
+
+    def test_deduplicate_record_after_reset(self) -> None:
+        """Test that reset clears the seen hashes."""
+        dedup = DedupAndValidate()
+
+        record = DatasetRecord(
+            messages=[Message(role="user", content="Test")],
+            metadata={"seed_id": "test"},
+        )
+        dedup.deduplicate_record(record)
+        assert len(dedup._seen_hashes) == 1
+
+        # Reset
+        dedup.reset()
+        assert len(dedup._seen_hashes) == 0
+        assert dedup.discarded_count == 0
+        assert dedup.discard_reasons == {}
+
+    def test_deduplicate_record_keeps_record_on_hash_error(self) -> None:
+        """Test that records are kept when hash computation fails."""
+        dedup = DedupAndValidate()
+
+        # Create a record with problematic content that might cause issues
+        # (This tests the exception handling path)
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Test content"),
+            ],
+            metadata={"seed_id": "error_test"},
+        )
+        result = dedup.deduplicate_record(record)
+        # Should return True (keep the record) even if hash fails
+        # Since normal content shouldn't fail, this is a sanity check
+        assert result is True
+
+    def test_deduplicate_record_exception_handler(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that deduplicate_record handles exceptions from _compute_message_hash."""
+        dedup = DedupAndValidate()
+
+        # Create a record
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Test content"),
+            ],
+            metadata={"seed_id": "exception_test"},
+        )
+
+        # Mock _compute_message_hash to raise an exception
+        def raise_error(*args, **kwargs):
+            raise DeduplicationError("Simulated hash error")
+
+        monkeypatch.setattr("src.curation.dedup_and_validate._compute_message_hash", raise_error)
+
+        # Should return True (keep the record) when hash computation fails
+        result = dedup.deduplicate_record(record)
+        assert result is True
+
+
+class TestProcessRecord:
+    """Tests for DedupAndValidate.process_record method."""
+
+    def test_process_record_valid_record(self) -> None:
+        """Test that process_record returns record when valid and unique."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(role="user", content="Hello"),
+                Message(role="assistant", content="Hi there"),
+            ],
+            metadata={"seed_id": "valid_record"},
+        )
+        result = dedup.process_record(record)
+        assert result is not None
+        assert result.metadata.get("seed_id") == "valid_record"
+
+    def test_process_record_discards_tool_call(self) -> None:
+        """Test that process_record discards records with tool calls."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[
+                Message(
+                    role="user",
+                    content='Use the function: {"name": "test", "arguments": {}}',
+                ),
+            ],
+            metadata={"seed_id": "tool_call_record"},
+        )
+        result = dedup.process_record(record)
+        assert result is None
+
+    def test_process_record_discards_duplicate(self) -> None:
+        """Test that process_record discards duplicate records."""
+        dedup = DedupAndValidate()
+        record1 = DatasetRecord(
+            messages=[Message(role="user", content="Unique content")],
+            metadata={"seed_id": "first"},
+        )
+        record2 = DatasetRecord(
+            messages=[Message(role="user", content="Unique content")],
+            metadata={"seed_id": "second"},
+        )
+        # First record should be kept
+        result1 = dedup.process_record(record1)
+        assert result1 is not None
+        # Second record with same content should be discarded
+        result2 = dedup.process_record(record2)
+        assert result2 is None
+
+    def test_process_record_tracks_format_distribution(self) -> None:
+        """Test that process_record tracks format distribution."""
+        dedup = DedupAndValidate()
+        record = DatasetRecord(
+            messages=[Message(role="user", content="Test")],
+            metadata={"seed_id": "format_test"},
+        )
+        dedup.process_record(record)
+        # Check that format distribution was tracked
+        assert "none" in dedup.format_distribution
+
+
+class TestProcessBatch:
+    """Tests for DedupAndValidate.process_batch method."""
+
+    def test_process_batch_all_valid(self) -> None:
+        """Test processing a batch where all records are valid."""
+        dedup = DedupAndValidate()
+        records = [
+            DatasetRecord(
+                messages=[Message(role="user", content=f"Message {i}")],
+                metadata={"seed_id": f"batch_{i}"},
+            )
+            for i in range(5)
+        ]
+        result = dedup.process_batch(records)
+        assert len(result) == 5
+
+    def test_process_batch_mixed_validity(self) -> None:
+        """Test processing a batch with mixed valid/invalid records."""
+        dedup = DedupAndValidate()
+        records = [
+            DatasetRecord(
+                messages=[Message(role="user", content="Valid 1")],
+                metadata={"seed_id": "valid_1"},
+            ),
+            DatasetRecord(
+                messages=[
+                    Message(
+                        role="user",
+                        content='{"name": "func", "arguments": {}}',
+                    )
+                ],
+                metadata={"seed_id": "invalid_tool"},
+            ),
+            DatasetRecord(
+                messages=[Message(role="user", content="Valid 2")],
+                metadata={"seed_id": "valid_2"},
+            ),
+        ]
+        result = dedup.process_batch(records)
+        assert len(result) == 2
+
+    def test_process_batch_empty(self) -> None:
+        """Test processing an empty batch."""
+        dedup = DedupAndValidate()
+        result = dedup.process_batch([])
+        assert len(result) == 0

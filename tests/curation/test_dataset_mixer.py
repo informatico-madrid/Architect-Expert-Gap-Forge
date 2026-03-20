@@ -16,11 +16,12 @@ import json
 import logging
 import random
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 import tiktoken
 
-from src.curation.dataset_mixer import DatasetMixer, DatasetMixerConfig
+from src.curation.dataset_mixer import DatasetMixer, DatasetMixerConfig, load_specialized_records
 from src.utils.schema import CompositionReport, DatasetRecord, Message
 
 logger = logging.getLogger(__name__)
@@ -1446,3 +1447,100 @@ class TestDatasetMixerGenerateReport:
 
         # All tokens should be from one origin
         assert sum(report.token_pct_by_origin.values()) == 100.0
+
+
+class TestHelperFunctions:
+    """Tests for helper functions in dataset_mixer module."""
+
+    def test_load_specialized_records_file_not_found(self, tmp_path: Path) -> None:
+        """Test load_specialized_records raises FileNotFoundError for missing file."""
+        with pytest.raises(FileNotFoundError):
+            load_specialized_records(tmp_path / "nonexistent.jsonl")
+
+    def test_load_specialized_records_parses_jsonl(
+        self, tmp_path: Path, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test load_specialized_records parses valid JSONL file."""
+        jsonl_path = tmp_path / "specialized.jsonl"
+
+        with open(jsonl_path, "w") as f:
+            for record in specialized_records[:3]:
+                data = {
+                    "messages": [{"role": m.role, "content": m.content} for m in record.messages],
+                    "metadata": record.metadata,
+                }
+                f.write(json.dumps(data) + "\n")
+
+        result = load_specialized_records(jsonl_path)
+        assert len(result) == 3
+
+    def test_load_specialized_records_skips_invalid_lines(
+        self, tmp_path: Path
+    ) -> None:
+        """Test load_specialized_records skips invalid JSON lines."""
+        jsonl_path = tmp_path / "invalid.jsonl"
+
+        with open(jsonl_path, "w") as f:
+            f.write('{"messages": [{"role": "user", "content": "valid"}]}\n')
+            f.write("invalid json line\n")
+            f.write('{"messages": [{"role": "user", "content": "also valid"}]}\n')
+
+        result = load_specialized_records(jsonl_path)
+        # Should skip the invalid line and load 2 valid records
+        assert len(result) == 2
+
+
+class TestSubsampleWithMissingTokenCount:
+    """Tests for _subsample_by_tokens method when token_count is missing from metadata."""
+
+    def test_subsample_calculates_token_count_when_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test _subsample_by_tokens calculates token count when not in metadata."""
+        # Mock tiktoken.get_encoding
+        mock_tokenizer = MagicMock()
+        mock_tokenizer.encode = MagicMock(return_value=[1, 2, 3, 4, 5])  # 5 tokens
+        monkeypatch.setattr("tiktoken.get_encoding", MagicMock(return_value=mock_tokenizer))
+
+        config = DatasetMixerConfig(
+            specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42
+        )
+        mixer = DatasetMixer(config)
+
+        # Create records WITHOUT token_count in metadata
+        records = [
+            DatasetRecord(
+                messages=[Message(role="user", content=f"Content {i}")],
+                metadata={},  # No token_count
+            )
+            for i in range(5)
+        ]
+
+        # Subsample with target that requires token calculation
+        mixer._subsample_by_tokens(records, target_tokens=20)
+
+        # Tokenizer should have been called to calculate token counts
+        assert mock_tokenizer.encode.called
+
+
+class TestExportReport:
+    """Tests for export_report method."""
+
+    def test_export_report_creates_directory(
+        self, tmp_path: Path, specialized_records: list[DatasetRecord]
+    ) -> None:
+        """Test export_report creates parent directories if they don't exist."""
+        config = DatasetMixerConfig(
+            specialized_pct=100.0, anchor_pct=0.0, shuffle_seed=42
+        )
+        mixer = DatasetMixer(config)
+
+        report = mixer.generate_report(specialized_records[:3])
+
+        # Path with non-existent parent directory
+        output_path = tmp_path / "subdir" / "nested" / "report.json"
+
+        mixer.export_report(report, output_path)
+
+        assert output_path.exists()
+        assert output_path.read_text().strip() != ""
