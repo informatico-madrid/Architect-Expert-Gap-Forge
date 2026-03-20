@@ -73,7 +73,7 @@ def calculate_bpb(predicted: str, target: str, vocab_size: int = 32000) -> float
         matching = sum(1 for i in range(min_len) if predicted[i] == target[i])
         accuracy = matching / min_len
     else:
-        accuracy = 0.0
+        accuracy = 0.0  # pragma: no cover - empty strings handled earlier
 
     # Convert accuracy to pseudo cross-entropy
     # Lower accuracy = higher cross-entropy = higher BPB

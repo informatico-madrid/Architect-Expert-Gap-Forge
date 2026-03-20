@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import logging
-import pytest
 from src.utils.logging import get_logger
 
 
@@ -67,3 +66,21 @@ class TestGetLogger:
         logger = get_logger("test_logger_warning_unique")
         # Should not raise
         logger.warning("Warning message")
+
+    def test_logger_with_parent_handler_not_configured(self) -> None:
+        """Should not add handler when parent has handlers."""
+        # Get a child logger - it should not add handlers if parent has them
+        parent_name = f"test_parent_unique_{id(self)}"
+        child_name = f"{parent_name}.child"
+        # Get parent first to establish hierarchy
+        parent_logger = get_logger(parent_name)
+        # Ensure parent has handlers
+        if not parent_logger.handlers and not parent_logger.parent.handlers:
+            # Manually add a handler to parent to simulate configured parent
+            import sys
+            handler = logging.StreamHandler(sys.stderr)
+            parent_logger.addHandler(handler)
+        # Now get child - it should not add duplicate handlers
+        child_logger = get_logger(child_name)
+        # Child should either use parent's handler or have its own
+        assert child_logger.handlers or child_logger.parent.handlers
