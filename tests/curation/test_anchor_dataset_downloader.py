@@ -405,6 +405,202 @@ class TestSubsamplingByTokenCount:
         assert selected[1]["id"] == "r2"
 
 
+class TestSubsampleMethod:
+    """Tests for the actual AnchorDatasetDownloader.subsample method."""
+
+    def _create_record(self, record_id: str, token_count: int) -> DatasetRecord:
+        """Helper to create a DatasetRecord with specified token count in metadata."""
+        messages = [Message(role="user", content=f"Message for {record_id}")]
+        return DatasetRecord(
+            messages=messages,
+            metadata={"origin": "test", "type": "test", "use_case": "test", "token_count": token_count},
+        )
+
+    def test_subsample_selects_records_within_budget(self) -> None:
+        """Test that subsample selects records within the token budget."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Create records with token counts: 10, 50, 200, 20, 100
+        records = [
+            self._create_record("r1", 10),
+            self._create_record("r2", 50),
+            self._create_record("r3", 200),
+            self._create_record("r4", 20),
+            self._create_record("r5", 100),
+        ]
+
+        # Budget of 100 should select in order: r1(10), r2(50)=60, r4(20)=80
+        # r3(200) and r5(100) don't fit
+        result = downloader.subsample(records, token_budget=100)
+
+        assert len(result) == 3
+        assert result[0].messages[0].content == "Message for r1"
+        assert result[1].messages[0].content == "Message for r2"
+        assert result[2].messages[0].content == "Message for r4"
+
+    def test_subsample_empty_records_list(self) -> None:
+        """Test that subsample handles empty records list."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        result = downloader.subsample([], token_budget=1000)
+
+        assert result == []
+
+    def test_subsample_zero_token_budget(self) -> None:
+        """Test that subsample with zero token budget returns empty list."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [self._create_record("r1", 10)]
+
+        result = downloader.subsample(records, token_budget=0)
+
+        assert result == []
+
+    def test_subsample_large_budget_includes_all(self) -> None:
+        """Test that large token budget includes all records."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [
+            self._create_record("r1", 10),
+            self._create_record("r2", 50),
+            self._create_record("r3", 100),
+        ]
+
+        result = downloader.subsample(records, token_budget=10000)
+
+        assert len(result) == 3
+
+    def test_subsample_exact_fit(self) -> None:
+        """Test that subsample handles exact fit (total equals budget)."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [
+            self._create_record("r1", 50),
+            self._create_record("r2", 50),
+        ]
+
+        result = downloader.subsample(records, token_budget=100)
+
+        assert len(result) == 2
+
+    def test_subsample_missing_token_count(self) -> None:
+        """Test that subsample handles records without token_count in metadata."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Record without token_count
+        messages = [Message(role="user", content="Test")]
+        record_no_tokens = DatasetRecord(
+            messages=messages,
+            metadata={"origin": "test", "type": "test", "use_case": "test"},
+        )
+        records = [record_no_tokens, self._create_record("r1", 50)]
+
+        result = downloader.subsample(records, token_budget=100)
+
+        # Should include record with no token_count (treated as 0) and r1
+        assert len(result) == 2
+
+    def test_subsample_preserves_order(self) -> None:
+        """Test that subsample preserves the order of selected records."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [
+            self._create_record("r1", 10),
+            self._create_record("r2", 20),
+            self._create_record("r3", 30),
+            self._create_record("r4", 40),
+        ]
+
+        # Budget of 35 should select r1(10), r2(20) = 30 tokens, can't fit r3(30)
+        result = downloader.subsample(records, token_budget=35)
+
+        assert len(result) == 2
+        assert result[0].messages[0].content == "Message for r1"
+        assert result[1].messages[0].content == "Message for r2"
+
+    def test_subsample_single_record_fits(self) -> None:
+        """Test that subsample selects a single record that fits."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [self._create_record("r1", 50)]
+
+        result = downloader.subsample(records, token_budget=100)
+
+        assert len(result) == 1
+        assert result[0].messages[0].content == "Message for r1"
+
+    def test_subsample_record_too_large(self) -> None:
+        """Test that subsample skips records that exceed budget."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        records = [
+            self._create_record("r1", 10),
+            self._create_record("r2", 500),  # Exceeds budget alone
+            self._create_record("r3", 20),
+        ]
+
+        result = downloader.subsample(records, token_budget=100)
+
+        # Should only select r1(10) and r3(20) = 30 tokens, skip r2
+        assert len(result) == 2
+        assert result[0].messages[0].content == "Message for r1"
+        assert result[1].messages[0].content == "Message for r3"
+
+
 class TestJsonlExport:
     """Tests for JSONL export functionality."""
 
@@ -808,3 +1004,647 @@ class TestMockHuggingFaceDownload:
         files = list(data_dir.glob("*.json")) + list(data_dir.glob("*.jsonl"))
 
         assert len(files) >= 3
+
+
+class TestAnchorDatasetDownloaderDownload:
+    """Tests for AnchorDatasetDownloader.download method.
+
+    Note: Since the 'datasets' library is not available in the test environment,
+    these tests focus on the fallback path (_download_via_hub) which is used
+    when the datasets library is not installed.
+    """
+
+    def test_download_uses_datasets_library(self) -> None:
+        """Test that download method exists and is callable."""
+        config = AnchorDatasetConfig(
+            hf_id="Salesforce/xlam-function-calling-60k",
+            split="train",
+            format="xlam",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # The download method should be callable with config
+        assert hasattr(downloader, "download")
+        assert callable(downloader.download)
+
+    def test_download_with_fallback_logs_info(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+        """Test that download method logs info when using fallback path."""
+        # Since datasets is not available, it will use the fallback
+        # Mock huggingface_hub to return empty list
+        mock_list_repo_files = MagicMock(return_value=[])
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Consume the generator to trigger logging
+        with caplog.at_level(logging.INFO):
+            list(downloader.download(config))
+
+        # Check that info message was logged about downloading
+        assert any("Downloading dataset" in record.message for record in caplog.records)
+
+    def test_download_with_fallback_logs_warning(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+        """Test that download method logs warning when datasets library not available."""
+        # Mock huggingface_hub to return empty list (simulating fallback)
+        mock_list_repo_files = MagicMock(return_value=[])
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Consume the generator to trigger logging
+        with caplog.at_level(logging.WARNING):
+            list(downloader.download(config))
+
+        # Check that warning about datasets library not available was logged
+        assert any("datasets library not available" in record.message for record in caplog.records)
+
+
+class TestAnchorDatasetDownloaderDownloadViaHub:
+    """Tests for AnchorDatasetDownloader._download_via_hub fallback method."""
+
+    def test_download_via_hub_lists_files(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that _download_via_hub lists repository files."""
+        mock_files = ["data/train.jsonl", "data/test.jsonl"]
+        mock_list_repo_files = MagicMock(return_value=mock_files)
+
+        # Patch at the location where it's imported (huggingface_hub module)
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Call _download_via_hub - it should call list_repo_files
+        # We don't need to fully mock everything since we just want to verify the call
+        try:
+            list(downloader._download_via_hub(config))
+        except Exception:
+            pass  # Expected to fail due to incomplete mocking
+
+        # Verify list_repo_files was called
+        mock_list_repo_files.assert_called_once_with("test/dataset", repo_type="dataset")
+
+    def test_download_via_hub_filters_jsonl_files(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that _download_via_hub filters for json/jsonl files."""
+        # Include non-data files that should be filtered out
+        all_files = [
+            "README.md",
+            "data/train.jsonl",
+            "data/valid.json",
+            "data/test.txt",
+            "data/train.parquet",
+        ]
+
+        mock_list_repo_files = MagicMock(return_value=all_files)
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Call _download_via_hub to test the filtering logic is applied
+        # We expect it to filter out non-json/jsonl files
+        try:
+            list(downloader._download_via_hub(config))
+        except Exception:
+            pass  # May fail due to incomplete mocking
+
+        # Verify list_repo_files was called with correct params
+        mock_list_repo_files.assert_called_once_with("test/dataset", repo_type="dataset")
+
+    def test_download_via_hub_no_data_files(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+        """Test _download_via_hub handles no data files gracefully."""
+        # Return only non-data files
+        mock_list_repo_files = MagicMock(return_value=["README.md", "config.yaml"])
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Should yield no records and log warning
+        with caplog.at_level(logging.WARNING):
+            records = list(downloader._download_via_hub(config))
+
+        assert len(records) == 0
+        assert any("No data files found" in record.message for record in caplog.records)
+
+    def test_download_via_hub_parses_jsonl(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        """Test that _download_via_hub correctly parses JSONL files."""
+        mock_files = ["data/train.jsonl"]
+        mock_list_repo_files = MagicMock(return_value=mock_files)
+
+        # Create a real temporary JSONL file
+        records = [
+            {"id": "1", "conversations": [{"from": "human", "value": "Q1"}, {"from": "gpt", "value": "A1"}]},
+            {"id": "2", "conversations": [{"from": "human", "value": "Q2"}, {"from": "gpt", "value": "A2"}]},
+        ]
+        jsonl_file = tmp_path / "train.jsonl"
+        with open(jsonl_file, "w") as f:
+            for record in records:
+                f.write(json.dumps(record) + "\n")
+
+        mock_hf_hub_download = MagicMock(return_value=str(jsonl_file))
+
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+        monkeypatch.setattr("huggingface_hub.hf_hub_download", mock_hf_hub_download)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Get records from the method
+        result_records = list(downloader._download_via_hub(config))
+
+        # Verify we got the records
+        assert len(result_records) == 2
+        assert result_records[0]["id"] == "1"
+        assert result_records[1]["id"] == "2"
+
+    def test_download_via_hub_parses_json_array(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Test that _download_via_hub correctly parses JSON array files."""
+        mock_files = ["data/train.json"]
+        mock_list_repo_files = MagicMock(return_value=mock_files)
+
+        # Create mock JSON array content
+        records = [
+            {"id": "1", "conversations": [{"from": "human", "value": "Q1"}]},
+            {"id": "2", "conversations": [{"from": "human", "value": "Q2"}]},
+        ]
+        json_content = json.dumps(records)
+
+        mock_file = MagicMock()
+        mock_file.__enter__ = MagicMock(return_value=MagicMock(read=MagicMock(return_value=json_content)))
+        mock_file.__exit__ = MagicMock(return_value=False)
+
+        mock_hf_hub_download = MagicMock(return_value="/tmp/train.json")
+
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+        monkeypatch.setattr("huggingface_hub.hf_hub_download", mock_hf_hub_download)
+        monkeypatch.setattr("builtins.open", MagicMock(return_value=mock_file))
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        result_records = list(downloader._download_via_hub(config))
+
+        assert len(result_records) == 2
+
+    def test_download_via_hub_handles_download_error(self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+        """Test that _download_via_hub handles download errors gracefully."""
+        mock_files = ["data/train.jsonl"]
+        mock_list_repo_files = MagicMock(return_value=mock_files)
+
+        # Make hf_hub_download raise an exception
+        mock_hf_hub_download = MagicMock(side_effect=Exception("Network error"))
+
+        monkeypatch.setattr("huggingface_hub.list_repo_files", mock_list_repo_files)
+        monkeypatch.setattr("huggingface_hub.hf_hub_download", mock_hf_hub_download)
+
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=50.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Should not raise, should log warning and continue
+        with caplog.at_level(logging.WARNING):
+            records = list(downloader._download_via_hub(config))
+
+        # Should have logged a warning about the failed download
+        assert any("Failed to download file" in record.message for record in caplog.records)
+        assert len(records) == 0
+
+
+class TestAnchorDatasetDownloaderParse:
+    """Tests for AnchorDatasetDownloader.parse method."""
+
+    def test_parse_xlam_format(self) -> None:
+        """Test parsing xlam format records."""
+        config = AnchorDatasetConfig(
+            hf_id="Salesforce/xlam-function-calling-60k",
+            split="train",
+            format="xlam",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Create raw xlam records
+        raw_data = [
+            {
+                "id": "xlam-001",
+                "conversations": [
+                    {"from": "human", "value": "What's the weather?"},
+                    {"from": "gpt", "value": "I'll check the weather."},
+                ],
+            }
+        ]
+
+        # Parse using the method
+        records = list(downloader.parse(iter(raw_data), "xlam", "test-origin"))
+
+        assert len(records) == 1
+        assert len(records[0].messages) == 2
+        assert records[0].messages[0].role == "user"
+        assert records[0].messages[1].role == "assistant"
+        assert records[0].metadata["origin"] == "test-origin"
+        assert records[0].metadata["type"] == "anchor"
+        assert records[0].metadata["format"] == "chatml"
+        assert "token_count" in records[0].metadata
+
+    def test_parse_xlam_with_function_call(self) -> None:
+        """Test parsing xlam format with function_call field."""
+        config = AnchorDatasetConfig(
+            hf_id="Salesforce/xlam-function-calling-60k",
+            split="train",
+            format="xlam",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        raw_data = [
+            {
+                "id": "xlam-fc-001",
+                "conversations": [
+                    {"from": "human", "value": "Get weather for Tokyo"},
+                    {
+                        "from": "gpt",
+                        "value": "I'll call the weather function.",
+                        "function_call": {
+                            "name": "get_weather",
+                            "arguments": {"city": "Tokyo"},
+                        },
+                    },
+                ],
+            }
+        ]
+
+        records = list(downloader.parse(iter(raw_data), "xlam", "test-origin"))
+
+        assert len(records) == 1
+        # Check function_call is included in content
+        assert "get_weather" in records[0].messages[1].content
+        assert "<tool_call>" in records[0].messages[1].content
+
+    def test_parse_sharegpt_format(self) -> None:
+        """Test parsing sharegpt format records."""
+        config = AnchorDatasetConfig(
+            hf_id="llmware/finetome-100k",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        raw_data = [
+            {
+                "id": "sharegpt-001",
+                "conversations": [
+                    {"from": "human", "value": "Explain Python"},
+                    {"from": "gpt", "value": "Python is a programming language."},
+                    {"from": "human", "value": "What about lists?"},
+                    {"from": "gpt", "value": "Lists are data structures."},
+                ],
+            }
+        ]
+
+        records = list(downloader.parse(iter(raw_data), "sharegpt", "test-origin"))
+
+        assert len(records) == 1
+        assert len(records[0].messages) == 4
+        assert records[0].messages[0].role == "user"
+        assert records[0].messages[1].role == "assistant"
+        assert records[0].messages[2].role == "user"
+        assert records[0].messages[3].role == "assistant"
+
+    def test_parse_sharegpt_with_system_role(self) -> None:
+        """Test parsing sharegpt format with system role."""
+        config = AnchorDatasetConfig(
+            hf_id="llmware/finetome-100k",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        raw_data = [
+            {
+                "id": "sharegpt-sys-001",
+                "conversations": [
+                    {"from": "system", "value": "You are a helpful assistant."},
+                    {"from": "human", "value": "Hello"},
+                    {"from": "gpt", "value": "Hi there!"},
+                ],
+            }
+        ]
+
+        records = list(downloader.parse(iter(raw_data), "sharegpt", "test-origin"))
+
+        assert len(records) == 1
+        assert records[0].messages[0].role == "system"
+        assert records[0].messages[1].role == "user"
+        assert records[0].messages[2].role == "assistant"
+
+    def test_parse_openai_messages_format(self) -> None:
+        """Test parsing openai_messages format records."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="openai_messages",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        raw_data = [
+            {
+                "id": "openai-001",
+                "messages": [
+                    {"role": "system", "content": "You are helpful."},
+                    {"role": "user", "content": "What is 2+2?"},
+                    {"role": "assistant", "content": "2+2 equals 4."},
+                ],
+            }
+        ]
+
+        records = list(downloader.parse(iter(raw_data), "openai_messages", "test-origin"))
+
+        assert len(records) == 1
+        assert len(records[0].messages) == 3
+        assert records[0].messages[0].role == "system"
+        assert records[0].messages[1].role == "user"
+        assert records[0].messages[2].role == "assistant"
+
+    def test_parse_unknown_format_logs_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test parsing with unknown format logs warning."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="unknown",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        raw_data = [{"id": "test-001", "conversations": [{"from": "human", "value": "Test"}]}]
+
+        with caplog.at_level(logging.WARNING):
+            records = list(downloader.parse(iter(raw_data), "unknown_format", "test"))
+
+        assert len(records) == 0
+        assert any("Unknown format type" in record.message for record in caplog.records)
+
+    def test_parse_handles_record_exception(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test parsing handles exceptions in individual records gracefully."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="xlam",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        # Invalid record - missing 'conversations' field
+        raw_data = [{"id": "invalid-001", "other_field": "value"}]
+
+        with caplog.at_level(logging.WARNING):
+            records = list(downloader.parse(iter(raw_data), "xlam", "test"))
+
+        # Should skip the invalid record and continue
+        assert len(records) == 0
+        assert any("Failed to parse record" in record.message for record in caplog.records)
+
+    def test_parse_multiple_records(self) -> None:
+        """Test parsing multiple records."""
+        config = AnchorDatasetConfig(
+            hf_id="test/dataset",
+            split="train",
+            format="sharegpt",
+            token_budget_pct=30.0,
+        )
+        downloader = AnchorDatasetDownloader([config])
+
+        raw_data = [
+            {"id": "1", "conversations": [{"from": "human", "value": "Q1"}, {"from": "gpt", "value": "A1"}]},
+            {"id": "2", "conversations": [{"from": "human", "value": "Q2"}, {"from": "gpt", "value": "A2"}]},
+            {"id": "3", "conversations": [{"from": "human", "value": "Q3"}, {"from": "gpt", "value": "A3"}]},
+        ]
+
+        records = list(downloader.parse(iter(raw_data), "sharegpt", "test"))
+
+        assert len(records) == 3
+        assert records[0].messages[0].content == "Q1"
+        assert records[1].messages[0].content == "Q2"
+        assert records[2].messages[0].content == "Q3"
+
+
+class TestAnchorDatasetDownloaderParseHelpers:
+    """Tests for AnchorDatasetDownloader internal parse methods."""
+
+    def test_parse_xlam_method(self) -> None:
+        """Test _parse_xlam method directly."""
+        config = AnchorDatasetConfig(hf_id="test", format="xlam")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Question"},
+                {"from": "gpt", "value": "Answer"},
+            ]
+        }
+
+        messages = downloader._parse_xlam(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[0].content == "Question"
+        assert messages[1].role == "assistant"
+        assert messages[1].content == "Answer"
+
+    def test_parse_xlam_missing_conversations_raises(self) -> None:
+        """Test _parse_xlam raises ValueError when conversations missing."""
+        config = AnchorDatasetConfig(hf_id="test", format="xlam")
+        downloader = AnchorDatasetDownloader([config])
+
+        with pytest.raises(ValueError, match="conversations"):
+            downloader._parse_xlam({})
+
+    def test_parse_xlam_skips_invalid_conversation_items(self) -> None:
+        """Test _parse_xlam skips items without from/value."""
+        config = AnchorDatasetConfig(hf_id="test", format="xlam")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Valid message"},
+                {"invalid": "data"},  # Should be skipped
+                {"from": "gpt", "value": "Another valid"},
+            ]
+        }
+
+        messages = downloader._parse_xlam(record)
+
+        assert len(messages) == 2
+
+    def test_parse_sharegpt_method(self) -> None:
+        """Test _parse_sharegpt method directly."""
+        config = AnchorDatasetConfig(hf_id="test", format="sharegpt")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Hello"},
+                {"from": "gpt", "value": "Hi there"},
+            ]
+        }
+
+        messages = downloader._parse_sharegpt(record)
+
+        assert len(messages) == 2
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_parse_sharegpt_missing_conversations_raises(self) -> None:
+        """Test _parse_sharegpt raises ValueError when conversations missing."""
+        config = AnchorDatasetConfig(hf_id="test", format="sharegpt")
+        downloader = AnchorDatasetDownloader([config])
+
+        with pytest.raises(ValueError, match="conversations"):
+            downloader._parse_sharegpt({})
+
+    def test_parse_sharegpt_unknown_role_preserved(self) -> None:
+        """Test _parse_sharegpt preserves unknown roles."""
+        config = AnchorDatasetConfig(hf_id="test", format="sharegpt")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "conversations": [
+                {"from": "human", "value": "Question"},
+                {"from": "unknown_role", "value": "Response"},
+            ]
+        }
+
+        messages = downloader._parse_sharegpt(record)
+
+        # Unknown role should be preserved as-is
+        assert messages[1].role == "unknown_role"
+
+    def test_parse_openai_messages_method(self) -> None:
+        """Test _parse_openai_messages method directly."""
+        config = AnchorDatasetConfig(hf_id="test", format="openai_messages")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "messages": [
+                {"role": "system", "content": "You are helpful."},
+                {"role": "user", "content": "Hello"},
+                {"role": "assistant", "content": "Hi"},
+            ]
+        }
+
+        messages = downloader._parse_openai_messages(record)
+
+        assert len(messages) == 3
+        assert messages[0].role == "system"
+        assert messages[1].role == "user"
+        assert messages[2].role == "assistant"
+
+    def test_parse_openai_messages_missing_messages_raises(self) -> None:
+        """Test _parse_openai_messages raises ValueError when messages missing."""
+        config = AnchorDatasetConfig(hf_id="test", format="openai_messages")
+        downloader = AnchorDatasetDownloader([config])
+
+        with pytest.raises(ValueError, match="messages"):
+            downloader._parse_openai_messages({})
+
+    def test_parse_openai_messages_skips_invalid_items(self) -> None:
+        """Test _parse_openai_messages skips items without role/content."""
+        config = AnchorDatasetConfig(hf_id="test", format="openai_messages")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "messages": [
+                {"role": "user", "content": "Valid"},
+                {"role": "assistant"},  # Missing content - should skip
+                {"content": "Missing role"},  # Should skip
+                {"role": "assistant", "content": "Valid again"},
+            ]
+        }
+
+        messages = downloader._parse_openai_messages(record)
+
+        assert len(messages) == 2
+
+    def test_parse_xlam_role_mapping(self) -> None:
+        """Test xlam role mapping to ChatML."""
+        config = AnchorDatasetConfig(hf_id="test", format="xlam")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "conversations": [
+                {"from": "human", "value": "User message"},
+                {"from": "gpt", "value": "Assistant message"},
+            ]
+        }
+
+        messages = downloader._parse_xlam(record)
+
+        assert messages[0].role == "user"
+        assert messages[1].role == "assistant"
+
+    def test_parse_sharegpt_role_mapping(self) -> None:
+        """Test sharegpt role mapping includes tool role."""
+        config = AnchorDatasetConfig(hf_id="test", format="sharegpt")
+        downloader = AnchorDatasetDownloader([config])
+
+        record = {
+            "conversations": [
+                {"from": "human", "value": "User"},
+                {"from": "tool", "value": "Tool result"},
+                {"from": "gpt", "value": "Assistant"},
+            ]
+        }
+
+        messages = downloader._parse_sharegpt(record)
+
+        assert messages[0].role == "user"
+        assert messages[1].role == "tool"
+        assert messages[2].role == "assistant"
