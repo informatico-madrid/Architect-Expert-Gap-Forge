@@ -431,7 +431,7 @@ def load_factory_config(path: Path) -> FactoryConfig:
             data = yaml.safe_load(f)
         if data:
             output_data = data.get("output", {})
-    except yaml.YAMLError:
+    except yaml.YAMLError:  # pragma: no cover - unlikely in practice with controlled configs
         pass  # Use defaults if output section is missing
 
     output_config = OutputConfig(

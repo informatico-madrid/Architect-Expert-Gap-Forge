@@ -199,6 +199,110 @@ modernity_rubric:
 
 
 @pytest.mark.integration
+class TestAuditConfigFunctions:
+    """Test functions in src/audit/config.py for full coverage."""
+
+    def test_get_inference_router_returns_singleton(self) -> None:
+        """_get_inference_router must return cached InferenceRouter instance."""
+        import src.audit.config
+
+        # Reset cache
+        src.audit.config._router = None
+        router1 = src.audit.config._get_inference_router()
+        router2 = src.audit.config._get_inference_router()
+
+        # Should return same instance (singleton)
+        assert router1 is router2
+
+    def test_validate_gemini_api_key_when_gemini_available(self) -> None:
+        """validate_gemini_api_key must work when _GEMINI_AVAILABLE is True (the common case in prod)."""
+        import src.audit.config
+        from src.audit import inference
+
+        # In test environment, _GEMINI_AVAILABLE is True (google.genai is installed)
+        # Lines 184-191 should execute
+        assert inference._GEMINI_AVAILABLE is True
+
+        # With no GOOGLE_API_KEY set, should return False
+        with patch.dict("os.environ", {}, clear=True):
+            result = src.audit.config.validate_gemini_api_key()
+            assert result is False
+
+    def test_validate_gemini_api_key_when_gemini_available_no_key(self) -> None:
+        """validate_gemini_api_key must return False when Gemini available but no key."""
+        import src.audit.config
+        from src.audit import inference
+
+        # Save original state
+        original_available = inference._GEMINI_AVAILABLE
+
+        try:
+            # Set gemini as available but no key
+            inference._GEMINI_AVAILABLE = True
+            # Clear any existing key
+            with patch.dict("os.environ", {}, clear=True):
+                result = src.audit.config.validate_gemini_api_key()
+                assert result is False
+        finally:
+            # Restore original state
+            inference._GEMINI_AVAILABLE = original_available
+
+    def test_validate_gemini_api_key_when_gemini_available_with_key(self) -> None:
+        """validate_gemini_api_key must return True when Gemini available and key set."""
+        import src.audit.config
+        from src.audit import inference
+
+        # Save original state
+        original_available = inference._GEMINI_AVAILABLE
+
+        try:
+            # Set gemini as available with key
+            inference._GEMINI_AVAILABLE = True
+            with patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key-123"}):
+                result = src.audit.config.validate_gemini_api_key()
+                assert result is True
+        finally:
+            # Restore original state
+            inference._GEMINI_AVAILABLE = original_available
+
+    def test_validate_gemini_api_key_when_gemini_available_empty_key(self) -> None:
+        """validate_gemini_api_key must return False when key is empty string."""
+        import src.audit.config
+        from src.audit import inference
+
+        # Save original state
+        original_available = inference._GEMINI_AVAILABLE
+
+        try:
+            # Set gemini as available with empty key
+            inference._GEMINI_AVAILABLE = True
+            with patch.dict("os.environ", {"GOOGLE_API_KEY": "   "}):
+                result = src.audit.config.validate_gemini_api_key()
+                assert result is False
+        finally:
+            # Restore original state
+            inference._GEMINI_AVAILABLE = original_available
+
+    def test_require_gemini_api_key_raises_when_no_key(self) -> None:
+        """require_gemini_api_key must raise EnvironmentError when key missing."""
+        import src.audit.config
+        from src.audit import inference
+
+        # Save original state
+        original_available = inference._GEMINI_AVAILABLE
+
+        try:
+            # Set gemini as available but no key
+            inference._GEMINI_AVAILABLE = True
+            with patch.dict("os.environ", {}, clear=True):
+                with pytest.raises(EnvironmentError):
+                    src.audit.config.require_gemini_api_key()
+        finally:
+            # Restore original state
+            inference._GEMINI_AVAILABLE = original_available
+
+
+@pytest.mark.integration
 class TestAdvancedFormatting:
     """Test advanced formatting logic covering lines 250-252, 280, 294-295."""
 

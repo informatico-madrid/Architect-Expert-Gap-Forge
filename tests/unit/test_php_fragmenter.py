@@ -1172,3 +1172,134 @@ function test() {
         assert isinstance(exclusions, frozenset)
 
 
+class TestPhpFragmentSignatureCategories:
+    """Tests for PhpFragment.get_signature_categories method."""
+
+    def test_get_signature_categories_empty(self) -> None:
+        """Test with empty signatures returns empty tuple."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php function test() {}",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(),
+        )
+        categories = fragment.get_signature_categories()
+        assert categories == ()
+
+    def test_get_signature_categories_single(self) -> None:
+        """Test with single signature returns single category."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+        from src.discovery.php_signatures import LegacySignature, SignatureCategory
+
+        sig = LegacySignature(
+            pattern_name="mysql_query",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query",
+            line_number=5,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php function test() { mysql_query(); }",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(sig,),
+        )
+        categories = fragment.get_signature_categories()
+        assert SignatureCategory.PERSISTENCE_SMELL.value in categories
+
+    def test_get_signature_categories_multiple_same(self) -> None:
+        """Test with multiple signatures of same category returns unique."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+        from src.discovery.php_signatures import LegacySignature, SignatureCategory
+
+        sig1 = LegacySignature(
+            pattern_name="mysql_query1",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query1",
+            line_number=5,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        sig2 = LegacySignature(
+            pattern_name="mysql_query2",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query2",
+            line_number=10,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=20,
+            raw_content="<?php function test() {}",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(sig1, sig2),
+        )
+        categories = fragment.get_signature_categories()
+        # Should return unique categories only
+        assert len(categories) == 1
+        assert SignatureCategory.PERSISTENCE_SMELL.value in categories
+
+    def test_get_signature_categories_multiple_different(self) -> None:
+        """Test with multiple signatures of different categories."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+        from src.discovery.php_signatures import LegacySignature, SignatureCategory
+
+        sig1 = LegacySignature(
+            pattern_name="mysql_query",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query",
+            line_number=5,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        sig2 = LegacySignature(
+            pattern_name="global_var",
+            category=SignatureCategory.STATE_POLLUTION.value,
+            matched_text="$global",
+            line_number=10,
+            severity="warning",
+            modern_equivalent="dependency injection",
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=20,
+            raw_content="<?php function test() {}",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(sig1, sig2),
+        )
+        categories = fragment.get_signature_categories()
+        assert len(categories) == 2
+        assert SignatureCategory.PERSISTENCE_SMELL.value in categories
+        assert SignatureCategory.STATE_POLLUTION.value in categories
+
+
