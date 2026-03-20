@@ -85,20 +85,20 @@ description: "Task list for improving code coverage to 90%+"
 - [x] T021 [P] [US2] Create tests for AnchorDatasetDownloader.subsample in tests/curation/test_anchor_dataset_downloader.py
 - [x] T022 [P] [US2] Create tests for AnchorDatasetDownloader.export in tests/curation/test_anchor_dataset_downloader.py
 - [x] T023 [P] [US2] Create tests for load_anchor_configs in tests/curation/test_anchor_dataset_downloader.py
-- [ ] T024 [P] [US2] Create tests for detect_tool_format in tests/curation/test_dedup_and_validate.py
-- [ ] T025 [P] [US2] Create tests for validate_record in tests/curation/test_dedup_and_validate.py
-- [ ] T026 [P] [US2] Create tests for deduplicate_record in tests/curation/test_dedup_and_validate.py
-- [ ] T027 [P] [US2] Create tests for _convert_alpaca in tests/curation/test_format_normalizer.py
-- [ ] T028 [P] [US2] Create tests for _convert_sharegpt in tests/curation/test_format_normalizer.py
-- [ ] T029 [P] [US2] Create tests for _convert_openai_messages in tests/curation/test_format_normalizer.py
-- [ ] T030 [P] [US2] Create tests for DatasetMixer.mix in tests/curation/test_dataset_mixer.py
-- [ ] T031 [P] [US2] Create tests for DatasetMixer.export in tests/curation/test_dataset_mixer.py
-- [ ] T032 [P] [US2] Create tests for DatasetMixer.generate_report in tests/curation/test_dataset_mixer.py
+- [x] T024 [P] [US2] Create tests for detect_tool_format in tests/curation/test_dedup_and_validate.py
+- [x] T025 [P] [US2] Create tests for validate_record in tests/curation/test_dedup_and_validate.py
+- [x] T026 [P] [US2] Create tests for deduplicate_record in tests/curation/test_dedup_and_validate.py
+- [x] T027 [P] [US2] Create tests for _convert_alpaca in tests/curation/test_format_normalizer.py
+- [x] T028 [P] [US2] Create tests for _convert_sharegpt in tests/curation/test_format_normalizer.py
+- [x] T029 [P] [US2] Create tests for _convert_openai_messages in tests/curation/test_format_normalizer.py
+- [x] T030 [P] [US2] Create tests for DatasetMixer.mix in tests/curation/test_dataset_mixer.py
+- [x] T031 [P] [US2] Create tests for DatasetMixer.export in tests/curation/test_dataset_mixer.py
+- [x] T032 [P] [US2] Create tests for DatasetMixer.generate_report in tests/curation/test_dataset_mixer.py
 
 ### Implementation for User Story 2
 
-- [ ] T033 [US2] Verify all tests pass with `pytest tests/curation/test_anchor_dataset_downloader.py tests/curation/test_dedup_and_validate.py tests/curation/test_format_normalizer.py tests/curation/test_dataset_mixer.py`
-- [ ] T034 [US2] Run coverage check: `pytest --cov=src/curation/anchor_dataset_downloader --cov=src/curation/dedup_and_validate --cov=src/curation/format_normalizer --cov=src/curation/dataset_mixer --cov-report=term-missing --cov-fail-under=90`
+- [x] T033 [US2] Verify all tests pass with `pytest tests/curation/test_anchor_dataset_downloader.py tests/curation/test_dedup_and_validate.py tests/curation/test_format_normalizer.py tests/curation/test_dataset_mixer.py`
+- [x] T034 [US2] Run coverage check: `pytest --cov=src/curation/anchor_dataset_downloader --cov=src/curation/dedup_and_validate --cov=src/curation/format_normalizer --cov=src/curation/dataset_mixer --cov-report=term-missing --cov-fail-under=90`
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -112,15 +112,15 @@ description: "Task list for improving code coverage to 90%+"
 
 ### Tests for User Story 3
 
-- [ ] T035 [P] [US3] Create tests for error handling in tests/factory/test_agentic_teacher_client.py
-- [ ] T036 [P] [US3] Create tests for config validation in tests/factory/test_factory_config.py
-- [ ] T037 [P] [US3] Create tests for all routes in tests/factory/test_hard_query_builder.py
-- [ ] T038 [P] [US3] Create tests for regex fallback in tests/utils/test_python_ast_adapter.py
-- [ ] T039 [P] [US3] Create tests for missing variable handling in tests/factory/test_prompt_builder.py
+- [x] T035 [P] [US3] Create tests for error handling in tests/factory/test_agentic_teacher_client.py
+- [x] T036 [P] [US3] Create tests for config validation in tests/factory/test_factory_config.py
+- [x] T037 [P] [US3] Create tests for all routes in tests/factory/test_hard_query_builder.py
+- [x] T038 [P] [US3] Create tests for regex fallback in tests/utils/test_python_ast_adapter.py
+- [x] T039 [P] [US3] Create tests for missing variable handling in tests/factory/test_prompt_builder.py
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Verify all tests pass with `pytest tests/factory/test_agentic_teacher_client.py tests/factory/test_factory_config.py tests/factory/test_hard_query_builder.py tests/utils/test_python_ast_adapter.py tests/factory/test_prompt_builder.py`
+- [x] T040 [US3] Verify all tests pass with `pytest tests/factory/test_agentic_teacher_client.py tests/factory/test_factory_config.py tests/factory/test_hard_query_builder.py tests/utils/test_python_ast_adapter.py tests/factory/test_prompt_builder.py`
 - [x] T041 [US3] Run coverage check: `pytest --cov=src/factory/agentic_teacher_client --cov=src/factory/config --cov=src/factory/hard_query_builder --cov=src/utils/extractors/python_ast_adapter --cov=src/factory/prompt_builder --cov-report=term-missing --cov-fail-under=90`
 
 **Checkpoint**: All user stories should now be independently functional
@@ -131,10 +131,10 @@ description: "Task list for improving code coverage to 90%+"
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T042 [P] Run full coverage check: `make coverage`
-- [ ] T043 [P] Verify total coverage >= 90% in coverage.xml
-- [ ] T044 [P] Update .gitignore if any new fixture files need exclusion
-- [ ] T045 [P] Document coverage improvements in docs/coverage_report.md
+- [x] T042 [P] Run full coverage check: `make coverage`
+- [x] T043 [P] Verify total coverage >= 90% in coverage.xml (ACHIEVED: 93.85% - coverage.xml shows 0.9385 line-rate)
+- [x] T044 [P] Update .gitignore if any new fixture files need exclusion (NO CHANGE NEEDED - fixtures properly tracked, pycache already ignored)
+- [x] T045 [P] Document coverage improvements in docs/coverage_report.md
 
 ---
 
