@@ -12,6 +12,9 @@ Saves tokenizer configuration and vocabulary.
 
 from __future__ import annotations
 
+from rich.console import Console
+from rich.panel import Panel
+
 
 def guardar_tokenizador(tokenizer_path: str, output_path: str) -> None:
     """Save tokenizer configuration and vocabulary.
@@ -32,4 +35,33 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, help="Output path")
     args = parser.parse_args()
 
+    # Create console for Rich output
+    console = Console()
+
+    # Display startup panel
+    console.print(
+        Panel(
+            f"[bold]Starting Tokenizer Save[/]\n"
+            f"[dim]Input:[/] [cyan]{args.tokenizer}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold blue]Tokenizador[/]",
+            border_style="blue",
+        )
+    )
+
+    # Perform save operation
+    console.print("[bold cyan]Saving tokenizer...[/]")
     guardar_tokenizador(args.tokenizer, args.output)
+    console.print("[green]Tokenizer save completed successfully![/]")
+
+    # Display summary panel
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Operation Complete[/]\n"
+            f"[dim]Input:[/] [cyan]{args.tokenizer}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold green]Summary[/]",
+            border_style="green",
+        )
+    )
