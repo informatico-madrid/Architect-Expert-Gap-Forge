@@ -60,6 +60,13 @@ You are 100% autonomous. Your work persists through FILES ONLY.
 6. If the task has [VERIFY] tag: run the verification command and report results
 7. Commit with a descriptive message referencing the task ID
 
+## CRITICAL: BATCH TOOL EXECUTION (FOR LOCAL MODELS)
+- Execute ALL tool calls in a SINGLE response (parallel execution)
+- Do NOT wait for tool results before generating the next tool call
+- After all tools complete, output TASK_COMPLETE immediately
+- This is a SINGLE TASK execution, not multiple iterations
+- The loop expects ONE response per task, not multiple responses for tool calls
+
 ## When Done
 - Mark the task as [x] in /mnt/bunker_data/ai/data_factory/specs/012-mejorar-cobertura-code/tasks.md
 - Append your progress to /mnt/bunker_data/ai/data_factory/progress.txt
