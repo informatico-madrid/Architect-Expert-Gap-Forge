@@ -86,6 +86,13 @@ You are 100% autonomous. Your work persists through FILES ONLY.
 - If you complete the task successfully, output exactly: TASK_COMPLETE
 - If all tasks are complete, output exactly: ALL_TASKS_COMPLETE
 - Do NOT add any additional text after these markers
+
+## CRITICAL: DO NOT USE TOOL CALLS
+- DO NOT use ▸ shell, ▸ write, ▸ read_resource, or any other tool call format
+- DO NOT use JSONL output format
+- Use standard text output only
+- Execute all operations directly without tool wrappers
+- This is a simple test - just create the file and output TASK_COMPLETE
 PROMPT_EOF
 }
 
@@ -102,14 +109,14 @@ main() {
     echo ""
 
     # Execute goose with prompt piped directly (same as ralph-loop.sh)
-    # Use --quiet to suppress tool call output and get only model response
+    # Use --output-format text to force plain text output without tool calls
     # See: https://block.github.io/goose/docs/guides/goose-cli-commands
     local output
     output=$(
         OPENAI_HOST="$RALPH_VLLM_URL" \
         OPENAI_API_KEY="$RALPH_VLLM_API_KEY" \
         GOOSE_MODEL="$RALPH_VLLM_MODEL" \
-        echo "$prompt" | goose run -i - --quiet --no-session 2>&1
+        echo "$prompt" | goose run --no-session -i - --output-format text 2>&1
     ) || true
 
     echo ""
