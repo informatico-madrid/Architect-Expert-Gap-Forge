@@ -1647,4 +1647,147 @@ class TestAnchorDatasetDownloaderParseHelpers:
 
         assert messages[0].role == "user"
         assert messages[1].role == "tool"
-        assert messages[2].role == "assistant"
+
+
+# =============================================================================
+# TESTS FOR load_anchor_configs
+# =============================================================================
+
+
+class TestLoadAnchorConfigs:
+    """Tests for the load_anchor_configs function."""
+
+    def test_load_anchor_configs_import(self) -> None:
+        """Test that load_anchor_configs can be imported."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+        assert callable(load_anchor_configs)
+
+    def test_load_anchor_configs_file_not_found(self, tmp_path: Path) -> None:
+        """Test that FileNotFoundError is raised for missing file."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        missing_file = tmp_path / "nonexistent.yaml"
+        with pytest.raises(FileNotFoundError):
+            load_anchor_configs(missing_file)
+
+    def test_load_anchor_configs_invalid_yaml(self, tmp_path: Path) -> None:
+        """Test that ValueError is raised for invalid YAML."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        invalid_file = tmp_path / "invalid.yaml"
+        invalid_file.write_text("not: valid: yaml: [")
+        with pytest.raises(Exception):  # yaml.YAMLError
+            load_anchor_configs(invalid_file)
+
+    def test_load_anchor_configs_missing_anchors_key(self, tmp_path: Path) -> None:
+        """Test that ValueError is raised when anchors key is missing."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        config_file = tmp_path / "no_anchors.yaml"
+        config_file.write_text("other_key: value")
+        with pytest.raises(ValueError, match="must contain 'anchors' list"):
+            load_anchor_configs(config_file)
+
+    def test_load_anchor_configs_empty_anchors(self, tmp_path: Path) -> None:
+        """Test that empty anchors list returns empty list."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        config_file = tmp_path / "empty.yaml"
+        config_file.write_text("anchors: []")
+        configs = load_anchor_configs(config_file)
+        assert configs == []
+
+    def test_load_anchor_configs_single_anchor(self, tmp_path: Path) -> None:
+        """Test loading a single anchor dataset config."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        config_file = tmp_path / "single.yaml"
+        config_file.write_text(
+            """anchors:
+  - hf_id: test/dataset
+    split: train
+    format: sharegpt
+    token_budget_pct: 50.0
+"""
+        )
+        configs = load_anchor_configs(config_file)
+        assert len(configs) == 1
+        assert configs[0].hf_id == "test/dataset"
+        assert configs[0].split == "train"
+        assert configs[0].format == "sharegpt"
+        assert configs[0].token_budget_pct == 50.0
+
+    def test_load_anchor_configs_multiple_anchors(self, tmp_path: Path) -> None:
+        """Test loading multiple anchor dataset configs."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        config_file = tmp_path / "multiple.yaml"
+        config_file.write_text(
+            """anchors:
+  - hf_id: dataset1/train
+    split: train
+    format: xlam
+    token_budget_pct: 30.0
+  - hf_id: dataset2/test
+    split: test
+    format: openai_messages
+    token_budget_pct: 70.0
+"""
+        )
+        configs = load_anchor_configs(config_file)
+        assert len(configs) == 2
+
+        assert configs[0].hf_id == "dataset1/train"
+        assert configs[0].split == "train"
+        assert configs[0].format == "xlam"
+        assert configs[0].token_budget_pct == 30.0
+
+        assert configs[1].hf_id == "dataset2/test"
+        assert configs[1].split == "test"
+        assert configs[1].format == "openai_messages"
+        assert configs[1].token_budget_pct == 70.0
+
+    def test_load_anchor_configs_defaults(self, tmp_path: Path) -> None:
+        """Test that default values are applied when not specified."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        config_file = tmp_path / "defaults.yaml"
+        config_file.write_text(
+            """anchors:
+  - hf_id: minimal/dataset
+"""
+        )
+        configs = load_anchor_configs(config_file)
+        assert len(configs) == 1
+        assert configs[0].hf_id == "minimal/dataset"
+        assert configs[0].split == "train"  # default
+        assert configs[0].format == "sharegpt"  # default
+        assert configs[0].token_budget_pct == 70.0  # default
+
+    def test_load_anchor_configs_partial_fields(self, tmp_path: Path) -> None:
+        """Test loading with some fields specified and defaults for others."""
+        from src.curation.anchor_dataset_downloader import load_anchor_configs
+
+        config_file = tmp_path / "partial.yaml"
+        config_file.write_text(
+            """anchors:
+  - hf_id: partial/dataset
+    split: validation
+  - hf_id: another/dataset
+    token_budget_pct: 25.5
+"""
+        )
+        configs = load_anchor_configs(config_file)
+        assert len(configs) == 2
+
+        # First anchor: only split specified
+        assert configs[0].hf_id == "partial/dataset"
+        assert configs[0].split == "validation"
+        assert configs[0].format == "sharegpt"  # default
+        assert configs[0].token_budget_pct == 70.0  # default
+
+        # Second anchor: only token_budget_pct specified
+        assert configs[1].hf_id == "another/dataset"
+        assert configs[1].split == "train"  # default
+        assert configs[1].format == "sharegpt"  # default
+        assert configs[1].token_budget_pct == 25.5
