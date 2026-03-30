@@ -264,19 +264,21 @@
 - _Requirements: AC-3.1-AC-3.6_
 - _Design: Unit Tests section_
 
-### 5.5 Create test_translation_json_parser.py
+### 5.5 Create test_chatml_exporter.py
 - **Do**:
-  1. Create `tests/unit/extractors/parsers/test_translation_json.py`
-  2. Test nested JSON flattening to dot-path keys
-  3. Test leaf node identification
-  4. Test ICU placeholder handling
-  5. Create fixture JSON files with various structures
-- **Files**: `tests/unit/extractors/parsers/test_translation_json.py`, `tests/fixtures/translation_samples/`
-- **Done when**: All TranslationJsonParser tests pass
-- **Verify**: `python -m pytest tests/unit/extractors/parsers/test_translation_json.py -v --tb=short 2>&1 | tail -20`
-- **Commit**: `test(parser): add unit tests for TranslationJsonParser`
-- _Requirements: AC-4.1-AC-4.4_
+  1. Create `tests/unit/export/test_chatml_exporter.py`
+  2. Test ChatMLRecord format
+  3. Test messages array structure
+  4. Test JSONL output format
+  5. Test meta.source and meta.file fields
+- **Files**: `tests/unit/export/test_chatml_exporter.py`
+- **Done when**: test_chatml_exporter.py exists with tests
+- **Verify**: `python -m pytest tests/unit/export/test_chatml_exporter.py -v --tb=short`
+- **Commit**: `test(export): add unit tests for ChatMLExporter`
+- _Requirements: Test Strategy section_
 - _Design: Unit Tests section_
+
+### 5.6 Create test_translation_json_parser.py
 
 ### 5.6 V5 [VERIFY] Quality checkpoint: all unit tests
 - **Do**: Run all unit tests
