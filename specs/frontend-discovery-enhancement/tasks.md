@@ -61,7 +61,7 @@
 - _Requirements: US-3, AC-3.1-AC-3.6, FR-4_
 - _Design: ServiceCallExtractor section_
 
-### 1.5 Create TranslationJsonParser
+### 1.5 Create TranslationJsonParser [DONE]
 - **Do**:
   1. Create `src/utils/extractors/parsers/translation_json.py`
   2. Implement `TranslationEntry` dataclass with `key`, `value`, `file_path`, `is_leaf`
