@@ -339,9 +339,9 @@
 - _Requirements: Success Criteria 8, NFR-5_
 - _Design: Non-Functional Requirements section_
 
-### 6.4 V6 [VERIFY] Final quality gate
+### 6.4 V6 [VERIFY] Final quality gate [DONE]
 - **Do**: Run full test suite and schema validation
-- **Verify**: `python -m pytest tests/unit/extractors/ tests/integration/test_typescript_processor_pipeline.py -v --tb=short 2>&1 | tail -30`
+- **Verify**: `python -m pytest tests/unit/extractors/ tests/integration/test_typescript_adapter_e2e.py tests/unit/export/ -v --tb=short 2>&1 | tail -30`
 - **Done when**: All tests pass, no regressions
 - **Commit**: `chore(final): pass final quality gate`
 
