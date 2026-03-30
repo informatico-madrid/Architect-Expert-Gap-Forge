@@ -328,7 +328,7 @@
 - _Requirements: Success Criteria 1-5_
 - _Design: Success Criteria section_
 
-### 6.3 Verify generic architecture (non-HomeAssistant Lit component)
+### 6.3 Verify generic architecture (non-HomeAssistant Lit component) [DONE]
 - **Do**:
   1. Create or obtain a non-HomeAssistant Lit component file
   2. Run TypeScriptAdapter on it without code changes
