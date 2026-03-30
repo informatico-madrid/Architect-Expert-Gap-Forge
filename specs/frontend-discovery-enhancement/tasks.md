@@ -158,7 +158,7 @@
 - _Requirements: US-7, AC-7.1-AC-7.5, FR-9_
 - _Design: FrontendTaxonomyPrompts section_
 
-### 3.3 V3 [VERIFY] Quality checkpoint
+### 3.3 V3 [VERIFY] Quality checkpoint [DONE]
 - **Do**: Run quality checks on export layer
 - **Verify**: `python -m py_compile src/export/chatml_exporter.py src/export/frontend_taxonomy_prompts.py`
 - **Done when**: Export files compile without errors
