@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-@dataclass
+@dataclass(frozen=True)
 class TranslationEntry:
     """Represents a single translation entry from a JSON file."""
 

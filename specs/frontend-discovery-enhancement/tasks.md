@@ -292,10 +292,10 @@
 - _Requirements: AC-4.1-AC-4.4_
 - _Design: Unit Tests section_
 
-### 5.7 V5 [VERIFY] Quality checkpoint: all unit tests
+### 5.7 V5 [VERIFY] Quality checkpoint: all unit tests [DONE]
 - **Do**: Run all unit tests
-- **Verify**: `python -m pytest tests/unit/extractors/ -v --tb=short 2>&1 | tail -30`
-- **Done when**: All unit tests pass
+- **Verify**: `python -m pytest tests/unit/extractors/ tests/unit/export/ -v --tb=short`
+- **Done when**: All unit tests pass (144/144)
 - **Commit**: `chore(tests): pass unit test checkpoint`
 
 ---
