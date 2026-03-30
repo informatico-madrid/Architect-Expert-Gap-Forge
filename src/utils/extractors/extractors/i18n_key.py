@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 # Regex patterns for fallback extraction (v1 ~85% coverage)
 
-# Matches localize('key') or localize("key")
+# Matches localize('key') or localize("key") but NOT hass.localize(...)
 LOCALIZE_CALL_PATTERN = re.compile(
-    r"localize\s*\(\s*['\"]([^'\"]+)['\"]\s*\)", re.MULTILINE
+    r"(?<!\.)localize\s*\(\s*['\"]([^'\"]+)['\"]\s*\)", re.MULTILINE
 )
 
 # Matches hass.localize('key') or hass.localize("key")

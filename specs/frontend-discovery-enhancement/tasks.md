@@ -234,7 +234,7 @@
 - _Requirements: AC-1.1-AC-1.6_
 - _Design: Unit Tests section_
 
-### 5.3 Create test_i18n_key.py
+### 5.3 Create test_i18n_key.py [DONE]
 - **Do**:
   1. Create `tests/unit/extractors/extractors/test_i18n_key.py`
   2. Test localize() detection
