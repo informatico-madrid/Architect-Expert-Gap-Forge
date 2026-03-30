@@ -115,7 +115,7 @@
 - _Requirements: FR-6_
 - _Design: Factory Registration section_
 
-### 2.3 V2 [VERIFY] Quality checkpoint
+### 2.3 V2 [VERIFY] Quality checkpoint [DONE]
 - **Do**: Run quality checks and verify adapter loads correctly
 - **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; a = get_adapter('typescript'); assert 'TypeScriptAdapter' in type(a).__name__"`
 - **Done when**: Factory integration works

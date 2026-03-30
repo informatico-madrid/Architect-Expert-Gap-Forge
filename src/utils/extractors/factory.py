@@ -39,14 +39,15 @@ _adapter_cache: Dict[str, ExtractorAdapter] = {}
 
 
 def get_adapter(profile: str) -> ExtractorAdapter:
-    """Get an extractor adapter for the given profile.
+    """Get an extractor adapter for the given profile or file extension.
 
     This function implements lazy loading - the adapter class is only imported
     when first requested. Subsequent calls for the same profile return a cached
     instance.
 
     Args:
-        profile: The profile name (e.g., "python", "homeassistant").
+        profile: The profile name (e.g., "python", "homeassistant", "typescript")
+                 or a file extension (e.g., ".ts", ".tsx", ".py").
                  If the profile is not recognized, defaults to Python AST adapter.
 
     Returns:
@@ -55,6 +56,7 @@ def get_adapter(profile: str) -> ExtractorAdapter:
     Example:
         >>> adapter = get_adapter("homeassistant")
         >>> result = adapter.parse_file(Path("example.py"))
+        >>> adapter = get_adapter(".ts")  # also works with extensions
     """
     # Normalize profile name
     normalized = profile.lower().strip()
@@ -63,6 +65,27 @@ def get_adapter(profile: str) -> ExtractorAdapter:
     if normalized in _adapter_cache:
         logger.debug("Returning cached adapter for profile: %s", normalized)
         return _adapter_cache[normalized]
+
+    # Handle file extensions (e.g., ".ts", ".tsx", "test.ts")
+    if normalized.startswith("."):
+        # Bare extension like ".ts"
+        ext_mapping = {
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".py": "python",
+            ".php": "php_legacy",
+        }
+        normalized = ext_mapping.get(normalized, "default")
+    elif "." in normalized:
+        # File name with extension like "test.ts"
+        ext = "." + normalized.split(".")[-1]
+        ext_mapping = {
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".py": "python",
+            ".php": "php_legacy",
+        }
+        normalized = ext_mapping.get(ext, "default")
 
     # Get adapter class path from registry (default to python if unknown)
     adapter_path = _ADAPTER_REGISTRY.get(normalized, _ADAPTER_REGISTRY["default"])
