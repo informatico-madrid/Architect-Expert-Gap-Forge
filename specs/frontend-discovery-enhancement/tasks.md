@@ -278,9 +278,21 @@
 - _Requirements: Test Strategy section_
 - _Design: Unit Tests section_
 
-### 5.6 Create test_translation_json_parser.py
+### 5.6 Create test_translation_json_parser.py [DONE]
+- **Do**:
+  1. Create `tests/unit/extractors/parsers/test_translation_json.py`
+  2. Test nested JSON flattening to dot-path keys
+  3. Test leaf node identification
+  4. Test ICU placeholder handling
+  5. Create fixture JSON files with various structures
+- **Files**: `tests/unit/extractors/parsers/test_translation_json.py`, `tests/fixtures/translation_samples/`
+- **Done when**: All TranslationJsonParser tests pass
+- **Verify**: `python -m pytest tests/unit/extractors/parsers/test_translation_json.py -v --tb=short`
+- **Commit**: `test(parser): add unit tests for TranslationJsonParser`
+- _Requirements: AC-4.1-AC-4.4_
+- _Design: Unit Tests section_
 
-### 5.6 V5 [VERIFY] Quality checkpoint: all unit tests
+### 5.7 V5 [VERIFY] Quality checkpoint: all unit tests
 - **Do**: Run all unit tests
 - **Verify**: `python -m pytest tests/unit/extractors/ -v --tb=short 2>&1 | tail -30`
 - **Done when**: All unit tests pass
