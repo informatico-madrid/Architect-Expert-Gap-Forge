@@ -205,6 +205,15 @@ for record in exporter.export(tokens, system_prompt):
     print(record.json())
 ```
 
+**Frontend Taxonomy Prompts:**
+```python
+from src.export.frontend_taxonomy_prompts import FRONTEND_COMPONENT_SYSTEM_PROMPT
+
+# Component metadata extraction prompt
+system_msg = FRONTEND_COMPONENT_SYSTEM_PROMPT
+# Returns JSON: {tag, class, file_path, props, events, service_calls, i18n_keys}
+```
+
 #### ParseError Policy (FR-006)
 
 When the extractor fails to parse a file, the system follows a configurable policy:
