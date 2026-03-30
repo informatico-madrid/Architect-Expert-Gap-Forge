@@ -349,54 +349,167 @@
 
 ---
 
-## Phase 7: Fix Adapter Selection Bug (Critical)
+## Phase 0: Reproduce (Bug TDD)
 
-### 7.1 Analyze adapter selection bug in metadata_enricher.py
-- **Do**:
-  1. Read `src/discovery/metadata_enricher.py` lines 140-160 and 410-475
-  2. Identify how `self._adapter` is initialized vs how it's used
-  3. Document the bug: `cfg.profile` determines adapter for ALL files, not file extension
-  4. Verify factory.py supports extension-based adapter lookup
-- **Files**: `src/discovery/metadata_enricher.py`, `src/utils/extractors/factory.py`
-- **Done when**: Bug mechanism fully understood and documented
-- **Verify**: `grep -n "get_adapter\|self._adapter" src/discovery/metadata_enricher.py`
-- **Commit**: `fix(adapter): analyze adapter selection bug in metadata_enricher`
+**Goal**: Confirm the adapter selection bug exists before any code changes.
 
-### 7.2 Modify _process_file to select adapter per extension
+### 0.1 [VERIFY] Reproduce bug: TypeScript files skip adapter processing [DONE]
 - **Do**:
-  1. Modify `src/discovery/metadata_enricher.py`
-  2. Change adapter selection from repo-level to file-level
-  3. Add per-extension adapter lookup: `adapter = get_adapter(mf.path.suffix)`
-  4. Remove the `if mf.path.suffix == ".py"` guard that limits adapter usage
-  5. Apply adapter to ALL file types (.ts, .tsx, .py, .php, etc.)
-  6. Handle extension mapping: `.ts` → "typescript", `.tsx` → "typescript", `.py` → "python-ast", etc.
+  1. Read `src/discovery/metadata_enricher.py` lines 140-160 (adapter init) and 410-475 (adapter usage)
+  2. Confirm `self._adapter = get_adapter(cfg.profile)` at line 145 selects adapter once per RepoProcessor
+  3. Confirm `if mf.path.suffix == ".py":` at line 420 limits adapter to Python files only
+  4. Verify TypeScript files (.ts, .tsx) are never passed to any adapter
 - **Files**: `src/discovery/metadata_enricher.py`
-- **Done when**: metadata_enricher uses per-file adapter selection
-- **Verify**: `grep -n "get_adapter" src/discovery/metadata_enricher.py` shows per-file usage
-- **Commit**: `fix(adapter): select adapter per file extension in metadata_enricher`
+- **Done when**: Bug confirmed - adapter selected once per repo, not per file; only .py files use adapter
+- **Verify**: `grep -n "get_adapter\|self._adapter\|suffix.*\.py" src/discovery/metadata_enricher.py`
+- **Commit**: None (Phase 0 - no code changes)
+
+### 0.2 [VERIFY] Confirm repro consistency: verify bug is reproducible
+- **Do**:
+  1. Run reproduction check: analyze code path for .ts file in metadata_enricher
+  2. Confirm TypeScript files follow the non-adapter code path (skip lines 420-475)
+  3. Document BEFORE state in .progress.md for VF verification
+- **Done when**: Bug behavior is consistent; BEFORE state documented
+- **Verify**: Code analysis confirms .ts files skip adapter
+- **Commit**: `chore(bug): document reality check before fix`
 - _Bug: Line 145 uses `get_adapter(cfg.profile)` once; line 420 only calls adapter for `.py` files_
 
-### 7.3 Verify factory extension mapping works correctly
+---
+
+## Phase 1: Red-Green-Yellow TDD Cycles
+
+**Goal**: Write failing test first, then fix the bug.
+
+### 1.1 [RED] Failing test: TypeScript files should be processed by TypeScriptAdapter
+- **Do**:
+  1. Create test file `tests/integration/test_metadata_enricher_typescript_processing.py`
+  2. Write test that verifies RepoProcessor calls adapter for .ts files
+  3. Test that TypeScriptAdapter.parse_file() is invoked for .ts files (not skipped)
+  4. Verify the test FAILS with current code (adapter never called for .ts)
+- **Files**: `tests/integration/test_metadata_enricher_typescript_processing.py`
+- **Done when**: Test exists AND fails because TypeScript files skip adapter
+- **Verify**: `python -m pytest tests/integration/test_metadata_enricher_typescript_processing.py -v 2>&1 | grep -q "FAIL" && echo RED_PASS`
+- **Commit**: `test(bug): red - failing test for TypeScript adapter selection`
+- _Bug: metadata_enricher.py uses `cfg.profile` not file extension_
+
+### 1.2 [GREEN] Pass test: implement per-file adapter selection
+- **Do**:
+  1. Modify `src/discovery/metadata_enricher.py`
+  2. Remove `self._adapter = get_adapter(cfg.profile)` from `__init__` (line 145)
+  3. Remove `if mf.path.suffix == ".py":` guard (line 420)
+  4. Add per-file adapter selection: `adapter = get_adapter(mf.path.suffix)` inside `_process_file`
+  5. Call `adapter.parse_file(mf.path)` for ALL file extensions
+- **Files**: `src/discovery/metadata_enricher.py`
+- **Done when**: Previously failing test now passes
+- **Verify**: `python -m pytest tests/integration/test_metadata_enricher_typescript_processing.py -v`
+- **Commit**: `fix(adapter): green - select adapter per file extension`
+- _Requirements: Bug Fix - CRITICAL_
+
+### 1.3 [YELLOW] Refactor: remove unused _adapter field
+- **Do**:
+  1. Verify `self._adapter` is no longer used after fix
+  2. Remove `self._adapter` instance variable from `__init__`
+  3. Ensure all code paths use per-file adapter lookup
+- **Files**: `src/discovery/metadata_enricher.py`
+- **Done when**: Code is clean, no orphaned adapter references
+- **Verify**: `grep -n "self._adapter" src/discovery/metadata_enricher.py` returns nothing
+- **Commit**: `refactor(adapter): yellow - remove unused _adapter field`
+
+### 1.4 [VERIFY] Quality checkpoint: lint and type check
+- **Do**: Run lint and type check on modified file
+- **Verify**: `python -m py_compile src/discovery/metadata_enricher.py && echo COMPILE_PASS`
+- **Done when**: No syntax errors
+- **Commit**: `chore(adapter): pass quality checkpoint`
+
+---
+
+## Phase 2: Additional Testing
+
+### 2.1 Test factory extension mapping for TypeScript
 - **Do**:
   1. Test `get_adapter(".ts")` returns TypeScriptAdapter
   2. Test `get_adapter(".tsx")` returns TypeScriptAdapter
   3. Test `get_adapter(".py")` returns PythonAstAdapter
-  4. Test `get_adapter("typescript")` returns TypeScriptAdapter (profile fallback)
-  5. Test unknown extensions fall back to default adapter
-- **Files**: `src/utils/extractors/factory.py`
-- **Done when**: Factory extension mapping verified
-- **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; print(get_adapter('.ts').__class__.__name__, get_adapter('.tsx').__class__.__name__, get_adapter('.py').__class__.__name__)"`
-- **Commit**: `test(adapter): verify factory extension mapping for TypeScript`
+  4. Test unknown extensions fall back to default adapter
+- **Files**: `tests/unit/test_extractors_factory.py`
+- **Done when**: All factory extension mapping tests pass
+- **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; ts = get_adapter('.ts'); print(type(ts).__name__)" | grep -q TypeScript`
+- **Commit**: `test(factory): verify extension mapping for TypeScript`
 
-### 7.4 V7 [VERIFY] Adapter selection fix validation
-- **Do**: Run Stage 1 with homeassistant.yaml and verify TypeScript files are processed
-- **Verify**:
-  1. Check output contains parsed TypeScript content (not raw text)
-  2. Verify `*.ts` files in data/raw/homeassistant-main_txt/ have FrontendToken metadata
-  3. Check logs show TypeScriptAdapter being invoked
-- **Done when**: TypeScript files are actually processed by TypeScriptAdapter
-- **Verify**: `grep -r "TypeScriptAdapter" data/raw/homeassistant-main_txt/ | head -5`
-- **Commit**: `chore(fix): verify adapter selection fix works end-to-end`
+### 2.2 Integration test: TypeScript file processing through full pipeline
+- **Do**:
+  1. Create a test .ts file with Lit component, i18n keys, service calls
+  2. Run RepoProcessor with the test file
+  3. Verify TypeScriptAdapter.parse_file() is called
+  4. Verify extraction results contain expected Lit/i18n/service call data
+- **Files**: `tests/integration/test_typescript_adapter_e2e.py`
+- **Done when**: Integration test passes showing TypeScript files are processed
+- **Verify**: `python -m pytest tests/integration/test_typescript_adapter_e2e.py -v --tb=short`
+- **Commit**: `test(integration): verify TypeScript processing in full pipeline`
+
+### 2.3 [VERIFY] Quality checkpoint: run all tests
+- **Do**: Run full test suite
+- **Verify**: `python -m pytest tests/ -v --tb=short -x 2>&1 | tail -20`
+- **Done when**: All tests pass, no regressions
+- **Commit**: `chore(tests): pass full test suite checkpoint`
+
+---
+
+## Phase 3: Quality Gates
+
+### 3.1 V3 [VERIFY] Full local CI
+- **Do**: Run complete local CI suite
+- **Verify**: `python -m pytest tests/ -v --tb=short && python -m py_compile src/discovery/metadata_enricher.py`
+- **Done when**: All tests pass, code compiles
+- **Commit**: `chore(ci): pass local CI`
+
+### 3.2 V4 [VERIFY] CI pipeline passes
+- **Do**: Verify GitHub Actions/CI passes after push
+- **Verify**: `gh pr checks` shows all green
+- **Done when**: CI pipeline passes
+- **Commit**: None
+
+### 3.3 V5 [VERIFY] AC checklist
+- **Do**: Read requirements.md, verify adapter selection bug is fixed
+- **Verify**: Code analysis confirms per-file adapter selection is implemented
+- **Done when**: Bug fix verified in code
+- **Commit**: None
+
+### 3.4 Create PR and verify CI
+- **Do**:
+  1. Verify current branch is feature branch
+  2. Push branch: `git push -u origin feat/frontend-discovery-enhancement`
+  3. Create PR using gh CLI
+- **Verify**: `gh pr checks --watch` (wait for CI completion)
+- **Done when**: PR created, CI green
+- **Commit**: None
+
+---
+
+## Phase 4: PR Lifecycle
+
+### 4.1 Monitor CI and fix issues
+- **Do**:
+  1. Check CI status: `gh pr checks`
+  2. If CI fails, read failure details and fix locally
+  3. Push fixes and re-verify
+- **Done when**: All CI checks pass
+- **Verify**: `gh pr checks` shows all green
+
+### 4.2 Address review comments
+- **Do**: Address any code review feedback
+- **Done when**: All review comments resolved
+- **Verify**: `gh pr view` shows no pending comments
+
+### VF [VERIFY] Goal verification: original failure now passes
+- **Do**:
+  1. Read BEFORE state from .progress.md
+  2. Re-run reproduction check (code analysis)
+  3. Compare output with BEFORE failure
+  4. Document AFTER state in .progress.md
+- **Verify**: `grep -n "self._adapter" src/discovery/metadata_enricher.py` returns nothing; per-file adapter selection confirmed
+- **Done when**: Command that failed before (TypeScript skipping adapter) now shows TypeScript files are processed
+- **Commit**: `chore(bug): verify fix resolves original issue`
 
 ---
 
