@@ -86,7 +86,7 @@
 
 ## Phase 2: TypeScriptAdapter and Factory Integration
 
-### 2.1 Create TypeScriptAdapter
+### 2.1 Create TypeScriptAdapter [DONE]
 - **Do**:
   1. Create `src/utils/extractors/typescript_adapter.py`
   2. Implement `TypeScriptAdapter` class implementing `ExtractorAdapter` protocol
@@ -102,7 +102,7 @@
 - _Requirements: FR-1_
 - _Design: TypeScriptAdapter section_
 
-### 2.2 Register TypeScript adapter in factory
+### 2.2 Register TypeScript adapter in factory [DONE]
 - **Do**:
   1. Modify `src/utils/extractors/factory.py`
   2. Add `"typescript": "src.utils.extractors.typescript_adapter.TypeScriptAdapter"` to `_ADAPTER_REGISTRY`

@@ -28,6 +28,9 @@ _ADAPTER_REGISTRY: Dict[str, str] = {
     "python-ast": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
     "homeassistant": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
     "php_legacy": "src.utils.extractors.php_legacy_adapter.PhpLegacyAdapter",
+    "typescript": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
+    "ts": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
+    "tsx": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
     "default": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
 }
 
