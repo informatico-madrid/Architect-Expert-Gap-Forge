@@ -294,6 +294,39 @@ Based on codebase analysis:
 4. **Size Limits**: Already defined via `MAX_SIZE_FRONTEND = 60_000` in `file_scanner.py`
 5. **Output Path**: Uses existing `output_subdir`/`output_category` path structure
 
+## Critical Bug: Adapter Selection (FIXED IN PHASE 7)
+
+### Bug Description
+**Severity**: Critical - TypeScript files not parsed at all
+
+In `metadata_enricher.py`:
+```python
+# Line 145: Adapter initialized once per RepoProcessor, using profile
+self._adapter = get_adapter(cfg.profile)  # e.g., "homeassistant" → PythonAstAdapter
+
+# Line 420: Adapter only called for .py files
+if mf.path.suffix == ".py":
+    parse_result = self._adapter.parse_file(mf.path)
+# .ts, .tsx files skip adapter entirely!
+```
+
+### Root Cause
+- `cfg.profile` is "homeassistant" → selects `PythonAstAdapter`
+- PythonAstAdapter is used for ALL files regardless of extension
+- `.ts` and `.tsx` files are never processed by TypeScriptAdapter
+
+### Fix Required
+Modify `metadata_enricher.py` to select adapter per-file based on extension:
+```python
+# Instead of self._adapter = get_adapter(cfg.profile) at repo level
+# Select adapter per file in _process_file loop:
+adapter = get_adapter(mf.path.suffix)  # ".ts" → TypeScriptAdapter
+parse_result = adapter.parse_file(mf.path)
+```
+
+### Files to Modify
+- `src/discovery/metadata_enricher.py`: Change adapter selection from repo-level to file-level
+
 ## Implementation Steps
 
 1. Create `src/utils/extractors/extractors/base.py` with `TypeScriptExtractor` protocol and `FrontendToken` types

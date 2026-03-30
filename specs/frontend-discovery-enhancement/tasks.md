@@ -347,6 +347,59 @@
 
 ---
 
+---
+
+## Phase 7: Fix Adapter Selection Bug (Critical)
+
+### 7.1 Analyze adapter selection bug in metadata_enricher.py
+- **Do**:
+  1. Read `src/discovery/metadata_enricher.py` lines 140-160 and 410-475
+  2. Identify how `self._adapter` is initialized vs how it's used
+  3. Document the bug: `cfg.profile` determines adapter for ALL files, not file extension
+  4. Verify factory.py supports extension-based adapter lookup
+- **Files**: `src/discovery/metadata_enricher.py`, `src/utils/extractors/factory.py`
+- **Done when**: Bug mechanism fully understood and documented
+- **Verify**: `grep -n "get_adapter\|self._adapter" src/discovery/metadata_enricher.py`
+- **Commit**: `fix(adapter): analyze adapter selection bug in metadata_enricher`
+
+### 7.2 Modify _process_file to select adapter per extension
+- **Do**:
+  1. Modify `src/discovery/metadata_enricher.py`
+  2. Change adapter selection from repo-level to file-level
+  3. Add per-extension adapter lookup: `adapter = get_adapter(mf.path.suffix)`
+  4. Remove the `if mf.path.suffix == ".py"` guard that limits adapter usage
+  5. Apply adapter to ALL file types (.ts, .tsx, .py, .php, etc.)
+  6. Handle extension mapping: `.ts` → "typescript", `.tsx` → "typescript", `.py` → "python-ast", etc.
+- **Files**: `src/discovery/metadata_enricher.py`
+- **Done when**: metadata_enricher uses per-file adapter selection
+- **Verify**: `grep -n "get_adapter" src/discovery/metadata_enricher.py` shows per-file usage
+- **Commit**: `fix(adapter): select adapter per file extension in metadata_enricher`
+- _Bug: Line 145 uses `get_adapter(cfg.profile)` once; line 420 only calls adapter for `.py` files_
+
+### 7.3 Verify factory extension mapping works correctly
+- **Do**:
+  1. Test `get_adapter(".ts")` returns TypeScriptAdapter
+  2. Test `get_adapter(".tsx")` returns TypeScriptAdapter
+  3. Test `get_adapter(".py")` returns PythonAstAdapter
+  4. Test `get_adapter("typescript")` returns TypeScriptAdapter (profile fallback)
+  5. Test unknown extensions fall back to default adapter
+- **Files**: `src/utils/extractors/factory.py`
+- **Done when**: Factory extension mapping verified
+- **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; print(get_adapter('.ts').__class__.__name__, get_adapter('.tsx').__class__.__name__, get_adapter('.py').__class__.__name__)"`
+- **Commit**: `test(adapter): verify factory extension mapping for TypeScript`
+
+### 7.4 V7 [VERIFY] Adapter selection fix validation
+- **Do**: Run Stage 1 with homeassistant.yaml and verify TypeScript files are processed
+- **Verify**:
+  1. Check output contains parsed TypeScript content (not raw text)
+  2. Verify `*.ts` files in data/raw/homeassistant-main_txt/ have FrontendToken metadata
+  3. Check logs show TypeScriptAdapter being invoked
+- **Done when**: TypeScript files are actually processed by TypeScriptAdapter
+- **Verify**: `grep -r "TypeScriptAdapter" data/raw/homeassistant-main_txt/ | head -5`
+- **Commit**: `chore(fix): verify adapter selection fix works end-to-end`
+
+---
+
 ## Unresolved Questions
 - None (resolved in design.md)
 
@@ -357,3 +410,4 @@
 - Production TODOs: Implement tree-sitter AST parsing for v2 (~95% coverage)
 - Production TODOs: Implement constant reference resolution for tag names
 - Production TODOs: Add parallel extractor execution via concurrent.futures
+- **BUG FIX 7.x**: Adapter selection bug - metadata_enricher uses `cfg.profile` not file extension
