@@ -380,7 +380,7 @@
 
 **Goal**: Write failing test first, then fix the bug.
 
-### 1.1 [RED] Failing test: TypeScript files should be processed by TypeScriptAdapter
+### 1.1 [RED] Failing test: TypeScript files should be processed by TypeScriptAdapter [DONE]
 - **Do**:
   1. Create test file `tests/integration/test_metadata_enricher_typescript_processing.py`
   2. Write test that verifies RepoProcessor calls adapter for .ts files
