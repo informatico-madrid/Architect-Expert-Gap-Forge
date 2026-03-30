@@ -316,7 +316,7 @@
 - _Requirements: Success Criteria 1, 2_
 - _Design: Integration Tests section_
 
-### 6.2 Run validation with HomeAssistant frontend sample
+- [x] ### 6.2 Run validation with HomeAssistant frontend sample
 - **Do**:
   1. Clone or use existing home-assistant/frontend sample
   2. Run TypeScriptAdapter on sample TypeScript files
