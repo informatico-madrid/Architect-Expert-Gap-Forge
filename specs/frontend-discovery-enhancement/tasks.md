@@ -364,7 +364,7 @@
 - **Verify**: `grep -n "get_adapter\|self._adapter\|suffix.*\.py" src/discovery/metadata_enricher.py`
 - **Commit**: None (Phase 0 - no code changes)
 
-### 0.2 [VERIFY] Confirm repro consistency: verify bug is reproducible
+### 0.2 [VERIFY] Confirm repro consistency: verify bug is reproducible [DONE]
 - **Do**:
   1. Run reproduction check: analyze code path for .ts file in metadata_enricher
   2. Confirm TypeScript files follow the non-adapter code path (skip lines 420-475)
