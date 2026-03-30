@@ -31,7 +31,7 @@
 - _Requirements: US-1, AC-1.1-AC-1.6, FR-2_
 - _Design: LitComponentExtractor section_
 
-### 1.3 Create I18nKeyExtractor
+### 1.3 Create I18nKeyExtractor [DONE]
 - **Do**:
   1. Create `src/utils/extractors/extractors/i18n_key.py`
   2. Implement `I18nKeyExtractor` with `extract(node, raw) -> list[FrontendToken]`
