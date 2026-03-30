@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # ======================================================================
 DEFAULT_BASE_URL = "http://localhost:8000/v1"
 DEFAULT_API_KEY = "sk-master-bunker-2026"
-DEFAULT_MODEL = "qwen3-30b-a3b-thinking-fp8"
+DEFAULT_MODEL = "qwen3-5-35b-a3b-nvfp4"
 DEFAULT_WORKERS = 8
 MAX_RETRIES = 3
 

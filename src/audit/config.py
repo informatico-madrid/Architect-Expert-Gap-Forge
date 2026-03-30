@@ -130,9 +130,9 @@ def _get_inference_router() -> InferenceRouter:
 DEFAULT_API_URL: str = "http://localhost:8000/v1"
 DEFAULT_AUDIT_DIR: str = "data/audit"
 DEFAULT_SAMPLE_SIZE: int = 5
-DEFAULT_BASE_MODEL: str = "qwen3-30b-a3b-thinking-fp8"
+DEFAULT_BASE_MODEL: str = "qwen3-5-35b-a3b-nvfp4"
 DEFAULT_ADAPTER_MODEL: str = "platinum_adapter"
-DEFAULT_JUDGE_MODEL: str = "qwen3-30b-a3b-thinking-fp8"
+DEFAULT_JUDGE_MODEL: str = "qwen3-5-35b-a3b-nvfp4"
 DEFAULT_MAX_TOKENS: int = 65536
 DEFAULT_TEMPERATURE: float = 0.6
 DEFAULT_RETRIES: int = 3

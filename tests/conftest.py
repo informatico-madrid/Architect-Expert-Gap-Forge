@@ -229,7 +229,7 @@ def audit_report(scorecard: ScoreCard) -> AuditReport:
     return AuditReport(
         timestamp="2026-03-03T00:00:00",
         dataset_path="data/audit/baseline.jsonl",
-        base_model="qwen3-30b-a3b-thinking-fp8",
+        base_model="qwen3-5-35b-a3b-nvfp4",
         adapter_model="platinum_adapter",
         judge_model="gemini-2.5-flash",
         sample_size=1,

@@ -227,7 +227,7 @@ client = OpenAI(
     base_url="http://localhost:8000/v1", api_key=os.getenv("AEGF_API_KEY", "")
 )
 
-MODEL_NAME = "qwen3-30b-a3b-thinking-fp8"
+MODEL_NAME = "qwen3-5-35b-a3b-nvfp4"
 GENERATION_PARAMS = {
     "temperature": 0.3,
     "presence_penalty": 1.3,

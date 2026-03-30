@@ -959,28 +959,63 @@ async def main_async(args):
         # Taxonomy already loaded, skip loading
         taxonomy_loaded = True
     else:
-        # Try to load from configs directory
+        # Try to load taxonomy provided by CLI first (if any), then fall
+        # back to the repo default location.
         taxonomy_loaded = False
-        taxonomy_path = Path("configs/stage_2_factory/taxonomy")
-        if taxonomy_path.is_file():
-            # It's a file - use it directly
-            try:
-                load_taxonomy(taxonomy_path)
-                taxonomy_loaded = True
-            except Exception:
-                pass  # Use fallback if loading fails
-        elif taxonomy_path.is_dir():
-            # It's a directory - look for .yaml or .example files
-            yaml_files = list(taxonomy_path.glob("**/*.yaml")) + list(
-                taxonomy_path.glob("**/*.example")
-            )
-            if yaml_files:
-                # Use the first taxonomy file found
+
+        # If user passed --taxonomy, prefer it
+        if getattr(args, "taxonomy", None):
+            taxonomy_candidate = Path(args.taxonomy)
+            if taxonomy_candidate.exists():
+                if taxonomy_candidate.is_file():
+                    try:
+                        load_taxonomy(taxonomy_candidate)
+                        taxonomy_loaded = True
+                    except Exception as exc:
+                        logger.warning(
+                            "Failed to load taxonomy from %s: %s",
+                            taxonomy_candidate,
+                            exc,
+                        )
+                elif taxonomy_candidate.is_dir():
+                    yaml_files = list(taxonomy_candidate.glob("**/*.yaml")) + list(
+                        taxonomy_candidate.glob("**/*.example")
+                    )
+                    if yaml_files:
+                        try:
+                            load_taxonomy(yaml_files[0])
+                            taxonomy_loaded = True
+                        except Exception as exc:
+                            logger.warning(
+                                "Failed to load taxonomy from %s: %s",
+                                yaml_files[0],
+                                exc,
+                            )
+            else:
+                logger.warning("Provided taxonomy path not found: %s", taxonomy_candidate)
+
+        # If not loaded via CLI-provided path, try the default configs location
+        if not taxonomy_loaded:
+            taxonomy_path = Path("configs/stage_2_factory/taxonomy")
+            if taxonomy_path.is_file():
+                # It's a file - use it directly
                 try:
-                    load_taxonomy(yaml_files[0])
+                    load_taxonomy(taxonomy_path)
                     taxonomy_loaded = True
                 except Exception:
                     pass  # Use fallback if loading fails
+            elif taxonomy_path.is_dir():
+                # It's a directory - look for .yaml or .example files
+                yaml_files = list(taxonomy_path.glob("**/*.yaml")) + list(
+                    taxonomy_path.glob("**/*.example")
+                )
+                if yaml_files:
+                    # Use the first taxonomy file found
+                    try:
+                        load_taxonomy(yaml_files[0])
+                        taxonomy_loaded = True
+                    except Exception:
+                        pass  # Use fallback if loading fails
 
     if not taxonomy_loaded:
         # Fallback to empty state if taxonomy not found

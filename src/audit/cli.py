@@ -856,15 +856,15 @@ def build_parser() -> argparse.ArgumentParser:
             Examples:
               # One-shot end-to-end:
               %(prog)s full --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl \\
-                           --base-model qwen3-30b-a3b-thinking-fp8 \\
+                           --base-model qwen3-5-35b-a3b-nvfp4 \\
                            --adapter-model platinum_adapter
 
               # Step by step:
               %(prog)s sample        --dataset data/synthetic/v11_PLATINUM_UNIFORM.jsonl
-              %(prog)s generate-exam --judge-model qwen3-30b-a3b-thinking-fp8
-              %(prog)s baseline      --base-model qwen3-30b-a3b-thinking-fp8
+              %(prog)s generate-exam --judge-model qwen3-5-35b-a3b-nvfp4
+              %(prog)s baseline      --base-model qwen3-5-35b-a3b-nvfp4
               %(prog)s adapter       --adapter-model platinum_adapter
-              %(prog)s score         --judge-model qwen3-30b-a3b-thinking-fp8
+              %(prog)s score         --judge-model qwen3-5-35b-a3b-nvfp4
         """),
     )
 
