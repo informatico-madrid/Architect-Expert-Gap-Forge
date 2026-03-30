@@ -16,7 +16,7 @@
 - _Requirements: FR-1, FR-2, FR-3, FR-4_
 - _Design: TypeScriptExtractor Protocol section_
 
-### 1.2 Create LitComponentExtractor
+### 1.2 Create LitComponentExtractor [DONE]
 - **Do**:
   1. Create `src/utils/extractors/extractors/lit_component.py`
   2. Implement `LitComponentExtractor` class with `extract(node, raw) -> list[FrontendToken]`
