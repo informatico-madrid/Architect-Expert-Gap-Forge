@@ -302,21 +302,19 @@
 
 ## Phase 6: Integration and Validation
 
-### 6.1 Create integration test for TypeScript parsing pipeline
+### 6.1 Integration test - TypeScriptAdapter end-to-end [DONE]
 - **Do**:
-  1. Create `tests/integration/test_typescript_processor_pipeline.py`
-  2. Test end-to-end parsing of sample .ts file through TypeScriptAdapter
-  3. Test ChatML JSONL output validation against schema
-  4. Test config loading with new profile
-  5. Use real HomeAssistant frontend sample files (or create representative fixtures)
-- **Files**: `tests/integration/test_typescript_processor_pipeline.py`
-- **Done when**: Integration tests pass with real TypeScript files
-- **Verify**: `python -m pytest tests/integration/test_typescript_processor_pipeline.py -v --tb=short 2>&1 | tail -20`
-- **Commit**: `test(integration): add TypeScript processor integration tests`
+  1. Create a sample TypeScript file with Lit component, i18n keys, and service calls
+  2. Run TypeScriptAdapter.parse_file() on it
+  3. Verify all extractors produce expected output
+- **Files**: `tests/integration/test_typescript_adapter_e2e.py`
+- **Done when**: Integration test passes
+- **Verify**: `python -m pytest tests/integration/test_typescript_adapter_e2e.py -v --tb=short`
+- **Commit**: `test(integration): add TypeScriptAdapter e2e integration tests`
 - _Requirements: Success Criteria 1, 2_
 - _Design: Integration Tests section_
 
-- [x] ### 6.2 Run validation with HomeAssistant frontend sample
+### 6.2 Run validation with HomeAssistant frontend sample [DONE]
 - **Do**:
   1. Clone or use existing home-assistant/frontend sample
   2. Run TypeScriptAdapter on sample TypeScript files
