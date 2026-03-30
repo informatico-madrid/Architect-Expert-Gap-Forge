@@ -49,8 +49,8 @@ class DatasetMixerConfig:
         target_records: Optional target total number of records after mixing.
     """
 
-    specialized_pct: float = 30.0
-    anchor_pct: float = 70.0
+    specialized_pct: float = 65.0
+    anchor_pct: float = 35.0
     shuffle_seed: int = 42
     target_records: int | None = None
 
@@ -64,7 +64,7 @@ class DatasetMixer:
     """Mixes specialized and anchor datasets with configurable proportions.
 
     This class provides:
-    - Token-based subsampling to achieve target proportions (default 30/70)
+    - Token-based subsampling to achieve target proportions (default 65/35)
     - Deterministic shuffling with configurable seed
     - JSONL export with ChatML format
     - Composition report generation
@@ -398,8 +398,8 @@ def create_mixer(
     output_path: Path,
     seed: int = 42,
     target_records: int | None = None,
-    specialized_pct: float = 30.0,
-    anchor_pct: float = 70.0,
+    specialized_pct: float = 65.0,
+    anchor_pct: float = 35.0,
 ) -> tuple[DatasetMixer, list[DatasetRecord], list[DatasetRecord]]:
     """Create a DatasetMixer and load required data.
 
