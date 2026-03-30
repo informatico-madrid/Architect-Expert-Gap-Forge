@@ -1,0 +1,98 @@
+# Home Assistant discovery config for RepoIngestor
+# Use code search for integration manifests to surface low-star integrations
+# (will require a GitHub token in the environment).
+search_query: 'filename:manifest.json "homeassistant"'
+min_stars: 0
+limit: 300
+category: homeassistant
+mode: static
+limit: 70
+extensions:
+  - ".py"
+  - ".md"
+  - ".jinja"
+  - ".j2"
+  - ".ts"
+  - ".tsx"
+MAX_SIZE_FRONTEND: 60_000
+# Aquí está tu lista de "Oro":
+static_repos:
+  - "home-assistant/core"
+  - "home-assistant/frontend"
+  - "hacs/integration"
+  - "home-assistant/architecture"
+  - "bdraco/aioshelly"
+  - "edenhaus/home-assistant-unifi-protection"
+  # --- elite_clone.py / integration ---
+  - "XiaoMi/ha_xiaomi_home"
+  - "al-one/hass-xiaomi-miot"
+  - "rospogrigio/localtuya"
+  - "AlexxIT/SonoffLAN"
+  - "basnijholt/adaptive-lighting"
+  - "AlexxIT/XiaomiGateway3"
+  - "custom-components/ble_monitor"
+  - "AlexxIT/WebRTC"
+  - "dwainscheeren/dwains-lovelace-dashboard"
+  # --- elite_clone.py / plugin ---
+  - "piitaya/lovelace-mushroom"
+  - "Clooos/Bubble-Card"
+  - "kalkih/mini-graph-card"
+  - "custom-cards/button-card"
+  - "PiotrMachowski/lovelace-xiaomi-vacuum-map-card"
+  - "thomasloven/lovelace-auto-entities"
+  - "kalkih/mini-media-player"
+  - "RomRider/apexcharts-card"
+  - "thomasloven/lovelace-card-mod"
+  - "ExperienceLovelace/ha-floorplan"
+  # --- elite_clone.py / python_script ---
+  - "bieniu/ha-shellies-discovery"
+  - "bieniu/ha-shellies-discovery-gen2"
+  - "pmazz/ps_hassio_entities"
+  - "point-4ward/ps-date-countdown"
+  - "iml885203/HA-FanSpeedControl"
+  - "eyalcha/ha-reminder"
+  - "bieniu/ha-thermostat-update"
+  - "kapkirk/Indice-di-qualita-dell-aria-via-Home-Assistant"
+  - "Santobert/HA-UpdateClimate"
+  - "kodi1/tracker_merge"
+  # --- elite_clone.py / appdaemon ---
+  - "joBr99/nspanel-lovelace-ui"
+  - "xaviml/controllerx"
+  - "xaf/qolsysgw"
+  - "benleb/ad-automoli"
+  - "ericmatte/ad-media-lights-sync"
+  - "Odianosen25/Monitor-App"
+  - "wernerhp/ha.appdaemon.wasp"
+  - "NiklasReiche/ad-spotify-mood-lights-sync"
+  - "wernerhp/ha.appdaemon.aqara_motion_sensors"
+  - "UbhiTS/ad-alexatalkingclock"
+  # --- elite_clone.py / theme ---
+  - "basnijholt/lovelace-ios-themes"
+  - "wessamlauf/homeassistant-frosted-glass-themes"
+  - "Madelena/Metrology-for-Hass"
+  - "th3jesta/ha-lcars"
+  - "basnijholt/lovelace-ios-dark-mode-theme"
+  - "Nerwyn/material-you-theme"
+  - "TilmanGriesel/graphite"
+  - "catppuccin/home-assistant"
+  - "ricardoquecria/caule-themes-pack-1"
+  - "piitaya/lovelace-mushroom-themes"
+  # --- elite_clone.py / template ---
+  - "TheFes/cheapest-energy-hours"
+  - "Petro31/easy-time-jinja"
+  - "TheFes/relative-time-plus"
+  - "langestefan/auto-sun-blind"
+  - "SirGoodenough/Color-Multi-Tool"
+  - "SirGoodenough/Availability-Template"
+  - "jazzyisj/speech-helpers-jinja"
+  - "Nuhser/jinja-speech-helpers-german"
+  - "SirGoodenough/Logic-Chekr"
+  - "Nuhser/battery-icons"
+per_page: 100
+raw_subdir: "data/raw"
+output_subdir: "data/raw"
+output_category: "homeassistant-main_txt"
+# Segmenta home-assistant/core por componente para evitar colisiones de entity_id
+# y limitar el repo_root del context-search a cada sub-componente.
+segment_path: "homeassistant/components"
+base_dir: /mnt/bunker_data/ai/data_factory
