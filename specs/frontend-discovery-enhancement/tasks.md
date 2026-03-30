@@ -125,7 +125,7 @@
 
 ## Phase 3: ChatML Exporter and Taxonomy Prompts
 
-### 3.1 Create ChatMLExporter
+### 3.1 Create ChatMLExporter [DONE]
 - **Do**:
   1. Create `src/export/chatml_exporter.py` (create directory if needed)
   2. Implement `ChatMLRecord` and `Message` dataclasses
