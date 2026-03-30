@@ -46,7 +46,7 @@
 - _Requirements: US-2, AC-2.1-AC-2.5, FR-3_
 - _Design: I18nKeyExtractor section_
 
-### 1.4 Create ServiceCallExtractor
+### 1.4 Create ServiceCallExtractor [DONE]
 - **Do**:
   1. Create `src/utils/extractors/extractors/service_call.py`
   2. Implement `ServiceCallExtractor` with `extract(node, raw) -> list[FrontendToken]`
