@@ -194,7 +194,7 @@
 - _Requirements: US-5, AC-5.2_
 - _Design: Integration Points section_
 
-### 4.3 V4 [VERIFY] Quality checkpoint
+### 4.3 V4 [VERIFY] Quality checkpoint [DONE]
 - **Do**: Verify YAML configs load without errors
 - **Verify**: `python -c "import yaml; yaml.safe_load(open('configs/homeassistant.yaml')); yaml.safe_load(open('configs/stage_1_discovery/examples/homeassistant_frontend.yaml')); print('OK')"`
 - **Done when**: All YAML configs are valid
