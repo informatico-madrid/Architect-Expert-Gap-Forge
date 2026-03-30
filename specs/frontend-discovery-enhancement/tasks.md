@@ -249,7 +249,7 @@
 - _Requirements: AC-2.1-AC-2.5_
 - _Design: Unit Tests section_
 
-### 5.4 Create test_service_call.py
+### 5.4 Create test_service_call.py [DONE]
 - **Do**:
   1. Create `tests/unit/extractors/extractors/test_service_call.py`
   2. Test callService() detection
