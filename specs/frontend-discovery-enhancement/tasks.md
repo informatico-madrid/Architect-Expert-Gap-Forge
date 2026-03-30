@@ -76,7 +76,7 @@
 - _Requirements: US-4, AC-4.1-AC-4.4, FR-5_
 - _Design: TranslationJsonParser section_
 
-### 1.6 V1 [VERIFY] Quality checkpoint
+### 1.6 V1 [VERIFY] Quality checkpoint [DONE]
 - **Do**: Run quality checks on Phase 1 files
 - **Verify**: `python -m py_compile src/utils/extractors/extractors/base.py src/utils/extractors/extractors/lit_component.py src/utils/extractors/extractors/i18n_key.py src/utils/extractors/extractors/service_call.py src/utils/extractors/parsers/translation_json.py`
 - **Done when**: All files compile without syntax errors

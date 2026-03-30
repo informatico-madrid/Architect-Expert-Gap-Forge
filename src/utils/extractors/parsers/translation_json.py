@@ -77,6 +77,39 @@ def _flatten_dict(
     return entries
 
 
+class TranslationJsonParser:
+    """Parser for Home Assistant translation JSON files.
+
+    Provides methods to parse translation JSON files and extract
+    translation entries as flattened dot-path keys.
+    """
+
+    @staticmethod
+    def parse(file_path: Path) -> list[TranslationEntry]:
+        """Parse a translation JSON file and extract translation entries.
+
+        Flattens nested JSON structure to dot-path keys (e.g., "ui.card.title").
+        Identifies leaf nodes (strings or string-only dicts) vs intermediate categories.
+        Preserves ICU message format placeholders in values.
+
+        Args:
+            file_path: Path to the translation JSON file
+
+        Returns:
+            List of TranslationEntry objects for each translation key
+
+        Example:
+            >>> entries = TranslationJsonParser.parse(Path("strings.json"))
+            >>> for entry in entries:
+            ...     print(f"{entry.key}: {entry.value[:50]}...")
+        """
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        file_path_str = str(file_path)
+        return _flatten_dict(data, '', file_path_str)
+
+
 def parse_translation_json(file_path: Path) -> list[TranslationEntry]:
     """Parse a translation JSON file and extract translation entries.
 
@@ -95,8 +128,4 @@ def parse_translation_json(file_path: Path) -> list[TranslationEntry]:
         >>> for entry in entries:
         ...     print(f"{entry.key}: {entry.value[:50]}...")
     """
-    with open(file_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    file_path_str = str(file_path)
-    return _flatten_dict(data, '', file_path_str)
+    return TranslationJsonParser.parse(file_path)
