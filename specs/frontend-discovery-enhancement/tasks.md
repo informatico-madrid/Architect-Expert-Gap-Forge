@@ -168,7 +168,7 @@
 
 ## Phase 4: Configuration Updates
 
-### 4.1 Create homeassistant_frontend.yaml discovery config
+### 4.1 Create homeassistant_frontend.yaml discovery config [DONE]
 - **Do**:
   1. Create `configs/stage_1_discovery/examples/homeassistant_frontend.yaml`
   2. Define `static_repos` with `home-assistant/frontend`

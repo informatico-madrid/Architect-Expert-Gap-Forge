@@ -1,0 +1,65 @@
+# Home Assistant Frontend Discovery Configuration
+# This configuration defines the discovery settings for processing the Home Assistant
+# frontend repository (TypeScript/ Lit components).
+
+# Target subdirectory for discovered repositories
+category: homeassistant
+
+# Discovery mode: static (predefined repos) or dynamic (GitHub search)
+mode: static
+
+# Profile name for filtering and configuration
+profile: homeassistant_frontend
+
+# File extensions to process during discovery
+profile_extensions:
+  - ".ts"
+  - ".tsx"
+  - ".json"
+
+# Paths to ignore during discovery (directories/files to skip)
+profile_ignored_paths:
+  - ".git"
+  - "__pycache__"
+  - "node_modules"
+  - ".tox"
+  - "test"
+  - "tests"
+  - "dist"
+  - "build"
+  - "*.spec.ts"
+  - "*.test.ts"
+
+# Static repositories to process (Home Assistant frontend)
+static_repos:
+  - "home-assistant/frontend"
+
+# Processors configuration for TypeScript files
+processors:
+  lit_components:
+    enabled: true
+    extensions: [".ts", ".tsx"]
+  i18n_keys:
+    enabled: true
+    extensions: [".ts", ".tsx", ".json"]
+  service_calls:
+    enabled: true
+    extensions: [".ts", ".tsx"]
+
+# Minimum stars required for repositories (0 = no minimum)
+min_stars: 0
+
+# Maximum number of repositories to process
+limit: 50
+
+# Results per page for GitHub API requests
+per_page: 100
+
+# Base directory for output
+base_dir: .
+
+# Subdirectory for raw repository data
+raw_subdir: data/raw
+
+# Subdirectory where processor will write packaged bundles
+output_subdir: data/raw/homeassistant_frontend_bundles
