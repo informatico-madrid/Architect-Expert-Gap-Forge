@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -27,6 +26,15 @@ import yaml
 from dotenv import load_dotenv
 
 from src.discovery.metadata_enricher import ProcessingConfig, RepoProcessor
+from src.utils.rich_helpers import (
+    create_table,
+    get_console,
+)
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.panel import Panel
+
+# --- Project Root ---
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -88,14 +96,27 @@ def main(args: Optional[list] = None) -> int:
     log_level = logging.DEBUG if parsed.verbose else logging.INFO
     configure_logger(log_level)
 
+    # Resolve config path relative to PROJECT_ROOT if relative
+    config_path = (
+        Path(parsed.config)
+        if Path(parsed.config).is_absolute()
+        else PROJECT_ROOT / parsed.config
+    )
+
     # Validate config file exists
-    if not os.path.exists(parsed.config):
-        logger.error("Config not found: %s", parsed.config)
+    if not config_path.exists():
+        logger.error("Config not found: %s", config_path)
         return 1
+
+    # Rich console setup
+    console = get_console()
+
+    # Initialize config for header display
+    config: Optional[ProcessingConfig] = None
 
     try:
         # Load configuration
-        with open(parsed.config, "r") as f:
+        with open(config_path, "r") as f:
             config_data = yaml.safe_load(f)
 
         # Handle Path serialization from YAML
@@ -104,16 +125,83 @@ def main(args: Optional[list] = None) -> int:
 
         config = ProcessingConfig(**config_data)
 
-        # Run processor
+        # Rich startup header with Panel
+        console.print(Panel(
+            "\n[bold]AEGF Module-Aware Processor V2[/bold]\n\n"
+            f"[cyan]Base Directory:[/] {config.base_dir}\n"
+            f"[cyan]Category:[/] {config.category}\n"
+            f"[cyan]Raw Subdir:[/] {config.raw_subdir}\n"
+            f"[cyan]Output Subdir:[/] {config.output_subdir}\n"
+            f"[cyan]Profile:[/] {config.profile}",
+            title="[bold blue]Configuration[/bold blue]",
+            border_style="blue",
+        ))
+
+        # Run processor with progress tracking
         processor = RepoProcessor(config)
-        processor.run()
+
+        # Create progress bar for processing
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]Processing repositories...[/]"),
+            BarColumn(),
+            TaskProgressColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task("[cyan]Scanning modules...", total=None)
+
+            # Run the processor
+            processor.run()
+
+            # Update progress based on modules found
+            modules_found = processor._stats.get("modules_found", 0)
+            if modules_found > 0:
+                progress.update(task, total=modules_found, completed=modules_found)
+            else:
+                progress.update(task, completed=1)
+
+        # Rich summary table with styled header
+        console.print("\n[bold green]=== Processing Summary ===[/bold green]")
+        summary_table = create_table(title="[bold cyan]Processor Results[/bold cyan]")
+        summary_table.add_column("Metric", style="cyan bold")
+        summary_table.add_column("Value", justify="right", style="green")
+        summary_table.add_row("Modules Found", str(processor._stats.get("modules_found", 0)))
+        summary_table.add_row("Type 1 Units", str(processor._stats.get("TYPE1_FUNCTIONAL_UNIT", 0)))
+        summary_table.add_row("Type 3 Logic Only", str(processor._stats.get("TYPE3_LOGIC_ONLY", 0)))
+        summary_table.add_row("Type 4 Blueprints", str(processor._stats.get("TYPE4_MODULE_BLUEPRINT", 0)))
+        summary_table.add_row("Type 5 Governance", str(processor._stats.get("TYPE5_GOVERNANCE_RULES", 0)))
+        summary_table.add_row("Parse Errors", str(processor._stats.get("parse_errors", 0)))
+        console.print(summary_table)
+
+        # Success panel
+        console.print(
+            Panel(
+                f"[green]✓ Processing completed successfully[/]\n\n"
+                f"[cyan]Output directory:[/] {config.base_dir / config.output_subdir}\n\n"
+                f"[bold]Total Modules Processed:[/bold] [green]{processor._stats.get('modules_found', 0)}[/green]",
+                title="[bold green]Success[/bold green]",
+                border_style="green",
+            )
+        )
 
         logger.info("Processor completed successfully")
         return 0
 
     except Exception as e:
         logger.critical("Processor failed: %s", e)
+
+        # Error panel
+        console.print(
+            Panel(
+                f"[red]Exception:[/red] {type(e).__name__}\n\n"
+                f"[red]{str(e)}[/]",
+                title="[bold red]Error[/bold red]",
+                border_style="red",
+            )
+        )
+
         if parsed.verbose:
+            console.print("\n[bold red]Traceback:[/bold red]")
             import traceback
 
             traceback.print_exc()

@@ -1,0 +1,289 @@
+{
+  "description": "Fixture data for DatasetMixer tests",
+  "config_cases": [
+    {
+      "name": "default_config",
+      "specialized_pct": 30.0,
+      "anchor_pct": 70.0,
+      "shuffle_seed": 42,
+      "target_records": null
+    },
+    {
+      "name": "custom_proportions",
+      "specialized_pct": 50.0,
+      "anchor_pct": 50.0,
+      "shuffle_seed": 123,
+      "target_records": null
+    },
+    {
+      "name": "with_target_records",
+      "specialized_pct": 30.0,
+      "anchor_pct": 70.0,
+      "shuffle_seed": 42,
+      "target_records": 1000
+    }
+  ],
+  "specialized_records": [
+    {
+      "id": "spec_001",
+      "messages": [
+        {"role": "user", "content": "How do I configure a sensor in Home Assistant?"},
+        {"role": "assistant", "content": "You can configure a sensor using the YAML configuration file. Here's an example:\n\n```yaml\nsensor:\n  - platform: template\n    sensors:\n      my_sensor:\n        value_template: \"{{ states('sensor.temperature') }}\"\n```"}
+      ],
+      "metadata": {"origin": "specialized", "type": "qa", "token_count": 50}
+    },
+    {
+      "id": "spec_002",
+      "messages": [
+        {"role": "user", "content": "What is the best way to automate lights?"},
+        {"role": "assistant", "content": "Use automation with triggers, conditions, and actions. Here's an example:\n\n```yaml\nautomation:\n  - alias: Turn on lights at sunset\n    trigger:\n      platform: sun\n      event: sunset\n    action:\n      service: light.turn_on\n      entity_id: light.living_room\n```"}
+      ],
+      "metadata": {"origin": "specialized", "type": "qa", "token_count": 45}
+    },
+    {
+      "id": "spec_003",
+      "messages": [
+        {"role": "user", "content": "How to set up ESPHome?"},
+        {"role": "assistant", "content": "ESPHome is a system to control your microcontrollers by Home Assistant. First, install the add-on, then create a YAML config file."}
+      ],
+      "metadata": {"origin": "specialized", "type": "qa", "token_count": 35}
+    },
+    {
+      "id": "spec_004",
+      "messages": [
+        {"role": "user", "content": "Create a Python script for Home Assistant"},
+        {"role": "assistant", "content": "Here's a simple script:\n\n```python\nimport hass_api\n\ndef main():\n    states = hass_api.get_states()\n    return states\n```"}
+      ],
+      "metadata": {"origin": "specialized", "type": "code", "token_count": 30}
+    },
+    {
+      "id": "spec_005",
+      "messages": [
+        {"role": "user", "content": "Explain MQTT in Home Assistant"},
+        {"role": "assistant", "content": "MQTT is a lightweight messaging protocol for small sensors and mobile devices. In Home Assistant, you configure it in configuration.yaml with the mqtt integration."}
+      ],
+      "metadata": {"origin": "specialized", "type": "explanation", "token_count": 40}
+    }
+  ],
+  "anchor_records": [
+    {
+      "id": "anchor_001",
+      "messages": [
+        {"role": "user", "content": "What is machine learning?"},
+        {"role": "assistant", "content": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed."}
+      ],
+      "metadata": {"origin": "anchor", "type": "general", "token_count": 35}
+    },
+    {
+      "id": "anchor_002",
+      "messages": [
+        {"role": "user", "content": "Explain neural networks"},
+        {"role": "assistant", "content": "Neural networks are computing systems inspired by biological neural networks. They consist of interconnected nodes that process information."}
+      ],
+      "metadata": {"origin": "anchor", "type": "general", "token_count": 40}
+    },
+    {
+      "id": "anchor_003",
+      "messages": [
+        {"role": "user", "content": "What is deep learning?"},
+        {"role": "assistant", "content": "Deep learning is a type of machine learning that uses multi-layered neural networks to solve complex problems."}
+      ],
+      "metadata": {"origin": "anchor", "type": "general", "token_count": 30}
+    },
+    {
+      "id": "anchor_004",
+      "messages": [
+        {"role": "user", "content": "Define supervised learning"},
+        {"role": "assistant", "content": "Supervised learning is a machine learning approach where models are trained on labeled data to predict outputs for new inputs."}
+      ],
+      "metadata": {"origin": "anchor", "type": "general", "token_count": 35}
+    },
+    {
+      "id": "anchor_005",
+      "messages": [
+        {"role": "user", "content": "What is unsupervised learning?"},
+        {"role": "assistant", "content": "Unsupervised learning involves finding patterns in unlabeled data without predefined labels or targets."}
+      ],
+      "metadata": {"origin": "anchor", "type": "general", "token_count": 32}
+    },
+    {
+      "id": "anchor_006",
+      "messages": [
+        {"role": "user", "content": "Explain reinforcement learning"},
+        {"role": "assistant", "content": "Reinforcement learning is a type of machine learning where an agent learns to make decisions by taking actions in an environment to maximize a reward."}
+      ],
+      "metadata": {"origin": "anchor", "type": "general", "token_count": 38}
+    }
+  ],
+  "mix_cases": [
+    {
+      "name": "basic_mix_30_70",
+      "specialized_count": 5,
+      "anchor_count": 6,
+      "expected_total_records": 11,
+      "config": {"specialized_pct": 30.0, "anchor_pct": 70.0, "shuffle_seed": 42}
+    },
+    {
+      "name": "balanced_mix_50_50",
+      "specialized_count": 5,
+      "anchor_count": 6,
+      "expected_total_records": 11,
+      "config": {"specialized_pct": 50.0, "anchor_pct": 50.0, "shuffle_seed": 42}
+    },
+    {
+      "name": "with_target_records",
+      "specialized_count": 5,
+      "anchor_count": 6,
+      "target_records": 6,
+      "config": {"specialized_pct": 30.0, "anchor_pct": 70.0, "shuffle_seed": 42, "target_records": 6}
+    }
+  ],
+  "export_cases": [
+    {
+      "name": "basic_export",
+      "records_count": 3,
+      "output_format": "jsonl"
+    },
+    {
+      "name": "empty_export",
+      "records_count": 0,
+      "output_format": "jsonl"
+    }
+  ],
+  "report_cases": [
+    {
+      "name": "basic_report",
+      "records": [
+        {
+          "messages": [{"role": "user", "content": "Q1"}, {"role": "assistant", "content": "A1"}],
+          "metadata": {"origin": "specialized", "type": "qa", "token_count": 10}
+        },
+        {
+          "messages": [{"role": "user", "content": "Q2"}, {"role": "assistant", "content": "A2"}],
+          "metadata": {"origin": "specialized", "type": "qa", "token_count": 15}
+        },
+        {
+          "messages": [{"role": "user", "content": "Q3"}, {"role": "assistant", "content": "A3"}],
+          "metadata": {"origin": "anchor", "type": "general", "token_count": 25}
+        }
+      ],
+      "discarded_count": 1,
+      "discarded_reasons": {"duplicate": 1},
+      "format_distribution": {"none": 3}
+    },
+    {
+      "name": "report_with_xml_tools",
+      "records": [
+        {
+          "messages": [
+            {"role": "user", "content": "Call tool"},
+            {"role": "assistant", "content": "<tool_call><tool_name>test</tool_name></tool_call>"}
+          ],
+          "metadata": {"origin": "specialized", "type": "qa", "token_count": 20}
+        },
+        {
+          "messages": [
+            {"role": "user", "content": "Question"},
+            {"role": "assistant", "content": "Answer"}
+          ],
+          "metadata": {"origin": "anchor", "type": "general", "token_count": 10}
+        }
+      ],
+      "format_distribution": {"xml": 1, "none": 1}
+    },
+    {
+      "name": "report_with_json_tools",
+      "records": [
+        {
+          "messages": [
+            {"role": "user", "content": "Call tool"},
+            {"role": "assistant", "content": "{\"name\": \"test\", \"arguments\": {}}"}
+          ],
+          "metadata": {"origin": "specialized", "type": "qa", "token_count": 20}
+        }
+      ],
+      "format_distribution": {"json": 1}
+    },
+    {
+      "name": "empty_records",
+      "records": [],
+      "discarded_count": 0,
+      "format_distribution": {}
+    }
+  ],
+  "token_counting_cases": [
+    {
+      "name": "records_with_token_count",
+      "records": [
+        {"messages": [{"role": "user", "content": "Test"}], "metadata": {"token_count": 100}},
+        {"messages": [{"role": "user", "content": "Test2"}], "metadata": {"token_count": 50}}
+      ],
+      "expected_total": 150
+    },
+    {
+      "name": "records_without_token_count",
+      "records": [
+        {"messages": [{"role": "user", "content": "Hello world this is a test"}]},
+        {"messages": [{"role": "user", "content": "Another message"}]}
+      ],
+      "expected_total_gt": 0
+    },
+    {
+      "name": "mixed_token_count",
+      "records": [
+        {"messages": [{"role": "user", "content": "Test"}], "metadata": {"token_count": 100}},
+        {"messages": [{"role": "user", "content": "Test without count"}]}
+      ],
+      "expected_total_gt": 100
+    }
+  ],
+  "subsample_cases": [
+    {
+      "name": "subsample_to_fit",
+      "records": [
+        {"messages": [{"role": "user", "content": "A"}], "metadata": {"token_count": 100}},
+        {"messages": [{"role": "user", "content": "B"}], "metadata": {"token_count": 100}},
+        {"messages": [{"role": "user", "content": "C"}], "metadata": {"token_count": 100}},
+        {"messages": [{"role": "user", "content": "D"}], "metadata": {"token_count": 100}}
+      ],
+      "target_tokens": 250,
+      "expected_count": 3,
+      "expected_tokens": 300
+    },
+    {
+      "name": "subsample_single_record",
+      "records": [
+        {"messages": [{"role": "user", "content": "A"}], "metadata": {"token_count": 50}}
+      ],
+      "target_tokens": 100,
+      "expected_count": 1
+    },
+    {
+      "name": "subsample_none_fits",
+      "records": [
+        {"messages": [{"role": "user", "content": "A"}], "metadata": {"token_count": 200}}
+      ],
+      "target_tokens": 50,
+      "expected_count": 0
+    }
+  ],
+  "load_specialized_records_cases": [
+    {
+      "name": "valid_jsonl_content",
+      "jsonl_lines": [
+        "{\"messages\": [{\"role\": \"user\", \"content\": \"Q1\"}, {\"role\": \"assistant\", \"content\": \"A1\"}], \"metadata\": {\"origin\": \"test\"}}",
+        "{\"messages\": [{\"role\": \"user\", \"content\": \"Q2\"}, {\"role\": \"assistant\", \"content\": \"A2\"}], \"metadata\": {\"origin\": \"test\"}}"
+      ],
+      "expected_record_count": 2
+    },
+    {
+      "name": "empty_lines_skip",
+      "jsonl_lines": [
+        "{\"messages\": [{\"role\": \"user\", \"content\": \"Q1\"}, {\"role\": \"assistant\", \"content\": \"A1\"}], \"metadata\": {}}",
+        "",
+        "{\"messages\": [{\"role\": \"user\", \"content\": \"Q2\"}, {\"role\": \"assistant\", \"content\": \"A2\"}], \"metadata\": {}}"
+      ],
+      "expected_record_count": 2
+    }
+  ]
+}

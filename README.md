@@ -36,7 +36,7 @@ The Stage 1 engine uses a **Profile-based architecture** to support multiple lan
 **Profile Configuration** (FR-001):
 ```yaml
 profile: homeassistant           # Profile identifier
-profile_extensions: ['.py']      # Language extensions to filter
+profile_extensions: ['.py', '.ts', '.tsx']  # Python + TypeScript/TSX for frontend
 profile_ignored_paths:          # Paths to ignore
   - vendor
   - node_modules
@@ -99,7 +99,7 @@ pushed:>2026-01-01 language:python topic:home-assistant
 #### CLI Reference
 
 ```
-python src/discovery/ingestor.py --config <path> [--dry-run]
+python3 -m src.discovery.ingestor --config <path> [--dry-run]
 ```
 
 | Argument | Description |
@@ -114,15 +114,15 @@ python src/discovery/ingestor.py --config <path> [--dry-run]
 1. Create or edit a config: `configs/stage_1_discovery/<your_domain>.yaml`
 2. Run (static mode, no token needed):
 ```bash
-python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml
+python3 -m src.discovery.ingestor --config configs/homeassistant.yaml
 ```
 3. Preview without cloning (dry-run):
 ```bash
-python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml --dry-run
+python3 -m src.discovery.ingestor --config configs/homeassistant.yaml --dry-run
 ```
 4. With GitHub token for dynamic mode:
 ```bash
-GITHUB_TOKEN=ghp_xxx python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml
+GITHUB_TOKEN=ghp_xxx python3 -m src.discovery.ingestor --config configs/homeassistant.yaml
 ```
 
 **Note:** Static/manual ingestion is preferred to avoid low-signal bulk crawling and reduce architectural hallucinations at the source.
@@ -159,6 +159,60 @@ adapter = get_adapter(profile="homeassistant")
 |---------|----------|-------------|
 | `PythonASTAdapter` | Python | `extract_dependencies()`, `parse_file()` |
 | `PHPExtractorAdapter` | PHP | `extract_dependencies()`, `parse_file()` |
+| `TypeScriptAdapter` | TypeScript/TSX | `parse_file()` (uses LitComponentExtractor, I18nKeyExtractor, ServiceCallExtractor) |
+
+#### TypeScript/Frontend Extraction (spec: frontend-discovery-enhancement)
+
+The `TypeScriptAdapter` supports **Lit web component** parsing for frontend files:
+
+```python
+from src.utils.extractors.factory import get_adapter
+
+# Get TypeScript adapter for .ts/.tsx files
+adapter = get_adapter('typescript')
+```
+
+**Built-in Extractors:**
+
+| Extractor | Purpose | Detects |
+|-----------|---------|---------|
+| `LitComponentExtractor` | Lit custom elements | `@customElement`, `@property`, `@state` decorators |
+| `I18nKeyExtractor` | i18n keys | `localize()`, `hass.localize()`, template literals |
+| `ServiceCallExtractor` | Service calls | `hass.callService(domain, service, data)` |
+| `TranslationJsonParser` | Translation JSON | Nested JSON → dot-path keys |
+
+**Supported Frontend Patterns:**
+- **Lit components**: `@customElement('ha-dialog')` tag registration
+- **Properties**: `@property({ type: String })` reactive properties
+- **States**: `@state() private _opened = false`
+- **i18n**: `localize('ui.card.door.unlocked')`, `hass.localize("ui.common.back")`
+- **Service calls**: `this.hass.callService("cover", "open_cover", { entity_id: ... })`
+
+**Translation JSON:**
+```python
+from src.utils.extractors.parsers.translation_json import parse_translation_json
+
+entries = parse_translation_json(Path("strings.json"))
+# Returns: [{"key": "ui.card.door.unlocked", "value": "Door unlocked", "is_leaf": true}, ...]
+```
+
+**Export Format:**
+```python
+from src.export.chatml_exporter import ChatMLExporter
+
+exporter = ChatMLExporter()
+for record in exporter.export(tokens, system_prompt):
+    print(record.json())
+```
+
+**Frontend Taxonomy Prompts:**
+```python
+from src.export.frontend_taxonomy_prompts import FRONTEND_COMPONENT_SYSTEM_PROMPT
+
+# Component metadata extraction prompt
+system_msg = FRONTEND_COMPONENT_SYSTEM_PROMPT
+# Returns JSON: {tag, class, file_path, props, events, service_calls, i18n_keys}
+```
 
 #### ParseError Policy (FR-006)
 
@@ -187,12 +241,12 @@ Operational Flow (examples):
 
 Run Ingestion (Stage 1):
 ```
-python src/discovery/ingestor.py --config configs/stage_1_discovery/homeassistant.yaml
+python3 -m src.discovery.ingestor --config configs/homeassistant.yaml
 ```
 
 Run Processing (Stage 1.5):
 ```
-python -m src.discovery.processor_cli --config configs/stage_1_discovery/homeassistant.yaml
+python -m src.discovery.processor_cli --config configs/homeassistant.yaml
 ```
 
 Notes:
@@ -758,6 +812,45 @@ The pipeline writes a new JSONL with the same schema as the input. Rewritten rec
 - When `--audit-dir` is provided the rewriter writes one pretty-printed JSON per processed record into a timestamped run subdirectory as the job proceeds (`_emit_audit_file`). These audit files are useful to recover progress if the main run is interrupted.
 
 The `PipelineReport` dataclass summarizes counts per strategy and overall throughput.
+
+---
+
+### Stage 3.x — Dataset Mixing (`src/curation/dataset_mixer.py`)
+
+**Purpose:** Mix specialized and anchor datasets with configurable token proportions (default **65/35 Anti-Pereza**).
+
+```python
+from src.curation.dataset_mixer import DatasetMixer, DatasetMixerConfig
+
+config = DatasetMixerConfig(
+    specialized_pct=65.0,  # Anti-Pereza: specialized (gold)
+    anchor_pct=35.0,       # Anchor (theory/doctrine)
+    shuffle_seed=42
+)
+
+mixer = DatasetMixer(config)
+mixed = mixer.mix(specialized_records, anchor_records)
+mixer.export(mixed, Path("output.jsonl"))
+report = mixer.generate_report(mixed)
+```
+
+**Configuration:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `specialized_pct` | 65.0 | Target % for specialized (gold) dataset |
+| `anchor_pct` | 35.0 | Target % for anchor (theory/doctrine) |
+| `shuffle_seed` | 42 | Deterministic shuffle seed |
+| `target_records` | None | Optional target total records |
+
+**Token-based Proportions:**
+- Uses `tiktoken` (cl100k_base) for token counting (~3% drift vs Qwen3)
+- Subsamples to achieve exact token % targets, not record counts
+- Deterministic shuffle ensures reproducibility
+
+**Output Format:**
+- ChatML JSONL format
+- Includes composition report with token counts and proportions
 
 ---
 

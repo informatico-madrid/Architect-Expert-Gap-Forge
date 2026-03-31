@@ -55,7 +55,7 @@ class BacktrackingConfig:
     max_tokens: int = 4000
     excluded_types: tuple[str, ...] = ("theory",)
     vllm_api_url: str = "http://localhost:8000/v1"
-    vllm_model: str = "qwen3-30b-a3b-thinking-fp8"
+    vllm_model: str = "qwen3-5-35b-a3b-nvfp4"
     temperature: float = 0.6
     max_generation_tokens: int = 3000
     batch_size: int = 10

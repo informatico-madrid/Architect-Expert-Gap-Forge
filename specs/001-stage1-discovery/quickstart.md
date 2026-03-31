@@ -5,21 +5,37 @@ These quick commands demonstrate how to run the existing scripts with the new `p
 ## Run discovery (dry-run)
 
 ```bash
-python src/discovery/ingestor.py --config configs/stage_1_discovery/examples/homeassistant.yaml --dry-run
+# Preferir el modo módulo para evitar problemas de import
+python -m src.discovery.ingestor --config configs/stage_1_discovery/examples/homeassistant.yaml --dry-run
 ```
 
 ## Run processor with profile (default parse policy: abort)
 
 ```bash
-python src/discovery/processor.py --config configs/stage_1_discovery/examples/homeassistant.yaml
+# El "processor" está expuesto como un conjunto de módulos y una CLI.
+# Use el módulo CLI `processor_cli` (ejecutar con `-m` para garantizar imports correctos):
+python -m src.discovery.processor_cli --config configs/stage_1_discovery/examples/homeassistant.yaml
+
+# Para el perfil PHP legacy use el ejemplo correspondiente:
+python -m src.discovery.processor_cli --config configs/stage_1_discovery/examples/php_hexagonal.yaml
 ```
 
-Available profile examples: `homeassistant.yaml` and `php_hexagonal.yaml` in `configs/stage_1_discovery/examples/`.
+Available profile examples: `homeassistant.yaml`, `multi_legacy.yaml` and `php_hexagonal.yaml` in `configs/stage_1_discovery/examples/`.
 
-To override the `on_parse_error` at runtime, edit the profile example yaml under `configs/stage_1_discovery/examples/` and set:
+Notes on configuration:
+
+- Ensure your profile YAML provides the processor-required fields (at minimum): `base_dir`, `raw_subdir`, `output_subdir`, and `category`.
+- `on_parse_error` can be set in the profile under the `extractor` block (PHP) or top-level for other profiles. Valid values: `abort`, `skip`, `mark_and_continue`, `fallback`.
+
+Example override (inside the profile YAML):
 
 ```yaml
-on_parse_error: skip  # or 'abort' or 'fallback'
+# For Python-based profiles (homeassistant) set at top level
+on_parse_error: abort
+
+# For PHP-based profiles inside the extractor block
+extractor:
+	on_parse_error: skip
 ```
 
 ## Developer flow (run tests and checks)

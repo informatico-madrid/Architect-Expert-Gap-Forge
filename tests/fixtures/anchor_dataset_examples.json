@@ -1,0 +1,290 @@
+{
+  "description": "Fixture data for AnchorDatasetDownloader tests",
+  "anchor_configs": [
+    {
+      "name": "xlam_function_calling",
+      "hf_id": "Salesforce/xlam-function-calling-60k",
+      "split": "train",
+      "format": "xlam",
+      "token_budget_pct": 30.0
+    },
+    {
+      "name": "finetome_sharegpt",
+      "hf_id": "ise-uiuc/FineTome-100k",
+      "split": "train",
+      "format": "sharegpt",
+      "token_budget_pct": 40.0
+    },
+    {
+      "name": "magicoder_sharegpt",
+      "hf_id": "ise-uiuc/Magicoder-S-DS-6.7K",
+      "split": "train",
+      "format": "sharegpt",
+      "token_budget_pct": 20.0
+    },
+    {
+      "name": "openai_messages_format",
+      "hf_id": "openai/openai-gpt4-chatml",
+      "split": "train",
+      "format": "openai_messages",
+      "token_budget_pct": 10.0
+    }
+  ],
+  "yaml_config": {
+    "valid_anchors": {
+      "anchors": [
+        {"hf_id": "Salesforce/xlam-function-calling-60k", "split": "train", "format": "xlam", "token_budget_pct": 50.0},
+        {"hf_id": "ise-uiuc/FineTome-100k", "format": "sharegpt", "token_budget_pct": 50.0}
+      ]
+    },
+    "missing_anchors_key": {
+      "something_else": []
+    },
+    "invalid_missing_fields": {
+      "anchors": [
+        {"hf_id": "test/dataset"}
+      ]
+    }
+  },
+  "xlam_records": [
+    {
+      "name": "xlam_simple_conversation",
+      "conversations": [
+        {"from": "human", "value": "What is 2 + 2?"},
+        {"from": "gpt", "value": "2 + 2 equals 4."}
+      ]
+    },
+    {
+      "name": "xlam_with_function_call",
+      "conversations": [
+        {"from": "human", "value": "What's the weather like?"},
+        {"from": "gpt", "value": "I'll check that for you.", "function_call": {"name": "get_weather", "arguments": {"location": "San Francisco"}}}
+      ]
+    },
+    {
+      "name": "xlam_system_message",
+      "conversations": [
+        {"from": "system", "value": "You are a helpful assistant."},
+        {"from": "human", "value": "Hello!"},
+        {"from": "gpt", "value": "Hello! How can I help you?"}
+      ]
+    },
+    {
+      "name": "xlam_missing_required_field",
+      "data": "invalid"
+    },
+    {
+      "name": "xlam_incomplete_conversation_item",
+      "conversations": [
+        {"from": "human"},
+        {"value": "incomplete"}
+      ]
+    },
+    {
+      "name": "xlam_multi_turn",
+      "conversations": [
+        {"from": "human", "value": "What's 1 + 1?"},
+        {"from": "gpt", "value": "It's 2."},
+        {"from": "human", "value": "And 2 + 2?"},
+        {"from": "gpt", "value": "That's 4."}
+      ]
+    }
+  ],
+  "sharegpt_records": [
+    {
+      "name": "sharegpt_simple",
+      "conversations": [
+        {"from": "human", "value": "Tell me a joke."},
+        {"from": "gpt", "value": "Why did the chicken cross the road? To get to the other side."}
+      ]
+    },
+    {
+      "name": "sharegpt_with_system",
+      "conversations": [
+        {"from": "system", "value": "You are a coding assistant."},
+        {"from": "human", "value": "How do I print in Python?"},
+        {"from": "gpt", "value": "Use the print() function."}
+      ]
+    },
+    {
+      "name": "sharegpt_tool_message",
+      "conversations": [
+        {"from": "human", "value": "Run a command."},
+        {"from": "tool", "value": "Command executed successfully."},
+        {"from": "gpt", "value": "The command ran successfully."}
+      ]
+    },
+    {
+      "name": "sharegpt_missing_conversations",
+      "messages": ["invalid"]
+    },
+    {
+      "name": "sharegpt_incomplete_item",
+      "conversations": [
+        {"from": "human"}
+      ]
+    },
+    {
+      "name": "sharegpt_case_insensitive_roles",
+      "conversations": [
+        {"from": "Human", "value": "Hello"},
+        {"from": "GPT", "value": "Hi there!"}
+      ]
+    },
+    {
+      "name": "sharegpt_long_content",
+      "conversations": [
+        {"from": "human", "value": "Write a long story about a knight fighting dragons."},
+        {"from": "gpt", "value": "Once upon a time, in a kingdom far away, there lived a brave knight named Sir William. He had been training since childhood to become the greatest dragon slayer the world had ever seen. His armor gleamed in the sunlight, and his sword was sharper than any other. One day, a terrible dragon terrorized the kingdom, burning villages and stealing livestock. The king called upon Sir William to defeat this beast. With courage in his heart and steel in his hand, the knight set out on his quest..."}
+      ]
+    }
+  ],
+  "openai_messages_records": [
+    {
+      "name": "openai_simple",
+      "messages": [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"}
+      ]
+    },
+    {
+      "name": "openai_tool_calls",
+      "messages": [
+        {"role": "user", "content": "Get the weather."},
+        {"role": "assistant", "content": "Let me check.", "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "get_weather", "arguments": "{}"}}]},
+        {"role": "tool", "content": "Sunny, 72°F", "tool_call_id": "call_123"}
+      ]
+    },
+    {
+      "name": "openai_missing_messages",
+      "conversation": []
+    },
+    {
+      "name": "openai_incomplete_message",
+      "messages": [
+        {"role": "user"}
+      ]
+    },
+    {
+      "name": "openai_empty_content",
+      "messages": [
+        {"role": "user", "content": ""},
+        {"role": "assistant", "content": "Hello!"}
+      ]
+    }
+  ],
+  "token_counts": {
+    "short_text": "Hello world",
+    "medium_text": "This is a medium length text with some words to count tokens.",
+    "long_text": "This is a much longer text that contains many more words and should result in a higher token count when encoded by the tiktoken tokenizer. It includes punctuation marks, numbers like 12345, and some special characters!",
+    "expected_short_tokens": 2,
+    "expected_medium_tokens": 9,
+    "expected_long_tokens": 27
+  },
+  "subsample_cases": [
+    {
+      "name": "empty_records",
+      "records": [],
+      "token_budget": 1000,
+      "expected_count": 0
+    },
+    {
+      "name": "budget_larger_than_all",
+      "token_counts": [100, 200, 300],
+      "token_budget": 1000,
+      "expected_count": 3,
+      "expected_total_tokens": 600
+    },
+    {
+      "name": "budget_exact_fit",
+      "token_counts": [100, 200, 300],
+      "token_budget": 600,
+      "expected_count": 3,
+      "expected_total_tokens": 600
+    },
+    {
+      "name": "budget_partial_last",
+      "token_counts": [100, 200, 300],
+      "token_budget": 500,
+      "expected_count": 2,
+      "expected_total_tokens": 300
+    },
+    {
+      "name": "single_record_fit",
+      "token_counts": [500],
+      "token_budget": 1000,
+      "expected_count": 1,
+      "expected_total_tokens": 500
+    },
+    {
+      "name": "single_record_too_large",
+      "token_counts": [1500],
+      "token_budget": 1000,
+      "expected_count": 0
+    },
+    {
+      "name": "zero_budget",
+      "token_counts": [100, 200],
+      "token_budget": 0,
+      "expected_count": 0
+    },
+    {
+      "name": "budget_exactly_one_record",
+      "token_counts": [100, 200, 300],
+      "token_budget": 100,
+      "expected_count": 1,
+      "expected_total_tokens": 100
+    },
+    {
+      "name": "mixed_small_and_large",
+      "token_counts": [50, 500, 50, 500],
+      "token_budget": 550,
+      "expected_count": 2,
+      "expected_total_tokens": 100
+    }
+  ],
+  "export_cases": [
+    {
+      "name": "empty_records",
+      "records": [],
+      "expected_lines": 0
+    },
+    {
+      "name": "single_record",
+      "messages": [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi!"}
+      ],
+      "metadata": {"origin": "test", "type": "anchor"},
+      "expected_lines": 1
+    },
+    {
+      "name": "multiple_records",
+      "record_count": 5,
+      "expected_lines": 5
+    }
+  ],
+  "download_fallback_cases": [
+    {
+      "name": "jsonl_single_record",
+      "content": "{\"conversations\": [{\"from\": \"human\", \"value\": \"test\"}]}\n",
+      "format": "jsonl"
+    },
+    {
+      "name": "jsonl_multiple_records",
+      "content": "{\"conversations\": [{\"from\": \"human\", \"value\": \"test1\"}]}\n{\"conversations\": [{\"from\": \"human\", \"value\": \"test2\"}]}\n",
+      "format": "jsonl"
+    },
+    {
+      "name": "json_array",
+      "content": "[{\"conversations\": [{\"from\": \"human\", \"value\": \"test1\"}]}, {\"conversations\": [{\"from\": \"human\", \"value\": \"test2\"}]}]",
+      "format": "json"
+    },
+    {
+      "name": "json_object_not_array",
+      "content": "{\"conversations\": [{\"from\": \"human\", \"value\": \"test\"}]}",
+      "format": "json"
+    }
+  ]
+}

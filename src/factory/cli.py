@@ -20,6 +20,60 @@ import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
+
+# Custom logging helpers -------------------------------------------------
+
+
+class _FragmentWarningDowngrader(logging.Filter):
+    """Downgrade specific warning messages to INFO.
+
+    Used to silence or reduce noise for messages that are expected by design
+    (e.g. "Fragment extraction error"). The filter mutates the record so
+    downstream handlers will render it as INFO instead of WARNING.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            msg = record.getMessage()
+        except Exception:
+            msg = ""
+        if "Fragment extraction error" in msg and record.levelno == logging.WARNING:
+            record.levelno = logging.INFO
+            record.levelname = "INFO"
+        return True
+
+
+class _LivePanelHandler(logging.Handler):
+    """Logging handler that updates a Rich Live panel with the last message.
+
+    The handler expects to receive a running `rich.live.Live` instance as
+    the `live` keyword argument when constructed.
+    """
+
+    def __init__(self, live):
+        super().__init__()
+        self.live = live
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+        except Exception:
+            msg = record.getMessage()
+        try:
+            from rich.panel import Panel
+
+            panel = Panel(msg, title="[bold magenta]Último log[/]", border_style="cyan")
+            # Use live.update to refresh the fixed panel area
+            self.live.update(panel)
+        except Exception:
+            # If Live is unavailable, fallback to stdout
+            print(msg, file=sys.stderr)
+
+
 
 from src.factory.config import (
     DEFAULT_API_KEY,
@@ -31,18 +85,81 @@ from src.factory.pipeline_runner import main_async
 
 logger = logging.getLogger(__name__)
 
+# Rich console for terminal output
+_console: Console | None = None
 
-def configure_logger() -> None:
-    """Configure logger for CLI execution.
 
-    This function should be called from the main block or CLI entrypoint.
-    It sets up a custom formatter and enables INFO level logging.
+def get_console() -> Console:
+    """Get or create the Rich console instance."""
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
+
+
+def configure_logger(
+    level: str = "INFO",
+    use_rich: bool = True,
+    downgrade_fragment_warnings: bool = True,
+    live: object | None = None,
+    console: Console | None = None,
+) -> None:
+    """Configure root logger.
+
+    Args:
+        level: Logging level name (DEBUG/INFO/...).
+        use_rich: When True, install RichHandler for pretty logging.
+        downgrade_fragment_warnings: When True, apply a filter that
+            downgrades "Fragment extraction error" warnings to INFO.
+        live: Optional Rich Live instance. If provided, a handler will
+            update the live panel with the last log message.
+        console: Optional Rich Console instance (used by RichHandler).
     """
+    # Normalise level
+    level_name = (level or "INFO").upper()
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(logging.Formatter("[V11 %(levelname)s] %(message)s"))
-    root_logger.addHandler(_handler)
+
+    # Remove existing handlers to avoid duplicate output when reconfiguring
+    for h in list(root_logger.handlers):
+        root_logger.removeHandler(h)
+
+    try:
+        lvl = getattr(logging, level_name)
+    except Exception:
+        lvl = logging.INFO
+    root_logger.setLevel(lvl)
+
+    # Install Rich handler when requested and available
+    if use_rich:
+        try:
+            from rich.logging import RichHandler
+
+            rich_handler = RichHandler(rich_tracebacks=True, show_time=False)
+            if downgrade_fragment_warnings:
+                rich_handler.addFilter(_FragmentWarningDowngrader())
+            root_logger.addHandler(rich_handler)
+        except Exception:
+            # Fallback to standard stream handler
+            stream = logging.StreamHandler(sys.stdout)
+            stream.setFormatter(logging.Formatter("[V11 %(levelname)s] %(message)s"))
+            if downgrade_fragment_warnings:
+                stream.addFilter(_FragmentWarningDowngrader())
+            root_logger.addHandler(stream)
+    else:
+        stream = logging.StreamHandler(sys.stdout)
+        stream.setFormatter(logging.Formatter("[V11 %(levelname)s] %(message)s"))
+        if downgrade_fragment_warnings:
+            stream.addFilter(_FragmentWarningDowngrader())
+        root_logger.addHandler(stream)
+
+    # If a Live panel was provided, add a handler that updates it with the
+    # latest formatted message (keeps the terminal area fixed).
+    if live is not None:
+        live_handler = _LivePanelHandler(live)
+        live_handler.setLevel(logging.INFO)
+        # Use a concise formatter for the live panel
+        live_handler.setFormatter(logging.Formatter("[V11 %(levelname)s] %(message)s"))
+        root_logger.addHandler(live_handler)
 
 
 def parse_args() -> argparse.Namespace:
@@ -210,7 +327,109 @@ Usage examples:
         metavar="PATH",
         help="Path to prompts_taxonomy.yaml (default: auto-resolved from project root)",
     )
+    # Logging / UI control
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default="INFO",
+        help="Logging level (default: INFO)",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        default=False,
+        help="Quiet mode: set logging to ERROR",
+    )
+    parser.add_argument(
+        "--no-rich",
+        action="store_true",
+        default=False,
+        help="Disable Rich-formatted output (use plain logging)",
+    )
+    parser.add_argument(
+        "--no-downgrade-fragment-warnings",
+        dest="downgrade_fragment_warnings",
+        action="store_false",
+        default=True,
+        help="Do not downgrade 'Fragment extraction error' warnings to INFO",
+    )
+    parser.add_argument(
+        "--no-live",
+        action="store_true",
+        default=False,
+        help="Disable the Rich live panel UI even when Rich is enabled",
+    )
     return parser.parse_args()
+
+
+def display_startup_panel(args: argparse.Namespace) -> None:
+    """Display a startup panel with pipeline configuration.
+
+    Args:
+        args: Parsed command-line arguments.
+    """
+    console = get_console()
+
+    # Build configuration summary
+    config_lines = [
+        f"[bold]Workers:[/bold]\t{args.workers}",
+        f"[bold]Model:[/bold]\t{args.model}",
+        f"[bold]Base URL:[/bold]\t{args.base_url}",
+        f"[bold]Seed:[/bold]\t{args.seed}",
+    ]
+
+    if args.theory:
+        config_lines.extend(
+            [
+                "[bold]Mode:[/bold]\tTHEORY",
+                f"[bold]Repetitions:[/bold]\t{args.theory_reps}",
+            ]
+        )
+    else:
+        config_lines.extend(
+            [
+                "[bold]Mode:[/bold]\tNORMAL",
+                f"[bold]Output:[/bold]\t{args.output or 'auto-generated'}",
+            ]
+        )
+
+    config_text = "\n".join(config_lines)
+
+    panel_title = "[bold cyan]AEGF Factory Pipeline - V11[/bold cyan]"
+    console.print(
+        Panel(
+            config_text,
+            title=panel_title,
+            border_style="cyan",
+            padding=(1, 2),
+        )
+    )
+
+
+def display_summary_panel(stats: dict) -> None:
+    """Display a summary panel after pipeline completion.
+
+    Args:
+        stats: Dictionary with pipeline statistics.
+    """
+    console = get_console()
+
+    # Build summary table
+    table = Table(show_header=True, header_style="bold magenta")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", justify="right")
+
+    for metric, value in stats.items():
+        table.add_row(metric, str(value))
+
+    panel = Panel(
+        table,
+        title="[bold green]Pipeline Summary[/]",
+        border_style="green",
+        padding=(1, 2),
+    )
+    console.print(panel)
 
 
 def main() -> None:
@@ -222,9 +441,41 @@ def main() -> None:
     # Load environment variables from .env file if present
     load_dotenv()
 
-    configure_logger()
+    # Parse args early so logger/UI can be configured accordingly
     args = parse_args()
     random.seed(args.seed)
+
+    console = get_console()
+
+    # Decide whether to use Rich (only when not explicitly disabled and
+    # when stdout looks like a terminal).
+    use_rich = (not args.no_rich) and console.is_terminal
+
+    # Optionally start a Live panel that will be updated with the latest
+    # log message. We only enable Live when Rich is available and enabled.
+    live = None
+    if use_rich and (not args.no_live):
+        try:
+            from rich.live import Live
+
+            initial_panel = Panel("Iniciando...", title="[bold cyan]AEGF Pipeline - V11[/]")
+            live = Live(initial_panel, console=console, refresh_per_second=4)
+            live.start()
+        except Exception:
+            live = None
+
+    # Configure logger with requested options
+    effective_level = "ERROR" if args.quiet else args.log_level
+    configure_logger(
+        level=effective_level,
+        use_rich=use_rich,
+        downgrade_fragment_warnings=args.downgrade_fragment_warnings,
+        live=live,
+        console=console,
+    )
+
+    # Display Rich startup panel
+    display_startup_panel(args)
 
     # Resolve project base directory (data_factory/)
     base_dir = Path(__file__).resolve().parent.parent.parent
@@ -248,7 +499,15 @@ def main() -> None:
     # Run the async pipeline
     import asyncio
 
-    asyncio.run(main_async(args))
+    try:
+        asyncio.run(main_async(args))
+    finally:
+        # Ensure live panel is stopped cleanly
+        if live is not None:
+            try:
+                live.stop()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":

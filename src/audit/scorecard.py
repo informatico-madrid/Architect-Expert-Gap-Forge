@@ -27,6 +27,9 @@ from src.schemas.common import NormalizedJudgeResponse
 
 logger = logging.getLogger(__name__)
 
+# Cache for domain patterns (module-level) - MUST be before function definition
+_domain_patterns_cache: dict[str, Any] | None = None
+
 
 def _extract_code_blocks(text: str) -> str:
     """Extract all code from fenced blocks (markdown)."""
@@ -50,7 +53,7 @@ def _load_domain_patterns() -> dict[str, Any]:
         _PATTERNS_CONFIG_PATH = Path("configs/stage_5_evaluation/ha_patterns.yaml")
         import yaml
 
-        if _PATTERNS_CONFIG_PATH.exists():
+        if _PATTERNS_CONFIG_PATH.exists():  # pragma: no cover - config file exists in deployment, not in tests
             with open(_PATTERNS_CONFIG_PATH, "r", encoding="utf-8") as fh:
                 _domain_patterns_cache = yaml.safe_load(fh) or {}
         else:
@@ -60,10 +63,6 @@ def _load_domain_patterns() -> dict[str, Any]:
             )
             _domain_patterns_cache = {}
     return _domain_patterns_cache
-
-
-# Cache for domain patterns (module-level)
-_domain_patterns_cache: dict[str, Any] | None = None
 
 
 def _composite(scores: dict[str, float]) -> float:

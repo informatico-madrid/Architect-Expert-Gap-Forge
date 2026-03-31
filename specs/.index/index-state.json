@@ -1,0 +1,111 @@
+{
+  "version": "1.0",
+  "updated": "2026-03-30T11:03:03Z",
+  "directories": [
+    {
+      "path": "./specs",
+      "specsCount": 14,
+      "isDefault": true
+    }
+  ],
+  "specs": [
+    {
+      "name": "000-proyecto-actual",
+      "path": "./specs/000-proyecto-actual",
+      "phase": "new"
+    },
+    {
+      "name": "001-stage1-discovery",
+      "path": "./specs/001-stage1-discovery",
+      "phase": "completed",
+      "taskIndex": 85,
+      "totalTasks": 85
+    },
+    {
+      "name": "002-ralph-worktree",
+      "path": "./specs/002-ralph-worktree",
+      "phase": "completed",
+      "taskIndex": 13,
+      "totalTasks": 13
+    },
+    {
+      "name": "003-monolith-modules",
+      "path": "./specs/003-monolith-modules",
+      "phase": "tasks",
+      "taskIndex": 30,
+      "totalTasks": 34
+    },
+    {
+      "name": "004-php-legacy-driver",
+      "path": "./specs/004-php-legacy-driver",
+      "phase": "tasks",
+      "taskIndex": 70,
+      "totalTasks": 72
+    },
+    {
+      "name": "005-inference-calibration",
+      "path": "./specs/005-inference-calibration",
+      "phase": "tasks",
+      "taskIndex": 50,
+      "totalTasks": 53
+    },
+    {
+      "name": "006-project-maintenance",
+      "path": "./specs/006-project-maintenance",
+      "phase": "tasks",
+      "taskIndex": 0
+0,
+      "totalTasks": 48
+    },
+    {
+      "name": "008-fix-ingestor-cli-execution",
+      "path": "./specs/008-fix-ingestor-cli-execution",
+      "phase": "tasks",
+      "taskIndex": 0
+0,
+      "totalTasks": 9
+    },
+    {
+      "name": "010-agentic-dataset-redesign",
+      "path": "./specs/010-agentic-dataset-redesign",
+      "phase": "tasks",
+      "taskIndex": 37,
+      "totalTasks": 39
+    },
+    {
+      "name": "011-fix-failing-tests",
+      "path": "./specs/011-fix-failing-tests",
+      "phase": "tasks",
+      "taskIndex": 13,
+      "totalTasks": 18
+    },
+    {
+      "name": "013-ingestor-yaml-tests",
+      "path": "./specs/013-ingestor-yaml-tests",
+      "phase": "tasks",
+      "taskIndex": 29,
+      "totalTasks": 33
+    },
+    {
+      "name": "012-mejorar-cobertura-code",
+      "path": "./specs/012-mejorar-cobertura-code",
+      "phase": "tasks",
+      "taskIndex": 44,
+      "totalTasks": 47
+    },
+    {
+      "name": "014-rich-cli-output",
+      "path": "./specs/014-rich-cli-output",
+      "phase": "tasks",
+      "taskIndex": 0
+0,
+      "totalTasks": 34
+    },
+    {
+      "name": "frontend-discovery-enhancement",
+      "path": "./specs/frontend-discovery-enhancement",
+      "phase": "research",
+      "awaitingApproval": true
+    }
+  ]
+}

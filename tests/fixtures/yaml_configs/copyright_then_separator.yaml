@@ -1,0 +1,28 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# SPDX-License-Identifier: Apache-2.0
+---
+# YAML document separator - content BEFORE this line is IGNORED by yaml.safe_load()
+# This simulates the bug where --- appears after copyright header
+search_query: 'filename:manifest.json'
+min_stars: 0
+limit: 10
+category: test_category
+mode: static
+profile: test_profile
+profile_extensions:
+  - ".py"
+  - ".md"
+profile_ignored_paths:
+  - ".git"
+  - "node_modules"
+  - "__pycache__"
+static_repos:
+  - "test-owner/test-repo-1"
+  - "test-owner/test-repo-2"
+per_page: 100
+base_dir: .
+raw_subdir: "data/raw"

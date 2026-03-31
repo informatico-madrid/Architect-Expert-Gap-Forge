@@ -16,12 +16,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import datetime
 import logging
 import sys
 from pathlib import Path
 
 from .backtracking_config import BacktrackingConfig, load_backtracking_config
 from .rewrite_engine import rewrite_pipeline
+from src.utils.rich_helpers import (
+    format_duration,
+    get_console,
+    print_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +187,13 @@ def main(argv: list[str] | None = None) -> int:
         datefmt="%H:%M:%S",
     )
 
+    # Rich terminal output setup
+    console = get_console()
+    console.print("\n[bold blue]=== AEGF Backtracking Rewriter ===[/bold blue]")
+    console.print(f"[cyan]Input:[/cyan] {args.input}")
+    console.print(f"[cyan]Output:[/cyan] {args.output}")
+    console.print(f"[cyan]Config:[/cyan] {args.config or 'default'}\n")
+
     # Load base config from YAML (or fall back to defaults)
     cfg: BacktrackingConfig
     if args.config is not None:
@@ -222,9 +235,25 @@ def main(argv: list[str] | None = None) -> int:
         cfg.temperature,
     )
 
-    report = asyncio.run(rewrite_pipeline(args.input, args.output, cfg))
-    print(report)
-    return 0
+    console.print("[dim]Starting backtracking rewrite pipeline...[/dim]")
+    start_time = datetime.datetime.now()
+
+    try:
+        report = asyncio.run(rewrite_pipeline(args.input, args.output, cfg))
+        console.print("[green]✓[/green] Pipeline completed successfully")
+        console.print(f"\n[dim]{report}[/dim]")
+
+        # Calculate duration
+        end_time = datetime.datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        console.print(f"\n[dim]Total duration: {format_duration(duration)}[/dim]")
+
+        return 0
+
+    except Exception as e:
+        logger.error("Error during rewrite pipeline: %s", e)
+        print_error(console, str(e), title="Pipeline Failed")
+        return 1
 
 
 if __name__ == "__main__":

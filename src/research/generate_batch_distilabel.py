@@ -29,6 +29,14 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any
 from openai import OpenAI
+from rich.console import Console
+from rich.panel import Panel
+
+from src.utils.rich_helpers import (
+    create_console,
+    print_info,
+    print_status,
+)
 
 # ============================================================================
 # TOKEN-AWARE CONFIGURATION (LIMITS)
@@ -170,14 +178,45 @@ def split_code_logically(
 # ============================================================================
 # 2. LOAD TARGET FILE AND CHUNK
 # ============================================================================
-print(f"📂 Loading file: {TARGET_FILE}")
-with open(TARGET_FILE, "r", encoding="utf-8") as f:
-    file_content = f.read()
 
+def load_target_file(console: Console) -> str:
+    """Load target file for processing."""
+    print_info(
+        console,
+        f"📂 Loading file: {TARGET_FILE}",
+        title="File Loading",
+        style="cyan",
+    )
+
+    with open(TARGET_FILE, "r", encoding="utf-8") as f:
+        file_content = f.read()
+
+    return file_content
+
+
+def process_seeds(console: Console, seeds: list[dict[str, Any]]) -> None:
+    """Display seeds information."""
+    print_status(
+        console,
+        f"✅ File split into {len(seeds)} logical chunks",
+        style="green",
+    )
+
+    for seed in seeds:
+        console.print(f"  [dim]- {seed['id']}: {seed['title']} ({seed['tokens']} tokens)[/]")
+
+
+# Initialize console
+console = create_console()
+
+# Load target file
+file_content = load_target_file(console)
+
+# Split code logically
 seeds = split_code_logically(file_content)
-print(f"✅ File split into {len(seeds)} logical chunks")
-for seed in seeds:
-    print(f"  - {seed['id']}: {seed['title']} ({seed['tokens']} tokens)")
+
+# Display seeds information
+process_seeds(console, seeds)
 
 TARGET_SAMPLES = len(seeds)
 
@@ -188,7 +227,7 @@ client = OpenAI(
     base_url="http://localhost:8000/v1", api_key=os.getenv("AEGF_API_KEY", "")
 )
 
-MODEL_NAME = "qwen3-30b-a3b-thinking-fp8"
+MODEL_NAME = "qwen3-5-35b-a3b-nvfp4"
 GENERATION_PARAMS = {
     "temperature": 0.3,
     "presence_penalty": 1.3,
@@ -467,28 +506,43 @@ Formato: </think><tool_call>
 
 # 6. RUN THE DISTILABEL AGENTIC PIPELINE
 if __name__ == "__main__":
-    print("=" * 80)
-    print("DISTILABEL PIPELINE - BLACKWELL AI FACTORY 2026")
-    print("=" * 80)
-    print(f"Model: {MODEL_NAME}")
-    print(f"Samples: {TARGET_SAMPLES} (controlled test)")
-    print("Framework: Distilabel + local vLLM")
-    print("Metrics: Logic Density > 2.5:1, Zero Meta-Speech")
-    print("=" * 80)
+    console = create_console()
+
+    # Display startup panel
+    console.print(
+        Panel(
+            f"[bold]Model:[/] {MODEL_NAME}\n"
+            f"[bold]Samples:[/] {TARGET_SAMPLES} (controlled test)\n"
+            f"[bold]Framework:[/] Distilabel + local vLLM\n"
+            f"[bold]Metrics:[/] Logic Density > 2.5:1, Zero Meta-Speech",
+            title="[bold blue]DISTILABEL PIPELINE - BLACKWELL AI FACTORY 2026[/]",
+            border_style="blue",
+        )
+    )
 
     results = []
 
     for idx, seed in enumerate(seeds):
-        print(
-            f"\n📝 Processing seed {idx + 1}/{len(seeds)}: {seed['instruction'][:60]}..."
+        print_status(
+            console,
+            f"📝 Processing seed {idx + 1}/{len(seeds)}: {seed['instruction'][:60]}...",
+            style="cyan",
         )
 
         try:
             conversation = generate_agentic_conversation(seed, idx)
             results.append(conversation)
-            print("  ✅ Conversation generated (4 turns)")
+            print_status(
+                console,
+                "  ✅ Conversation generated (4 turns)",
+                style="green",
+            )
         except Exception as e:
-            print(f"  ❌ Error: {e}")
+            print_status(
+                console,
+                f"  ❌ Error: {e}",
+                style="red",
+            )
 
     # Save results
     output_path = Path("data/synthetic/batch_01_distilabel.jsonl")
@@ -499,9 +553,9 @@ if __name__ == "__main__":
             f.write(json.dumps(result, ensure_ascii=False) + "\n")
 
     # QUALITY METRICS 2026
-    print("\n" + "=" * 80)
-    print("QUALITY METRICS 2026")
-    print("=" * 80)
+    console.print("\n" + "-" * 80)
+    console.print("[bold cyan]QUALITY METRICS 2026[/]")
+    console.print("-" * 80)
 
     # Validate format
     format_valid = 0
@@ -541,16 +595,42 @@ if __name__ == "__main__":
         else 0
     )
 
-    print(
-        f"Valid format (4 turns): {format_valid}/{len(results)} ({(100 * format_valid) // len(results)}%)"
+    # Quality metrics table
+    from src.utils.rich_helpers import create_table, add_rows_to_table
+
+    metrics_table = create_table(
+        title="[bold cyan]Quality Metrics 2026[/]",
+        show_header=True,
     )
-    print(
-        f"attempt_completion present: {attempt_completion_count}/{len(results)} ({(100 * attempt_completion_count) // len(results)}%)"
+    metrics_table.add_column("Metric", style="bold cyan")
+    metrics_table.add_column("Value", justify="right")
+
+    metrics_rows = [
+        (
+            "Valid format (4 turns)",
+            f"{format_valid}/{len(results)} ({(100 * format_valid) // len(results)}%)",
+        ),
+        (
+            "attempt_completion present",
+            f"{attempt_completion_count}/{len(results)} ({(100 * attempt_completion_count) // len(results)}%)",
+        ),
+        ("Average Logic Density Index", f"{avg_logic_density:.2f}:1 (Target: >2.5:1)"),
+        ("NeMo-Curator compatible", "✅ Yes"),
+        ("APIGen-MT-5k roles", f"[user, assistant, tool, assistant] x {len(results)}"),
+    ]
+    add_rows_to_table(metrics_table, metrics_rows)
+    console.print(metrics_table)
+
+    # Display summary panel
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Operation Complete[/]\n"
+            f"[dim]Samples:[/] [cyan]{len(results)}[/]\n"
+            f"[dim]Format Valid:[/] [green]{format_valid}/{len(results)}[/]\n"
+            f"[dim]attempt_completion:[/] [green]{attempt_completion_count}/{len(results)}[/]\n"
+            f"[dim]Saved to:[/] [cyan]{output_path}[/]",
+            title="[bold green]Summary[/]",
+            border_style="green",
+        )
     )
-    print(f"Average Logic Density Index: {avg_logic_density:.2f}:1 (Target: >2.5:1)")
-    print(f"\n📁 Saved to: {output_path}")
-    print("✅ NeMo-Curator compatible for downstream curation")
-    print(
-        f"APIGen-MT-5k roles: [user, assistant, tool, assistant] x {len(results)} conversations"
-    )
-    print("=" * 80)

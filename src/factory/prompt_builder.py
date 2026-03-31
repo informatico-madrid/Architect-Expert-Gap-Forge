@@ -122,10 +122,52 @@ def _prompt(key: str) -> str:
     Args:
         key: Dot-separated path under 'prompts', e.g. "system.python.base".
     """
-    node = _TAX["prompts"]
-    for part in key.split("."):
-        node = node[part]
-    return node
+    prompts = _TAX.get("prompts", {})
+    parts = key.split(".")
+
+    def _try_traverse(parts_seq):
+        node = prompts
+        for p in parts_seq:
+            if not isinstance(node, dict):
+                raise KeyError(p)
+            node = node[p]
+        return node
+
+    # 1) Try direct traversal: e.g. prompts['system']['python']['base']
+    try:
+        return _try_traverse(parts)
+    except Exception:
+        pass
+
+    # Build candidate resolution orders to support common legacy shapes.
+    lang_tokens = {"python", "jinja"}
+    candidates = []
+    # reversed ordering: language first (python.system.base)
+    if len(parts) >= 3 and parts[1] in lang_tokens:
+        candidates.append([parts[1], parts[0]] + parts[2:])
+        # language then rest (python.base)
+        candidates.append([parts[1]] + parts[2:])
+        # drop language (system.base)
+        candidates.append([parts[0]] + parts[2:])
+
+    # general removal of any language tokens
+    parts_no_lang = [p for p in parts if p not in lang_tokens]
+    if parts_no_lang and parts_no_lang != parts:
+        candidates.append(parts_no_lang)
+
+    # last resort: try the final token as top-level (e.g., prompts['base'])
+    candidates.append([parts[-1]])
+
+    for cand in candidates:
+        try:
+            val = _try_traverse(cand)
+            logger.warning("Resolved prompt '%s' via candidate ordering '%s'", key, ".".join(cand))
+            return val
+        except Exception:
+            continue
+
+    logger.error("Prompt key not found in taxonomy: %s", key)
+    raise KeyError(f"Prompt key not found: {key}")
 
 
 # ======================================================================

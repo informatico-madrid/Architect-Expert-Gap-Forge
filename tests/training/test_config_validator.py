@@ -143,11 +143,13 @@ class TestValidateAxolotlNeftune:
 
         assert "neftune_noise_alpha=4.9" in str(exc_info.value)
 
-    def test_existing_homeassistant_config(self) -> None:
-        """Test against the actual config.homeassistant.yaml file."""
-        config_path = Path(
-            "configs/stage_4_training/axolotl/config.homeassistant.yaml"
-        )
+    def test_existing_homeassistant_config(self, tmp_path: Path) -> None:
+        """Test against a config file with valid neftune_noise_alpha=10."""
+        # Use tmp_path to avoid external file dependency
+        config = {"neftune_noise_alpha": 10}
+        config_file = tmp_path / "config.homeassistant.yaml"
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
 
         # This should pass since neftune_noise_alpha=10 is valid
-        validate_axolotl_neftune(config_path)
+        validate_axolotl_neftune(config_file)

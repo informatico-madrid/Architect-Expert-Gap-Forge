@@ -112,6 +112,14 @@ jobs:
           AEGF_DOC_2: "technical_changelog_2026.md"
           AEGF_DOC_3: "HA_JINJA_YAML_GUIDE_2026.md"
 
+      - name: Verify direct CLI execution
+        # Verify that the CLI can be executed without PYTHONPATH
+        # This step confirms the fix for Issue #008 works correctly
+        run: python3 -m src.discovery.ingestor --dry-run --config configs/stage_1_discovery/examples/php_hexagonal.yaml
+        env:
+          GOOGLE_API_KEY: ""
+          PYTHON_DOTENV_DISABLED: '1'
+
       - name: Upload coverage report (Python 3.12 only)
         if: matrix.python-version == '3.12'
         uses: actions/upload-artifact@v4

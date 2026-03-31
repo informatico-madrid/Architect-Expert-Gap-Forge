@@ -1,0 +1,27 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# SPDX-License-Identifier: Apache-2.0
+
+# Invalid YAML config for testing - missing required field 'category'
+# This file should fail validation when loaded into DiscoveryConfig
+search_query: 'filename:manifest.json'
+min_stars: 0
+limit: 10
+mode: static
+profile: test_profile
+profile_extensions:
+  - ".py"
+  - ".md"
+profile_ignored_paths:
+  - ".git"
+  - "node_modules"
+  - "__pycache__"
+static_repos:
+  - "test-owner/test-repo-1"
+  - "test-owner/test-repo-2"
+per_page: 100
+base_dir: .
+raw_subdir: "data/raw"

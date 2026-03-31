@@ -745,3 +745,561 @@ function process() {
         symbols = [d.target_symbol for d in deps]
 
         assert symbols == sorted(symbols), "Result must be sorted by target_symbol"
+
+
+class TestImplicitDependencyValidation:
+    """Tests for ImplicitDependency dataclass validation (T043)."""
+
+    def test_implicit_dependency_valid(self) -> None:
+        """Should create ImplicitDependency with valid values."""
+        from src.discovery.php_fragmenter import ImplicitDependency, DependencyType
+
+        dep = ImplicitDependency(
+            target_symbol="$db",
+            dependency_type=DependencyType.GLOBAL_VAR.value,
+            confidence=0.8,
+        )
+        assert dep.target_symbol == "$db"
+        assert dep.confidence == 0.8
+
+    def test_implicit_dependency_confidence_below_range(self) -> None:
+        """Should raise ValueError when confidence < 0.0."""
+        from src.discovery.php_fragmenter import ImplicitDependency
+
+        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
+            ImplicitDependency(
+                target_symbol="$db",
+                dependency_type="global_var",
+                confidence=-0.1,
+            )
+
+    def test_implicit_dependency_confidence_above_range(self) -> None:
+        """Should raise ValueError when confidence > 1.0."""
+        from src.discovery.php_fragmenter import ImplicitDependency
+
+        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
+            ImplicitDependency(
+                target_symbol="$db",
+                dependency_type="global_var",
+                confidence=1.5,
+            )
+
+    def test_implicit_dependency_invalid_dependency_type(self) -> None:
+        """Should raise ValueError when dependency_type is invalid."""
+        from src.discovery.php_fragmenter import ImplicitDependency
+
+        with pytest.raises(ValueError, match="dependency_type must be one of"):
+            ImplicitDependency(
+                target_symbol="$db",
+                dependency_type="invalid_type",
+                confidence=0.5,
+            )
+
+
+class TestPhpFragmentValidation:
+    """Tests for PhpFragment dataclass validation (T043)."""
+
+    def test_php_fragment_valid(self) -> None:
+        """Should create PhpFragment with valid values."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        fragment = PhpFragment(
+            name="test_func",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php function test_func() {}",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+        )
+        assert fragment.name == "test_func"
+        assert fragment.start_line == 1
+
+    def test_php_fragment_invalid_fragment_type(self) -> None:
+        """Should raise ValueError for invalid fragment_type."""
+        from src.discovery.php_fragmenter import PhpFragment
+
+        with pytest.raises(ValueError, match="fragment_type must be one of"):
+            PhpFragment(
+                name="test",
+                fragment_type="invalid_type",
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_invalid_file_style(self) -> None:
+        """Should raise ValueError for invalid file_style."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="file_style must be one of"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+                file_style="INVALID_STYLE",
+            )
+
+    def test_php_fragment_start_line_less_than_1(self) -> None:
+        """Should raise ValueError when start_line < 1."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="start_line must be >= 1"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=0,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_end_line_less_than_start(self) -> None:
+        """Should raise ValueError when end_line < start_line."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="end_line must be >= start_line"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=10,
+                end_line=5,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref=None,
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_invalid_preamble_ref_length(self) -> None:
+        """Should raise ValueError when preamble_ref is not 64 chars."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="preamble_ref must be 64-char SHA-256 hex"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref="short",
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_invalid_preamble_ref_hex(self) -> None:
+        """Should raise ValueError when preamble_ref is not valid hex."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        with pytest.raises(ValueError, match="preamble_ref must be valid hexadecimal"):
+            PhpFragment(
+                name="test",
+                fragment_type=FragmentType.FUNCTION.value,
+                source_file=Path("test.php"),
+                start_line=1,
+                end_line=10,
+                raw_content="<?php",
+                legacy_action=None,
+                preamble_ref="g" * 64,  # Invalid hex
+                dependencies=(),
+                platform_hints=(),
+            )
+
+    def test_php_fragment_line_count_property(self) -> None:
+        """Should return correct line count."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+        )
+        assert fragment.line_count == 10
+
+    def test_php_fragment_has_implicit_deps_property(self) -> None:
+        """Should return True when has implicit dependencies."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType, ImplicitDependency, DependencyType
+
+        dep = ImplicitDependency(
+            target_symbol="$db",
+            dependency_type=DependencyType.GLOBAL_VAR.value,
+            confidence=0.8,
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            implicit_deps=(dep,),
+        )
+        assert fragment.has_implicit_deps is True
+        assert fragment.has_signatures is False
+
+    def test_php_fragment_get_implicit_dep_symbols(self) -> None:
+        """Should return tuple of dependency symbols."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType, ImplicitDependency, DependencyType
+
+        dep = ImplicitDependency(
+            target_symbol="$db",
+            dependency_type=DependencyType.GLOBAL_VAR.value,
+            confidence=0.8,
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php",
+            legacy_action=None,
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            implicit_deps=(dep,),
+        )
+        assert fragment.get_implicit_dep_symbols() == ("$db",)
+
+
+class TestFastBraceScanUnclosed:
+    """Additional tests for fast_brace_scan error paths (T043)."""
+
+    def test_unclosed_multiline_comment_returns_minus_1(self) -> None:
+        """Test unclosed multi-line comment returns -1."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = "function test() { /* unclosed comment"
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == -1
+
+    def test_single_line_comment_not_affected(self) -> None:
+        """Test single-line comments don't affect brace matching."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = """function test() {
+    // } this is a comment
+    return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_string_brace_not_counted(self) -> None:
+        """Test braces inside double-quoted strings are not counted."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = """function test() {
+    $str = "{not a brace}";
+    return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+    def test_single_quoted_string_brace_not_counted(self) -> None:
+        """Test braces inside single-quoted strings are not counted."""
+        from src.discovery.php_fragmenter import fast_brace_scan
+
+        source = """function test() {
+    $str = '{not a brace}';
+    return 1;
+}"""
+        open_pos = source.index("{")
+        close_pos = fast_brace_scan(source, open_pos)
+        assert close_pos == len(source) - 1
+
+
+class TestClassifyFileStyle:
+    """Tests for _classify_file_style function."""
+
+    def test_classify_empty_source(self) -> None:
+        """Test empty source returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        result = _classify_file_style("")
+        assert result == "LEGACY_PURE"
+
+    def test_classify_modernized_namespace_typed_constructor(self) -> None:
+        """Test namespace with typed constructor returns LEGACY_MODERNIZED."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+namespace App\\Model;
+class User {
+    public function __construct(int $id, string $name) {}
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_MODERNIZED"
+
+    def test_classify_hybrid_class_with_legacy_patterns(self) -> None:
+        """Test class with legacy patterns (mysql_query) returns HYBRID."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class Order {
+    public function process() {
+        global $db;
+        mysql_query("SELECT * FROM orders");
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "HYBRID"
+
+    def test_classify_hybrid_tep_db_query(self) -> None:
+        """Test class with tep_db_query returns HYBRID."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class Product {
+    public function getProducts() {
+        return tep_db_query("SELECT * FROM products");
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "HYBRID"
+
+    def test_classify_hybrid_wpdb(self) -> None:
+        """Test class with $wpdb returns HYBRID."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class Post {
+    public function getPost($id) {
+        global $wpdb;
+        return $wpdb->get_results("SELECT * FROM posts WHERE ID = $id");
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "HYBRID"
+
+    def test_classify_pure_global_db(self) -> None:
+        """Test global $db without class returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+global $db;
+function getData() {
+    global $db;
+    return $db->query("SELECT * FROM data");
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_PURE"
+
+    def test_classify_pure_top_level_functions(self) -> None:
+        """Test top-level functions without class returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+function processData($id) {
+    return $id * 2;
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_PURE"
+
+    def test_classify_pure_class_without_legacy(self) -> None:
+        """Test class without legacy patterns returns LEGACY_PURE."""
+        from src.discovery.php_fragmenter import _classify_file_style
+
+        source = """<?php
+class User {
+    private $id;
+    public function getId() {
+        return $this->id;
+    }
+}
+"""
+        result = _classify_file_style(source)
+        assert result == "LEGACY_PURE"
+
+
+class TestBuildExclusionSet:
+    """Tests for _build_exclusion_set function."""
+
+    def test_build_exclusion_set_basic(self) -> None:
+        """Test basic exclusion set building."""
+        from src.discovery.php_fragmenter import _build_exclusion_set
+
+        source = """<?php
+function test() {
+    $local = 1;
+    global $db;
+    require_once('file.php');
+}
+"""
+        exclusions = _build_exclusion_set(source)
+        # Should contain excluded items
+        assert isinstance(exclusions, frozenset)
+
+
+class TestPhpFragmentSignatureCategories:
+    """Tests for PhpFragment.get_signature_categories method."""
+
+    def test_get_signature_categories_empty(self) -> None:
+        """Test with empty signatures returns empty tuple."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php function test() {}",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(),
+        )
+        categories = fragment.get_signature_categories()
+        assert categories == ()
+
+    def test_get_signature_categories_single(self) -> None:
+        """Test with single signature returns single category."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+        from src.discovery.php_signatures import LegacySignature, SignatureCategory
+
+        sig = LegacySignature(
+            pattern_name="mysql_query",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query",
+            line_number=5,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=10,
+            raw_content="<?php function test() { mysql_query(); }",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(sig,),
+        )
+        categories = fragment.get_signature_categories()
+        assert SignatureCategory.PERSISTENCE_SMELL.value in categories
+
+    def test_get_signature_categories_multiple_same(self) -> None:
+        """Test with multiple signatures of same category returns unique."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+        from src.discovery.php_signatures import LegacySignature, SignatureCategory
+
+        sig1 = LegacySignature(
+            pattern_name="mysql_query1",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query1",
+            line_number=5,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        sig2 = LegacySignature(
+            pattern_name="mysql_query2",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query2",
+            line_number=10,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=20,
+            raw_content="<?php function test() {}",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(sig1, sig2),
+        )
+        categories = fragment.get_signature_categories()
+        # Should return unique categories only
+        assert len(categories) == 1
+        assert SignatureCategory.PERSISTENCE_SMELL.value in categories
+
+    def test_get_signature_categories_multiple_different(self) -> None:
+        """Test with multiple signatures of different categories."""
+        from src.discovery.php_fragmenter import PhpFragment, FragmentType
+        from src.discovery.php_signatures import LegacySignature, SignatureCategory
+
+        sig1 = LegacySignature(
+            pattern_name="mysql_query",
+            category=SignatureCategory.PERSISTENCE_SMELL.value,
+            matched_text="mysql_query",
+            line_number=5,
+            severity="critical",
+            modern_equivalent="mysqli or PDO",
+        )
+        sig2 = LegacySignature(
+            pattern_name="global_var",
+            category=SignatureCategory.STATE_POLLUTION.value,
+            matched_text="$global",
+            line_number=10,
+            severity="warning",
+            modern_equivalent="dependency injection",
+        )
+        fragment = PhpFragment(
+            name="test",
+            fragment_type=FragmentType.FUNCTION.value,
+            source_file=Path("/test.php"),
+            start_line=1,
+            end_line=20,
+            raw_content="<?php function test() {}",
+            legacy_action="test_action",
+            preamble_ref=None,
+            dependencies=(),
+            platform_hints=(),
+            signatures=(sig1, sig2),
+        )
+        categories = fragment.get_signature_categories()
+        assert len(categories) == 2
+        assert SignatureCategory.PERSISTENCE_SMELL.value in categories
+        assert SignatureCategory.STATE_POLLUTION.value in categories
+
+

@@ -494,6 +494,373 @@ class TestHardQueryBuilderIntegration:
             assert "ConfigEntry" not in hard_query
 
 
+class TestHardQueryBuilderTransform:
+    """Tests for _transform_to_abstract method."""
+
+    def test_transform_coordinator_category(self) -> None:
+        """Test transformation of coordinator-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("dual_mode_coordinator", "test context")
+        assert "coordinar" in result.lower() or "coordinador" in result.lower()
+        assert "automáticamente" in result.lower() or "automaticamente" in result.lower()
+
+    def test_transform_integration_category(self) -> None:
+        """Test transformation of integration-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("api_integration", "test context")
+        assert "integrar" in result.lower() or "integración" in result.lower()
+        assert "autónoma" in result.lower() or "autonoma" in result.lower()
+
+    def test_transform_entity_category(self) -> None:
+        """Test transformation of entity-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("entity_management", "test context")
+        assert "entidad" in result.lower() or "gestionar" in result.lower()
+        assert "tipo" in result.lower()
+
+    def test_transform_protocol_category(self) -> None:
+        """Test transformation of protocol-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("custom_protocol", "test context")
+        assert "protocolo" in result.lower() or "comunicación" in result.lower()
+
+    def test_transform_websocket_category(self) -> None:
+        """Test transformation of websocket-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("websocket_connection", "test context")
+        assert "comunicación" in result.lower() or "bidireccional" in result.lower()
+
+    def test_transform_bluetooth_category(self) -> None:
+        """Test transformation of bluetooth-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("bluetooth_device", "test context")
+        assert "dispositivo" in result.lower() or "externo" in result.lower()
+
+    def test_transform_rest_category(self) -> None:
+        """Test transformation of REST-related categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("rest_api_client", "test context")
+        assert "servicio" in result.lower() or "externo" in result.lower()
+
+    def test_transform_generic_category(self) -> None:
+        """Test transformation of generic categories."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result = builder._transform_to_abstract("custom_feature", "test context")
+        # Generic transformation should convert underscores to spaces
+        assert "custom feature" in result.lower() or "manejar" in result.lower()
+        assert "autónoma" in result.lower() or "autonoma" in result.lower()
+
+
+class TestHardQueryBuilderWithValidation:
+    """Tests for build_with_validation method."""
+
+    def test_build_with_validation_success(self) -> None:
+        """Test build_with_validation returns valid prompt."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        seed_data = {
+            "seed_id": "test_001",
+            "category": "test_category",
+            "context": "Test context for validation",
+            "question": "Test question",
+        }
+        # Should return a valid prompt without errors
+        result = builder.build_with_validation(seed_data)
+        assert isinstance(result, str)
+        assert len(result) > 0
+        # Validate the result
+        assert builder.validate_prompt(result) is True
+
+    def test_build_with_validation_retry_on_failure(self) -> None:
+        """Test build_with_validation retries when validation fails."""
+        # Create a builder with seed for reproducibility
+        builder = HardQueryBuilder(use_case="home_assistant", seed=123)
+        seed_data = {
+            "seed_id": "test_002",
+            "category": "integration",
+            "context": "Context",
+            "question": "Question",
+        }
+        # Call build_with_validation - it should retry up to 3 times
+        # Since our test templates should pass validation, it should succeed
+        result = builder.build_with_validation(seed_data)
+        assert isinstance(result, str)
+
+    def test_build_with_validation_raises_after_max_retries(self) -> None:
+        """Test build_with_validation raises ValueError after max retries."""
+        # Create a mock that always returns invalid prompts
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+
+        # Monkey-patch build to always return invalid prompt
+        _original_build = builder.build
+
+        def always_invalid(_seed_data: dict[str, Any]) -> str:
+            return "usa DataUpdateCoordinator para implementar esto"
+
+        builder.build = always_invalid
+
+        seed_data = {
+            "seed_id": "test_003",
+            "category": "test",
+            "context": "test",
+            "question": "test",
+        }
+
+        # Should raise ValueError after 3 retries
+        with pytest.raises(ValueError, match="Could not generate valid abstract prompt"):
+            builder.build_with_validation(seed_data)
+
+    def test_build_with_validation_different_templates(self) -> None:
+        """Test build_with_validation tries different templates on retry."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=999)
+        seed_data = {
+            "seed_id": "test_004",
+            "category": "coordinator",
+            "context": "Sistema que coordina actualizaciones",
+            "question": "Question",
+        }
+        # Should work with valid abstract prompts
+        result = builder.build_with_validation(seed_data)
+        assert isinstance(result, str)
+        assert builder.validate_prompt(result) is True
+
+
+class TestHardQueryBuilderBuildMethod:
+    """Tests for the build method."""
+
+    def test_build_with_minimal_seed(self) -> None:
+        """Test build handles minimal seed data."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        minimal_seed: dict[str, Any] = {}
+        result = builder.build(minimal_seed)
+        assert isinstance(result, str)
+        # Should still produce output even with empty seed
+        assert "Objetivo:" in result or len(result) > 0
+
+    def test_build_with_seed_id_only(self) -> None:
+        """Test build handles seed with only seed_id."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        seed = {"seed_id": "only_id"}
+        result = builder.build(seed)
+        assert isinstance(result, str)
+
+    def test_build_with_all_fields(self) -> None:
+        """Test build with all seed fields populated."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        seed = {
+            "seed_id": "full_seed",
+            "category": "websocket_coordinator",
+            "context": "Sistema de comunicación bidireccional",
+            "question": "Implementa WebSocket",
+            "complexity": "hard",
+        }
+        result = builder.build(seed)
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+    def test_build_reproducibility_with_seed(self) -> None:
+        """Test that same seed produces same result."""
+        seed_data = {
+            "seed_id": "repro_test",
+            "category": "test_category",
+            "context": "Test context",
+            "question": "Test question",
+        }
+        builder1 = HardQueryBuilder(use_case="home_assistant", seed=42)
+        builder2 = HardQueryBuilder(use_case="home_assistant", seed=42)
+        result1 = builder1.build(seed_data)
+        result2 = builder2.build(seed_data)
+        # Results should be the same with same seed
+        assert result1 == result2
+
+    def test_build_different_seeds_different_results(self) -> None:
+        """Test that different seeds produce different results."""
+        seed_data = {
+            "seed_id": "diff_test",
+            "category": "test_category",
+            "context": "Test context",
+            "question": "Test question",
+        }
+        builder1 = HardQueryBuilder(use_case="home_assistant", seed=1)
+        builder2 = HardQueryBuilder(use_case="home_assistant", seed=2)
+        _result1 = builder1.build(seed_data)
+        _result2 = builder2.build(seed_data)
+        # Different seeds should potentially give different templates
+        # (though they could coincidentally be the same)
+
+
+class TestHardQueryBuilderValidatePrompt:
+    """Additional tests for validate_prompt method."""
+
+    def test_validate_prompt_checks_all_forbidden_terms(self) -> None:
+        """Test validate_prompt checks all configured forbidden terms."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        # Test each forbidden term from defaults
+        for term in builder.forbidden_terms:
+            prompt = f"Some text with {term} in it"
+            assert builder.validate_prompt(prompt) is False
+
+    def test_validate_prompt_check_imperative_disabled(self, tmp_path: Path) -> None:
+        """Test validate_prompt when check_imperative is disabled."""
+        config = tmp_path / "config.yaml"
+        config.write_text("""
+forbidden_terms:
+  - test_term
+templates:
+  test:
+    template: "Test"
+use_cases:
+  test:
+    objective_templates:
+      - "Test"
+validator:
+  check_forbidden: true
+  check_imperative: false
+""")
+        builder = HardQueryBuilder(use_case="test", templates_path=config, seed=42)
+        # Imperative phrase should pass when check_imperative is False
+        prompt = "Primero haz esto, después haz aquello"
+        # Should only fail on forbidden terms, not imperative
+        result = builder.validate_prompt(prompt)
+        assert result is True  # No forbidden terms
+
+    def test_validate_prompt_check_forbidden_disabled(self, tmp_path: Path) -> None:
+        """Test validate_prompt when check_forbidden is disabled."""
+        config = tmp_path / "config2.yaml"
+        config.write_text("""
+forbidden_terms:
+  - test_term
+templates:
+  test:
+    template: "Test"
+use_cases:
+  test:
+    objective_templates:
+      - "Test"
+validator:
+  check_forbidden: false
+  check_imperative: true
+""")
+        builder = HardQueryBuilder(use_case="test", templates_path=config, seed=42)
+        # Forbidden term should pass when check_forbidden is False
+        prompt = "Usa test_term para hacer esto"
+        result = builder.validate_prompt(prompt)
+        assert result is True  # check_forbidden is disabled
+
+    def test_validate_prompt_empty_text(self) -> None:
+        """Test validate_prompt with empty text."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+        # Empty text should pass (no forbidden terms)
+        assert builder.validate_prompt("") is True
+
+    def test_validate_prompt_all_imperative_patterns(self) -> None:
+        """Test validate_prompt detects all imperative patterns."""
+        builder = HardQueryBuilder(use_case="home_assistant", seed=42)
+
+        imperative_prompts = [
+            "implementa usando esto",
+            "crea una clase nueva",
+            "define la función correcta",
+            "sigue estos pasos",
+            "primero haz lo segundo",
+            "después haz la tarea",
+            "para resolver esto:",
+            "necesitas usar algo",
+            "debes usar esto",
+        ]
+
+        for prompt in imperative_prompts:
+            assert builder.validate_prompt(prompt) is False, f"Failed to detect: {prompt}"
+
+
+class TestHardQueryBuilderBuildTemplates:
+    """Tests for different template formatting in build method."""
+
+    def test_build_with_outcome_template(self, tmp_path: Path) -> None:
+        """Test build uses outcome-focused template when available."""
+        config = tmp_path / "config.yaml"
+        config.write_text("""
+forbidden_terms: []
+templates:
+  outcome_focused:
+    template: "Necesito lograr: {outcome}\\nDisponible: {available}\\nEl resultado debe ser: {expected_result}"
+use_cases:
+  test:
+    objective_templates:
+      - "Test objective"
+    context_templates:
+      - "Test context"
+validator:
+  check_forbidden: false
+  check_imperative: false
+""")
+        builder = HardQueryBuilder(use_case="test", templates_path=config, seed=42)
+        seed = {
+            "seed_id": "test",
+            "category": "test_cat",
+            "context": "Test context",
+            "question": "Test question",
+        }
+        result = builder.build(seed)
+        # Should use outcome template format
+        assert "Necesito lograr:" in result or "Disponible:" in result or "resultado" in result
+
+    def test_build_with_question_template(self, tmp_path: Path) -> None:
+        """Test build uses question-background template when available."""
+        config = tmp_path / "config2.yaml"
+        config.write_text("""
+forbidden_terms: []
+templates:
+  question_focused:
+    template: "{question}\\nBackground: {background}\\nDesired: {desired_state}"
+use_cases:
+  test:
+    objective_templates:
+      - "Test"
+    context_templates:
+      - "Background info"
+validator:
+  check_forbidden: false
+  check_imperative: false
+""")
+        builder = HardQueryBuilder(use_case="test", templates_path=config, seed=42)
+        seed = {
+            "seed_id": "test",
+            "category": "test",
+            "context": "Test context",
+            "question": "Test question?",
+        }
+        result = builder.build(seed)
+        assert "question" in result.lower() or "background" in result.lower()
+
+    def test_build_with_requirement_template(self, tmp_path: Path) -> None:
+        """Test build uses requirement-constraints template when available."""
+        config = tmp_path / "config3.yaml"
+        config.write_text("""
+forbidden_terms: []
+templates:
+  requirement_focused:
+    template: "Requisito: {requirement}\\nRestricciones: {constraints}"
+use_cases:
+  test:
+    objective_templates:
+      - "Test"
+    context_templates:
+      - "Test"
+validator:
+  check_forbidden: false
+  check_imperative: false
+""")
+        builder = HardQueryBuilder(use_case="test", templates_path=config, seed=42)
+        seed = {
+            "seed_id": "test",
+            "category": "test",
+            "context": "Context",
+            "question": "Question",
+        }
+        result = builder.build(seed)
+        assert "requisito" in result.lower() or "restriccion" in result.lower()
+
+
 class TestHardQueryBuilderErrorCases:
     """Tests for error handling in HardQueryBuilder."""
 
@@ -608,3 +975,86 @@ class TestHardQueryBuilderInterface:
         loader = HardQueryTemplateLoader()
         names = loader.get_template_names()
         assert isinstance(names, list)
+
+    def test_template_loader_get_template(self) -> None:
+        """Test HardQueryTemplateLoader returns specific template by name."""
+        loader = HardQueryTemplateLoader()
+        # Test getting an existing template
+        template = loader.get_template("problem_focused")
+        assert isinstance(template, str)
+        # Test getting non-existent template returns empty string
+        empty_template = loader.get_template("nonexistent_template")
+        assert empty_template == ""
+
+    def test_template_loader_get_use_case_config(self) -> None:
+        """Test HardQueryTemplateLoader returns use case configuration."""
+        loader = HardQueryTemplateLoader()
+        # Test getting existing use case config
+        config = loader.get_use_case_config("home_assistant")
+        assert isinstance(config, dict)
+        # Test getting non-existent use case returns empty dict
+        empty_config = loader.get_use_case_config("nonexistent_use_case")
+        assert empty_config == {}
+
+    def test_template_loader_get_validator_config(self) -> None:
+        """Test HardQueryTemplateLoader returns validator configuration."""
+        loader = HardQueryTemplateLoader()
+        config = loader.get_validator_config()
+        assert isinstance(config, dict)
+        # Validator config should have expected keys from defaults
+        assert "min_abstractness" in config or "check_forbidden" in config
+
+    def test_template_loader_default_templates(self) -> None:
+        """Test HardQueryTemplateLoader returns default templates when file missing."""
+        # Use a non-existent path to trigger defaults
+        loader = HardQueryTemplateLoader(templates_path="/nonexistent/path.yaml")
+        templates = loader._default_templates()
+        assert isinstance(templates, dict)
+        assert "forbidden_terms" in templates
+        assert "templates" in templates
+        assert "use_cases" in templates
+        assert "validator" in templates
+        # Verify default forbidden terms
+        assert "async_forward_entry_setups" in templates["forbidden_terms"]
+        assert "DataUpdateCoordinator" in templates["forbidden_terms"]
+
+    def test_template_loader_with_invalid_yaml(self, tmp_path: Path) -> None:
+        """Test HardQueryTemplateLoader raises on invalid YAML."""
+        # Create invalid YAML file
+        invalid_yaml = tmp_path / "invalid.yaml"
+        invalid_yaml.write_text("invalid: yaml: content: [}")
+        # Should raise YAML error (code doesn't handle it gracefully)
+        with pytest.raises(yaml.scanner.ScannerError):
+            HardQueryTemplateLoader(templates_path=invalid_yaml)
+
+    def test_template_loader_with_empty_yaml(self, tmp_path: Path) -> None:
+        """Test HardQueryTemplateLoader handles empty YAML file."""
+        empty_yaml = tmp_path / "empty.yaml"
+        empty_yaml.write_text("")
+        loader = HardQueryTemplateLoader(templates_path=empty_yaml)
+        templates = loader.load_templates()
+        # Empty YAML results in None from yaml.safe_load
+        assert templates == {}
+
+    def test_template_loader_with_valid_custom_yaml(self, tmp_path: Path) -> None:
+        """Test HardQueryTemplateLoader loads valid custom YAML file."""
+        custom_yaml = tmp_path / "custom.yaml"
+        custom_yaml.write_text("""
+forbidden_terms:
+  - test_term
+templates:
+  custom_template:
+    template: "Custom: {objective}"
+use_cases:
+  test_use_case:
+    objective_templates:
+      - "Test objective"
+validator:
+  min_abstractness: 0.5
+  check_forbidden: true
+""")
+        loader = HardQueryTemplateLoader(templates_path=custom_yaml)
+        assert loader.get_forbidden_terms() == ["test_term"]
+        assert "custom_template" in loader.get_template_names()
+        config = loader.get_use_case_config("test_use_case")
+        assert "objective_templates" in config

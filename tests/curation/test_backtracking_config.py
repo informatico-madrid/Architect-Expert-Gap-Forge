@@ -1,3 +1,10 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# SPDX-License-Identifier: Apache-2.0
+
 """Tests for backtracking_config module."""
 
 import tempfile
@@ -21,7 +28,7 @@ class TestBacktrackingConfig:
         assert config.max_tokens == 4000
         assert config.excluded_types == ("theory",)
         assert config.vllm_api_url == "http://localhost:8000/v1"
-        assert config.vllm_model == "qwen3-30b-a3b-thinking-fp8"
+        assert config.vllm_model == "qwen3-5-35b-a3b-nvfp4"
         assert config.temperature == 0.6
 
     def test_custom_values(self):

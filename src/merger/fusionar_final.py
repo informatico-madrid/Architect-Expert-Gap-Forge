@@ -12,6 +12,9 @@ Performs final fusion of model weights.
 
 from __future__ import annotations
 
+from rich.console import Console
+from rich.panel import Panel
+
 
 def fusionar_final(input_paths: list[str], output_path: str) -> None:
     """Perform final fusion of model weights.
@@ -32,4 +35,34 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, help="Output path")
     args = parser.parse_args()
 
+    # Create console for Rich output
+    console = Console()
+
+    # Display startup panel
+    inputs_str = "\n".join(f"[cyan]- {path}[/]" for path in args.inputs)
+    console.print(
+        Panel(
+            f"[bold]Starting Final Fusion[/]\n"
+            f"[dim]Input files:[/]\n{inputs_str}\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold blue]Final Fusion[/]",
+            border_style="blue",
+        )
+    )
+
+    # Perform fusion
+    console.print("[bold cyan]Performing final fusion...[/]")
     fusionar_final(args.inputs, args.output)
+    console.print("[green]Final fusion completed successfully![/]")
+
+    # Display summary panel
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Operation Complete[/]\n"
+            f"[dim]Input files:[/] [cyan]{len(args.inputs)}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold green]Summary[/]",
+            border_style="green",
+        )
+    )

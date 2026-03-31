@@ -12,6 +12,9 @@ Merges model weight shards into a single model.
 
 from __future__ import annotations
 
+from rich.console import Console
+from rich.panel import Panel
+
 
 def merge_shards(shard_paths: list[str], output_path: str) -> None:
     """Merge multiple model weight shards.
@@ -32,4 +35,34 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, help="Output path")
     args = parser.parse_args()
 
+    # Create console for Rich output
+    console = Console()
+
+    # Display startup panel
+    shards_str = "\n".join(f"[cyan]- {path}[/]" for path in args.shards)
+    console.print(
+        Panel(
+            f"[bold]Starting Shard Merge[/]\n"
+            f"[dim]Input shards:[/]\n{shards_str}\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold blue]Shard Merge[/]",
+            border_style="blue",
+        )
+    )
+
+    # Perform merge
+    console.print("[bold cyan]Merging shards...[/]")
     merge_shards(args.shards, args.output)
+    console.print("[green]Shard merge completed successfully![/]")
+
+    # Display summary panel
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Operation Complete[/]\n"
+            f"[dim]Input shards:[/] [cyan]{len(args.shards)}[/]\n"
+            f"[dim]Output:[/] [cyan]{args.output}[/]",
+            title="[bold green]Summary[/]",
+            border_style="green",
+        )
+    )

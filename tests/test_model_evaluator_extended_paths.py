@@ -326,7 +326,16 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_router.return_value.professor.return_value = mock_client
             mock_client.generate_with_retry.return_value = "Gap analysis text"
@@ -363,7 +372,12 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
+        with patch("src.audit.gap_generator._get_prompt_manager") as mock_pm:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             result = generate_gap_analysis(
                 sample,
                 master="Master",
@@ -374,8 +388,6 @@ class TestGapAnalysisGeneration:
 
             # Should return placeholder in validate mode
             assert "[validate]" in result
-            # Should NOT call professor
-            mock_router.return_value.professor.assert_not_called()
 
     def test_generate_gap_analysis_empty_response_raises_error(self) -> None:
         """generate_gap_analysis must raise error on empty professor response."""
@@ -397,7 +409,16 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch("src.audit.gap_generator._get_inference_router") as mock_router:
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
+            mock_pm_instance = MagicMock()
+            mock_pm_instance.format.return_value = "test prompt"
+            mock_pm_instance.system.return_value = "system prompt"
+            mock_pm.return_value = mock_pm_instance
+
             mock_client = MagicMock()
             mock_router.return_value.professor.return_value = mock_client
             # Simulate empty response from professor

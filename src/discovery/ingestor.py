@@ -28,10 +28,18 @@ import requests
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from src.utils.metrics import get_metrics
+from src.utils.rich_helpers import (
+    get_console,
+)
 
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
+
+# --- Project Root ---
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 
 
 class DiscoveryConfig(BaseModel):
@@ -302,26 +310,41 @@ class RepoIngestor:
         """Atomic Git synchronization."""
         self.raw_path.mkdir(parents=True, exist_ok=True)
 
-        for repo_id in repos:
-            try:
-                owner, name = repo_id.split("/")
-                target = self.raw_path / owner / name
-            except ValueError:
-                continue
+        # Rich progress bar for repo operations
+        console = get_console()
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]Fetching repositories[/]"),
+            BarColumn(bar_width=20),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("•"),
+            TaskProgressColumn(),
+            console=console,
+        ) as progress:
+            total_repos = len(repos)
+            fetch_task = progress.add_task("Syncing repos...", total=total_repos)
 
-            if dry_run:
-                logger.info("[DRY-RUN] Syncing %s", repo_id)
-                continue
+            for repo_id in repos:
+                try:
+                    owner, name = repo_id.split("/")
+                    target = self.raw_path / owner / name
+                except ValueError:
+                    continue
 
-            # T030c: Measure fetch time and track as file processing
-            fetch_start = time.perf_counter()
-            if target.exists():
-                self._update_repo(repo_id, target)
-            else:
-                self._clone_repo(repo_id, target)
-            fetch_latency = time.perf_counter() - fetch_start
-            self._metrics.record_file_processing_time(name, fetch_latency)
-            self._metrics.increment_files_processed(name)
+                if dry_run:
+                    logger.info("[DRY-RUN] Syncing %s", repo_id)
+                else:
+                    # T030c: Measure fetch time and track as file processing
+                    fetch_start = time.perf_counter()
+                    if target.exists():
+                        self._update_repo(repo_id, target)
+                    else:
+                        self._clone_repo(repo_id, target)
+                    fetch_latency = time.perf_counter() - fetch_start
+                    self._metrics.record_file_processing_time(name, fetch_latency)
+                    self._metrics.increment_files_processed(name)
+
+                progress.advance(fetch_task)
 
     def _clone_repo(self, repo_id: str, target: Path) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -541,6 +564,21 @@ class RepoIngestor:
         self.fetch(repos, dry_run=dry_run)
         return repos
 
+    def print_summary(self, repos: List[str], dry_run: bool = False) -> None:
+        """Print a Rich-formatted summary panel."""
+        console = get_console()
+        console.print()
+        console.print(
+            Panel(
+                f"\n[cyan]Total repos processed:[/cyan] [bold]{len(repos)}[/bold]\n"
+                f"[cyan]Mode:[/cyan] [bold]{'DRY-RUN' if dry_run else 'WRITE'}[/bold]\n"
+                f"[cyan]Output:[/cyan] [bold]{self.raw_path}[/bold]\n"
+                f"[cyan]Category:[/cyan] [bold]{self.cfg.category}[/bold]",
+                title="[bold green]Discovery Complete[/bold green]",
+                border_style="green",
+            )
+        )
+
 
 if __name__ == "__main__":
     load_dotenv()
@@ -557,7 +595,8 @@ if __name__ == "__main__":
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    with open(args.config, "r") as f:
+    config_path = PROJECT_ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
+    with open(config_path, "r") as f:
         config_data = yaml.safe_load(f)
 
     config = DiscoveryConfig(**config_data)
@@ -567,5 +606,72 @@ if __name__ == "__main__":
     if token:
         config = config.model_copy(update={"github_token": token})
 
+    # Rich terminal output setup
+    console = get_console()
+    console.print("\n[bold blue]=== AEGF Discovery Ingestor ===[/bold blue]")
+    console.print(f"[cyan]Category:[/cyan] {config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {config.mode}")
+    console.print(f"[cyan]Config:[/cyan] {config_path}")
+    console.print(f"[cyan]Limit:[/cyan] {config.limit} repos")
+    console.print(f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if args.dry_run else 'WRITE'}\n")
+
     engine = RepoIngestor(config)
-    engine.run(dry_run=args.dry_run)
+    repos = engine.run(dry_run=args.dry_run)
+
+    # Rich summary panel
+    engine.print_summary(repos, dry_run=args.dry_run)
+    console.print("\n[cyan]Processed repositories:[/cyan]\n")
+    for i, repo in enumerate(repos, 1):
+        console.print(f"  [cyan]{i}.[/cyan] [bold]{repo}[/bold]")
+
+
+def main():
+    """Entry point for CLI execution."""
+    load_dotenv()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Agnostic Repo Ingestor")
+    parser.add_argument(
+        "--config", "-c", required=True, help="Path to YAML config file"
+    )
+    parser.add_argument("--dry-run", action="store_true")
+
+    args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
+
+    config_path = PROJECT_ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
+    with open(config_path, "r") as f:
+        config_data = yaml.safe_load(f)
+
+    config = DiscoveryConfig(**config_data)
+
+    # Environment override for security
+    token = os.getenv("GITHUB_TOKEN")
+    if token:
+        config = config.model_copy(update={"github_token": token})
+
+    # Rich terminal output setup
+    console = get_console()
+    console.print("\n[bold blue]=== AEGF Discovery Ingestor ===[/bold blue]")
+    console.print(f"[cyan]Category:[/cyan] {config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {config.mode}")
+    console.print(f"[cyan]Config:[/cyan] {config_path}")
+    console.print(f"[cyan]Limit:[/cyan] {config.limit} repos")
+    console.print(f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}")
+    console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if args.dry_run else 'WRITE'}\n")
+
+    engine = RepoIngestor(config)
+    repos = engine.run(dry_run=args.dry_run)
+
+    # Rich summary panel
+    engine.print_summary(repos, dry_run=args.dry_run)
+    console.print("\n[cyan]Processed repositories:[/cyan]\n")
+    for i, repo in enumerate(repos, 1):
+        console.print(f"  [cyan]{i}.[/cyan] [bold]{repo}[/bold]")
+
+
+if __name__ == "__main__":
+    main()

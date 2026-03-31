@@ -1,0 +1,206 @@
+{
+  "description": "Fixture data for BPB (Bits-Per-Byte) evaluation tests",
+  "calculate_bpb_cases": [
+    {
+      "name": "perfect_match",
+      "predicted": "hello world",
+      "target": "hello world",
+      "vocab_size": 32000,
+      "expected_bpb": 0.0
+    },
+    {
+      "name": "empty_target_error",
+      "predicted": "hello",
+      "target": "",
+      "vocab_size": 32000,
+      "expected_error": "Target string cannot be empty"
+    },
+    {
+      "name": "empty_predicted_returns_infinity",
+      "predicted": "",
+      "target": "hello world",
+      "vocab_size": 32000,
+      "expected_bpb": "infinity"
+    },
+    {
+      "name": "partial_match",
+      "predicted": "hello",
+      "target": "hello world",
+      "vocab_size": 32000,
+      "expected_bpb_min": 0.0
+    },
+    {
+      "name": "no_match",
+      "predicted": "abc",
+      "target": "xyz",
+      "vocab_size": 32000,
+      "expected_bpb_min": 0.0
+    },
+    {
+      "name": "unicode_perfect",
+      "predicted": "café",
+      "target": "café",
+      "vocab_size": 32000,
+      "expected_bpb": 0.0
+    },
+    {
+      "name": "unicode_partial",
+      "predicted": "café",
+      "target": "café con leche",
+      "vocab_size": 32000,
+      "expected_bpb_min": 0.0
+    },
+    {
+      "name": "longer_target_shorter_predicted",
+      "predicted": "hi",
+      "target": "hello world",
+      "vocab_size": 32000,
+      "expected_bpb_min": 0.0
+    },
+    {
+      "name": "custom_vocab_size",
+      "predicted": "test",
+      "target": "test",
+      "vocab_size": 16000,
+      "expected_bpb": 0.0
+    }
+  ],
+  "evaluate_bpb_scores_cases": [
+    {
+      "name": "empty_lists",
+      "predictions": [],
+      "targets": [],
+      "expected_result": []
+    },
+    {
+      "name": "length_mismatch_error",
+      "predictions": ["a"],
+      "targets": ["b", "c"],
+      "expected_error": "Predictions and targets must have same length"
+    },
+    {
+      "name": "single_prediction_perfect",
+      "predictions": ["hello"],
+      "targets": ["hello"],
+      "expected_scores": [0.0]
+    },
+    {
+      "name": "multiple_perfect_predictions",
+      "predictions": ["hello", "world"],
+      "targets": ["hello", "world"],
+      "expected_scores": [0.0, 0.0]
+    },
+    {
+      "name": "mixed_predictions",
+      "predictions": ["hello", "wrong"],
+      "targets": ["hello", "world"],
+      "expected_scores": [0.0, ">0.0"]
+    },
+    {
+      "name": "empty_target_returns_inf",
+      "predictions": ["hello"],
+      "targets": [""],
+      "expected_scores": ["infinity"]
+    },
+    {
+      "name": "custom_vocab_size",
+      "predictions": ["hello"],
+      "targets": ["hello"],
+      "vocab_size": 16000,
+      "expected_scores": [0.0]
+    }
+  ],
+  "aggregate_bpb_metrics_cases": [
+    {
+      "name": "empty_scores",
+      "scores": [],
+      "expected": {
+        "mean": "NaN",
+        "median": "NaN",
+        "std": "NaN",
+        "min": "NaN",
+        "max": "NaN",
+        "valid_count": 0,
+        "total_count": 0
+      }
+    },
+    {
+      "name": "all_inf",
+      "scores": ["infinity", "infinity"],
+      "expected": {
+        "mean": "infinity",
+        "median": "infinity",
+        "min": "infinity",
+        "max": "infinity",
+        "valid_count": 0,
+        "total_count": 2
+      }
+    },
+    {
+      "name": "single_score",
+      "scores": [1.5],
+      "expected": {
+        "mean": 1.5,
+        "median": 1.5,
+        "std": 0.0,
+        "min": 1.5,
+        "max": 1.5,
+        "valid_count": 1,
+        "total_count": 1
+      }
+    },
+    {
+      "name": "multiple_scores",
+      "scores": [1.0, 2.0, 3.0],
+      "expected": {
+        "mean": 2.0,
+        "median": 2.0,
+        "min": 1.0,
+        "max": 3.0,
+        "valid_count": 3,
+        "total_count": 3
+      }
+    },
+    {
+      "name": "ignores_inf_values",
+      "scores": [1.0, 2.0, "infinity", 3.0],
+      "expected": {
+        "mean": 2.0,
+        "valid_count": 3,
+        "total_count": 4
+      }
+    },
+    {
+      "name": "mixed_scores_with_inf",
+      "scores": [1.0, "infinity", 2.0],
+      "expected": {
+        "mean": 1.5,
+        "valid_count": 2,
+        "total_count": 3
+      }
+    },
+    {
+      "name": "single_inf_value",
+      "scores": ["infinity"],
+      "expected": {
+        "mean": "infinity",
+        "median": "infinity",
+        "min": "infinity",
+        "max": "infinity",
+        "valid_count": 0,
+        "total_count": 1
+      }
+    },
+    {
+      "name": "large_dataset",
+      "scores": {"range": [1, 100]},
+      "expected": {
+        "mean": 50.5,
+        "min": 1.0,
+        "max": 100.0,
+        "valid_count": 100,
+        "total_count": 100
+      }
+    }
+  ]
+}

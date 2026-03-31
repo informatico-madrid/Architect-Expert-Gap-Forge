@@ -4,8 +4,6 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # SPDX-License-Identifier: Apache-2.0
-
----
 # PHP Hexagonal Architecture Profile Configuration Example
 #
 # This configuration file defines the profile for processing PHP repositories
@@ -13,6 +11,19 @@
 
 # Profile name
 profile: php_hexagonal
+
+# Top-level processor fields required by `ProcessingConfig`
+# Category is the logical folder under `raw_subdir` where clones are located
+category: php_hexagonal
+
+# Base directory for discovery/processing
+base_dir: .
+
+# Where raw repository clones are stored
+raw_subdir: data/raw
+
+# Where the processor will emit bundles
+output_subdir: data/raw
 
 # Profile display name
 display_name: "PHP Hexagonal Architecture Expert"
@@ -58,6 +69,10 @@ extractor:
 #   - directory: Discover modules by directory structure
 #   - filesystem: Discover modules by directory structure (PHP standard)
 #   - manual_mapping: Use manually defined module mappings
+# Static repositories for discovery mode
+static_repos:
+  - php/php-hexagonal-example
+
 module_discovery:
   strategy: filesystem
   anchor_filenames:

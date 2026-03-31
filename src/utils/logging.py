@@ -13,7 +13,6 @@ Copyright 2026 AEGF
 from __future__ import annotations
 
 import logging
-import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -28,13 +27,14 @@ def get_logger(name: str) -> logging.Logger:
     """Get a configured logger instance.
 
     This helper provides uniform logger configuration across the codebase.
-    All loggers use the same format and are configured with lazy formatting.
+    All loggers use RichHandler for consistent terminal output with
+    automatic TTY detection (works in terminals and when piped).
 
     Args:
         name: The logger name, typically __name__ from the calling module.
 
     Returns:
-        A configured Logger instance with lazy formatting enabled.
+        A configured Logger instance with RichHandler for formatted output.
 
     Example:
         >>> logger = get_logger(__name__)
@@ -44,10 +44,17 @@ def get_logger(name: str) -> logging.Logger:
 
     # Only configure if not already configured (avoid duplicate handlers)
     if not logger.handlers and not logger.parent.handlers:
-        handler = logging.StreamHandler(sys.stderr)
-        handler.setFormatter(
-            logging.Formatter(fmt=_DEFAULT_FORMAT, datefmt=_DATE_FORMAT)
+        from rich.logging import RichHandler
+
+        # Use RichHandler for consistent terminal output
+        # Automatically detects TTY and adjusts output accordingly
+        handler = RichHandler(
+            rich_tracebacks=False,
+            show_time=True,
+            show_path=False,
+            console=None,  # Auto-detect from sys.stderr
         )
+        handler.setFormatter(logging.Formatter(fmt=_DEFAULT_FORMAT, datefmt=_DATE_FORMAT))
         logger.addHandler(handler)
         logger.propagate = False
 
