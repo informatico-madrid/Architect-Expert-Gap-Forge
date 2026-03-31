@@ -8,6 +8,23 @@
 # Home Assistant Discovery Configuration
 # This configuration defines the discovery settings for processing Home Assistant
 # repositories and custom components (HACS).
+#
+# =============================================================================
+# ADAPTER SELECTION BEHAVIOR
+# =============================================================================
+#
+# The processor automatically selects the adapter based on file extension:
+# - .py files → PythonAstAdapter (Python)
+# - .ts files → TypeScriptAdapter (TypeScript)
+# - .tsx files → TypeScriptAdapter (TypeScript)
+# - .json files → TranslationJsonParser (JSON/i18n)
+#
+# IMPORTANT: DO NOT set 'profile' if you want automatic adapter selection.
+# Setting 'profile: homeassistant' forces PythonAstAdapter for ALL files,
+# which breaks TypeScript processing. Leave 'profile' commented out to
+# allow the system to detect the adapter automatically based on file extension.
+#
+# =============================================================================
 
 # Target subdirectory for discovered repositories
 category: homeassistant
@@ -16,18 +33,29 @@ category: homeassistant
 mode: static
 
 # Profile name for filtering and configuration
-profile: homeassistant
+# WARNING: Do NOT set this value if you want automatic adapter selection.
+# Setting profile: homeassistant forces PythonAstAdapter for ALL files.
+# Leave commented to allow automatic detection based on file extension.
+# profile: homeassistant
 
-# File extensions to process during discovery
-profile_extensions:
-  - ".py"
-  - ".md"
-  - ".ts"
-  - ".tsx"
-  - ".json"
+# Discovery strategy: auto-detect based on repo contents
+# Supported strategies: auto, manifest, init, directory, typescript, manual_mapping
+# module_discovery_strategy: auto
 
-# Paths to ignore during discovery (directories/files to skip)
-profile_ignored_paths:
+# File extensions to process during discovery (mapped to profile_extensions by processor)
+extensions:
+  - ".py"        # Python backend integrations
+  - ".md"        # Documentation
+  - ".ts"        # TypeScript frontend
+  - ".tsx"       # TSX frontend components
+  - ".json"      # i18n translations
+  - ".yaml"      # YAML/blueprint files (blueprints, automations, themes)
+  - ".yml"       # YAML files (alias for .yaml)
+  - ".jinja"     # Jinja template files
+  - ".jinja2"    # Jinja template files (alias for .jinja)
+
+# Paths to ignore during discovery (mapped to profile_ignored_paths by processor)
+ignore_patterns:
   - ".git"
   - "__pycache__"
   - "venv"
@@ -41,11 +69,87 @@ profile_ignored_paths:
   - "build"
 
 # Static repositories to process (Home Assistant ecosystem)
+# Core repos + popular custom components from HACS
 static_repos:
-  - "home-assistant/home-assistant"
-  - "home-assistant/integration"
-  - "alarmo/alarmo"
-  - "home-assistant/frontend"
+  # === CORE REPOS ===
+  - "home-assistant/home-assistant"    # Backend (Python)
+  - "home-assistant/integration"       # Backend (Python)
+  - "home-assistant/frontend"          # Frontend (TypeScript/TSX)
+  - "home-assistant/supervisor"        # Backend (Python)
+  - "home-assistant/architecture"      # Backend (Python)
+  - "home-assistant/hass-cli"          # Backend (Python)
+  - "home-assistant/core"              # Backend (Python)
+
+  # === HACS INTEGRATIONS (Python) ===
+  - "XiaoMi/ha_xiaomi_home"            # Xiaomi Home integration
+  - "al-one/hass-xiaomi-miot"          # Xiaomi Miot integration
+  - "rospogrigio/localtuya"            # Local Tuya integration
+  - "AlexxIT/SonoffLAN"                # Sonoff LAN integration
+  - "basnijholt/adaptive-lighting"     # Adaptive Lighting
+  - "AlexxIT/XiaomiGateway3"           # Xiaomi Gateway 3
+  - "custom-components/ble_monitor"    # BLE Monitor
+  - "AlexxIT/WebRTC"                   # WebRTC Camera
+  - "bieniu/ha-shellies-discovery"     # Shelly Discovery
+  - "bieniu/ha-shellies-discovery-gen2" # Shelly Gen2 Discovery
+  - "pmazz/ps_hassio_entities"         # Hassio Entities
+  - "point-4ward/ps-date-countdown"    # Date Countdown
+  - "iml885203/HA-FanSpeedControl"     # Fan Speed Control
+  - "eyalcha/ha-reminder"              # Reminder
+  - "bieniu/ha-thermostat-update"      # Thermostat Update
+  - "kapkirk/Indice-di-qualita-dell-aria-via-Home-Assistant" # Air Quality
+  - "Santobert/HA-UpdateClimate"       # Update Climate
+  - "kodi1/tracker_merge"              # Tracker Merge
+  - "joBr99/nspanel-lovelace-ui"       # NSPanel UI
+  - "xaviml/controllerx"               # ControllerX
+  - "xaf/qolsysgw"                     # Qolsys Gateway
+  - "benleb/ad-automoli"               # Automoli
+  - "ericmatte/ad-media-lights-sync"   # Media Lights Sync
+  - "Odianosen25/Monitor-App"          # Monitor App
+  - "wernerhp/ha.appdaemon.wasp"       # WASP
+  - "NiklasReiche/ad-spotify-mood-lights-sync" # Spotify Mood
+  - "wernerhp/ha.appdaemon.aqara_motion_sensors" # Aqara Motion
+  - "UbhiTS/ad-alexatalkingclock"      # Alexa Talking Clock
+
+  # === LOVELACE CARDS (TypeScript/TSX) ===
+  - "piitaya/lovelace-mushroom"        # Mushroom Card
+  - "Clooos/Bubble-Card"               # Bubble Card
+  - "kalkih/mini-graph-card"           # Mini Graph Card
+  - "custom-cards/button-card"         # Button Card
+  - "PiotrMachowski/lovelace-xiaomi-vacuum-map-card" # Vacuum Map
+  - "thomasloven/lovelace-auto-entities" # Auto Entities
+  - "kalkih/mini-media-player"         # Mini Media Player
+  - "RomRider/apexcharts-card"         # ApexCharts Card
+  - "thomasloven/lovelace-card-mod"    # Card Mod
+  - "ExperienceLovelace/ha-floorplan"  # Floorplan
+  - "dwainscheeren/dwains-lovelace-dashboard" # Dwains Dashboard
+
+  # === THEMES ===
+  - "basnijholt/lovelace-ios-themes"   # iOS Themes
+  - "wessamlauf/homeassistant-frosted-glass-themes" # Frosted Glass
+  - "Madelena/Metrology-for-Hass"      # Metrology Theme
+  - "th3jesta/ha-lcars"                # LCARS Theme
+  - "basnijholt/lovelace-ios-dark-mode-theme" # iOS Dark Mode
+  - "Nerwyn/material-you-theme"        # Material You Theme
+  - "TilmanGriesel/graphite"           # Graphite Theme
+  - "catppuccin/home-assistant"        # Catppuccin Theme
+  - "ricardoquecria/caule-themes-pack-1" # Caule Themes
+  - "piitaya/lovelace-mushroom-themes" # Mushroom Themes
+
+  # === TEMPLATE/SCRIPTS ===
+  - "TheFes/cheapest-energy-hours"     # Cheapest Energy Hours
+  - "Petro31/easy-time-jinja"          # Easy Time Jinja
+  - "TheFes/relative-time-plus"        # Relative Time Plus
+  - "langestefan/auto-sun-blind"       # Auto Sun Blind
+  - "SirGoodenough/Color-Multi-Tool"   # Color Multi Tool
+  - "SirGoodenough/Availability-Template" # Availability Template
+  - "jazzyisj/speech-helpers-jinja"    # Speech Helpers Jinja
+  - "Nuhser/jinja-speech-helpers-german" # German Speech Helpers
+  - "SirGoodenough/Logic-Chekr"        # Logic Chekr
+  - "Nuhser/battery-icons"             # Battery Icons
+
+  # === CUSTOM COMPONENTS ===
+  - "edenhaus/home-assistant-unifi-protection" # UniFi Protection
+  - "alarmo/alarmo"                    # Alarmo Security
 
 # Minimum stars required for repositories (0 = no minimum)
 min_stars: 0

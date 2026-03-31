@@ -138,6 +138,18 @@ def discover_modules(
         return _discover_by_directory(
             root, ignore_patterns, extensions, anchor_filenames, build_module_func
         )
+    elif strategy == "typescript":
+        return _discover_by_typescript(
+            root, ignore_patterns, extensions, anchor_filenames, build_module_func
+        )
+    elif strategy == "yaml":
+        return _discover_by_yaml(
+            root, ignore_patterns, extensions, anchor_filenames, build_module_func
+        )
+    elif strategy == "filesystem":
+        return _discover_by_filesystem(
+            root, ignore_patterns, extensions, anchor_filenames, build_module_func
+        )
     elif strategy == "manual_mapping":
         # No overrides provided - fall back to manifest/init
         return _discover_by_init(
@@ -366,6 +378,233 @@ def _discover_with_overrides(
                 )
             )
 
+    return modules
+
+
+def _discover_by_typescript(
+    root: Path,
+    ignore_patterns: Set[str],
+    extensions: Set[str],
+    anchor_filenames: Set[str],
+    build_module_func: Optional[callable] = None,
+) -> List["Module"]:
+    """Discover modules for TypeScript/TSX repositories.
+
+    Scans root with Path.rglob("*.ts") and Path.rglob("*.tsx"), excluding
+    node_modules/, tests/, etc., then groups files by parent directory.
+    Each directory containing at least one .ts or .tsx file becomes a module.
+
+    Args:
+        root: Repository root directory to scan.
+        ignore_patterns: Directory patterns to exclude.
+        extensions: File extensions to consider (should include .ts, .tsx).
+        anchor_filenames: Filenames that serve as module anchors.
+        build_module_func: Callback to build Module objects.
+
+    Returns:
+        List of Module instances for each directory containing TypeScript files.
+    """
+    from src.discovery.fragment_parser import Module
+
+    modules: List[Module] = []
+    seen_dirs: Set[Path] = set()
+
+    # Collect all TypeScript files
+    ts_files: list[Path] = []
+    for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
+        if is_ignored(ts_file, ignore_patterns):
+            continue
+        ts_files.append(ts_file)
+
+    # Group files by parent directory
+    dir_to_files: dict[Path, list[Path]] = {}
+    for ts_file in ts_files:
+        parent = ts_file.parent
+        if parent in seen_dirs:
+            continue
+        seen_dirs.add(parent)
+        dir_to_files.setdefault(parent, []).append(ts_file)
+
+    # Build modules
+    for mod_dir, files in dir_to_files.items():
+        try:
+            if build_module_func:
+                module = build_module_func(
+                    mod_dir, anchor_type="typescript", manifest={}
+                )
+                modules.append(module)
+            else:
+                modules.append(
+                    Module(
+                        name=mod_dir.name,
+                        path=mod_dir,
+                        anchor_type="typescript",
+                        files=(),
+                        manifest={},
+                        neighbors=(),
+                    )
+                )
+        except Exception as exc:
+            logger.warning("Could not build module for %s: %s", mod_dir, exc)
+
+    logger.info("typescript discovery: found %d modules in %s", len(modules), root)
+    return modules
+
+
+def _discover_by_filesystem(
+    root: Path,
+    ignore_patterns: Set[str],
+    extensions: Set[str],
+    anchor_filenames: Set[str],
+    build_module_func: Optional[callable] = None,
+) -> List["Module"]:
+    """Discover modules by directory structure (filesystem strategy).
+
+    Scans root with Path.rglob("*.php"), excluding vendor/, node_modules/,
+    tests/, and cache/ directories, then groups files by parent directory.
+    Each directory containing at least one PHP file becomes a module.
+
+    This is the standard strategy for PHP repositories and other file-based
+    architectures without package managers like manifest.json or __init__.py.
+
+    Args:
+        root: Repository root directory to scan.
+        ignore_patterns: Directory patterns to exclude.
+        extensions: File extensions to consider (should include .php).
+        anchor_filenames: Filenames that serve as module anchors.
+        build_module_func: Callback to build Module objects.
+
+    Returns:
+        List of Module instances for each directory containing PHP files.
+    """
+    from src.discovery.fragment_parser import Module
+
+    modules: List[Module] = []
+    seen_dirs: Set[Path] = set()
+
+    # Collect all PHP files, excluding known non-source dirs
+    _EXCLUDE_DIRS = {"vendor", "node_modules", "tests", "cache"}
+    php_files: list[Path] = []
+    for php_file in root.rglob("*.php"):
+        if not any(part in _EXCLUDE_DIRS for part in php_file.parts):
+            if is_ignored(php_file, ignore_patterns):
+                continue
+            php_files.append(php_file)
+
+    # Group files by parent directory (each dir → one module)
+    dir_to_files: dict[Path, list[Path]] = {}
+    for php_file in php_files:
+        parent = php_file.parent
+        if parent in seen_dirs:
+            continue
+        seen_dirs.add(parent)
+        dir_to_files.setdefault(parent, []).append(php_file)
+
+    # Build modules
+    for mod_dir, files in dir_to_files.items():
+        try:
+            if build_module_func:
+                module = build_module_func(
+                    mod_dir, anchor_type="filesystem", manifest={}
+                )
+                modules.append(module)
+            else:
+                modules.append(
+                    Module(
+                        name=mod_dir.name,
+                        path=mod_dir,
+                        anchor_type="filesystem",
+                        files=(),
+                        manifest={},
+                        neighbors=(),
+                    )
+                )
+        except Exception as exc:
+            logger.warning("Could not build module for %s: %s", mod_dir, exc)
+
+    logger.info("filesystem discovery: found %d modules in %s", len(modules), root)
+    return modules
+
+
+def _discover_by_yaml(
+    root: Path,
+    ignore_patterns: Set[str],
+    extensions: Set[str],
+    anchor_filenames: Set[str],
+    build_module_func: Optional[callable] = None,
+) -> List["Module"]:
+    """Discover YAML/Jinja template modules.
+
+    Scans root for .yaml, .yml, .jinja, and .jinja2 files, then groups them by
+    parent directory. Each directory containing YAML/Jinja files becomes a module.
+
+    This is the strategy for Home Assistant blueprints, automations, themes,
+    and Jinja template files.
+
+    Args:
+        root: Repository root directory to scan.
+        ignore_patterns: Directory patterns to exclude.
+        extensions: File extensions to consider (should include .yaml, .yml, .jinja, .jinja2).
+        anchor_filenames: Filenames that serve as module anchors.
+        build_module_func: Callback to build Module objects.
+
+    Returns:
+        List of Module instances for each directory containing YAML/Jinja files.
+    """
+    from src.discovery.fragment_parser import Module
+
+    modules: List[Module] = []
+    seen_dirs: Set[Path] = set()
+
+    # Collect all YAML and Jinja files, excluding known non-source dirs
+    _EXCLUDE_DIRS = {"node_modules", "tests", "test", "__pycache__"}
+    yaml_files: list[Path] = []
+
+    # Match based on extensions set
+    for file_path in root.rglob("*"):
+        if not file_path.is_file():
+            continue
+        if is_ignored(file_path, ignore_patterns):
+            continue
+        # Check if file extension is in the allowed extensions
+        if file_path.suffix in extensions:
+            # Exclude directories
+            if any(part in _EXCLUDE_DIRS for part in file_path.parts):
+                continue
+            yaml_files.append(file_path)
+
+    # Group files by parent directory (each dir → one module)
+    dir_to_files: dict[Path, list[Path]] = {}
+    for yaml_file in yaml_files:
+        parent = yaml_file.parent
+        if parent in seen_dirs:
+            continue
+        seen_dirs.add(parent)
+        dir_to_files.setdefault(parent, []).append(yaml_file)
+
+    # Build modules
+    for mod_dir, files in dir_to_files.items():
+        try:
+            if build_module_func:
+                module = build_module_func(
+                    mod_dir, anchor_type="yaml", manifest={}
+                )
+                modules.append(module)
+            else:
+                modules.append(
+                    Module(
+                        name=mod_dir.name,
+                        path=mod_dir,
+                        anchor_type="yaml",
+                        files=(),
+                        manifest={},
+                        neighbors=(),
+                    )
+                )
+        except Exception as exc:
+            logger.warning("Could not build module for %s: %s", mod_dir, exc)
+
+    logger.info("yaml discovery: found %d modules in %s", len(modules), root)
     return modules
 
 

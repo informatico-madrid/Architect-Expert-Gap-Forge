@@ -543,3 +543,16 @@ def php_legacy_zencart_fixture() -> str:
         return load_php_fixture("zencart_customers.php")
     except FileNotFoundError:
         return PHP_LEGACY_FALLBACK_CONTENT
+
+
+# =============================================================================
+# EXTRACTION/ADAPTER TEST FIXTURES
+# =============================================================================
+
+EXTRACTORS_FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def fixtures_dir() -> Path:
+    """Return the path to the extractors fixtures directory."""
+    return EXTRACTORS_FIXTURES_DIR

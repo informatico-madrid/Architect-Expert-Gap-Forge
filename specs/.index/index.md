@@ -3,15 +3,15 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-03-31T08:06:59Z
+**Last updated:** 2026-03-31T11:25:12Z
 
 ## Directories (1)
 
 | Directory | Specs | Default |
 |-----------|-------|---------|
-| ./specs | 14 | Yes |
+| ./specs | 15 | Yes |
 
-## All Specs (14)
+## All Specs (15)
 
 | Spec | Directory | Phase | Status |
 |------|-----------|-------|--------|
@@ -32,6 +32,7 @@ See [index-state.json](./index-state.json) for machine-readable data.
 | 014-rich-cli-output | ./specs | tasks | 0
 0/34 tasks |
 | frontend-discovery-enhancement | ./specs | design | awaiting approval |
+| yaml-adapter | ./specs | execution | 0/26 tasks |
 
 ---
 

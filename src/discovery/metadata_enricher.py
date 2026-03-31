@@ -105,8 +105,8 @@ class ProcessingConfig(BaseModel):
         description="Paths to ignore for profile-based filtering (aliased from ignore_patterns)",
     )
     backend_repos: Set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
-    profile: str = Field(
-        default="homeassistant", description="Profile name for extractor adapter"
+    profile: Optional[str] = Field(
+        default=None, description="Profile name for extractor adapter (optional - defaults to automatic detection)"
     )
     on_parse_error: str = Field(
         default="abort",
@@ -125,8 +125,8 @@ class ProcessingConfig(BaseModel):
 
     # Module discovery configuration
     module_discovery_strategy: str = Field(
-        default="manifest",
-        description="Strategy for discovering modules: manifest, init, directory, manual_mapping",
+        default="auto",
+        description="Strategy for discovering modules: auto (detect based on repo), manifest (manifest.json + __init__.py), init (__init__.py only), directory (dir structure), typescript (.ts/.tsx only), yaml (.yaml/.yml/.jinja/.jinja2), filesystem (.php only), manual_mapping (override)",
     )
     anchor_filenames: set[str] = Field(
         default_factory=lambda: set(ANCHOR_FILENAMES),
@@ -272,18 +272,71 @@ class RepoProcessor:
     # Module discovery
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
-        """Discover modules using the configured strategy."""
-        if self.cfg.module_discovery_strategy == "directory_scan":
+        """Discover modules using auto-detected strategy based on repo contents.
+
+        Auto-detection rules:
+        - manifest.json found → 'manifest' strategy (Python HA integrations)
+        - __init__.py found, no manifest → 'init' strategy (Python packages)
+        - .ts/.tsx files found → 'typescript' strategy (TypeScript/TSX)
+        - .yaml/.yml/.jinja/.jinja2 files found → 'yaml' strategy (Home Assistant YAML/Jinja)
+        - .php files or composer.json found → 'filesystem' strategy (PHP)
+        - .py files found, no __init__.py → 'directory' strategy (Python without packages)
+        """
+        # Auto-detect strategy based on repo contents if not explicitly configured
+        strategy = self.cfg.module_discovery_strategy
+
+        if strategy == "auto":
+            strategy = self._detect_discovery_strategy(root)
+            logger.info("Auto-detected strategy for %s: %s", root, strategy)
+
+        if strategy == "directory_scan":
             return self._discover_modules_directory_scan(root)
         return discover_modules(
             root=root,
-            strategy=self.cfg.module_discovery_strategy,
+            strategy=strategy,
             ignore_patterns=self.cfg.ignore_patterns,
             extensions=self.cfg.extensions,
             anchor_filenames=self.cfg.anchor_filenames,
             module_overrides=self.cfg.module_overrides,
             build_module_func=self._build_module,
         )
+
+    def _detect_discovery_strategy(self, root: Path) -> str:
+        """Detect the appropriate discovery strategy based on repo contents.
+
+        Returns:
+            Strategy name: 'manifest', 'init', 'directory', 'typescript', 'yaml', or 'filesystem'
+        """
+        has_manifest = any(root.rglob("manifest.json"))
+        has_init_py = any(root.rglob("__init__.py"))
+        has_ts_files = list(root.rglob("*.ts")) + list(root.rglob("*.tsx"))
+        has_py_files = list(root.rglob("*.py"))
+        has_yaml_files = list(root.rglob("*.yaml")) + list(root.rglob("*.yml")) + list(root.rglob("*.jinja")) + list(root.rglob("*.jinja2"))
+        has_php_files = list(root.rglob("*.php"))
+        has_composer_json = any(root.rglob("composer.json"))
+
+        # Priority order: Python (manifest/init) first, then TypeScript, then YAML
+        # Python repos with manifest.json → manifest strategy (captures all files)
+        # Python repos with __init__.py → init strategy (captures all files)
+        # TypeScript repos (>50 .ts/.tsx files) → typescript strategy
+        # YAML/Jinja repos (>5 .yaml/.yml/.jinja/.jinja2 files) → yaml strategy
+        if has_manifest:
+            # manifest.json = official HA integration (Python backend)
+            return "manifest"
+        elif has_init_py:
+            return "init"
+        elif len(has_ts_files) > 50:
+            # TypeScript/TSX repos (e.g., home-assistant/frontend)
+            return "typescript"
+        elif len(has_yaml_files) > 5:
+            # YAML/Jinja repos (Home Assistant blueprints, automations, themes)
+            return "yaml"
+        elif has_php_files or has_composer_json:
+            return "filesystem"
+        elif has_py_files:
+            return "directory"
+        else:
+            return "directory"
 
     def _discover_modules_directory_scan(self, root: Path) -> List[Module]:
         """Discover modules by scanning recursively for PHP files (directory_scan strategy).
