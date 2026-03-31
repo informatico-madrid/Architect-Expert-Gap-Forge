@@ -2,7 +2,7 @@
 
 ## Phase 1: Core Types and Extractors
 
-### 1.1 Create TypeScriptExtractor protocol and FrontendToken types [DONE]
+### 1.1 Create TypeScriptExtractor protocol and FrontendToken types [x]
 - **Do**:
   1. Create `src/utils/extractors/extractors/base.py`
   2. Define `TypeScriptExtractor` Protocol with `extract(node, raw) -> list[FrontendToken]`
@@ -16,7 +16,7 @@
 - _Requirements: FR-1, FR-2, FR-3, FR-4_
 - _Design: TypeScriptExtractor Protocol section_
 
-### 1.2 Create LitComponentExtractor [DONE]
+### 1.2 Create LitComponentExtractor [x]
 - **Do**:
   1. Create `src/utils/extractors/extractors/lit_component.py`
   2. Implement `LitComponentExtractor` class with `extract(node, raw) -> list[FrontendToken]`
@@ -31,7 +31,7 @@
 - _Requirements: US-1, AC-1.1-AC-1.6, FR-2_
 - _Design: LitComponentExtractor section_
 
-### 1.3 Create I18nKeyExtractor [DONE]
+### 1.3 Create I18nKeyExtractor [x]
 - **Do**:
   1. Create `src/utils/extractors/extractors/i18n_key.py`
   2. Implement `I18nKeyExtractor` with `extract(node, raw) -> list[FrontendToken]`
@@ -46,7 +46,7 @@
 - _Requirements: US-2, AC-2.1-AC-2.5, FR-3_
 - _Design: I18nKeyExtractor section_
 
-### 1.4 Create ServiceCallExtractor [DONE]
+### 1.4 Create ServiceCallExtractor [x]
 - **Do**:
   1. Create `src/utils/extractors/extractors/service_call.py`
   2. Implement `ServiceCallExtractor` with `extract(node, raw) -> list[FrontendToken]`
@@ -61,7 +61,7 @@
 - _Requirements: US-3, AC-3.1-AC-3.6, FR-4_
 - _Design: ServiceCallExtractor section_
 
-### 1.5 Create TranslationJsonParser [DONE]
+### 1.5 Create TranslationJsonParser [x]
 - **Do**:
   1. Create `src/utils/extractors/parsers/translation_json.py`
   2. Implement `TranslationEntry` dataclass with `key`, `value`, `file_path`, `is_leaf`
@@ -76,7 +76,7 @@
 - _Requirements: US-4, AC-4.1-AC-4.4, FR-5_
 - _Design: TranslationJsonParser section_
 
-### 1.6 V1 [VERIFY] Quality checkpoint [DONE]
+### 1.6 V1 [VERIFY] Quality checkpoint [x]
 - **Do**: Run quality checks on Phase 1 files
 - **Verify**: `python -m py_compile src/utils/extractors/extractors/base.py src/utils/extractors/extractors/lit_component.py src/utils/extractors/extractors/i18n_key.py src/utils/extractors/extractors/service_call.py src/utils/extractors/parsers/translation_json.py`
 - **Done when**: All files compile without syntax errors
@@ -86,7 +86,7 @@
 
 ## Phase 2: TypeScriptAdapter and Factory Integration
 
-### 2.1 Create TypeScriptAdapter [DONE]
+### 2.1 Create TypeScriptAdapter [x]
 - **Do**:
   1. Create `src/utils/extractors/typescript_adapter.py`
   2. Implement `TypeScriptAdapter` class implementing `ExtractorAdapter` protocol
@@ -102,7 +102,7 @@
 - _Requirements: FR-1_
 - _Design: TypeScriptAdapter section_
 
-### 2.2 Register TypeScript adapter in factory [DONE]
+### 2.2 Register TypeScript adapter in factory [x]
 - **Do**:
   1. Modify `src/utils/extractors/factory.py`
   2. Add `"typescript": "src.utils.extractors.typescript_adapter.TypeScriptAdapter"` to `_ADAPTER_REGISTRY`
@@ -115,7 +115,7 @@
 - _Requirements: FR-6_
 - _Design: Factory Registration section_
 
-### 2.3 V2 [VERIFY] Quality checkpoint [DONE]
+### 2.3 V2 [VERIFY] Quality checkpoint [x]
 - **Do**: Run quality checks and verify adapter loads correctly
 - **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; a = get_adapter('typescript'); assert 'TypeScriptAdapter' in type(a).__name__"`
 - **Done when**: Factory integration works
@@ -125,7 +125,7 @@
 
 ## Phase 3: ChatML Exporter and Taxonomy Prompts
 
-### 3.1 Create ChatMLExporter [DONE]
+### 3.1 Create ChatMLExporter [x]
 - **Do**:
   1. Create `src/export/chatml_exporter.py` (create directory if needed)
   2. Implement `ChatMLRecord` and `Message` dataclasses
@@ -158,7 +158,7 @@
 - _Requirements: US-7, AC-7.1-AC-7.5, FR-9_
 - _Design: FrontendTaxonomyPrompts section_
 
-### 3.3 V3 [VERIFY] Quality checkpoint [DONE]
+### 3.3 V3 [VERIFY] Quality checkpoint [x]
 - **Do**: Run quality checks on export layer
 - **Verify**: `python -m py_compile src/export/chatml_exporter.py src/export/frontend_taxonomy_prompts.py`
 - **Done when**: Export files compile without errors
@@ -168,7 +168,7 @@
 
 ## Phase 4: Configuration Updates
 
-### 4.1 Create homeassistant_frontend.yaml discovery config [DONE]
+### 4.1 Create homeassistant_frontend.yaml discovery config [x]
 - **Do**:
   1. Create `configs/stage_1_discovery/examples/homeassistant_frontend.yaml`
   2. Define `static_repos` with `home-assistant/frontend`
@@ -194,7 +194,7 @@
 - _Requirements: US-5, AC-5.2_
 - _Design: Integration Points section_
 
-### 4.3 V4 [VERIFY] Quality checkpoint [DONE]
+### 4.3 V4 [VERIFY] Quality checkpoint [x]
 - **Do**: Verify YAML configs load without errors
 - **Verify**: `python -c "import yaml; yaml.safe_load(open('configs/homeassistant.yaml')); yaml.safe_load(open('configs/stage_1_discovery/examples/homeassistant_frontend.yaml')); print('OK')"`
 - **Done when**: All YAML configs are valid
@@ -234,7 +234,7 @@
 - _Requirements: AC-1.1-AC-1.6_
 - _Design: Unit Tests section_
 
-### 5.3 Create test_i18n_key.py [DONE]
+### 5.3 Create test_i18n_key.py [x]
 - **Do**:
   1. Create `tests/unit/extractors/extractors/test_i18n_key.py`
   2. Test localize() detection
@@ -249,7 +249,7 @@
 - _Requirements: AC-2.1-AC-2.5_
 - _Design: Unit Tests section_
 
-### 5.4 Create test_service_call.py [DONE]
+### 5.4 Create test_service_call.py [x]
 - **Do**:
   1. Create `tests/unit/extractors/extractors/test_service_call.py`
   2. Test callService() detection
@@ -278,7 +278,7 @@
 - _Requirements: Test Strategy section_
 - _Design: Unit Tests section_
 
-### 5.6 Create test_translation_json_parser.py [DONE]
+### 5.6 Create test_translation_json_parser.py [x]
 - **Do**:
   1. Create `tests/unit/extractors/parsers/test_translation_json.py`
   2. Test nested JSON flattening to dot-path keys
@@ -292,7 +292,7 @@
 - _Requirements: AC-4.1-AC-4.4_
 - _Design: Unit Tests section_
 
-### 5.7 V5 [VERIFY] Quality checkpoint: all unit tests [DONE]
+### 5.7 V5 [VERIFY] Quality checkpoint: all unit tests [x]
 - **Do**: Run all unit tests
 - **Verify**: `python -m pytest tests/unit/extractors/ tests/unit/export/ -v --tb=short`
 - **Done when**: All unit tests pass (144/144)
@@ -302,7 +302,7 @@
 
 ## Phase 6: Integration and Validation
 
-### 6.1 Integration test - TypeScriptAdapter end-to-end [DONE]
+### 6.1 Integration test - TypeScriptAdapter end-to-end [x]
 - **Do**:
   1. Create a sample TypeScript file with Lit component, i18n keys, and service calls
   2. Run TypeScriptAdapter.parse_file() on it
@@ -314,7 +314,7 @@
 - _Requirements: Success Criteria 1, 2_
 - _Design: Integration Tests section_
 
-### 6.2 Run validation with HomeAssistant frontend sample [DONE]
+### 6.2 Run validation with HomeAssistant frontend sample [x]
 - **Do**:
   1. Clone or use existing home-assistant/frontend sample
   2. Run TypeScriptAdapter on sample TypeScript files
@@ -328,7 +328,7 @@
 - _Requirements: Success Criteria 1-5_
 - _Design: Success Criteria section_
 
-### 6.3 Verify generic architecture (non-HomeAssistant Lit component) [DONE]
+### 6.3 Verify generic architecture (non-HomeAssistant Lit component) [x]
 - **Do**:
   1. Create or obtain a non-HomeAssistant Lit component file
   2. Run TypeScriptAdapter on it without code changes
@@ -339,7 +339,7 @@
 - _Requirements: Success Criteria 8, NFR-5_
 - _Design: Non-Functional Requirements section_
 
-### 6.4 V6 [VERIFY] Final quality gate [DONE]
+### 6.4 V6 [VERIFY] Final quality gate [x]
 - **Do**: Run full test suite and schema validation
 - **Verify**: `python -m pytest tests/unit/extractors/ tests/integration/test_typescript_adapter_e2e.py tests/unit/export/ -v --tb=short 2>&1 | tail -30`
 - **Done when**: All tests pass, no regressions
@@ -353,7 +353,7 @@
 
 **Goal**: Confirm the adapter selection bug exists before any code changes.
 
-### 0.1 [VERIFY] Reproduce bug: TypeScript files skip adapter processing [DONE]
+### 0.1 [VERIFY] Reproduce bug: TypeScript files skip adapter processing [x]
 - **Do**:
   1. Read `src/discovery/metadata_enricher.py` lines 140-160 (adapter init) and 410-475 (adapter usage)
   2. Confirm `self._adapter = get_adapter(cfg.profile)` at line 145 selects adapter once per RepoProcessor
@@ -364,7 +364,7 @@
 - **Verify**: `grep -n "get_adapter\|self._adapter\|suffix.*\.py" src/discovery/metadata_enricher.py`
 - **Commit**: None (Phase 0 - no code changes)
 
-### 0.2 [VERIFY] Confirm repro consistency: verify bug is reproducible [DONE]
+### 0.2 [VERIFY] Confirm repro consistency: verify bug is reproducible [x]
 - **Do**:
   1. Run reproduction check: analyze code path for .ts file in metadata_enricher
   2. Confirm TypeScript files follow the non-adapter code path (skip lines 420-475)
@@ -380,7 +380,7 @@
 
 **Goal**: Write failing test first, then fix the bug.
 
-### 1.1 [RED] Failing test: TypeScript files should be processed by TypeScriptAdapter [DONE]
+### 1.1 [RED] Failing test: TypeScript files should be processed by TypeScriptAdapter [x]
 - **Do**:
   1. Create test file `tests/integration/test_metadata_enricher_typescript_processing.py`
   2. Write test that verifies RepoProcessor calls adapter for .ts files
@@ -426,7 +426,7 @@
 
 ## Phase 2: Additional Testing
 
-### 2.1 Test factory extension mapping for TypeScript [DONE]
+### 2.1 Test factory extension mapping for TypeScript [x]
 - **Do**:
   1. Test `get_adapter(".ts")` returns TypeScriptAdapter
   2. Test `get_adapter(".tsx")` returns TypeScriptAdapter
@@ -437,7 +437,7 @@
 - **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; ts = get_adapter('.ts'); print(type(ts).__name__)" | grep -q TypeScript`
 - **Commit**: `test(factory): verify extension mapping for TypeScript`
 
-### 2.2 Integration test: TypeScript file processing through full pipeline [DONE]
+### 2.2 Integration test: TypeScript file processing through full pipeline [x]
 - **Do**:
   1. Create a test .ts file with Lit component, i18n keys, service calls
   2. Run RepoProcessor with the test file
