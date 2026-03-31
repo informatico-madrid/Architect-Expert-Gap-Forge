@@ -70,17 +70,17 @@ def test_calculate_total():
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have FUNCTIONAL_UNIT bundle (TYPE 1)
@@ -137,17 +137,17 @@ def test_process_data():
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have FUNCTIONAL_UNIT bundle (TYPE 1)
@@ -190,17 +190,17 @@ def process_data(data):
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should NOT have FUNCTIONAL_UNIT bundle (TYPE 1)
@@ -268,17 +268,17 @@ def test_calculate_total():
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should NOT have FUNCTIONAL_UNIT bundle (TYPE 1)

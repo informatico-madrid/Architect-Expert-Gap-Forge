@@ -29,14 +29,11 @@ class TestSizeGates:
 
         AC-2.1: Files smaller than MIN_SIZE should be excluded from processing.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        repo_root = tmp_path
+        repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
-
-        component = owner_dir / "custom_components" / "test_component"
-        component.mkdir(parents=True)
+        component = repo_root / "custom_components" / "test_component"
+        component.mkdir(parents=True, exist_ok=True)
 
         # Create manifest.json
         import json
@@ -52,16 +49,16 @@ class TestSizeGates:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir="custom_components/test_component",
             output_subdir="output",
-            category="test_repo",
+            category="test_component",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "test_component"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT but no LOGIC_ONLY for tiny file
@@ -121,22 +118,30 @@ def process_data(data):
 def validate_input(data):
     '''Validate input data structure.'''
     return isinstance(data, list)
+
+def transform_output(result):
+    '''Transform the result before returning.'''
+    return result
+
+def filter_by_criteria(data, criteria):
+    '''Filter data by criteria.'''
+    return [item for item in data if item.get('active', True)]
 """.strip())
 
         assert len(medium_file.read_text()) >= 300, "File should be at least MIN_SIZE"
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -203,16 +208,16 @@ def filter_by_criteria(data, criteria):
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -384,16 +389,16 @@ def normalize_values(data: list) -> list:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT

@@ -29,11 +29,11 @@ class TestGovernanceExtraction:
 
         AC-4.1: .codecov.yml should be detected as governance file.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        repo_root = tmp_path
+        repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        owner_dir = repo_root / "myrepo"
+        owner_dir.mkdir(exist_ok=True)
 
         # Create .codecov.yml at repo root
         (owner_dir / ".codecov.yml").write_text("""
@@ -54,16 +54,16 @@ coverage:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir="myrepo",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have GOVERNANCE_RULES
@@ -81,11 +81,11 @@ coverage:
 
         AC-4.2: .gitlab-ci.yml should be detected as governance file.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        repo_root = tmp_path
+        repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        owner_dir = repo_root / "myrepo"
+        owner_dir.mkdir(exist_ok=True)
 
         # Create .gitlab-ci.yml at repo root
         (owner_dir / ".gitlab-ci.yml").write_text("""
@@ -110,16 +110,16 @@ deploy_job:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir="myrepo",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have GOVERNANCE_RULES
@@ -137,11 +137,11 @@ deploy_job:
 
         AC-4.3: CLAUDE.md should be detected as governance file.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        repo_root = tmp_path
+        repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        owner_dir = repo_root / "myrepo"
+        owner_dir.mkdir(exist_ok=True)
 
         # Create CLAUDE.md at repo root
         (owner_dir / "CLAUDE.md").write_text("""# Project Guidelines
@@ -160,16 +160,16 @@ This project follows these guidelines:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir="myrepo",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have GOVERNANCE_RULES
@@ -187,11 +187,11 @@ This project follows these guidelines:
 
         AC-4.4: Multiple governance files should all be extracted.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        repo_root = tmp_path
+        repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        owner_dir = repo_root / "myrepo"
+        owner_dir.mkdir(exist_ok=True)
 
         # Create multiple governance files
         (owner_dir / ".codecov.yml").write_text("""
@@ -220,16 +220,16 @@ Follow these guidelines.
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir="myrepo",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have GOVERNANCE_RULES
@@ -259,11 +259,11 @@ Follow these guidelines.
 
         Governance files must be at repo root (owner/myrepo), not at component level.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        repo_root = tmp_path
+        repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        owner_dir = repo_root / "myrepo"
+        owner_dir.mkdir(exist_ok=True)
 
         # Create component directory
         component = owner_dir / "custom_components" / "test_component"
@@ -280,16 +280,16 @@ coverage:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir="myrepo",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should NOT have GOVERNANCE_RULES (governance file is at component level, not repo root)
