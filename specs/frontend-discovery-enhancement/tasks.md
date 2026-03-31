@@ -410,10 +410,11 @@
   1. Verify `self._adapter` is no longer used after fix
   2. Remove `self._adapter` instance variable from `__init__`
   3. Ensure all code paths use per-file adapter lookup
-- **Files**: `src/discovery/metadata_enricher.py`
-- **Done when**: Code is clean, no orphaned adapter references
-- **Verify**: `grep -n "self._adapter" src/discovery/metadata_enricher.py` returns nothing
-- **Commit**: `refactor(adapter): yellow - remove unused _adapter field`
+  4. Fix the test file `tests/integration/test_metadata_enricher_typescript_processing.py` - the tests access `processor._adapter` which no longer exists. Rewrite tests to mock at the correct level or test the behavior differently.
+- **Files**: `src/discovery/metadata_enricher.py`, `tests/integration/test_metadata_enricher_typescript_processing.py`
+- **Done when**: Code is clean, no orphaned adapter references; tests pass
+- **Verify**: `grep -n "self._adapter" src/discovery/metadata_enricher.py` returns nothing AND `python -m pytest tests/integration/test_metadata_enricher_typescript_processing.py -v` passes
+- **Commit**: `refactor(adapter): yellow - remove unused _adapter field and fix tests`
 
 ### 1.4 [VERIFY] Quality checkpoint: lint and type check
 - **Do**: Run lint and type check on modified file
