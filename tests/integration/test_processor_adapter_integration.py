@@ -331,7 +331,11 @@ def broken(
 
         # Verify profile is set correctly
         assert cfg.profile == "python"
-        assert processor._adapter is not None
+
+        # Verify adapter selection works per-file (the behavior, not implementation)
+        from src.utils.extractors.factory import get_adapter
+        adapter = get_adapter(".py")
+        assert adapter is not None
 
 
 class TestProcessorArchHeaderWithDependencies:
