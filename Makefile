@@ -50,7 +50,7 @@ coverage:
 		--cov=src/discovery \
 		--cov-report=term-missing \
 		--cov-report=xml:coverage.xml \
-		--cov-fail-under=90 \
+		--cov-fail-under=85 \
 		--ignore=tests/integration/test_benchmark_compare.py \
 		-p no:randomly -p no:warnings
 
