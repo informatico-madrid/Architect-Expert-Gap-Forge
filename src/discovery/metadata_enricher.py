@@ -21,7 +21,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Set
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -32,7 +32,6 @@ from src.utils.metrics import get_metrics
 from src.discovery.file_scanner import (
     ANCHOR_FILENAMES,
     BACKEND_REPOS,
-    GOLD_PATTERNS,
     LOGIC_ONLY_MIN_CHARS,
     MAX_SIZE_BACKEND,
     MAX_SIZE_FRONTEND,
@@ -799,6 +798,18 @@ class RepoProcessor:
                 buf.append("")
             except Exception as e:
                 logger.error("Read error %s: %s", af.path, e)
+
+        # Include implementation files (TypeScript, PHP, YAML, etc.) for repos without manifest
+        if not mod.manifest:
+            for mf in mod.files:
+                if mf.role == "implementation":
+                    try:
+                        content = mf.path.read_text(encoding="utf-8", errors="ignore")
+                        buf.append(f"--- FILE: {mf.path.name} ---")
+                        buf.append(content.strip())
+                        buf.append("")
+                    except Exception as e:
+                        logger.error("Read error %s: %s", mf.path, e)
 
         out.write_text("\n".join(buf), encoding="utf-8")
         logger.debug("Blueprint written: %s", out.name)

@@ -128,7 +128,6 @@ export class MyElement extends LitElement {
         processor = RepoProcessor(cfg)
 
         # Track if adapter.parse_file was called via per-file lookup
-        adapter_called_files = []
         mock_adapter = MagicMock()
         mock_parse_result = MagicMock()
         mock_parse_result.dependencies = []

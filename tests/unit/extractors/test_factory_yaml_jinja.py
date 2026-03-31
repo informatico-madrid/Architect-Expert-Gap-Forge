@@ -11,7 +11,6 @@ Tests for YAML/Jinja adapter factory registration.
 
 from __future__ import annotations
 
-import pytest
 
 from src.utils.extractors.factory import get_adapter
 from src.utils.extractors.yaml_adapter import YamlAdapter

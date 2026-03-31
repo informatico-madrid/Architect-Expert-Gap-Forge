@@ -17,11 +17,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from src.discovery import Module, ProcessingConfig, RepoProcessor
+from src.discovery import ProcessingConfig, RepoProcessor
 
 
 class TestProcessorModuleDiscoveryDirectory:
@@ -136,7 +135,7 @@ class TestProcessorModuleDiscoveryManualMapping:
         processor = RepoProcessor(config)
 
         # Manual mapping should use the overrides to discover modules
-        modules = processor._discover_modules(temp_repo_for_manual_mapping)
+        processor._discover_modules(temp_repo_for_manual_mapping)
 
         # The processor should consider module_overrides when using manual_mapping
         assert config.module_overrides is not None
@@ -162,7 +161,7 @@ class TestProcessorModuleDiscoveryManualMapping:
             module_discovery_strategy="manual_mapping",
             module_overrides=manual_mapping,
         )
-        processor = RepoProcessor(config)
+        RepoProcessor(config)
 
         # Verify the override configuration
         assert config.module_overrides is not None

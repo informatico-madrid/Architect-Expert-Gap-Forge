@@ -32,10 +32,10 @@ class TestAnchorAggregation:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json (anchor file)
@@ -56,8 +56,8 @@ def process_data(data):
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -66,7 +66,7 @@ def process_data(data):
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT referencing manifest.json
@@ -93,10 +93,10 @@ def process_data(data):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -125,8 +125,8 @@ def process_data(data):
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -135,7 +135,7 @@ def process_data(data):
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT referencing const.py
@@ -162,10 +162,10 @@ def process_data(data):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -214,8 +214,8 @@ def process_data(data):
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -224,7 +224,7 @@ def process_data(data):
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT referencing services.yaml
@@ -251,10 +251,10 @@ def process_data(data):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -286,8 +286,8 @@ def process_data(data):
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -296,7 +296,7 @@ def process_data(data):
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT with all anchors

@@ -7,7 +7,6 @@
 
 import sys
 import subprocess
-import pytest
 
 
 PY = sys.executable

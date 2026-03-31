@@ -3,7 +3,7 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-03-31T19:25:23Z
+**Last updated:** 2026-03-31T19:55:42Z
 
 ## Directories (1)
 
@@ -31,7 +31,7 @@ See [index-state.json](./index-state.json) for machine-readable data.
 | 012-mejorar-cobertura-code | ./specs | tasks | 44/47 tasks |
 | 014-rich-cli-output | ./specs | tasks | 0
 0/34 tasks |
-| frontend-discovery-enhancement | ./specs | execution | 18/27 tasks |
+| frontend-discovery-enhancement | ./specs | execution | 21/27 tasks |
 | yaml-adapter | ./specs | tasks | 0
 0/0
 0 tasks |

@@ -79,7 +79,7 @@ def hello():
         (repo_copy / "__init__.py").write_text("")
 
         # Process
-        processor = RepoProcessor(cfg)
+        RepoProcessor(cfg)
 
         # Verify adapter can extract dependencies using per-file adapter selection
         from src.utils.extractors.factory import get_adapter
@@ -329,7 +329,7 @@ def broken(
         (repo_copy / "test.py").write_text("import os")
         (repo_copy / "__init__.py").write_text("")
 
-        processor = RepoProcessor(cfg)
+        RepoProcessor(cfg)
 
         # Verify profile is set correctly
         assert cfg.profile == "python"

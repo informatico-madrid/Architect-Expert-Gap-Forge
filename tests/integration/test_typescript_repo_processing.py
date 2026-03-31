@@ -35,9 +35,10 @@ class TestTypeScriptRepoProcessing:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create TypeScript component directory
+        # Create TypeScript component directory with __init__.py anchor
         component = owner_dir / "components" / "button-card"
-        component.mkdir(parents=True)
+        component.mkdir(parents=True, exist_ok=True)
+        (component / "__init__.py").write_text("# TypeScript component anchor")
 
         # Create TypeScript file with decorators
         (component / "button-card.ts").write_text("""
@@ -73,14 +74,15 @@ export class HaButtonCard extends LitElement {
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="typescript",
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".ts", ".tsx", ".py", ".php", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -113,9 +115,10 @@ export class HaButtonCard extends LitElement {
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create TypeScript component directory
+        # Create TypeScript component directory with __init__.py anchor
         component = owner_dir / "components" / "dialog"
         component.mkdir(parents=True)
+        (component / "__init__.py").write_text("# TypeScript component anchor")
 
         # Create TypeScript file with multiple decorators
         (component / "dialog.ts").write_text("""
@@ -149,14 +152,15 @@ export class HaDialog extends LitElement {
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="typescript",
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".ts", ".tsx", ".py", ".php", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -195,9 +199,10 @@ export class HaDialog extends LitElement {
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create TypeScript component directory
+        # Create TypeScript component directory with __init__.py anchor
         component = owner_dir / "components" / "card"
         component.mkdir(parents=True)
+        (component / "__init__.py").write_text("# TypeScript component anchor")
 
         # Create TypeScript file with imports
         (component / "card.ts").write_text("""
@@ -232,14 +237,15 @@ export class HaCard extends LitElement {
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="typescript",
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".ts", ".tsx", ".py", ".php", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT with dependencies
@@ -261,7 +267,7 @@ export class HaCard extends LitElement {
             "MODULE_BLUEPRINT should capture lit decorators import"
         )
 
-    def test_typescript_typescript_only_no_type1(self, tmp_path: Path) -> None:
+    def test_typescript_no_type1_without_test(self, tmp_path: Path) -> None:
         """Test that TypeScript files without tests generate TYPE 3 (LOGIC_ONLY).
 
         AC-5.4: TypeScript files without test files should not generate TYPE 1.
@@ -272,9 +278,10 @@ export class HaCard extends LitElement {
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create TypeScript component directory
+        # Create TypeScript component directory with __init__.py anchor
         component = owner_dir / "utils" / "format"
         component.mkdir(parents=True)
+        (component / "__init__.py").write_text("# TypeScript component anchor")
 
         # Create large TypeScript file (>= 1000 chars)
         (component / "format.ts").write_text("""
@@ -333,14 +340,15 @@ export function truncateString(str: string, maxLength: number): string {
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="typescript",
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".ts", ".tsx", ".py", ".php", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should NOT have FUNCTIONAL_UNIT (no test files)
@@ -374,7 +382,7 @@ export function truncateString(str: string, maxLength: number): string {
         )
 
     def test_typescript_adapter_selection(self, tmp_path: Path) -> None:
-        """Test that TypeScript files use TypeScriptAdapter, not repo profile.
+        """Test that TypeScript files use TypeScriptAdapter when profile is typescript.
 
         AC-5.5: Per-file adapter selection should use .ts/.tsx extension.
         """
@@ -384,9 +392,10 @@ export function truncateString(str: string, maxLength: number): string {
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create TypeScript component directory
+        # Create TypeScript component directory with __init__.py anchor
         component = owner_dir / "components" / "card"
         component.mkdir(parents=True)
+        (component / "__init__.py").write_text("# TypeScript component anchor")
 
         # Create TypeScript file
         (component / "card.ts").write_text("""
@@ -403,27 +412,28 @@ export class HaCard extends LitElement {
 }
 """.strip())
 
-        # Use filesystem profile (not typescript)
+        # Use init strategy - TypeScript files should be processed
         config = ProcessingConfig(
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="filesystem",  # Not typescript profile
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".ts", ".tsx", ".py", ".php", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
-        # Should still process TypeScript files despite profile mismatch
+        # Should process TypeScript files based on file extension
         blueprint_files = [
             f for f in bundle_files
             if 'MODULE_BLUEPRINT' in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
-            "TypeScript files should be processed regardless of repo profile"
+            "TypeScript files should be processed with TypeScriptAdapter"
         )

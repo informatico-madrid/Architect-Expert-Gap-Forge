@@ -29,10 +29,13 @@ class TestSizeGates:
 
         AC-2.1: Files smaller than MIN_SIZE should be excluded from processing.
         """
-        repo_root = tmp_path
-        repo_root.mkdir(exist_ok=True)
+        repo_root = tmp_path / "test_repo"
+        repo_root.mkdir()
 
-        component = repo_root / "custom_components" / "test_component"
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
+
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True, exist_ok=True)
 
         # Create manifest.json
@@ -49,16 +52,16 @@ class TestSizeGates:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="custom_components/test_component",
+            raw_subdir="test_repo",
             output_subdir="output",
-            category="test_component",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_component"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT but no LOGIC_ONLY for tiny file
@@ -90,10 +93,10 @@ class TestSizeGates:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -132,7 +135,7 @@ def filter_by_criteria(data, criteria):
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -141,7 +144,7 @@ def filter_by_criteria(data, criteria):
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -162,10 +165,10 @@ def filter_by_criteria(data, criteria):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -208,7 +211,7 @@ def filter_by_criteria(data, criteria):
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -217,7 +220,7 @@ def filter_by_criteria(data, criteria):
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -248,10 +251,10 @@ def filter_by_criteria(data, criteria):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -389,7 +392,7 @@ def normalize_values(data: list) -> list:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
             profile="homeassistant",
@@ -398,7 +401,7 @@ def normalize_values(data: list) -> list:
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT

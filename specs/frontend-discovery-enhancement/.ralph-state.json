@@ -7,13 +7,13 @@
   "commitSpec": false,
   "relatedSpecs": [],
   "totalTasks": 27,
-  "taskIndex": 6,
+  "taskIndex": 21,
   "taskIteration": 1,
   "maxTaskIterations": 5,
   "recoveryMode": false,
   "maxFixTasksPerOriginal": 3,
   "maxFixTaskDepth": 3,
-  "globalIteration": 1,
+  "globalIteration": 2,
   "maxGlobalIterations": 100,
   "fixTaskMap": {},
   "modificationMap": {},
@@ -22,5 +22,6 @@
   "awaitingApproval": false,
   "nativeTaskMap": {},
   "nativeSyncEnabled": true,
-  "nativeSyncFailureCount": 0
+  "nativeSyncFailureCount": 0,
+  "maxFixTaskPerOriginal": 3
 }

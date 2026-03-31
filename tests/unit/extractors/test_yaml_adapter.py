@@ -119,7 +119,7 @@ class TestYamlAdapter:
         assert "trigger" in result.ast_tree
         for trigger in result.ast_tree["trigger"]:
             if "entity_id" in trigger:
-                entity_id = trigger["entity_id"]
+                trigger["entity_id"]
                 # !input should be in the content
                 assert "!input" in result.raw_content or "entity_id" in result.raw_content
 

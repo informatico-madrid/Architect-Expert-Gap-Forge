@@ -16,7 +16,6 @@ processor._extract_local_imports method.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
 import pytest
 
 from src.utils.extractors.base import (

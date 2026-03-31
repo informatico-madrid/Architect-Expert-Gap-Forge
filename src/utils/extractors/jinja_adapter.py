@@ -24,7 +24,7 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import List, Set
 
 from src.utils.extractors.base import (
     Dependency,
@@ -33,12 +33,6 @@ from src.utils.extractors.base import (
     ParseResult,
 )
 from src.utils.extractors.extractors.jinja_base import (
-    JinjaVariableToken,
-    JinjaFilterToken,
-    JinjaTestToken,
-    JinjaLoopToken,
-    JinjaConditionalToken,
-    JinjaStatementToken,
     extract_jinja_variables,
     extract_jinja_filters,
     extract_jinja_tests,
@@ -103,7 +97,7 @@ class JinjaAdapter(ExtractorAdapter):
         statements = extract_jinja_statements(raw_content, str(file_path))
 
         # Combine all tokens
-        all_tokens = (
+        (
             variables + filters + tests + loops + conditionals + statements
         )
 

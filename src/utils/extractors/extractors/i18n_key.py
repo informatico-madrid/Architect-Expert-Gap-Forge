@@ -26,7 +26,6 @@ from typing import Any, List, Literal, Optional
 from src.utils.extractors.extractors.base import (
     FrontendToken,
     I18nKey,
-    TypeScriptExtractorProtocol,
 )
 
 logger = logging.getLogger(__name__)

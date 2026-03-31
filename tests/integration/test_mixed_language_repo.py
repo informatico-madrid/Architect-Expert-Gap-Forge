@@ -38,21 +38,25 @@ class TestMixedLanguageRepo:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create TypeScript component directory
+        # Create TypeScript component directory with __init__.py anchor
         ts_component = owner_dir / "components" / "button-card"
         ts_component.mkdir(parents=True)
+        (ts_component / "__init__.py").write_text("# TypeScript component anchor")
 
-        # Create Python component directory
+        # Create Python component directory with __init__.py anchor
         py_component = owner_dir / "custom_components" / "test_component"
         py_component.mkdir(parents=True)
+        (py_component / "__init__.py").write_text("# Python component anchor")
 
-        # Create PHP services directory
+        # Create PHP services directory with __init__.py anchor
         php_services = owner_dir / "src" / "Services"
         php_services.mkdir(parents=True)
+        (php_services / "__init__.py").write_text("# PHP services anchor")
 
-        # Create YAML configurations directory
+        # Create YAML configurations directory with __init__.py anchor
         yaml_configs = owner_dir / "configurations"
         yaml_configs.mkdir(parents=True)
+        (yaml_configs / "__init__.py").write_text("# YAML configs anchor")
 
         # Create TypeScript file
         (ts_component / "button-card.ts").write_text("""
@@ -103,19 +107,20 @@ automation:
       service: light.toggle
 """.strip())
 
-        # Use filesystem profile (not specific to any language)
+        # Use init strategy with __init__.py anchors to process all file types
         config = ProcessingConfig(
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="filesystem",  # Generic profile
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".ts", ".tsx", ".py", ".php", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundles were created for all languages
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Find MODULE_BLUEPRINT files
@@ -175,9 +180,10 @@ automation:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create Python component with test (TYPE 1)
+        # Create Python component with test (TYPE 1) and __init__.py anchor
         py_component = owner_dir / "custom_components" / "test_component"
         py_component.mkdir(parents=True)
+        (py_component / "__init__.py").write_text("# Python component anchor")
 
         (py_component / "manifest.json").write_text('{"domain": "test", "name": "Test", "version": "1.0"}')
         (py_component / "logic.py").write_text("""
@@ -190,21 +196,40 @@ def calculate_total(items):
     return total
 """.strip())
 
-        # Create tests directory with test file
-        tests_dir = repo_root / "tests" / "owner" / "myrepo" / "custom_components" / "test_component"
+        # Create tests directory with test file (required for TYPE 1)
+        # Test file must be >= MIN_SIZE (300 chars)
+        # Tests are located relative to owner_dir (the repo root for module processing)
+        tests_dir = owner_dir / "tests" / "owner" / "myrepo" / "custom_components" / "test_component"
         tests_dir.mkdir(parents=True)
         (tests_dir / "test_logic.py").write_text("""
 import logic
 
 def test_calculate_total():
+    '''Test calculate_total with various scenarios.'''
+    # Test with simple price list
     items = [{'price': 10}, {'price': 20}]
     result = logic.calculate_total(items)
-    assert result == 30
+    assert result == 30, f"Expected 30 but got {result}"
+
+    # Test with empty list
+    empty_result = logic.calculate_total([])
+    assert empty_result == 0, f"Expected 0 for empty list"
+
+    # Test with mixed price and cost keys
+    mixed_items = [
+        {'price': 100, 'cost': 50},
+        {'cost': 200, 'price': 150}
+    ]
+    total = logic.calculate_total(mixed_items)
+    assert total == 500, f"Expected 500 but got {total}"
+
+    print("All tests passed")
 """.strip())
 
-        # Create large PHP file (TYPE 3)
+        # Create large PHP file (TYPE 3) with __init__.py anchor
         php_services = owner_dir / "src" / "Services"
         php_services.mkdir(parents=True)
+        (php_services / "__init__.py").write_text("# PHP services anchor")
 
         (php_services / "large_processor.php").write_text("""
 <?php
@@ -323,14 +348,15 @@ export class HaButtonCard extends LitElement {
             base_dir=tmp_path,
             raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
-            profile="filesystem",
+            category="owner",
+            module_discovery_strategy="init",
+            extensions={".py", ".php", ".ts", ".tsx", ".yaml", ".yml", ".jinja", ".jinja2", ".md"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundles were created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         bundle_contents = {}

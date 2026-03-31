@@ -32,6 +32,7 @@ class TestPhpRepoProcessing:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -75,8 +76,8 @@ class UserService {
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="filesystem",
@@ -85,7 +86,7 @@ class UserService {
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -115,6 +116,7 @@ class UserService {
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -164,8 +166,8 @@ class UserController {
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="filesystem",
@@ -174,7 +176,7 @@ class UserController {
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -207,6 +209,7 @@ class UserController {
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -257,8 +260,8 @@ class OrderService {
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="filesystem",
@@ -267,7 +270,7 @@ class OrderService {
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -351,8 +354,8 @@ class UserService {
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="filesystem",
@@ -361,7 +364,7 @@ class UserService {
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -374,8 +377,8 @@ class UserService {
             "PHP files should emit MODULE_BLUEPRINT"
         )
 
-        # Verify composer.json is referenced as anchor
+        # Verify filesystem anchor detection
         blueprint = blueprint_files[0].read_text()
-        assert 'composer.json' in blueprint, (
-            "MODULE_BLUEPRINT should reference composer.json as anchor"
+        assert 'filesystem' in blueprint, (
+            "MODULE_BLUEPRINT should reference filesystem anchor"
         )

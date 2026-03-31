@@ -34,10 +34,10 @@ class TestTestFileDetection:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -57,30 +57,46 @@ def calculate_total(items):
     return total
 """.strip())
 
-        # Create test file with exact mirror name
-        tests_dir = repo_root / "tests" / "owner" / "myrepo" / "custom_components" / "test_component"
-        tests_dir.mkdir(parents=True)
-        (tests_dir / "test_utils.py").write_text("""
-import utils
+        # Create test file with exact mirror name - must be >= 300 bytes
+        # Structure: component/tests/test_utils.py (tests at component level)
+        (component / "tests").mkdir(parents=True, exist_ok=True)
+        (component / "tests" / "test_utils.py").write_text("""import utils
 
 def test_calculate_total():
+    '''Test calculate_total with various scenarios.'''
+    # Test with simple price list
     items = [{'price': 10}, {'price': 20}]
     result = utils.calculate_total(items)
-    assert result == 30
+    assert result == 30, f'Expected 30 but got {result}'
+
+    # Test with empty list
+    empty_result = utils.calculate_total([])
+    assert empty_result == 0, f'Expected 0 for empty list'
+
+    # Test with mixed price and cost keys
+    mixed_items = [
+        {'price': 100, 'cost': 50},
+        {'cost': 200, 'price': 150}
+    ]
+    total = utils.calculate_total(mixed_items)
+    assert total == 500, f'Expected 500 but got {total}'
+
+    print('All tests passed')
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
-            profile="homeassistant",
+            module_discovery_strategy="manifest",
+            extensions={".py"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have FUNCTIONAL_UNIT bundle (TYPE 1)
@@ -101,10 +117,10 @@ def test_calculate_total():
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "my_component"
+        component = myrepo / "custom_components" / "my_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -123,31 +139,44 @@ def process_data(data):
     return [item for item in data if item.get('active', True)]
 """.strip())
 
-        # Create test file in tests/ directory with mirror name
-        tests_dir = repo_root / "tests" / "owner" / "myrepo" / "custom_components" / "my_component"
-        tests_dir.mkdir(parents=True)
-        (tests_dir / "test_processor.py").write_text("""
-import processor
+        # Create test file in tests/ directory with mirror name - must be >= 300 bytes
+        # Structure: component/tests/test_processor.py (tests at component level)
+        (component / "tests").mkdir(parents=True, exist_ok=True)
+        (component / "tests" / "test_processor.py").write_text("""import processor
 
 def test_process_data():
-    data = [{'active': True}, {'active': False}]
+    '''Test process_data with various scenarios.'''
+    # Test with active items
+    data = [{'active': True}, {'active': False}, {'active': True}]
     result = processor.process_data(data)
-    assert len(result) == 1
-    assert result[0]['active'] == True
+    assert len(result) == 2, f'Expected 2 active items but got {len(result)}'
+
+    # Test with all active
+    all_active = [{'active': True}, {'active': True}]
+    result = processor.process_data(all_active)
+    assert len(result) == 2, f'Expected 2 items but got {len(result)}'
+
+    # Test with all inactive
+    all_inactive = [{'active': False}, {'active': False}]
+    result = processor.process_data(all_inactive)
+    assert len(result) == 0, f'Expected 0 items but got {len(result)}'
+
+    print('All tests passed')
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
-            profile="homeassistant",
+            module_discovery_strategy="manifest",
+            extensions={".py"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have FUNCTIONAL_UNIT bundle (TYPE 1)
@@ -169,10 +198,10 @@ def test_process_data():
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -190,17 +219,18 @@ def process_data(data):
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
-            profile="homeassistant",
+            module_discovery_strategy="manifest",
+            extensions={".py"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should NOT have FUNCTIONAL_UNIT bundle (TYPE 1)
@@ -231,10 +261,10 @@ def process_data(data):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
+        myrepo = repo_root / "myrepo"
+        myrepo.mkdir()
 
-        component = owner_dir / "custom_components" / "test_component"
+        component = myrepo / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -254,31 +284,46 @@ def calculate_total(items):
     return total
 """.strip())
 
-        # Create test file with non-mirror name
-        tests_dir = repo_root / "tests" / "owner" / "myrepo" / "custom_components" / "test_component"
-        tests_dir.mkdir(parents=True)
-        # Wrong name - should not be detected as test for utils.py
-        (tests_dir / "test_calculations.py").write_text("""
-import utils
+        # Create test file with non-mirror name - must be >= 300 bytes
+        # Structure: component/tests/test_calculations.py (tests at component level)
+        (component / "tests").mkdir(parents=True, exist_ok=True)
+        (component / "tests" / "test_calculations.py").write_text("""import utils
 
 def test_calculate_total():
+    '''Test calculate_total with various scenarios.'''
+    # Test with simple price list
     items = [{'price': 10}, {'price': 20}]
     result = utils.calculate_total(items)
-    assert result == 30
+    assert result == 30, f'Expected 30 but got {result}'
+
+    # Test with empty list
+    empty_result = utils.calculate_total([])
+    assert empty_result == 0, f'Expected 0 for empty list'
+
+    # Test with mixed price and cost keys
+    mixed_items = [
+        {'price': 100, 'cost': 50},
+        {'cost': 200, 'price': 150}
+    ]
+    total = utils.calculate_total(mixed_items)
+    assert total == 500, f'Expected 500 but got {total}'
+
+    print('All tests passed')
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
             category="myrepo",
-            profile="homeassistant",
+            module_discovery_strategy="manifest",
+            extensions={".py"},
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = repo_root.parent / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should NOT have FUNCTIONAL_UNIT bundle (TYPE 1)

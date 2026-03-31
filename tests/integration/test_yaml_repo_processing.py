@@ -32,6 +32,7 @@ class TestYamlRepoProcessing:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -86,8 +87,8 @@ automation:
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="yaml",
@@ -96,7 +97,7 @@ automation:
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -132,6 +133,7 @@ automation:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -188,8 +190,8 @@ script:
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="yaml",
@@ -198,7 +200,7 @@ script:
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -231,6 +233,7 @@ script:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -275,8 +278,8 @@ sensor:
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="yaml",
@@ -285,7 +288,7 @@ sensor:
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -321,6 +324,7 @@ sensor:
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
+        # Create owner directory structure
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
@@ -377,8 +381,8 @@ sensor:
 """.strip())
 
         config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="test_repo",
+            base_dir=repo_root.parent,
+            raw_subdir=".",
             output_subdir="output",
             category="test_repo",
             profile="yaml",
@@ -387,7 +391,7 @@ sensor:
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "test_repo"
+        output_dir = repo_root.parent / "output" / "test_repo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
