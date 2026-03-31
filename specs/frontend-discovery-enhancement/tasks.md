@@ -426,7 +426,7 @@
 
 ## Phase 2: Additional Testing
 
-### 2.1 Test factory extension mapping for TypeScript
+### 2.1 Test factory extension mapping for TypeScript [DONE]
 - **Do**:
   1. Test `get_adapter(".ts")` returns TypeScriptAdapter
   2. Test `get_adapter(".tsx")` returns TypeScriptAdapter

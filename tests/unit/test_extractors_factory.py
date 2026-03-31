@@ -19,6 +19,8 @@ import pytest
 
 from src.utils.extractors.base import ExtractorAdapter
 from src.utils.extractors.factory import get_adapter, register_adapter, clear_cache
+from src.utils.extractors.typescript_adapter import TypeScriptAdapter
+from src.utils.extractors.python_ast_adapter import PythonAstAdapter
 
 
 class TestExtractorsFactory:
@@ -138,3 +140,52 @@ class TestExtractorsFactory:
 
         with pytest.raises(RuntimeError, match="Adapter class not found"):
             _load_adapter("src.utils.extractors.python_ast_adapter.NonExistentClass")
+
+
+class TestExtensionMapping:
+    """Test suite for file extension to adapter mapping."""
+
+    def test_get_adapter_dot_ts_returns_typescript_adapter(self) -> None:
+        """get_adapter('.ts') should return TypeScriptAdapter instance."""
+        clear_cache()
+        adapter = get_adapter(".ts")
+        assert isinstance(adapter, TypeScriptAdapter)
+
+    def test_get_adapter_dot_tsx_returns_typescript_adapter(self) -> None:
+        """get_adapter('.tsx') should return TypeScriptAdapter instance."""
+        clear_cache()
+        adapter = get_adapter(".tsx")
+        assert isinstance(adapter, TypeScriptAdapter)
+
+    def test_get_adapter_dot_py_returns_python_adapter(self) -> None:
+        """get_adapter('.py') should return PythonAstAdapter instance."""
+        clear_cache()
+        adapter = get_adapter(".py")
+        assert isinstance(adapter, PythonAstAdapter)
+
+    def test_get_adapter_unknown_extension_falls_back_to_default(self) -> None:
+        """get_adapter with unknown extension should fall back to default adapter."""
+        clear_cache()
+        # Unknown extensions should return the default (PythonAstAdapter)
+        adapter = get_adapter(".unknown")
+        assert isinstance(adapter, PythonAstAdapter)
+        adapter2 = get_adapter(".xyz")
+        assert isinstance(adapter2, PythonAstAdapter)
+
+    def test_get_adapter_ts_file_with_extension_returns_typescript(self) -> None:
+        """get_adapter('test.ts') with file name should return TypeScriptAdapter."""
+        clear_cache()
+        adapter = get_adapter("test.ts")
+        assert isinstance(adapter, TypeScriptAdapter)
+
+    def test_get_adapter_tsx_file_with_extension_returns_typescript(self) -> None:
+        """get_adapter('component.tsx') with file name should return TypeScriptAdapter."""
+        clear_cache()
+        adapter = get_adapter("component.tsx")
+        assert isinstance(adapter, TypeScriptAdapter)
+
+    def test_get_adapter_py_file_with_extension_returns_python(self) -> None:
+        """get_adapter('script.py') with file name should return PythonAstAdapter."""
+        clear_cache()
+        adapter = get_adapter("script.py")
+        assert isinstance(adapter, PythonAstAdapter)
