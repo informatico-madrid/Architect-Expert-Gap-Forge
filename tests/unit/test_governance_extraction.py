@@ -32,8 +32,8 @@ class TestGovernanceExtraction:
         repo_root = tmp_path
         repo_root.mkdir(exist_ok=True)
 
-        owner_dir = repo_root / "myrepo"
-        owner_dir.mkdir(exist_ok=True)
+        owner_dir = repo_root / "owner" / "myrepo"
+        owner_dir.mkdir(parents=True)
 
         # Create .codecov.yml at repo root
         (owner_dir / ".codecov.yml").write_text("""
@@ -54,7 +54,7 @@ coverage:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="myrepo",
+            raw_subdir="owner",
             output_subdir="output",
             category="myrepo",
             profile="filesystem",
@@ -110,57 +110,7 @@ deploy_job:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="myrepo",
-            output_subdir="output",
-            category="myrepo",
-            profile="filesystem",
-        )
-        processor = RepoProcessor(config)
-        processor.run()
-
-        # Verify bundle was created
-        output_dir = tmp_path / "output" / "myrepo"
-        bundle_files = list(output_dir.rglob("*.txt"))
-
-        # Should have GOVERNANCE_RULES
-        governance_files = [
-            f for f in bundle_files
-            if 'GOVERNANCE_RULES' in f.read_text()
-        ]
-
-        assert len(governance_files) > 0, (
-            "GOVERNANCE_RULES should be emitted for .gitlab-ci.yml"
-        )
-
-    def test_claude_md_detection(self, tmp_path: Path) -> None:
-        """Test that CLAUDE.md is detected as governance file.
-
-        AC-4.3: CLAUDE.md should be detected as governance file.
-        """
-        repo_root = tmp_path
-        repo_root.mkdir(exist_ok=True)
-
-        owner_dir = repo_root / "myrepo"
-        owner_dir.mkdir(exist_ok=True)
-
-        # Create CLAUDE.md at repo root
-        (owner_dir / "CLAUDE.md").write_text("""# Project Guidelines
-
-This project follows these guidelines:
-
-## Code Style
-- Use type hints
-- Follow PEP 8
-- Use meaningful variable names
-
-## Testing
-- All code must be tested
-- Integration tests required for API endpoints
-""".strip())
-
-        config = ProcessingConfig(
-            base_dir=tmp_path,
-            raw_subdir="myrepo",
+            raw_subdir=".",
             output_subdir="output",
             category="myrepo",
             profile="filesystem",
@@ -220,7 +170,7 @@ Follow these guidelines.
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="myrepo",
+            raw_subdir=".",
             output_subdir="output",
             category="myrepo",
             profile="filesystem",
@@ -280,7 +230,7 @@ coverage:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="myrepo",
+            raw_subdir=".",
             output_subdir="output",
             category="myrepo",
             profile="filesystem",

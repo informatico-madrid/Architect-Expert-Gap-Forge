@@ -254,8 +254,8 @@ class RepoProcessor:
                         any(sub.rglob("manifest.json")) or any(sub.rglob("__init__.py"))
                         for sub in subdirs
                     )
-                    # Only treat as module directory for Python repos (HA integrations)
-                    if has_modules and any(repo_dir.rglob("*.py")):
+                    # Only treat as module directory if it has module indicators
+                    if has_modules:
                         is_module_dir = True
 
                 if is_module_dir:
@@ -304,9 +304,12 @@ class RepoProcessor:
         prefix = f"{owner}_{repo_name}"
 
         # ── TIPO 5: detect and emit governance rules before module processing ──
-        gov_files = find_governance_files(repo_path)
-        if gov_files:
-            self._emit_governance(prefix, repo_path, gov_files)
+        # Only extract governance from the actual repo root (owner_dir),
+        # not from subdirectories processed as separate repos (e.g., component directories)
+        if owner == repo_name:
+            gov_files = find_governance_files(repo_path)
+            if gov_files:
+                self._emit_governance(prefix, repo_path, gov_files)
 
         try:
             if self.cfg.segment_path:

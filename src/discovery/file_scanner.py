@@ -75,6 +75,8 @@ GOVERNANCE_FILENAMES: Set[str] = {
     "AGENTS.md",
     ".cursorrules",
     ".clinerules",
+    ".codecov.yml",
+    ".gitlab-ci.yml",
 }
 
 

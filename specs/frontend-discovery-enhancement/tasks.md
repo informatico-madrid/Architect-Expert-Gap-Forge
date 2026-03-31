@@ -102,7 +102,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(unit): add MODULE_BLUEPRINT aggregation tests`
   - _Requirements: AC-3.1 to AC-3.7, FR-3_
 
-- [ ] 3.4 Unit test: GOVERNANCE_RULES extraction
+- [x] 3.4 Unit test: GOVERNANCE_RULES extraction
   - **Do**: Create unit tests for governance file detection at repo root (.codecov.yml, .gitlab-ci.yml)
   - **Files**: `tests/unit/test_governance_extraction.py`
   - **Done when**: Tests verify governance file detection
