@@ -474,6 +474,7 @@ SERVICE_NAMES = ['service1', 'service2']
             output_subdir="output",
             category="test_repo",
             profile="homeassistant",
+            module_discovery_strategy="manifest",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -519,6 +520,7 @@ SERVICE_NAMES = ['service1', 'service2']
             output_subdir="output",
             category="test_repo",
             profile="homeassistant",
+            module_discovery_strategy="manifest",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -569,6 +571,7 @@ class TestModuleBlueprintTypeScript:
             output_subdir="output",
             category="test_repo",
             profile="typescript",
+            module_discovery_strategy="typescript",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -607,6 +610,7 @@ class TestModuleBlueprintTypeScript:
             output_subdir="output",
             category="test_repo",
             profile="typescript",
+            module_discovery_strategy="typescript",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -660,6 +664,7 @@ class TestModuleBlueprintPHP:
             output_subdir="output",
             category="test_repo",
             profile="filesystem",
+            module_discovery_strategy="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -697,6 +702,7 @@ class TestModuleBlueprintPHP:
             output_subdir="output",
             category="test_repo",
             profile="filesystem",
+            module_discovery_strategy="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -747,6 +753,7 @@ class TestModuleBlueprintYAML:
             output_subdir="output",
             category="test_repo",
             profile="yaml",
+            module_discovery_strategy="yaml",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -784,6 +791,7 @@ class TestModuleBlueprintYAML:
             output_subdir="output",
             category="test_repo",
             profile="yaml",
+            module_discovery_strategy="yaml",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -907,6 +915,7 @@ class TestModuleDetectionAcrossLanguages:
             output_subdir="output",
             category="test_repo",
             profile="homeassistant",
+            module_discovery_strategy="manifest",
         )
         processor = RepoProcessor(config)
         processor.run()

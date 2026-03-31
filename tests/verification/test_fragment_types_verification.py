@@ -43,14 +43,41 @@ def calculate_total(items: list) -> float:
     return total
 """
 
-PYTHON_TEST_WITH_LOGIC = """
-def test_add_numbers():
+# Test file must be >= MIN_SIZE (300 bytes) for find_test to return it
+PYTHON_TEST_WITH_LOGIC = """# Comprehensive test suite for logic module
+# This test file verifies the core functionality of the add_numbers
+# and calculate_total functions with various input scenarios.
+
+import pytest
+
+
+def test_add_numbers_basic():
+    '''Test basic addition scenarios with various inputs.'''
     assert add_numbers(2, 3) == 5
     assert add_numbers(0, 0) == 0
+    assert add_numbers(-1, 1) == 0
+    assert add_numbers(100, 200) == 300
+    assert add_numbers(-50, -50) == -100
+    assert add_numbers(1, 1) == 2
+    assert add_numbers(999, 1) == 1000
+
 
 def test_calculate_total():
+    '''Test total calculation with list of items and edge cases.'''
     items = [{'price': 10}, {'price': 20}]
     assert calculate_total(items) == 30
+
+    # Test with empty list
+    assert calculate_total([]) == 0
+
+    # Test with single item
+    assert calculate_total([{'price': 100}]) == 100
+
+    # Test with multiple items
+    assert calculate_total([{'price': 1}, {'price': 2}, {'price': 3}]) == 6
+
+    # Test with larger values
+    assert calculate_total([{'price': 1000}, {'price': 2000}]) == 3000
 """
 
 # Python sample: Large file for TYPE 3 (≥1000 chars)
@@ -424,43 +451,58 @@ class TestFragmentTypesPython:
         both are bundled together as a FUNCTIONAL_UNIT.
         """
         # Setup test repo
-        repo_root = setup_python_test_repo(
-            tmp_path,
-            {
-                'manifest.json': json.dumps({
-                    "domain": "test",
-                    "name": "Test",
-                    "version": "1.0",
-                    "dependencies": []
-                }),
-                'test_logic.py': PYTHON_LOGIC_WITH_TEST,
-                'test_test_logic.py': PYTHON_TEST_WITH_LOGIC,
-            }
-        )
+        repo_root = tmp_path / "test_repo"
+        repo_root.mkdir()
+
+        # Create owner directory structure
+        owner_dir = repo_root / "owner" / "myrepo"
+        owner_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create component directory
+        component = owner_dir / "custom_components" / "test_component"
+        component.mkdir(parents=True, exist_ok=True)
+
+        # Create manifest.json
+        (component / "manifest.json").write_text(json.dumps({
+            "domain": "test",
+            "name": "Test",
+            "version": "1.0",
+            "dependencies": []
+        }))
+
+        # Create logic file (use a proper name without "test" prefix to avoid role confusion)
+        (component / "logic.py").write_text(PYTHON_LOGIC_WITH_TEST)
+
+        # Create tests directory INSIDE the repo (owner/myrepo/tests)
+        tests_dir = owner_dir / "tests" / "custom_components" / "test_component"
+        tests_dir.mkdir(parents=True, exist_ok=True)
+        # Test file should be named test_<logic_filename>.py
+        (tests_dir / "test_logic.py").write_text(PYTHON_TEST_WITH_LOGIC)
 
         # Process
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
-            raw_subdir=".",
+            base_dir=tmp_path,
+            raw_subdir="test_repo",
             output_subdir="output",
-            category="test_repo",
+            category="owner",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
-        # Check output - output dir is based on category, not component path
-        output_dir = repo_root.parent / "output" / "test_repo"
+        # Check output
+        output_dir = tmp_path / "output" / "owner"
         bundle_files = list(output_dir.rglob("*.txt"))
 
-        # Should have TYPE 1 bundle (FUNCTIONAL_UNIT)
+        # Should have TYPE 1 bundle (FUNCTIONAL_UNIT) for logic.py + test
         functional_unit_files = [
             f for f in bundle_files
             if 'FUNCTIONAL_UNIT' in f.read_text()
         ]
 
         assert len(functional_unit_files) > 0, (
-            "TYPE 1 FUNCTIONAL_UNIT should be emitted for logic+test pair"
+            "TYPE 1 FUNCTIONAL_UNIT should be emitted for logic+test pair\n"
+            f"Bundle files found: {[f.name for f in bundle_files]}"
         )
 
     def test_type3_logic_only_large_file(self, tmp_path: Path) -> None:

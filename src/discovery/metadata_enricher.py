@@ -197,6 +197,44 @@ class RepoProcessor:
             for repo_dir in sorted(owner_dir.iterdir()):
                 if not repo_dir.is_dir():
                     continue
+                repo_name = repo_dir.name
+
+                # Skip directories that are not actual repos (tests, docs, etc.)
+                skip_dirs = {"tests", "test", "docs", "documentation", "assets", "static", "public"}
+                if repo_name in skip_dirs:
+                    continue
+
+                # Detect if this is a module directory at repo root (e.g., custom_components/)
+                # by checking if it contains only subdirectories with module indicators
+                # Only apply this to Python repos (HA integrations), not TypeScript/PHP/YAML
+                is_module_dir = False
+                subdirs = list(repo_dir.iterdir())
+                if subdirs and all(sub.is_dir() for sub in subdirs):
+                    # Check if subdirs have module indicators (manifest.json, __init__.py)
+                    # Use rglob to check recursively for module indicators in subdirs
+                    has_modules = any(
+                        any(sub.rglob("manifest.json")) or any(sub.rglob("__init__.py"))
+                        for sub in subdirs
+                    )
+                    # Only treat as module directory for Python repos (HA integrations)
+                    if has_modules and any(repo_dir.glob("*.py")):
+                        is_module_dir = True
+
+                if is_module_dir:
+                    # This is a module directory, skip it - the actual repo is owner_dir
+                    # We need to process owner_dir as the repo instead
+                    logger.debug("Skipping module directory: %s, processing owner_dir as repo", repo_dir.name)
+                    # Replace repo_dir with owner_dir to process it as the repo
+                    repo_dir = owner_dir
+                else:
+                    # T030c: Measure repository processing time
+                    repo_start = time.perf_counter()
+                    self._process_repository(owner_dir.name, repo_dir)
+                    repo_latency = time.perf_counter() - repo_start
+                    self._metrics.record_file_processing_time(repo_dir.name, repo_latency)
+                    self._metrics.increment_files_processed(repo_dir.name)
+                    continue
+
                 # T030c: Measure repository processing time
                 repo_start = time.perf_counter()
                 self._process_repository(owner_dir.name, repo_dir)
@@ -218,6 +256,7 @@ class RepoProcessor:
     # Repository dispatch
     # ------------------------------------------------------------------
     def _process_repository(self, owner: str, repo_path: Path) -> None:
+        logger.debug("_process_repository called with repo_path=%s", repo_path)
         repo_name = repo_path.name
         size_limit = (
             MAX_SIZE_BACKEND
@@ -239,7 +278,7 @@ class RepoProcessor:
                         if sub_dir.is_dir():
                             self._process_module_dir(
                                 sub_dir,
-                                repo_path,
+                                repo_path.parent,  # Pass parent so tests/ is accessible
                                 f"{prefix}_{sub_dir.name}",
                                 size_limit,
                                 repo_prefix=prefix,
@@ -414,6 +453,7 @@ class RepoProcessor:
                 manifest_data = {}
 
         mod = self._build_module(mod_dir, anchor_type=anchor, manifest=manifest_data)
+        logger.debug("_process_module_dir: mod_dir=%s, repo_root=%s", mod_dir, repo_root)
         self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix)
 
     # ------------------------------------------------------------------
@@ -471,7 +511,10 @@ class RepoProcessor:
             self._stats["TYPE4_MODULE_BLUEPRINT"] += 1
 
         # ------- TIPO 1, 2, 3 for each logic file -------
+        logger.debug("_emit_module: mod.path=%s, repo_root=%s", mod.path, repo_root)
+        logger.debug("logic_files count: %d", len(logic_files))
         for mf in logic_files:
+            logger.debug("Processing mf: %s, role=%s, size=%d", mf.path.name, mf.role, mf.size)
             if mf.path.name in ANCHOR_FILENAMES:
                 # Already covered by blueprint
                 continue
@@ -547,8 +590,11 @@ class RepoProcessor:
 
             # Try TIPO 1 first: if there is an exact matching test, always emit
             # as a FUNCTIONAL_UNIT regardless of MIN_SIZE (teaching tests is valuable).
+            logger.debug("mf.path=%s, repo_root=%s", mf.path, repo_root)
             test_file = find_test(mf.path, repo_root, size_limit)
+            logger.debug("find_test for %s: %s", mf.path.name, test_file)
             if test_file:
+                logger.debug("TEST FOUND - emitting FUNCTIONAL_UNIT for %s", mf.path.name)
                 entity_id = f"{prefix}_{mf.path.stem}"
                 header = make_arch_header(
                     mod,
@@ -573,11 +619,6 @@ class RepoProcessor:
             # No test — now apply the size gate for non-test files
             if mf.size < MIN_SIZE or mf.size > size_limit:
                 self._stats["skipped_size"] += 1
-                continue
-
-            # Gold pattern filter for .py (keeps legacy behavior for files without tests)
-            if mf.path.suffix == ".py" and not any(p in content for p in GOLD_PATTERNS):
-                self._stats["skipped_gold"] += 1
                 continue
 
             # TIPO 3: emit as standalone if long enough
