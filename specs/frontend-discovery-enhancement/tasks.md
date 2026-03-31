@@ -188,7 +188,7 @@ Ensure all quality gates pass before PR creation.
 
 Continuous PR validation until all completion criteria met.
 
-- [ ] 5.1 Monitor CI and fix failures
+- [x] 5.1 Monitor CI and fix failures
   - **Do**: Watch CI pipeline, fix any failures (test regressions, coverage drops)
   - **Verify**: `gh pr checks` shows all green
   - **Done when**: All CI checks pass
