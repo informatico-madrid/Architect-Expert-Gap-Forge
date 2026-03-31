@@ -12,7 +12,7 @@ Focus: Validate end-to-end that all fragment types (1,3,4,5) generate correctly 
   - **Commit**: `test(verification): add fragment type verification test`
   - _Requirements: FR-1, FR-2, FR-3, FR-4_
 
-- [ ] 1.2 [P] Create per-file adapter selection test
+- [x] 1.2 [P] Create per-file adapter selection test
   - **Do**: Create test that verifies `.ts` files route to TypeScriptAdapter, `.py` to PythonAstAdapter, `.php` to PhpLegacyAdapter
   - **Files**: `tests/verification/test_adapter_selection.py`
   - **Done when**: Test exists with per-file adapter routing verification
