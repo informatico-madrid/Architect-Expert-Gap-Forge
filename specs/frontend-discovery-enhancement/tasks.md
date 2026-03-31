@@ -437,7 +437,7 @@
 - **Verify**: `python -c "from src.utils.extractors.factory import get_adapter; ts = get_adapter('.ts'); print(type(ts).__name__)" | grep -q TypeScript`
 - **Commit**: `test(factory): verify extension mapping for TypeScript`
 
-### 2.2 Integration test: TypeScript file processing through full pipeline
+### 2.2 Integration test: TypeScript file processing through full pipeline [DONE]
 - **Do**:
   1. Create a test .ts file with Lit component, i18n keys, service calls
   2. Run RepoProcessor with the test file
