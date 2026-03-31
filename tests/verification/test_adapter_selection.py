@@ -21,6 +21,8 @@ from pathlib import Path
 
 from src.discovery import ProcessingConfig, RepoProcessor
 
+from tests.fixtures.fragment_test_helpers import verify_bundle_content
+
 
 # =============================================================================
 # Sample Content for Each Language
@@ -159,8 +161,11 @@ class TestPerFileAdapterSelection:
         ]
 
         assert len(blueprint_files) > 0, (
-            "Python files should be processed and emit MODULE_BLUEPRINT"
+            "Python files should be processed and emit MODULE_BLUEPRINT. "
+            f"Found {len(bundle_files)} bundle files."
         )
+
+        verify_bundle_content(blueprint_files[0].read_text(), "MODULE_BLUEPRINT")
 
     def test_typescript_files_route_to_typescript_adapter(self, tmp_path: Path) -> None:
         """Test that .ts files are processed by TypeScriptAdapter.
@@ -194,8 +199,11 @@ class TestPerFileAdapterSelection:
         ]
 
         assert len(blueprint_files) > 0, (
-            "TypeScript files should be processed and emit MODULE_BLUEPRINT"
+            "TypeScript files should be processed and emit MODULE_BLUEPRINT. "
+            f"Found {len(bundle_files)} bundle files."
         )
+
+        verify_bundle_content(blueprint_files[0].read_text(), "MODULE_BLUEPRINT")
 
     def test_php_files_route_to_php_legacy_adapter(self, tmp_path: Path) -> None:
         """Test that .php files are processed by PhpLegacyAdapter.
@@ -229,8 +237,11 @@ class TestPerFileAdapterSelection:
         ]
 
         assert len(blueprint_files) > 0, (
-            "PHP files should be processed and emit MODULE_BLUEPRINT"
+            "PHP files should be processed and emit MODULE_BLUEPRINT. "
+            f"Found {len(bundle_files)} bundle files."
         )
+
+        verify_bundle_content(blueprint_files[0].read_text(), "MODULE_BLUEPRINT")
 
     def test_yaml_files_route_to_yaml_adapter(self, tmp_path: Path) -> None:
         """Test that .yaml files are processed by YamlAdapter.
@@ -264,8 +275,11 @@ class TestPerFileAdapterSelection:
         ]
 
         assert len(blueprint_files) > 0, (
-            "YAML files should be processed and emit MODULE_BLUEPRINT"
+            "YAML files should be processed and emit MODULE_BLUEPRINT. "
+            f"Found {len(bundle_files)} bundle files."
         )
+
+        verify_bundle_content(blueprint_files[0].read_text(), "MODULE_BLUEPRINT")
 
     def test_adapter_selection_uses_file_extension_not_profile(self, tmp_path: Path) -> None:
         """Test that adapter selection is based on file extension, not repo profile.

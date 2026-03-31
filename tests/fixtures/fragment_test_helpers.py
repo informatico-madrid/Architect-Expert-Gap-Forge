@@ -563,3 +563,43 @@ def verify_bundle_content(
             assert section in bundle_text, (
                 f"Bundle should contain {section}"
             )
+
+
+def verify_blueprint_content(blueprint_text: str, lang: str) -> None:
+    """Verify that MODULE_BLUEPRINT contains expected metadata sections.
+
+    Args:
+        blueprint_text: The MODULE_BLUEPRINT content to verify
+        lang: Language identifier for error messages
+
+    Raises:
+        AssertionError: If required sections are missing
+    """
+    # Check for TYPE header (either [MODULE_BLUEPRINT] or Type: MODULE_BLUEPRINT)
+    has_module_blueprint = (
+        '[MODULE_BLUEPRINT]' in blueprint_text or
+        'Type: MODULE_BLUEPRINT' in blueprint_text
+    )
+    assert has_module_blueprint, (
+        f"{lang}: MODULE_BLUEPRINT should be present in output"
+    )
+
+    # Verify [MODULE_MAP] exists
+    assert '[MODULE_MAP]' in blueprint_text, (
+        f"{lang}: MODULE_BLUEPRINT should contain [MODULE_MAP]"
+    )
+
+    # Verify [DEPENDENCIES] exists (from manifest or extraction)
+    assert '[DEPENDENCIES]' in blueprint_text, (
+        f"{lang}: MODULE_BLUEPRINT should contain [DEPENDENCIES]"
+    )
+
+    # Verify MODULE metadata is present
+    assert 'MODULE:' in blueprint_text, (
+        f"{lang}: MODULE_BLUEPRINT should contain MODULE metadata"
+    )
+
+    # Verify ANCHOR metadata is present
+    assert 'ANCHOR:' in blueprint_text, (
+        f"{lang}: MODULE_BLUEPRINT should contain ANCHOR metadata"
+    )

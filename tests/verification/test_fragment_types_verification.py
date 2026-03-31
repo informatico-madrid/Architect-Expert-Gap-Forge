@@ -21,10 +21,18 @@ These tests confirm:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict
 import json
 
 from src.discovery import ProcessingConfig, RepoProcessor
+
+from tests.fixtures.fragment_test_helpers import (
+    verify_bundle_content,
+    verify_blueprint_content,
+    setup_python_test_repo,
+    setup_ts_test_repo,
+    setup_php_test_repo,
+    setup_yaml_test_repo,
+)
 
 
 # =============================================================================
@@ -316,125 +324,8 @@ sensor:
 # Test Utilities
 # =============================================================================
 
-def setup_python_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
-    """Set up a Python test repository with manifest.json.
-
-    Args:
-        tmp_path: Temporary test directory
-        files: Dict of filename -> content (relative paths)
-
-    Returns:
-        repo_root: Path to the repository root
-    """
-    repo_root = tmp_path / "test_repo"
-    repo_root.mkdir()
-
-    # Create owner directory structure
-    owner_dir = repo_root / "owner" / "myrepo"
-    owner_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create component directory with manifest.json
-    component = owner_dir / "custom_components" / "test_component"
-    component.mkdir(parents=True, exist_ok=True)
-
-    # Create manifest.json
-    manifest = component / "manifest.json"
-    manifest.write_text(json.dumps({
-        "domain": "test_component",
-        "name": "Test Component",
-        "version": "1.0.0",
-        "dependencies": [],
-    }))
-
-    # Create component files
-    for filename, content in files.items():
-        (component / filename).write_text(content)
-
-    return repo_root
-
-
-def setup_ts_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
-    """Set up a TypeScript test repository.
-
-    Args:
-        tmp_path: Temporary test directory
-        files: Dict of filename -> content
-
-    Returns:
-        owner_dir: Path to the owner directory containing the repo
-    """
-    repo_root = tmp_path / "test_repo"
-    repo_root.mkdir()
-
-    # Create owner directory structure
-    owner_dir = repo_root / "owner" / "myrepo"
-    owner_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create repository root files in owner/myrepo
-    for filename, content in files.items():
-        (owner_dir / filename).write_text(content)
-
-    return owner_dir
-
-
-def setup_php_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
-    """Set up a PHP test repository.
-
-    Args:
-        tmp_path: Temporary test directory
-        files: Dict of filename -> content
-
-    Returns:
-        owner_dir: Path to the owner directory containing the repo
-    """
-    repo_root = tmp_path / "test_repo"
-    repo_root.mkdir()
-
-    # Create owner directory structure
-    owner_dir = repo_root / "owner" / "myrepo"
-    owner_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create repository root files in owner/myrepo
-    for filename, content in files.items():
-        (owner_dir / filename).write_text(content)
-
-    return owner_dir
-
-
-def setup_yaml_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
-    """Set up a YAML test repository.
-
-    Args:
-        tmp_path: Temporary test directory
-        files: Dict of filename -> content
-
-    Returns:
-        owner_dir: Path to the owner directory containing the repo
-    """
-    repo_root = tmp_path / "test_repo"
-    repo_root.mkdir()
-
-    # Create owner directory structure
-    owner_dir = repo_root / "owner" / "myrepo"
-    owner_dir.mkdir(parents=True, exist_ok=True)
-
-    # Create repository root files in owner/myrepo
-    for filename, content in files.items():
-        (owner_dir / filename).write_text(content)
-
-    return owner_dir
+# Use shared helpers from tests.fixtures.fragment_test_helpers
+# setup_python_test_repo, setup_ts_test_repo, setup_php_test_repo, setup_yaml_test_repo
 
 
 # =============================================================================
@@ -450,30 +341,14 @@ class TestFragmentTypesPython:
         This verifies that when a logic file has a corresponding test file,
         both are bundled together as a FUNCTIONAL_UNIT.
         """
-        # Setup test repo
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
-
-        # Create owner directory structure
-        owner_dir = repo_root / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create component directory
-        component = owner_dir / "custom_components" / "test_component"
-        component.mkdir(parents=True, exist_ok=True)
-
-        # Create manifest.json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test",
-            "name": "Test",
-            "version": "1.0",
-            "dependencies": []
-        }))
-
-        # Create logic file (use a proper name without "test" prefix to avoid role confusion)
-        (component / "logic.py").write_text(PYTHON_LOGIC_WITH_TEST)
+        # Setup test repo using shared helper
+        from tests.fixtures.fragment_test_helpers import setup_python_test_repo
+        repo_root = setup_python_test_repo(tmp_path, {
+            'logic.py': PYTHON_LOGIC_WITH_TEST,
+        })
 
         # Create tests directory INSIDE the repo (owner/myrepo/tests)
+        owner_dir = repo_root / "owner" / "myrepo"
         tests_dir = owner_dir / "tests" / "custom_components" / "test_component"
         tests_dir.mkdir(parents=True, exist_ok=True)
         # Test file should be named test_<logic_filename>.py
@@ -501,8 +376,15 @@ class TestFragmentTypesPython:
         ]
 
         assert len(functional_unit_files) > 0, (
-            "TYPE 1 FUNCTIONAL_UNIT should be emitted for logic+test pair\n"
-            f"Bundle files found: {[f.name for f in bundle_files]}"
+            "TYPE 1 FUNCTIONAL_UNIT should be emitted for logic+test pair. "
+            f"Found {len(bundle_files)} bundle files: {[f.name for f in bundle_files]}"
+        )
+
+        # Verify bundle content using shared helper
+        verify_bundle_content(
+            functional_unit_files[0].read_text(),
+            "FUNCTIONAL_UNIT",
+            ["[ARCH_HEADER]", "FUNCTIONAL_UNIT"]
         )
 
     def test_type3_logic_only_large_file(self, tmp_path: Path) -> None:
@@ -546,6 +428,12 @@ class TestFragmentTypesPython:
 
         assert len(logic_only_files) > 0, (
             "TYPE 3 LOGIC_ONLY should be emitted for large standalone files"
+        )
+
+        verify_bundle_content(
+            logic_only_files[0].read_text(),
+            "LOGIC_ONLY",
+            ["LOGIC_ONLY"]
         )
 
     def test_type4_module_blueprint(self, tmp_path: Path) -> None:
@@ -592,9 +480,8 @@ class TestFragmentTypesPython:
             "TYPE 4 MODULE_BLUEPRINT should always be emitted per module"
         )
 
-        # Verify blueprint contains expected metadata
-        blueprint = blueprint_files[0].read_text()
-        assert '[MODULE_MAP]' in blueprint
+        # Verify blueprint contains expected metadata using shared helper
+        verify_blueprint_content(blueprint_files[0].read_text(), "Python")
 
 
 class TestFragmentTypesTypeScript:
@@ -636,6 +523,8 @@ class TestFragmentTypesTypeScript:
             "TypeScript files should be processed and emit MODULE_BLUEPRINT"
         )
 
+        verify_blueprint_content(blueprint_files[0].read_text(), "TypeScript")
+
 
 class TestFragmentTypesPHP:
     """Verification tests for PHP fragment types."""
@@ -674,6 +563,8 @@ class TestFragmentTypesPHP:
             "PHP files should emit MODULE_BLUEPRINT"
         )
 
+        verify_blueprint_content(blueprint_files[0].read_text(), "PHP")
+
 
 class TestFragmentTypesYAML:
     """Verification tests for YAML fragment types."""
@@ -711,6 +602,8 @@ class TestFragmentTypesYAML:
         assert len(blueprint_files) > 0, (
             "YAML files should emit MODULE_BLUEPRINT"
         )
+
+        verify_blueprint_content(blueprint_files[0].read_text(), "YAML")
 
 
 class TestFragmentTypesMixed:
@@ -782,7 +675,8 @@ class TestFragmentTypesMixed:
         # Verify TYPE 1 (FUNCTIONAL_UNIT)
         has_type1 = any('FUNCTIONAL_UNIT' in content for content in bundle_contents.values())
         assert has_type1, (
-            "TYPE 1 FUNCTIONAL_UNIT should be emitted for logic+test pair"
+            "TYPE 1 FUNCTIONAL_UNIT should be emitted for logic+test pair. "
+            f"Found {len(bundle_contents)} bundle files."
         )
 
         # Verify TYPE 3 (LOGIC_ONLY)
