@@ -52,7 +52,7 @@ Focus: Validate end-to-end that all fragment types (1,3,4,5) generate correctly 
 
 After POC validated, clean up test code and ensure adherence to project patterns.
 
-- [ ] 2.1 Extract test helper functions
+- [x] 2.1 Extract test helper functions
   - **Do**: Extract common test fixtures and helpers from verification tests to `tests/fixtures/`
   - **Files**: `tests/fixtures/fragment_test_helpers.py`, refactor `tests/verification/*.py`
   - **Done when**: Tests use shared helpers, DRY principle applied
@@ -60,7 +60,7 @@ After POC validated, clean up test code and ensure adherence to project patterns
   - **Commit**: `refactor(tests): extract common verification helpers`
   - _Design: Test Helper Pattern_
 
-- [ ] 2.2 Standardize test assertions
+- [x] 2.2 Standardize test assertions
   - **Do**: Ensure all verification tests use consistent assertion patterns (bundle parsing, content checking)
   - **Files**: `tests/verification/*.py`, `tests/integration/*.py`
   - **Done when**: All tests follow same assertion pattern
@@ -68,7 +68,7 @@ After POC validated, clean up test code and ensure adherence to project patterns
   - **Commit**: `refactor(tests): standardize test assertions`
   - _Design: Testing Patterns_
 
-- [ ] 2.3 [VERIFY] Quality checkpoint: lint and type check
+- [x] 2.3 [VERIFY] Quality checkpoint: lint and type check
   - **Do**: Run ruff lint and py_compile on refactored test files
   - **Verify**: `ruff check tests/ && python -m py_compile tests/**/*.py`
   - **Done when**: No lint errors, no type errors
@@ -78,7 +78,7 @@ After POC validated, clean up test code and ensure adherence to project patterns
 
 Comprehensive test coverage for all fragment types, adapter selection, and cross-language scenarios.
 
-- [ ] 3.1 Unit test: TYPE 1 test file detection
+- [x] 3.1 Unit test: TYPE 1 test file detection
   - **Do**: Create unit tests for test file mirror detection (exact name, tests/ directory)
   - **Files**: `tests/unit/test_test_file_detection.py`
   - **Done when**: Tests cover exact mirror + tests/ directory patterns
@@ -86,7 +86,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(unit): add test file detection tests`
   - _Requirements: AC-1.2, FR-8_
 
-- [ ] 3.2 Unit test: SIZE gate filtering
+- [x] 3.2 Unit test: SIZE gate filtering
   - **Do**: Create unit tests for MIN_SIZE (200) and LOGIC_ONLY_MIN_CHARS (1000) gates
   - **Files**: `tests/unit/test_size_gate.py`
   - **Done when**: Tests verify size filtering logic
@@ -94,7 +94,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(unit): add size gate tests`
   - _Requirements: AC-2.1, AC-2.2, FR-10_
 
-- [ ] 3.3 Unit test: MODULE_BLUEPRINT anchor aggregation
+- [x] 3.3 Unit test: MODULE_BLUEPRINT anchor aggregation
   - **Do**: Create unit tests for anchor file aggregation (manifest.json, const.py, services.yaml)
   - **Files**: `tests/unit/test_module_blueprint_aggregation.py`
   - **Done when**: Tests verify anchor aggregation logic
@@ -110,7 +110,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(unit): add GOVERNANCE_RULES extraction tests`
   - _Requirements: AC-4.1 to AC-4.4, FR-4_
 
-- [ ] 3.5 Integration test: TypeScript repo processing
+- [x] 3.5 Integration test: TypeScript repo processing
   - **Do**: Verify TypeScript repo (.ts/.tsx files) generates TYPE 3 LOGIC_ONLY + TYPE 4 MODULE_BLUEPRINT
   - **Files**: `tests/integration/test_typescript_repo_processing.py`
   - **Done when**: TypeScript processing verified end-to-end
@@ -118,7 +118,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(integration): add TypeScript repo processing test`
   - _Requirements: FR-5, AC-5.1 to AC-5.5_
 
-- [ ] 3.6 Integration test: PHP repo processing
+- [x] 3.6 Integration test: PHP repo processing
   - **Do**: Verify PHP repo (.php files) generates TYPE 3 LOGIC_ONLY + TYPE 4 MODULE_BLUEPRINT
   - **Files**: `tests/integration/test_php_repo_processing.py`
   - **Done when**: PHP processing verified end-to-end
@@ -126,7 +126,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(integration): add PHP repo processing test`
   - _Requirements: FR-5, AC-7.1 to AC-7.4_
 
-- [ ] 3.7 Integration test: YAML/Jinja repo processing
+- [x] 3.7 Integration test: YAML/Jinja repo processing
   - **Do**: Verify YAML/Jinja repo (.yaml/.jinja files) generates TYPE 3 LOGIC_ONLY + TYPE 4 MODULE_BLUEPRINT
   - **Files**: `tests/integration/test_yaml_repo_processing.py`
   - **Done when**: YAML processing verified end-to-end
@@ -134,7 +134,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(integration): add YAML/Jinja repo processing test`
   - _Requirements: FR-5, AC-6.1 to AC-6.4_
 
-- [ ] 3.8 Integration test: Mixed-language repo
+- [x] 3.8 Integration test: Mixed-language repo
   - **Do**: Create mixed-language repo (Python + TypeScript config) and verify per-file adapter selection
   - **Files**: `tests/integration/test_mixed_language_repo.py`, `tests/fixtures/mixed-repo/`
   - **Done when**: Mixed-language repo processing verified
@@ -142,7 +142,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
   - **Commit**: `test(integration): add mixed-language repo test`
   - _Requirements: FR-5, AC-8.1 to AC-8.5_
 
-- [ ] 3.9 [VERIFY] Quality checkpoint: run all unit tests
+- [x] 3.9 [VERIFY] Quality checkpoint: run all unit tests
   - **Do**: Run complete unit test suite to verify all unit tests pass
   - **Verify**: `python -m pytest tests/unit/ -v --tb=short`
   - **Done when**: All unit tests pass
@@ -152,7 +152,7 @@ Comprehensive test coverage for all fragment types, adapter selection, and cross
 
 Ensure all quality gates pass before PR creation.
 
-- [ ] 4.1 Local quality check
+- [x] 4.1 Local quality check
   - **Do**: Run ALL quality checks locally before PR
   - **Verify**: All commands must pass:
     - Lint: `ruff check .`
@@ -161,7 +161,7 @@ Ensure all quality gates pass before PR creation.
   - **Done when**: All commands pass with no errors
   - **Commit**: `fix(tests): address quality issues` (if fixes needed)
 
-- [ ] 4.2 AC checklist verification
+- [x] 4.2 AC checklist verification
   - **Do**: Programmatically verify each acceptance criterion is satisfied
   - **Verify**: Run specific test commands for each AC:
     - AC-1.1 to AC-1.4: `python -m pytest tests/ -v -k "functional_unit"`
@@ -175,7 +175,7 @@ Ensure all quality gates pass before PR creation.
   - **Done when**: All acceptance criteria verified via automated checks
   - **Commit**: `chore(verification): AC checklist complete`
 
-- [ ] 4.3 Create PR and verify CI
+- [x] 4.3 Create PR and verify CI
   - **Do**:
     1. Verify current branch is feature branch: `git branch --show-current`
     2. Push branch: `git push -u origin feat/frontend-discovery-enhancement`

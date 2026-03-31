@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-03-31T15:08:15Z",
+  "updated": "2026-03-31T19:25:23Z",
   "directories": [
     {
       "path": "./specs",
@@ -105,7 +105,7 @@
       "name": "frontend-discovery-enhancement",
       "path": "./specs/frontend-discovery-enhancement",
       "phase": "execution",
-      "taskIndex": 5,
+      "taskIndex": 18,
       "totalTasks": 27
     },
     {

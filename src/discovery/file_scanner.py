@@ -734,7 +734,7 @@ def find_test(
     size_limit: int,
     min_size: int = MIN_SIZE,
 ) -> Optional[Path]:
-    """Find the best test file for a logic .py file.
+    """Find the best test file for a logic file (.py, .ts, .tsx, .php).
 
     Priority:
     1. Namespace mirror: repo_root/tests/<relative_parent>/test_<name>
@@ -752,13 +752,20 @@ def find_test(
     Returns:
         Path to best matching test file, or None
     """
-    if logic_file.suffix != ".py":
+    import logging
+    logger = logging.getLogger(__name__)
+
+    # Only support Python, TypeScript, and PHP test files
+    if logic_file.suffix not in (".py", ".ts", ".tsx", ".php"):
         return None
 
     if logic_file.name == "__init__.py":
         test_name = "test_init.py"
     else:
         test_name = f"test_{logic_file.name}"
+
+    logger.debug("find_test: logic_file=%s, repo_root=%s, test_name=%s",
+                 logic_file, repo_root, test_name)
 
     def _ok(p: Path) -> bool:
         return p.is_file() and min_size <= p.stat().st_size <= size_limit
@@ -769,8 +776,11 @@ def find_test(
     except ValueError:
         rel = Path(logic_file.name)
 
+    logger.debug("find_test: rel=%s", rel)
+
     # 1. Namespace mirror
     ns = repo_root / "tests" / rel.parent / test_name
+    logger.debug("find_test: checking namespace mirror %s", ns)
     if _ok(ns):
         return ns
 
@@ -795,5 +805,11 @@ def find_test(
         score = len(logic_parts & cp)
         if score >= 2 and score > best_score:
             best_score, best = score, c
+
+    # 4. Same directory test (for TypeScript test structure)
+    # Look for test_<name>.ts in the same directory as the logic file
+    same_dir_test = logic_file.parent / test_name
+    if _ok(same_dir_test):
+        return same_dir_test
 
     return best
