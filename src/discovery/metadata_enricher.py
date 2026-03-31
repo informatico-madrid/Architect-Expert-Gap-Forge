@@ -142,7 +142,6 @@ class RepoProcessor:
         self.target_root.mkdir(parents=True, exist_ok=True)
 
         # Initialize the extractor adapter for the given profile
-        self._adapter = get_adapter(cfg.profile)
         self._on_parse_error = cfg.on_parse_error
 
         # Initialize metrics collector (T030c)
@@ -417,61 +416,61 @@ class RepoProcessor:
             # Use the adapter to extract dependencies from the file
             local_imports: List[str] = []
             dependencies: List[str] = []
-            if mf.path.suffix == ".py":
-                try:
-                    # Per plan: call parse_file first to handle parse errors explicitly
-                    # This follows ParseError-first policy where processor decides the policy
-                    parse_result = self._adapter.parse_file(mf.path)
-                    deps = parse_result.dependencies
-                    # Extract local imports (relative imports) as .py files
-                    local_imports = [
-                        d.name + ".py" for d in deps if d.module_type == "relative"
-                    ]
-                    # All dependencies for the header
-                    dependencies = [d.name for d in deps]
-                except ParseError as e:
-                    self._stats["parse_errors"] += 1
-                    # T030c: Emit metrics for parse error
-                    self._metrics.increment_parse_error(
-                        repo_root.name, self.cfg.profile
+            try:
+                # Per plan: call parse_file first to handle parse errors explicitly
+                # This follows ParseError-first policy where processor decides the policy
+                adapter = get_adapter(mf.path.suffix)
+                parse_result = adapter.parse_file(mf.path)
+                deps = parse_result.dependencies
+                # Extract local imports (relative imports) as .py files
+                local_imports = [
+                    d.name + ".py" for d in deps if d.module_type == "relative"
+                ]
+                # All dependencies for the header
+                dependencies = [d.name for d in deps]
+            except ParseError as e:
+                self._stats["parse_errors"] += 1
+                # T030c: Emit metrics for parse error
+                self._metrics.increment_parse_error(
+                    repo_root.name, self.cfg.profile
+                )
+                if self._on_parse_error == "abort":
+                    # T009d: Abort the entire repository, not just the file
+                    logger.warning(
+                        "Parse error in %s, aborting repository: %s",
+                        mf.path,
+                        e,
                     )
-                    if self._on_parse_error == "abort":
-                        # T009d: Abort the entire repository, not just the file
-                        logger.warning(
-                            "Parse error in %s, aborting repository: %s",
-                            mf.path,
-                            e,
-                        )
-                        # Raise to propagate to repository level
-                        raise RepoAbortError(
-                            repo_name=repo_root.name, file_path=mf.path, parse_error=e
-                        )
-                    elif self._on_parse_error == "skip":
-                        logger.warning(
-                            "Parse error in %s, skipping file: %s", mf.path, e
-                        )
-                        continue
-                    elif self._on_parse_error == "mark_and_continue":
-                        # T009f: Mark file as needs_manual_review but continue processing
-                        logger.warning(
-                            "Parse error in %s, marking for review and continuing: %s",
-                            mf.path,
-                            e,
-                        )
-                        self._stats["needs_manual_review"].append(
-                            {
-                                "repo": repo_root.name,
-                                "file": str(mf.path),
-                                "reason": "parse_error_marked",
-                                "error": str(e),
-                            }
-                        )
-                        # Continue processing but use fallback for dependencies
-                        local_imports = extract_local_imports(content)
-                        dependencies = []
-                    else:
-                        # Fallback: use the old method
-                        local_imports = extract_local_imports(content)
+                    # Raise to propagate to repository level
+                    raise RepoAbortError(
+                        repo_name=repo_root.name, file_path=mf.path, parse_error=e
+                    )
+                elif self._on_parse_error == "skip":
+                    logger.warning(
+                        "Parse error in %s, skipping file: %s", mf.path, e
+                    )
+                    continue
+                elif self._on_parse_error == "mark_and_continue":
+                    # T009f: Mark file as needs_manual_review but continue processing
+                    logger.warning(
+                        "Parse error in %s, marking for review and continuing: %s",
+                        mf.path,
+                        e,
+                    )
+                    self._stats["needs_manual_review"].append(
+                        {
+                            "repo": repo_root.name,
+                            "file": str(mf.path),
+                            "reason": "parse_error_marked",
+                            "error": str(e),
+                        }
+                    )
+                    # Continue processing but use fallback for dependencies
+                    local_imports = extract_local_imports(content)
+                    dependencies = []
+                else:
+                    # Fallback: use the old method
+                    local_imports = extract_local_imports(content)
 
             # Try TIPO 1 first: if there is an exact matching test, always emit
             # as a FUNCTIONAL_UNIT regardless of MIN_SIZE (teaching tests is valuable).
