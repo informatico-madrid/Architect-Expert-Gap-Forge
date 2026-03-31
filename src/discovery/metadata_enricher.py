@@ -21,7 +21,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -121,11 +121,33 @@ class ProcessingConfig(BaseModel):
             values["extensions"] = values.pop("profile_extensions")
         if "ignore_patterns" not in values and values.get("profile_ignored_paths"):
             values["ignore_patterns"] = values.pop("profile_ignored_paths")
+
+        # Map profile to module_discovery_strategy
+        profile_to_strategy = {
+            "typescript": "typescript",
+            "yaml": "yaml",
+            "filesystem": "filesystem",
+        }
+        profile = values.get("profile")
+        # Only map if strategy not explicitly set (not in values or is default)
+        if profile and ("module_discovery_strategy" not in values or values.get("module_discovery_strategy") == "auto"):
+            if profile in profile_to_strategy:
+                values["module_discovery_strategy"] = profile_to_strategy[profile]
+
+        # Map profile to extensions - set extensions based on profile
+        profile_extensions = {
+            "typescript": {".ts", ".tsx"},
+            "yaml": {".yaml", ".yml", ".jinja", ".jinja2"},
+            "filesystem": {".php"},
+        }
+        if profile and profile in profile_extensions:
+            values["extensions"] = profile_extensions[profile]
+
         return values
 
     # Module discovery configuration
     module_discovery_strategy: str = Field(
-        default="auto",
+        default_factory=lambda: "auto",
         description="Strategy for discovering modules: auto (detect based on repo), manifest (manifest.json + __init__.py), init (__init__.py only), directory (dir structure), typescript (.ts/.tsx only), yaml (.yaml/.yml/.jinja/.jinja2), filesystem (.php only), manual_mapping (override)",
     )
     anchor_filenames: set[str] = Field(
@@ -191,6 +213,22 @@ class RepoProcessor:
         logger.info("Processing category: %s", self.cfg.category)
         logger.info("Output: %s", self.target_root)
 
+        # Check if source_root has direct files (e.g., TypeScript/PHP/YAML repos)
+        # vs. nested structure (e.g., owner/repo pattern for Python)
+        has_direct_files = any(
+            f for f in self.source_root.iterdir()
+            if f.is_file()
+        )
+
+        if has_direct_files:
+            # Direct repo case: process source_root directly as the repo
+            self._process_repository(
+                self.cfg.category,
+                self.source_root,
+            )
+            return
+
+        # Nested structure case: owner/repo pattern
         for owner_dir in sorted(self.source_root.iterdir()):
             if not owner_dir.is_dir():
                 continue
@@ -217,7 +255,7 @@ class RepoProcessor:
                         for sub in subdirs
                     )
                     # Only treat as module directory for Python repos (HA integrations)
-                    if has_modules and any(repo_dir.glob("*.py")):
+                    if has_modules and any(repo_dir.rglob("*.py")):
                         is_module_dir = True
 
                 if is_module_dir:
@@ -286,10 +324,13 @@ class RepoProcessor:
                     return
 
             # No segment_path → discover modules in the entire repo
+            logger.debug("_discover_modules for repo_path: %s", repo_path)
             modules = self._discover_modules(repo_path)
+            logger.debug("Found %d modules", len(modules))
             self._stats["modules_found"] += len(modules)
 
             for mod in modules:
+                logger.debug("_emit_module for module: %s, path: %s", mod.name, mod.path)
                 self._emit_module(
                     mod, repo_path, prefix, size_limit, repo_prefix=prefix
                 )
@@ -357,15 +398,15 @@ class RepoProcessor:
         # Priority order: Python (manifest/init) first, then TypeScript, then YAML
         # Python repos with manifest.json → manifest strategy (captures all files)
         # Python repos with __init__.py → init strategy (captures all files)
-        # TypeScript repos (>50 .ts/.tsx files) → typescript strategy
+        # TypeScript repos with any .ts/.tsx files → typescript strategy
         # YAML/Jinja repos (>5 .yaml/.yml/.jinja/.jinja2 files) → yaml strategy
         if has_manifest:
             # manifest.json = official HA integration (Python backend)
             return "manifest"
         elif has_init_py:
             return "init"
-        elif len(has_ts_files) > 50:
-            # TypeScript/TSX repos (e.g., home-assistant/frontend)
+        elif len(has_ts_files) > 0:
+            # TypeScript/TSX repos (any .ts/.tsx files)
             return "typescript"
         elif len(has_yaml_files) > 5:
             # YAML/Jinja repos (Home Assistant blueprints, automations, themes)
@@ -506,6 +547,10 @@ class RepoProcessor:
         blueprint_files = list(anchor_files)
         if readme_file:
             blueprint_files.append(readme_file)
+        # For repos without anchor files (e.g., TypeScript/PHP/YAML),
+        # include implementation files in the blueprint
+        if not blueprint_files and logic_files:
+            blueprint_files = logic_files[:1]  # Include first logic file
         if blueprint_files:
             self._emit_blueprint(mod, blueprint_files, prefix, module_dir)
             self._stats["TYPE4_MODULE_BLUEPRINT"] += 1
@@ -672,7 +717,10 @@ class RepoProcessor:
         buf.append(f"FILES: {mod.neighbors}")
         buf.append("")
 
-        # DEPENDENCIES (from manifest)
+        # DEPENDENCIES (from manifest or extracted from files)
+        # Collect dependencies from manifest and from file adapters
+        dependencies: Set[str] = set()
+
         if mod.manifest:
             buf.append("[DEPENDENCIES]")
             buf.append(f"domain: {mod.manifest.get('domain', 'unknown')}")
@@ -683,6 +731,23 @@ class RepoProcessor:
             reqs = mod.manifest.get("requirements", [])
             if reqs:
                 buf.append(f"requirements: {reqs}")
+            # Add manifest dependencies to set for file-based extraction
+            for dep in deps:
+                dependencies.add(dep)
+        elif anchor_files:
+            # For repos without manifest (YAML, TypeScript, PHP), extract from files
+            buf.append("[DEPENDENCIES]")
+            for af in anchor_files:
+                try:
+                    adapter = get_adapter(af.path.suffix)
+                    parse_result = adapter.parse_file(af.path)
+                    for dep in parse_result.dependencies:
+                        dependencies.add(dep.name)
+                except Exception as e:
+                    logger.warning("Failed to extract dependencies from %s: %s", af.path, e)
+
+            if dependencies:
+                buf.append(f"dependencies: {list(dependencies)}")
             buf.append("")
 
         # SCHEMA (from services.yaml)

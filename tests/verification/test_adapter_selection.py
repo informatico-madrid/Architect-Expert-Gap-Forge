@@ -134,6 +134,8 @@ class TestPerFileAdapterSelection:
         component = repo_root / "owner" / "myrepo" / "custom_components" / "test_component"
         component.mkdir(parents=True, exist_ok=True)
 
+        # Add manifest.json to make it a proper HA integration
+        (component / "manifest.json").write_text("{}")
         (component / "component.py").write_text(PYTHON_CODE)
 
         config = ProcessingConfig(

@@ -28,13 +28,13 @@ Focus: Validate end-to-end that all fragment types (1,3,4,5) generate correctly 
   - **Commit**: `test(verification): add MODULE_BLUEPRINT cross-language test`
   - _Requirements: FR-3, AC-3.1 to AC-3.7_
 
-- [ ] 1.4 [VERIFY] Quality checkpoint: lint and type check
+- [x] 1.4 [VERIFY] Quality checkpoint: lint and type check
   - **Do**: Run ruff lint and py_compile type check on new verification tests
   - **Verify**: `ruff check tests/verification/ && python -m py_compile tests/verification/*.py`
   - **Done when**: No lint errors, no type errors
   - **Commit**: `chore(verification): pass quality checkpoint`
 
-- [ ] 1.5 [P] Create TYPE 1 FUNCTIONAL_UNIT integration test
+- [x] 1.5 [P] Create TYPE 1 FUNCTIONAL_UNIT integration test
   - **Do**: Verify Type 1 bundle includes `[ARCH_HEADER]` with dependencies for Python + TypeScript repos
   - **Files**: `tests/integration/test_type1_functional_unit.py`
   - **Done when**: Test verifies TYPE 1 bundle structure and dependencies
@@ -42,7 +42,7 @@ Focus: Validate end-to-end that all fragment types (1,3,4,5) generate correctly 
   - **Commit**: `test(integration): add TYPE 1 FUNCTIONAL_UNIT test`
   - _Requirements: FR-1, AC-1.1 to AC-1.4_
 
-- [ ] 1.6 [VERIFY] POC checkpoint: verify fragment types work
+- [x] 1.6 [VERIFY] POC checkpoint: verify fragment types work
   - **Do**: Run all fragment type verification tests to confirm end-to-end functionality
   - **Verify**: `python -m pytest tests/verification/ -v --tb=short`
   - **Done when**: All fragment types (1,3,4,5) verified working

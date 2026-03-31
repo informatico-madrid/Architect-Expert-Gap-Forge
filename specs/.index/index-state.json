@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-03-31T11:25:12Z",
+  "updated": "2026-03-31T15:08:15Z",
   "directories": [
     {
       "path": "./specs",
@@ -104,15 +104,14 @@
     {
       "name": "frontend-discovery-enhancement",
       "path": "./specs/frontend-discovery-enhancement",
-      "phase": "design",
-      "awaitingApproval": true
+      "phase": "execution",
+      "taskIndex": 5,
+      "totalTasks": 27
     },
     {
       "name": "yaml-adapter",
       "path": "./specs/yaml-adapter",
-      "phase": "execution",
-      "taskIndex": 0,
-      "totalTasks": 26
+      "phase": "tasks"
     }
   ]
 }

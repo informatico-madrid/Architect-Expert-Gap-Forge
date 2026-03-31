@@ -367,7 +367,7 @@ def setup_ts_test_repo(
         files: Dict of filename -> content
 
     Returns:
-        repo_root: Path to the repository root
+        owner_dir: Path to the owner directory containing the repo
     """
     repo_root = tmp_path / "test_repo"
     repo_root.mkdir()
@@ -376,11 +376,11 @@ def setup_ts_test_repo(
     owner_dir = repo_root / "owner" / "myrepo"
     owner_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create repository root files
+    # Create repository root files in owner/myrepo
     for filename, content in files.items():
         (owner_dir / filename).write_text(content)
 
-    return repo_root
+    return owner_dir
 
 
 def setup_php_test_repo(
@@ -394,7 +394,7 @@ def setup_php_test_repo(
         files: Dict of filename -> content
 
     Returns:
-        repo_root: Path to the repository root
+        owner_dir: Path to the owner directory containing the repo
     """
     repo_root = tmp_path / "test_repo"
     repo_root.mkdir()
@@ -403,11 +403,11 @@ def setup_php_test_repo(
     owner_dir = repo_root / "owner" / "myrepo"
     owner_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create repository root files
+    # Create repository root files in owner/myrepo
     for filename, content in files.items():
         (owner_dir / filename).write_text(content)
 
-    return repo_root
+    return owner_dir
 
 
 def setup_yaml_test_repo(
@@ -421,7 +421,7 @@ def setup_yaml_test_repo(
         files: Dict of filename -> content
 
     Returns:
-        repo_root: Path to the repository root
+        owner_dir: Path to the owner directory containing the repo
     """
     repo_root = tmp_path / "test_repo"
     repo_root.mkdir()
@@ -430,11 +430,11 @@ def setup_yaml_test_repo(
     owner_dir = repo_root / "owner" / "myrepo"
     owner_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create repository root files
+    # Create repository root files in owner/myrepo
     for filename, content in files.items():
         (owner_dir / filename).write_text(content)
 
-    return repo_root
+    return owner_dir
 
 
 # =============================================================================
@@ -606,23 +606,24 @@ class TestFragmentTypesTypeScript:
         This verifies the per-file adapter selection pattern: .ts files
         should use TypeScriptAdapter, not the repo profile adapter.
         """
-        repo_root = setup_ts_test_repo(
+        owner_dir = setup_ts_test_repo(
             tmp_path,
             {'component.ts': TYPESCRIPT_SAMPLE}
         )
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
+            base_dir=owner_dir.parent,
             raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="typescript",
         )
         processor = RepoProcessor(config)
         processor.run()
 
-        # Check output
-        output_dir = repo_root.parent / "output" / "test_repo"
+        # Check output - target_root is base_dir / output_subdir / category
+        # base_dir = owner_dir.parent, so output_dir = owner_dir.parent / "output" / "myrepo"
+        output_dir = owner_dir.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have emitted at least TYPE 4 (MODULE_BLUEPRINT)
@@ -644,23 +645,23 @@ class TestFragmentTypesPHP:
 
         This verifies PHP file processing and blueprint generation.
         """
-        repo_root = setup_php_test_repo(
+        owner_dir = setup_php_test_repo(
             tmp_path,
             {'user_service.php': PHP_SAMPLE}
         )
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
+            base_dir=owner_dir.parent,
             raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Check output
-        output_dir = repo_root.parent / "output" / "test_repo"
+        output_dir = owner_dir.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -682,23 +683,23 @@ class TestFragmentTypesYAML:
 
         This verifies YAML file processing and blueprint generation.
         """
-        repo_root = setup_yaml_test_repo(
+        owner_dir = setup_yaml_test_repo(
             tmp_path,
             {'configuration.yaml': YAML_SAMPLE}
         )
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
+            base_dir=owner_dir.parent,
             raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="yaml",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Check output
-        output_dir = repo_root.parent / "output" / "test_repo"
+        output_dir = owner_dir.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -724,34 +725,54 @@ class TestFragmentTypesMixed:
         - TYPE 4: MODULE_BLUEPRINT (always)
         - TYPE 5: GOVERNANCE_RULES (from repo root)
         """
-        repo_root = setup_python_test_repo(
-            tmp_path,
-            {
-                'manifest.json': json.dumps({
-                    "domain": "test",
-                    "name": "Test",
-                    "version": "1.0",
-                    "dependencies": []
-                }),
-                'core.py': PYTHON_LOGIC_WITH_TEST,  # Small, will be skipped for TYPE 3
-                'test_core.py': PYTHON_TEST_WITH_LOGIC,  # Paired with core.py -> TYPE 1
-                'large_processor.py': PYTHON_LARGE_FILE,  # >1000 chars -> TYPE 3
-                'requirements.txt': 'lit\nlit-element\n',  # Governance file
-            }
-        )
+        repo_root = tmp_path / "test_repo"
+        repo_root.mkdir()
+
+        # Create owner directory structure
+        owner_dir = repo_root / "owner" / "myrepo"
+        owner_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create component directory
+        component = owner_dir / "custom_components" / "test_component"
+        component.mkdir(parents=True, exist_ok=True)
+
+        # Create tests directory at owner_dir level for TYPE 1 detection
+        # Path: owner_dir/tests/custom_components/test_component/
+        # This maps to repo_root/tests/custom_components/test_component/ since
+        # repo_root = owner_dir for this config
+        tests_dir = owner_dir / "tests" / "custom_components" / "test_component"
+        tests_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create governance file at repo root
+        (owner_dir / "CLAUDE.md").write_text('# Project guidelines\n')
+
+        # Create manifest.json
+        (component / "manifest.json").write_text(json.dumps({
+            "domain": "test",
+            "name": "Test",
+            "version": "1.0",
+            "dependencies": []
+        }))
+
+        # Create component files
+        (component / "core.py").write_text(PYTHON_LOGIC_WITH_TEST)
+        # Test file should be in tests/ directory for TYPE 1 detection
+        (tests_dir / "test_core.py").write_text(PYTHON_TEST_WITH_LOGIC)
+        # Large processor at component level for TYPE 3
+        (component / "processor.py").write_text(PYTHON_LARGE_FILE)
 
         config = ProcessingConfig(
-            base_dir=repo_root.parent,
+            base_dir=owner_dir.parent,
             raw_subdir=".",
             output_subdir="output",
-            category="test_repo",
+            category="myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
-        # Check output
-        output_dir = repo_root.parent / "output" / "test_repo"
+        # Check output - target_root is base_dir / output_subdir / category
+        output_dir = owner_dir.parent / "output" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         bundle_contents = {}
@@ -776,7 +797,7 @@ class TestFragmentTypesMixed:
             "TYPE 4 MODULE_BLUEPRINT should always be emitted"
         )
 
-        # Verify TYPE 5 (GOVERNANCE_RULES) - from requirements.txt at repo root
+        # Verify TYPE 5 (GOVERNANCE_RULES) - from CLAUDE.md at repo root
         has_type5 = any('GOVERNANCE_RULES' in content for content in bundle_contents.values())
         assert has_type5, (
             "TYPE 5 GOVERNANCE_RULES should be emitted from repository governance files"
