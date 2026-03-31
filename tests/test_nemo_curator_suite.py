@@ -281,9 +281,12 @@ class TestRunNemoFilterPipeline:
             pytest.skip(
                 "nemo-curator is installed; this test covers the missing-dep path"
             )
+        # Create input file so FileNotFoundError doesn't raise before RuntimeError
+        input_file = tmp_path / "in.jsonl"
+        input_file.touch()
         with pytest.raises(RuntimeError, match="nemo-curator is not installed"):
             run_nemo_filter_pipeline(
-                str(tmp_path / "in.jsonl"), str(tmp_path / "out.jsonl")
+                str(input_file), str(tmp_path / "out.jsonl")
             )
 
 
