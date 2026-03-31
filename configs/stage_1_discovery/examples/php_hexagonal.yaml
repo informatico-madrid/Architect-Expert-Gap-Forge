@@ -69,6 +69,10 @@ extractor:
 #   - directory: Discover modules by directory structure
 #   - filesystem: Discover modules by directory structure (PHP standard)
 #   - manual_mapping: Use manually defined module mappings
+# Static repositories for discovery mode
+static_repos:
+  - php/php-hexagonal-example
+
 module_discovery:
   strategy: filesystem
   anchor_filenames:
