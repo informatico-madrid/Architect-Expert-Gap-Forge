@@ -1,0 +1,66 @@
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# SPDX-License-Identifier: Apache-2.0
+
+# Home Assistant Discovery Configuration
+# This configuration defines the discovery settings for processing Home Assistant
+# repositories and custom components (HACS).
+
+# Target subdirectory for discovered repositories
+category: homeassistant
+
+# Discovery mode: static (predefined repos) or dynamic (GitHub search)
+mode: static
+
+# Profile name for filtering and configuration
+profile: homeassistant
+
+# File extensions to process during discovery
+profile_extensions:
+  - ".py"
+  - ".md"
+  - ".ts"
+  - ".tsx"
+  - ".json"
+
+# Paths to ignore during discovery (directories/files to skip)
+profile_ignored_paths:
+  - ".git"
+  - "__pycache__"
+  - "venv"
+  - "node_modules"
+  - ".tox"
+  - "eggs"
+  - ".pytest_cache"
+  - "tests"
+  - "test"
+  - "dist"
+  - "build"
+
+# Static repositories to process (Home Assistant ecosystem)
+static_repos:
+  - "home-assistant/home-assistant"
+  - "home-assistant/integration"
+  - "alarmo/alarmo"
+  - "home-assistant/frontend"
+
+# Minimum stars required for repositories (0 = no minimum)
+min_stars: 0
+
+# Maximum number of repositories to process
+limit: 50
+
+# Results per page for GitHub API requests
+per_page: 100
+
+# Base directory for output
+base_dir: .
+
+# Subdirectory for raw repository data
+raw_subdir: data/raw
+ 
+# Subdirectory where processor will write packaged bundles
+output_subdir: data/raw/homeassistant_bundles
