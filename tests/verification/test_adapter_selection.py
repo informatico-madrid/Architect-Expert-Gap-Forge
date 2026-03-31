@@ -18,7 +18,6 @@ Requirements: FR-5, AC-8.1 to AC-8.5
 from __future__ import annotations
 
 from pathlib import Path
-import pytest
 
 from src.discovery import ProcessingConfig, RepoProcessor
 

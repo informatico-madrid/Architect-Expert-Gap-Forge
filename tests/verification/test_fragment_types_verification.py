@@ -23,7 +23,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict
 import json
-import pytest
 
 from src.discovery import ProcessingConfig, RepoProcessor
 
