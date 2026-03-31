@@ -77,6 +77,9 @@ min_stars: 0
 # Results per page for GitHub API requests
 per_page: 100
 
+# Target profile for adapter selection (enables TypeScriptAdapter for .ts/.tsx)
+profile: typescript
+
 # Base directory for output
 base_dir: .
 

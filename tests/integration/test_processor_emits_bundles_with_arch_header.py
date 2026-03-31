@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from src.discovery import Module, ModuleFile, ProcessingConfig, RepoProcessor
+from src.discovery import ProcessingConfig, RepoProcessor
 
 
 class TestProcessorEmitsBundlesWithArchHeader:
@@ -177,13 +177,11 @@ class MySensor(SensorEntity):
         output_dir = temp_repo_with_module.parent / "output" / "test_repo"
         txt_files = list(output_dir.rglob("*.txt"))
 
-        found_dependencies = False
         for txt_file in txt_files:
             content = txt_file.read_text()
             if "[DEPENDENCIES]" in content or "[ARCH_HEADER]" in content:
                 # Check for dependencies field
                 if "DEPENDENCIES:" in content:
-                    found_dependencies = True
                     break
 
         # Note: Dependencies may come from manifest or from AST parsing
@@ -273,17 +271,12 @@ async def async_setup_entry(hass, entry):
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "test"
-        owner_dir.mkdir(parents=True)
+        # Create __init__.py to make the directory a valid module
+        (repo_root / "__init__.py").write_text("# Module")
 
-        # Create component
-        component = owner_dir / "custom" / "comp"
-        component.mkdir(parents=True)
-        (component / "__init__.py").write_text("# Init")
-
-        # Create a large enough file to be LOGIC_ONLY
+        # Create a large enough file to be LOGIC_ONLY at repo root
         # Must include gold patterns to pass the filter
-        logic_file = component / "sensor.py"
+        logic_file = repo_root / "sensor.py"
         logic_file.write_text(
             """
 from homeassistant.components.sensor import SensorEntity, SensorStateClass

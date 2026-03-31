@@ -159,16 +159,16 @@ class TestConfigFileValidation:
             "Frontend config must include .ts or .tsx extensions"
         )
 
-    def test_homeassistant_frontend_uses_auto_detection(self) -> None:
-        """homeassistant_frontend config uses auto-detection for adapter."""
+    def test_homeassistant_frontend_uses_typescript_profile(self) -> None:
+        """homeassistant_frontend config uses typescript profile for adapter selection."""
         import yaml
 
         config_path = Path("configs/stage_1_discovery/examples/homeassistant_frontend.yaml")
         config_data = yaml.safe_load(config_path.read_text())
 
-        # Profile should be None or not set for auto-detection
-        assert config_data.get("profile") is None, (
-            "Frontend config should not set profile to allow auto-detection"
+        # Profile should be typescript to force TypeScriptAdapter
+        assert config_data.get("profile") == "typescript", (
+            "Frontend config should use profile: typescript to get TypeScriptAdapter"
         )
 
     def test_homeassistant_frontend_static_repos_non_empty(self) -> None:
