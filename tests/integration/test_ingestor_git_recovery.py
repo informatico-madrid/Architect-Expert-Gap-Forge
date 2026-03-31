@@ -47,6 +47,18 @@ class TestGitRecoveryIntegration:
         # Create initial commit
         (repo_path / "README.md").write_text("# Test Repo")
         subprocess.run(
+            ["git", "config", "user.email", "test@example.com"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"],
+            cwd=repo_path,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
             ["git", "add", "."],
             cwd=repo_path,
             check=True,
