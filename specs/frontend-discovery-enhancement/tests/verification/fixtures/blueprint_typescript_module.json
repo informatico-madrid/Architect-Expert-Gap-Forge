@@ -1,0 +1,123 @@
+{
+  "module_map": {
+    "custom-cards/button-card/src/cards/buttons/card.ts": {
+      "anchor_file": "button-card.ts",
+      "logic_files": [
+        "custom-cards/button-card/src/cards/buttons/card.ts",
+        "custom-cards/button-card/src/cards/buttons/utils.ts"
+      ],
+      "test_files": [
+        "custom-cards/button-card/tests/unit/buttons/card.test.ts"
+      ],
+      "dependencies": {
+        "lit": "LitElement",
+        "lodash-es": "debounce, get",
+        "ha hui-common-entity-states": "computeStateDisplay"
+      }
+    },
+    "custom-cards/mini-graph-card/src/mini-graph-card.ts": {
+      "anchor_file": "mini-graph-card.ts",
+      "logic_files": [
+        "custom-cards/mini-graph-card/src/mini-graph-card.ts",
+        "custom-cards/mini-graph-card/src/card/updater.ts"
+      ],
+      "test_files": [],
+      "dependencies": {
+        "lit": "LitElement, css, html",
+        "charts": "Chart",
+        "moment": "moment"
+      }
+    }
+  },
+  "dependencies": {
+    "lit": "LitElement, css, html, property, state",
+    "lodash-es": "debounce, get, set",
+    "ha hui-common-entity-states": "computeStateDisplay",
+    "home-assistant-js-websocket": "HASSWebsocketConnection"
+  },
+  "schema": {
+    "properties": [
+      {
+        "component": "ha-emoji-picker",
+        "property": "filter",
+        "type": "string",
+        "attribute": "filter",
+        "reflects": true
+      },
+      {
+        "component": "ha-emoji-picker",
+        "property": "showSearch",
+        "type": "boolean",
+        "attribute": "show-search",
+        "reflects": true
+      }
+    ],
+    "custom_elements": [
+      {
+        "tag": "ha-emoji-picker",
+        "extends": "LitElement"
+      },
+      {
+        "tag": "ha-entity-select",
+        "extends": "LitElement"
+      }
+    ]
+  },
+  "vocabulary": {
+    "i18n_keys": [
+      "ui.card.generic",
+      "ui.notification.entity_changed",
+      "state.default.entity_classify.entity",
+      "component.camera.title"
+    ],
+    "lit_components": [
+      {
+        "tag": "ha-emoji-picker",
+        "decorators": ["@customElement('ha-emoji-picker')"],
+        "properties": [
+          {
+            "name": "filter",
+            "type": "string",
+            "attribute": "filter",
+            "state": false
+          },
+          {
+            "name": "showSearch",
+            "type": "boolean",
+            "attribute": "show-search",
+            "state": true
+          }
+        ]
+      },
+      {
+        "tag": "ha-entity-select",
+        "decorators": ["@customElement('ha-entity-select')"],
+        "properties": [
+          {
+            "name": "hass",
+            "type": "HomeAssistant",
+            "attribute": null,
+            "state": false
+          },
+          {
+            "name": "value",
+            "type": "string",
+            "attribute": "value",
+            "state": true
+          }
+        ]
+      }
+    ],
+    "service_calls": [
+      {
+        "domain": "cover",
+        "service": "open_cover",
+        "trigger_location": "custom-cards/button-card/src/cards/buttons/card.ts"
+      }
+    ]
+  },
+  "readme": {
+    "custom-cards/button-card/src/cards/buttons/card.ts": "Button card implementation for generic buttons in HomeAssistant frontend.",
+    "custom-cards/mini-graph-card/src/mini-graph-card.ts": "Mini graph card component for displaying sensor history."
+  }
+}

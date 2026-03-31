@@ -20,7 +20,7 @@ Focus: Validate end-to-end that all fragment types (1,3,4,5) generate correctly 
   - **Commit**: `test(verification): add per-file adapter selection test`
   - _Requirements: FR-5, AC-8.1 to AC-8.5_
 
-- [ ] 1.3 [P] Create MODULE_BLUEPRINT cross-language test
+- [x] 1.3 [P] Create MODULE_BLUEPRINT cross-language test
   - **Do**: Create test that verifies TYPE 4 MODULE_BLUEPRINT generation for Python, TypeScript, PHP, YAML repos
   - **Files**: `tests/verification/test_module_blueprint_cross_language.py`
   - **Done when**: Test exists with cross-language blueprint verification
