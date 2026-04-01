@@ -779,6 +779,8 @@ def _detect_strategy(root: Path) -> str:
                 if not any(part in ("node_modules", "tests", "test")
                          for part in ts_file.parts):
                     ts_count += 1
+        except PermissionError as exc:
+            logger.warning("Permission denied scanning TypeScript files: %s", exc)
         except Exception as exc:
             logger.warning("Error scanning for TypeScript files: %s", exc)
 
