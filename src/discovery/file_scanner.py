@@ -711,9 +711,12 @@ def _detect_strategy(root: Path) -> str:
         if not root.exists() or not root.is_dir():
             return "directory"
 
-        # Check for manifest.json (highest priority after YAML detection)
-        for _ in root.rglob("manifest.json"):
-            return "manifest"
+        # Check for manifest.json files (Home Assistant style)
+        try:
+            if any(root.rglob("manifest.json")):
+                return "manifest"
+        except Exception as exc:
+            logger.warning("Error scanning for manifest.json files: %s", exc)
 
         # Check for TypeScript files (frontend components)
         ts_count = 0
