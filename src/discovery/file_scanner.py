@@ -715,11 +715,33 @@ def _detect_strategy(root: Path) -> str:
         for _ in root.rglob("manifest.json"):
             return "manifest"
 
-        # Check for PHP files
-        _exclude_dirs = {"vendor", "node_modules", "tests", "cache"}
-        for _php_file in root.rglob("*.php"):
-            if not any(_part in _exclude_dirs for _part in _php_file.parts):
-                return "php"
+        # Check for TypeScript files (frontend components)
+        ts_count = 0
+        try:
+            for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
+                # Exclude common non-source directories
+                if not any(part in ("node_modules", "tests", "test")
+                         for part in ts_file.parts):
+                    ts_count += 1
+        except Exception as exc:
+            logger.warning("Error scanning for TypeScript files: %s", exc)
+
+        if ts_count > 0:
+            return "typescript"
+
+        # Check for PHP files (filesystem-based)
+        php_count = 0
+        try:
+            for php_file in root.rglob("*.php"):
+                # Exclude common non-source directories
+                if not any(part in ("vendor", "node_modules", "tests", "cache")
+                         for part in php_file.parts):
+                    php_count += 1
+        except Exception as exc:
+            logger.warning("Error scanning for PHP files: %s", exc)
+
+        if php_count > 0:
+            return "filesystem"
 
         # Check for __init__.py (Python package structure)
         for _init_file in root.rglob("__init__.py"):
