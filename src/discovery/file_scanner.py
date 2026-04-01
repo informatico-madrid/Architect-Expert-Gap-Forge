@@ -152,6 +152,20 @@ def discover_modules(
         return _discover_by_filesystem(
             root, ignore_patterns, extensions, anchor_filenames, build_module_func
         )
+    elif strategy == "auto":
+        # Auto-detect strategy based on repository structure
+        detected_strategy = _detect_strategy(root)
+        logger.info("Auto-detected strategy: %s for %s", detected_strategy, root)
+        # Recursively call with detected strategy
+        return discover_modules(
+            root=root,
+            strategy=detected_strategy,
+            ignore_patterns=ignore_patterns,
+            extensions=extensions,
+            anchor_filenames=anchor_filenames,
+            module_overrides=module_overrides,
+            build_module_func=build_module_func,
+        )
     elif strategy == "manual_mapping":
         # No overrides provided - fall back to manifest/init
         return _discover_by_init(
