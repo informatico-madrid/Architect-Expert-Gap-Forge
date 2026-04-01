@@ -658,23 +658,23 @@ def _detect_strategy(root: Path) -> str:
 
     Detection Priority Order:
     -------------------------
-    1. YAML/manifest strategy: Checks for manifest.json with Home Assistant
-       configuration or __init__.py files indicating Python package structure
-    2. TypeScript strategy: Scans for .ts/.tsx files indicating TypeScript/
+    1. Manifest strategy: Checks for manifest.json files (npm, Composer, etc.)
+    2. PHP strategy: Looks for .php files indicating PHP-based repositories
+    3. Init strategy: Checks for __init__.py files indicating Python packages
+    4. YAML strategy: Scans for YAML/Jinja template files (themes, templates,
+       blueprints) - has priority over TypeScript
+    5. TypeScript strategy: Scans for .ts/.tsx files indicating TypeScript/
        JavaScript repositories
-    3. PHP strategy: Looks for .php files indicating PHP-based repositories
-    4. Manifest strategy: Checks for manifest.json files (npm, Composer, etc.)
-    5. Init strategy: Fallback to __init__.py detection for Python packages
     6. Directory strategy: Final fallback - uses generic directory structure
        analysis
 
     Detection Checks:
     -----------------
-    - YAML/manifest: manifest.json, __init__.py files
-    - TypeScript: .ts, .tsx files in non-test directories
+    - Manifest: manifest.json files
     - PHP: .php files excluding vendor/, node_modules/, tests/, cache/
-    - Manifest: Any manifest.json file
     - Init: Python package __init__.py files
+    - YAML: .yaml, .yml, .jinja, .jinja2 files in non-test directories
+    - TypeScript: .ts, .tsx files in non-test directories
     - Directory: Generic directory scanning as last resort
 
     Excluded Directories:
@@ -704,8 +704,8 @@ def _detect_strategy(root: Path) -> str:
         root: Repository root directory to analyze
 
     Returns:
-        Strategy name string: "yaml", "typescript", "php", "manifest",
-        "init", or "directory" (fallback)
+        Strategy name string: "manifest", "php", "init", "yaml", "typescript",
+        or "directory" (fallback)
     """
     try:
         if not root.exists() or not root.is_dir():
@@ -714,12 +714,6 @@ def _detect_strategy(root: Path) -> str:
         # Check for manifest.json (highest priority after YAML detection)
         for _ in root.rglob("manifest.json"):
             return "manifest"
-
-        # Check for TypeScript files
-        for _ in root.rglob("*.ts"):
-            return "typescript"
-        for _ in root.rglob("*.tsx"):
-            return "typescript"
 
         # Check for PHP files
         _exclude_dirs = {"vendor", "node_modules", "tests", "cache"}
@@ -731,7 +725,7 @@ def _detect_strategy(root: Path) -> str:
         for _init_file in root.rglob("__init__.py"):
             return "init"
 
-        # Check for YAML files (themes, templates, blueprints)
+        # Check for YAML files (themes, templates, blueprints) - highest priority among remaining
         yaml_count = 0
         try:
             for file_path in root.rglob("*"):
@@ -747,6 +741,21 @@ def _detect_strategy(root: Path) -> str:
 
         if yaml_count > 0:
             return "yaml"
+
+        # Check for TypeScript files (frontend components) - after YAML
+        # YAML has priority, so TypeScript is detected after YAML
+        ts_count = 0
+        try:
+            for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
+                # Exclude common non-source directories
+                if not any(part in ("node_modules", "tests", "test")
+                         for part in ts_file.parts):
+                    ts_count += 1
+        except Exception as exc:
+            logger.warning("Error scanning for TypeScript files: %s", exc)
+
+        if ts_count > 0:
+            return "typescript"
 
         # Default fallback: directory-based strategy
         return "directory"
