@@ -273,6 +273,20 @@ class RepoProcessor:
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
         """Discover modules using the configured strategy."""
+        if self.cfg.module_discovery_strategy == "auto":
+            from src.discovery.file_scanner import _detect_strategy
+            detected_strategy = _detect_strategy(root)
+            logger.info("Auto-detected strategy: %s for %s", detected_strategy, root)
+            self.cfg.module_discovery_strategy = detected_strategy
+            return discover_modules(
+                root=root,
+                strategy=detected_strategy,
+                ignore_patterns=self.cfg.ignore_patterns,
+                extensions=self.cfg.extensions,
+                anchor_filenames=self.cfg.anchor_filenames,
+                module_overrides=self.cfg.module_overrides,
+                build_module_func=self._build_module,
+            )
         if self.cfg.module_discovery_strategy == "directory_scan":
             return self._discover_modules_directory_scan(root)
         return discover_modules(
