@@ -668,19 +668,61 @@ def _discover_by_yaml(
 
 
 def _detect_strategy(root: Path) -> str:
-    """Detect the repository strategy type based on file patterns.
+    """Detect the most appropriate discovery strategy for a repository.
+
+    This function implements an intelligent detection strategy that examines
+    the repository structure to determine the appropriate module discovery
+    approach. Detection follows a strict priority order.
+
+    Detection Priority Order:
+    -------------------------
+    1. YAML/manifest strategy: Checks for manifest.json with Home Assistant
+       configuration or __init__.py files indicating Python package structure
+    2. TypeScript strategy: Scans for .ts/.tsx files indicating TypeScript/
+       JavaScript repositories
+    3. PHP strategy: Looks for .php files indicating PHP-based repositories
+    4. Manifest strategy: Checks for manifest.json files (npm, Composer, etc.)
+    5. Init strategy: Fallback to __init__.py detection for Python packages
+    6. Directory strategy: Final fallback - uses generic directory structure
+       analysis
+
+    Excluded Directories:
+    --------------------
+    - node_modules/ - npm packages
+    - vendor/ - PHP dependencies
+    - tests/ - test directories
+    - test/ - test directories
+    - cache/ - cache directories
+    - __pycache__/ - Python bytecode cache
+
+    Performance:
+    -----------
+    - O(n) single-pass scan where n = total files
+    - Should complete in < 1 second for 10,000 files
+    - No file content reading (only existence checks)
+
+    Error Handling:
+    --------------
+    - Never raises exceptions - always returns valid strategy
+    - Catches PermissionError and continues scanning
+    - Handles broken symlinks gracefully
+    - Fallback to 'directory' if detection fails
 
     Args:
-        root: Repository root directory (Path) to scan for file patterns
+        root: Repository root directory to scan
 
     Returns:
-        Strategy name string: 'yaml', 'typescript', 'filesystem',
-                             'manifest', 'init', or 'directory'
+        Strategy name: 'yaml', 'typescript', 'filesystem',
+                       'manifest', 'init', or 'directory'
 
-    Note:
-        - O(n) performance with early returns on first match
-        - Returns 'directory' as fallback if no patterns detected
-        - Never raises exceptions - always returns a valid strategy
+    Examples:
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> with tempfile.TemporaryDirectory() as tmpdir:
+        ...     root = Path(tmpdir)
+        ...     (root / "theme.yaml").write_text("key: value")
+        ...     strategy = _detect_strategy(root)
+        ...     assert strategy == "yaml"
     """
     try:
         if not root.exists() or not root.is_dir():
