@@ -100,6 +100,10 @@ def discover_modules(
     - 'manifest': detect modules via manifest.json and __init__.py (default)
     - 'init': detect modules via __init__.py only
     - 'directory': detect modules via directory structure with __init__.py
+    - 'typescript': detect modules via .ts/.tsx files
+    - 'yaml': detect modules via .yaml/.yml/.jinja files
+    - 'filesystem': detect modules via .php files
+    - 'auto': automatically detect repository type and route to appropriate strategy
     - 'manual_mapping': use explicit module_overrides for discovery
 
     Args:
