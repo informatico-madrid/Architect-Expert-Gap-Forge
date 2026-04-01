@@ -735,20 +735,16 @@ def _detect_strategy(root: Path) -> str:
             logger.warning("Error scanning for manifest.json files: %s", exc)
 
         # Check for PHP files (filesystem-based)
-        php_count = 0
         try:
             for php_file in root.rglob("*.php"):
                 # Exclude common non-source directories
                 if not any(part in ("vendor", "node_modules", "tests", "cache")
                          for part in php_file.parts):
-                    php_count += 1
+                    return "filesystem"
         except PermissionError as e:
             logger.warning("Permission denied scanning PHP files: %s", e)
         except Exception as exc:
             logger.warning("Error scanning for PHP files: %s", exc)
-
-        if php_count > 0:
-            return "filesystem"
 
         # Check for __init__.py files (Python packages)
         try:
