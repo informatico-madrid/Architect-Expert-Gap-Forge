@@ -167,4 +167,4 @@ base_dir: .
 raw_subdir: data/raw
  
 # Subdirectory where processor will write packaged bundles
-output_subdir: data/raw/homeassistant_bundles
+output_subdir: data/raw/test_output_final
