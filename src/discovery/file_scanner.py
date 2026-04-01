@@ -746,9 +746,12 @@ def _detect_strategy(root: Path) -> str:
         if php_count > 0:
             return "filesystem"
 
-        # Check for __init__.py (Python package structure)
-        for _init_file in root.rglob("__init__.py"):
-            return "init"
+        # Check for __init__.py files (Python packages)
+        try:
+            if any(root.rglob("__init__.py")):
+                return "init"
+        except Exception as exc:
+            logger.warning("Error scanning for __init__.py files: %s", exc)
 
         # Check for YAML files (themes, templates, blueprints) - highest priority among remaining
         yaml_count = 0
