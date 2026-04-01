@@ -731,10 +731,21 @@ def _detect_strategy(root: Path) -> str:
         for _init_file in root.rglob("__init__.py"):
             return "init"
 
-        # Check for YAML files
-        for _yaml_file in root.rglob("*.yaml"):
-            return "yaml"
-        for _yml_file in root.rglob("*.yml"):
+        # Check for YAML files (themes, templates, blueprints)
+        yaml_count = 0
+        try:
+            for file_path in root.rglob("*"):
+                if not file_path.is_file():
+                    continue
+                if file_path.suffix in (".yaml", ".yml", ".jinja", ".jinja2"):
+                    # Exclude common non-source directories
+                    if not any(part in ("node_modules", "tests", "test", "__pycache__")
+                             for part in file_path.parts):
+                        yaml_count += 1
+        except Exception as exc:
+            logger.warning("Error scanning for YAML files: %s", exc)
+
+        if yaml_count > 0:
             return "yaml"
 
         # Default fallback: directory-based strategy
