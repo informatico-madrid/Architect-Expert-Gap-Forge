@@ -39,8 +39,14 @@ mode: static
 # profile: homeassistant
 
 # Discovery strategy: auto-detect based on repo contents
-# Supported strategies: auto, manifest, init, directory, typescript, manual_mapping
-# module_discovery_strategy: auto
+# Supported strategies: manifest, init, directory, filesystem, typescript, yaml, manual_mapping
+# - manifest: manifest.json + __init__.py (default for HA core)
+# - init: __init__.py only
+# - directory: any directory with __init__.py
+# - filesystem: any directory with source files (.py, .ts, .tsx, .php)
+# - typescript: .ts/.tsx files
+# - yaml: .yaml/.yml/.jinja/.jinja2 files
+module_discovery_strategy: directory
 
 # File extensions to process during discovery (mapped to profile_extensions by processor)
 extensions:
@@ -168,3 +174,11 @@ raw_subdir: data/raw
  
 # Subdirectory where processor will write packaged bundles
 output_subdir: data/raw/test_output_final
+
+# Output category - defines the target folder for processed bundles
+# If not set, defaults to 'category' value
+output_category: homeassistant
+
+# Parse error policy: abort (stop entire repo) or skip (continue with other modules)
+# Use 'skip' to continue processing even if some modules have parse errors
+on_parse_error: skip

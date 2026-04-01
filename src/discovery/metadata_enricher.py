@@ -21,7 +21,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -32,6 +32,7 @@ from src.utils.metrics import get_metrics
 from src.discovery.file_scanner import (
     ANCHOR_FILENAMES,
     BACKEND_REPOS,
+    GOLD_PATTERNS,
     LOGIC_ONLY_MIN_CHARS,
     MAX_SIZE_BACKEND,
     MAX_SIZE_FRONTEND,
@@ -104,8 +105,8 @@ class ProcessingConfig(BaseModel):
         description="Paths to ignore for profile-based filtering (aliased from ignore_patterns)",
     )
     backend_repos: Set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
-    profile: Optional[str] = Field(
-        default=None, description="Profile name for extractor adapter (optional - defaults to automatic detection)"
+    profile: str = Field(
+        default="homeassistant", description="Profile name for extractor adapter"
     )
     on_parse_error: str = Field(
         default="abort",
@@ -120,34 +121,12 @@ class ProcessingConfig(BaseModel):
             values["extensions"] = values.pop("profile_extensions")
         if "ignore_patterns" not in values and values.get("profile_ignored_paths"):
             values["ignore_patterns"] = values.pop("profile_ignored_paths")
-
-        # Map profile to module_discovery_strategy
-        profile_to_strategy = {
-            "typescript": "typescript",
-            "yaml": "yaml",
-            "filesystem": "filesystem",
-        }
-        profile = values.get("profile")
-        # Only map if strategy not explicitly set (not in values or is default)
-        if profile and ("module_discovery_strategy" not in values or values.get("module_discovery_strategy") == "auto"):
-            if profile in profile_to_strategy:
-                values["module_discovery_strategy"] = profile_to_strategy[profile]
-
-        # Map profile to extensions - set extensions based on profile
-        profile_extensions = {
-            "typescript": {".ts", ".tsx"},
-            "yaml": {".yaml", ".yml", ".jinja", ".jinja2"},
-            "filesystem": {".php"},
-        }
-        if profile and profile in profile_extensions:
-            values["extensions"] = profile_extensions[profile]
-
         return values
 
     # Module discovery configuration
     module_discovery_strategy: str = Field(
-        default_factory=lambda: "auto",
-        description="Strategy for discovering modules: auto (detect based on repo), manifest (manifest.json + __init__.py), init (__init__.py only), directory (dir structure), typescript (.ts/.tsx only), yaml (.yaml/.yml/.jinja/.jinja2), filesystem (.php only), manual_mapping (override)",
+        default="manifest",
+        description="Strategy for discovering modules: manifest, init, directory, manual_mapping",
     )
     anchor_filenames: set[str] = Field(
         default_factory=lambda: set(ANCHOR_FILENAMES),
@@ -212,61 +191,18 @@ class RepoProcessor:
         logger.info("Processing category: %s", self.cfg.category)
         logger.info("Output: %s", self.target_root)
 
-        # Check if source_root has direct files (e.g., TypeScript/PHP/YAML repos)
-        # vs. nested structure (e.g., owner/repo pattern for Python)
-        has_direct_files = any(
-            f for f in self.source_root.iterdir()
-            if f.is_file()
-        )
-
-        if has_direct_files:
-            # Direct repo case: process source_root directly as the repo
-            self._process_repository(
-                self.cfg.category,
-                self.source_root,
-            )
-            return
-
-        # Nested structure case: owner/repo pattern
         for owner_dir in sorted(self.source_root.iterdir()):
             if not owner_dir.is_dir():
                 continue
-            repo_name = owner_dir.name
-
-            # Skip directories that are not actual repos (tests, docs, etc.)
-            skip_dirs = {"tests", "test", "docs", "documentation", "assets", "static", "public"}
-            if repo_name in skip_dirs:
-                continue
-
-            # Check if this directory IS a module directory (e.g., custom_components/)
-            # rather than a repo. If it contains only subdirectories with module indicators,
-            # the repo is actually at owner_dir, not owner_dir/subdir
-            subdirs = list(owner_dir.iterdir())
-            if subdirs and all(sub.is_dir() for sub in subdirs):
-                # Check if subdirs have module indicators (manifest.json, __init__.py)
-                has_modules = any(
-                    any(sub.rglob("manifest.json")) or any(sub.rglob("__init__.py"))
-                    for sub in subdirs
-                )
-                if has_modules:
-                    # This IS the repo (e.g., owner/myrepo contains custom_components/)
-                    # Process owner_dir directly as the repo
-                    repo_dir = owner_dir
-                else:
-                    # This is an owner folder, process its contents as repos
-                    for repo_dir in sorted(owner_dir.iterdir()):
-                        if not repo_dir.is_dir():
-                            continue
-                        self._process_repository(owner_dir.name, repo_dir)
-                        continue
+            for repo_dir in sorted(owner_dir.iterdir()):
+                if not repo_dir.is_dir():
                     continue
-
-            # T030c: Measure repository processing time
-            repo_start = time.perf_counter()
-            self._process_repository(repo_name, owner_dir)
-            repo_latency = time.perf_counter() - repo_start
-            self._metrics.record_file_processing_time(owner_dir.name, repo_latency)
-            self._metrics.increment_files_processed(owner_dir.name)
+                # T030c: Measure repository processing time
+                repo_start = time.perf_counter()
+                self._process_repository(owner_dir.name, repo_dir)
+                repo_latency = time.perf_counter() - repo_start
+                self._metrics.record_file_processing_time(repo_dir.name, repo_latency)
+                self._metrics.increment_files_processed(repo_dir.name)
 
         logger.info(
             "Processing complete — "
@@ -282,7 +218,6 @@ class RepoProcessor:
     # Repository dispatch
     # ------------------------------------------------------------------
     def _process_repository(self, owner: str, repo_path: Path) -> None:
-        logger.debug("_process_repository called with repo_path=%s", repo_path)
         repo_name = repo_path.name
         size_limit = (
             MAX_SIZE_BACKEND
@@ -292,12 +227,9 @@ class RepoProcessor:
         prefix = f"{owner}_{repo_name}"
 
         # ── TIPO 5: detect and emit governance rules before module processing ──
-        # Only extract governance from the actual repo root (owner_dir),
-        # not from subdirectories processed as separate repos (e.g., component directories)
-        if owner == repo_name:
-            gov_files = find_governance_files(repo_path)
-            if gov_files:
-                self._emit_governance(prefix, repo_path, gov_files)
+        gov_files = find_governance_files(repo_path)
+        if gov_files:
+            self._emit_governance(prefix, repo_path, gov_files)
 
         try:
             if self.cfg.segment_path:
@@ -307,7 +239,7 @@ class RepoProcessor:
                         if sub_dir.is_dir():
                             self._process_module_dir(
                                 sub_dir,
-                                repo_path.parent,  # Pass parent so tests/ is accessible
+                                repo_path,
                                 f"{prefix}_{sub_dir.name}",
                                 size_limit,
                                 repo_prefix=prefix,
@@ -315,13 +247,10 @@ class RepoProcessor:
                     return
 
             # No segment_path → discover modules in the entire repo
-            logger.debug("_discover_modules for repo_path: %s", repo_path)
             modules = self._discover_modules(repo_path)
-            logger.debug("Found %d modules", len(modules))
             self._stats["modules_found"] += len(modules)
 
             for mod in modules:
-                logger.debug("_emit_module for module: %s, path: %s", mod.name, mod.path)
                 self._emit_module(
                     mod, repo_path, prefix, size_limit, repo_prefix=prefix
                 )
@@ -343,71 +272,18 @@ class RepoProcessor:
     # Module discovery
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
-        """Discover modules using auto-detected strategy based on repo contents.
-
-        Auto-detection rules:
-        - manifest.json found → 'manifest' strategy (Python HA integrations)
-        - __init__.py found, no manifest → 'init' strategy (Python packages)
-        - .ts/.tsx files found → 'typescript' strategy (TypeScript/TSX)
-        - .yaml/.yml/.jinja/.jinja2 files found → 'yaml' strategy (Home Assistant YAML/Jinja)
-        - .php files or composer.json found → 'filesystem' strategy (PHP)
-        - .py files found, no __init__.py → 'directory' strategy (Python without packages)
-        """
-        # Auto-detect strategy based on repo contents if not explicitly configured
-        strategy = self.cfg.module_discovery_strategy
-
-        if strategy == "auto":
-            strategy = self._detect_discovery_strategy(root)
-            logger.info("Auto-detected strategy for %s: %s", root, strategy)
-
-        if strategy == "directory_scan":
+        """Discover modules using the configured strategy."""
+        if self.cfg.module_discovery_strategy == "directory_scan":
             return self._discover_modules_directory_scan(root)
         return discover_modules(
             root=root,
-            strategy=strategy,
+            strategy=self.cfg.module_discovery_strategy,
             ignore_patterns=self.cfg.ignore_patterns,
             extensions=self.cfg.extensions,
             anchor_filenames=self.cfg.anchor_filenames,
             module_overrides=self.cfg.module_overrides,
             build_module_func=self._build_module,
         )
-
-    def _detect_discovery_strategy(self, root: Path) -> str:
-        """Detect the appropriate discovery strategy based on repo contents.
-
-        Returns:
-            Strategy name: 'manifest', 'init', 'directory', 'typescript', 'yaml', or 'filesystem'
-        """
-        has_manifest = any(root.rglob("manifest.json"))
-        has_init_py = any(root.rglob("__init__.py"))
-        has_ts_files = list(root.rglob("*.ts")) + list(root.rglob("*.tsx"))
-        has_py_files = list(root.rglob("*.py"))
-        has_yaml_files = list(root.rglob("*.yaml")) + list(root.rglob("*.yml")) + list(root.rglob("*.jinja")) + list(root.rglob("*.jinja2"))
-        has_php_files = list(root.rglob("*.php"))
-        has_composer_json = any(root.rglob("composer.json"))
-
-        # Priority order: Python (manifest/init) first, then TypeScript, then YAML
-        # Python repos with manifest.json → manifest strategy (captures all files)
-        # Python repos with __init__.py → init strategy (captures all files)
-        # TypeScript repos with any .ts/.tsx files → typescript strategy
-        # YAML/Jinja repos (>5 .yaml/.yml/.jinja/.jinja2 files) → yaml strategy
-        if has_manifest:
-            # manifest.json = official HA integration (Python backend)
-            return "manifest"
-        elif has_init_py:
-            return "init"
-        elif len(has_ts_files) > 0:
-            # TypeScript/TSX repos (any .ts/.tsx files)
-            return "typescript"
-        elif len(has_yaml_files) > 5:
-            # YAML/Jinja repos (Home Assistant blueprints, automations, themes)
-            return "yaml"
-        elif has_php_files or has_composer_json:
-            return "filesystem"
-        elif has_py_files:
-            return "directory"
-        else:
-            return "directory"
 
     def _discover_modules_directory_scan(self, root: Path) -> List[Module]:
         """Discover modules by scanning recursively for PHP files (directory_scan strategy).
@@ -485,8 +361,9 @@ class RepoProcessor:
                 manifest_data = {}
 
         mod = self._build_module(mod_dir, anchor_type=anchor, manifest=manifest_data)
-        logger.debug("_process_module_dir: mod_dir=%s, repo_root=%s", mod_dir, repo_root)
-        self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix)
+        # Extract owner_dir from repo_root (repo_root is owner_dir/owner_name)
+        owner_dir = repo_root.parent if repo_root.parent.name != "homeassistant" else None
+        self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix, owner_dir=owner_dir)
 
     # ------------------------------------------------------------------
     # Module emission: generates TIPO 1-4 bundles
@@ -501,7 +378,8 @@ class RepoProcessor:
     ) -> None:
         """For one module, emit all applicable fragment types."""
         # Each module gets its own subdirectory inside target_root
-        module_dir = self.target_root / mod.name
+        # Structure: target_root/repo_name/mod_name (no owner level)
+        module_dir = self.target_root / repo_root.name / mod.name
         module_dir.mkdir(parents=True, exist_ok=True)
 
         # Separate files by role
@@ -538,19 +416,12 @@ class RepoProcessor:
         blueprint_files = list(anchor_files)
         if readme_file:
             blueprint_files.append(readme_file)
-        # For repos without anchor files (e.g., TypeScript/PHP/YAML),
-        # include implementation files in the blueprint
-        if not blueprint_files and logic_files:
-            blueprint_files = logic_files[:1]  # Include first logic file
         if blueprint_files:
             self._emit_blueprint(mod, blueprint_files, prefix, module_dir)
             self._stats["TYPE4_MODULE_BLUEPRINT"] += 1
 
         # ------- TIPO 1, 2, 3 for each logic file -------
-        logger.debug("_emit_module: mod.path=%s, repo_root=%s", mod.path, repo_root)
-        logger.debug("logic_files count: %d", len(logic_files))
         for mf in logic_files:
-            logger.debug("Processing mf: %s, role=%s, size=%d", mf.path.name, mf.role, mf.size)
             if mf.path.name in ANCHOR_FILENAMES:
                 # Already covered by blueprint
                 continue
@@ -626,11 +497,8 @@ class RepoProcessor:
 
             # Try TIPO 1 first: if there is an exact matching test, always emit
             # as a FUNCTIONAL_UNIT regardless of MIN_SIZE (teaching tests is valuable).
-            logger.debug("mf.path=%s, repo_root=%s", mf.path, repo_root)
             test_file = find_test(mf.path, repo_root, size_limit)
-            logger.debug("find_test for %s: %s", mf.path.name, test_file)
             if test_file:
-                logger.debug("TEST FOUND - emitting FUNCTIONAL_UNIT for %s", mf.path.name)
                 entity_id = f"{prefix}_{mf.path.stem}"
                 header = make_arch_header(
                     mod,
@@ -655,6 +523,11 @@ class RepoProcessor:
             # No test — now apply the size gate for non-test files
             if mf.size < MIN_SIZE or mf.size > size_limit:
                 self._stats["skipped_size"] += 1
+                continue
+
+            # Gold pattern filter for .py (keeps legacy behavior for files without tests)
+            if mf.path.suffix == ".py" and not any(p in content for p in GOLD_PATTERNS):
+                self._stats["skipped_gold"] += 1
                 continue
 
             # TIPO 3: emit as standalone if long enough
@@ -708,10 +581,7 @@ class RepoProcessor:
         buf.append(f"FILES: {mod.neighbors}")
         buf.append("")
 
-        # DEPENDENCIES (from manifest or extracted from files)
-        # Collect dependencies from manifest and from file adapters
-        dependencies: Set[str] = set()
-
+        # DEPENDENCIES (from manifest)
         if mod.manifest:
             buf.append("[DEPENDENCIES]")
             buf.append(f"domain: {mod.manifest.get('domain', 'unknown')}")
@@ -722,23 +592,6 @@ class RepoProcessor:
             reqs = mod.manifest.get("requirements", [])
             if reqs:
                 buf.append(f"requirements: {reqs}")
-            # Add manifest dependencies to set for file-based extraction
-            for dep in deps:
-                dependencies.add(dep)
-        elif anchor_files:
-            # For repos without manifest (YAML, TypeScript, PHP), extract from files
-            buf.append("[DEPENDENCIES]")
-            for af in anchor_files:
-                try:
-                    adapter = get_adapter(af.path.suffix)
-                    parse_result = adapter.parse_file(af.path)
-                    for dep in parse_result.dependencies:
-                        dependencies.add(dep.name)
-                except Exception as e:
-                    logger.warning("Failed to extract dependencies from %s: %s", af.path, e)
-
-            if dependencies:
-                buf.append(f"dependencies: {list(dependencies)}")
             buf.append("")
 
         # SCHEMA (from services.yaml)
@@ -787,18 +640,6 @@ class RepoProcessor:
                 buf.append("")
             except Exception as e:
                 logger.error("Read error %s: %s", af.path, e)
-
-        # Include implementation files (TypeScript, PHP, YAML, etc.) for repos without manifest
-        if not mod.manifest:
-            for mf in mod.files:
-                if mf.role == "implementation":
-                    try:
-                        content = mf.path.read_text(encoding="utf-8", errors="ignore")
-                        buf.append(f"--- FILE: {mf.path.name} ---")
-                        buf.append(content.strip())
-                        buf.append("")
-                    except Exception as e:
-                        logger.error("Read error %s: %s", mf.path, e)
 
         out.write_text("\n".join(buf), encoding="utf-8")
         logger.debug("Blueprint written: %s", out.name)
