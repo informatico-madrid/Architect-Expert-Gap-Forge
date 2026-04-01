@@ -728,16 +728,25 @@ def _detect_strategy(root: Path) -> str:
         if not root.exists() or not root.is_dir():
             return "directory"
 
-        # Check for manifest.json files (Home Assistant style)
-        try:
-            if any(root.rglob("manifest.json")):
-                return "manifest"
-        except OSError as e:
-            logger.warning("Broken symlink scanning manifest.json: %s", e)
-        except Exception as exc:
-            logger.warning("Error scanning for manifest.json files: %s", exc)
+        # Check for YAML files (themes, templates, blueprints) - priority 1
+        # YAML has highest priority per requirements.md
+        for file_path in root.rglob("*"):
+            if not file_path.is_file():
+                continue
+            if file_path.suffix in (".yaml", ".yml", ".jinja", ".jinja2"):
+                # Exclude common non-source directories
+                if not any(part in ("node_modules", "tests", "test", "__pycache__")
+                         for part in file_path.parts):
+                    return "yaml"
 
-        # Check for PHP files (filesystem-based)
+        # Check for TypeScript files (frontend components) - priority 2
+        for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
+            # Exclude common non-source directories
+            if not any(part in ("node_modules", "tests", "test")
+                     for part in ts_file.parts):
+                return "typescript"
+
+        # Check for PHP files (filesystem-based) - priority 3
         try:
             for php_file in root.rglob("*.php"):
                 # Exclude common non-source directories
@@ -749,7 +758,16 @@ def _detect_strategy(root: Path) -> str:
         except Exception as exc:
             logger.warning("Error scanning for PHP files: %s", exc)
 
-        # Check for __init__.py files (Python packages)
+        # Check for manifest.json files (Home Assistant style) - priority 4
+        try:
+            if any(root.rglob("manifest.json")):
+                return "manifest"
+        except OSError as e:
+            logger.warning("Broken symlink scanning manifest.json: %s", e)
+        except Exception as exc:
+            logger.warning("Error scanning for manifest.json files: %s", exc)
+
+        # Check for __init__.py files (Python packages) - priority 5
         try:
             if any(root.rglob("__init__.py")):
                 return "init"
@@ -757,24 +775,6 @@ def _detect_strategy(root: Path) -> str:
             logger.warning("OSError scanning for __init__.py files (broken symlink): %s", e)
         except Exception as exc:
             logger.warning("Error scanning for __init__.py files: %s", exc)
-
-        # Check for YAML files (themes, templates, blueprints) - highest priority among remaining
-        for file_path in root.rglob("*"):
-            if not file_path.is_file():
-                continue
-            if file_path.suffix in (".yaml", ".yml", ".jinja", ".jinja2"):
-                # Exclude common non-source directories
-                if not any(part in ("node_modules", "tests", "test", "__pycache__")
-                         for part in file_path.parts):
-                    return "yaml"
-
-        # Check for TypeScript files (frontend components) - after YAML
-        # YAML has priority, so TypeScript is detected after YAML
-        for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
-            # Exclude common non-source directories
-            if not any(part in ("node_modules", "tests", "test")
-                     for part in ts_file.parts):
-                return "typescript"
 
         # Default fallback: directory-based strategy
         return "directory"
