@@ -33,7 +33,9 @@ class TestType1FunctionalUnit:
         repo_root.mkdir()
 
         # Create owner directory structure
-        owner_dir = repo_root / "owner" / "myrepo"
+        # When category="owner", source_root = repo_root/owner
+        # So component should be at repo_root/owner/test_component
+        owner_dir = repo_root / "owner"
         owner_dir.mkdir(parents=True)
 
         # Create component directory (logic files)
@@ -50,7 +52,8 @@ class TestType1FunctionalUnit:
             })
         )
 
-        # Create logic file (exceed MIN_SIZE=200, include DOMAIN pattern)
+        # Create logic file (exceed MIN_SIZE=300, include DOMAIN pattern)
+        # Need to include enough content to pass MIN_SIZE gate
         logic_file = component / "module.py"
         logic_file.write_text(
             """
@@ -175,10 +178,12 @@ def test_process_items():
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        # Create owner directory (same structure as Python test)
+        # Create owner directory structure (owner/format.ts for TypeScript)
+        # When category="owner", source_root = repo_root/owner
+        # So logic file should be at repo_root/owner/format.ts
         owner_dir = repo_root / "owner"
         owner_dir.mkdir(parents=True)
-        # Create TypeScript logic file at owner level (larger version)
+        # Create TypeScript logic file at owner level
         logic_file = owner_dir / "format.ts"
         logic_file.write_text(
             """
@@ -384,11 +389,11 @@ describe('validateAmount', () => {
         - TYPE 5: GOVERNANCE_RULES (repo-level config)
         """
         # Create comprehensive repo with multiple file types
-        # Structure: repo_root/owner/myrepo/test_component/...
+        # Structure: repo_root/owner/test_component/... (for HA integrations)
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
 
-        owner_dir = repo_root / "owner" / "myrepo"
+        owner_dir = repo_root / "owner"
         owner_dir.mkdir(parents=True)
 
         # Create component directory

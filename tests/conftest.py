@@ -24,6 +24,26 @@ from src.factory.prompt_builder import load_taxonomy, set_test_state
 from src.factory.config import TaxonomyState
 
 
+@pytest.fixture(scope="function", autouse=True)
+def reset_domain_patterns_cache():
+    """Reset domain patterns cache before each test for isolation.
+
+    This prevents test order-dependent failures by clearing cached state
+    that would otherwise pollute subsequent tests.
+    """
+    import importlib
+
+    # Reset cache in scorecard module
+    scorecard_module = importlib.import_module("src.audit.scorecard")
+    scorecard_module._domain_patterns_cache = None
+
+    # Reset cache in exam_builder module
+    exam_builder_module = importlib.import_module("src.audit.exam_builder")
+    exam_builder_module._domain_patterns_cache = None
+
+    yield  # Run test
+
+
 @pytest.fixture(scope="session", autouse=True)
 def minimal_taxonomy(tmp_path_factory) -> Path:
     """Create and load a minimal taxonomy for the whole test session.
@@ -86,6 +106,33 @@ def minimal_taxonomy(tmp_path_factory) -> Path:
                     "nominal_hard_anchor": "JINJA_HARD_ANCHOR",
                     "contrast": "JINJA_CONTRAST",
                     "error_recovery": "JINJA_ERROR_RECOVERY",
+                },
+            },
+            "prompts_suffix": {
+                "user": {
+                    "python": {
+                        "contrast": "CONTRAST_SUFFIX",
+                        "error_recovery": "ERROR_RECOVERY_SUFFIX",
+                    },
+                    "jinja": {
+                        "nominal_easy": "JINJA_NOMINAL_SUFFIX",
+                        "contrast": "JINJA_CONTRAST_SUFFIX",
+                        "error_recovery": "JINJA_ERROR_SUFFIX",
+                    },
+                },
+                "system": {
+                    "python": {
+                        "contrast_suffix": "CONTRAST_SUFFIX",
+                        "error_recovery_suffix": "ERROR_RECOVERY_SUFFIX",
+                        "nominal_suffix": "NOMINAL_SUFFIX",
+                    },
+                    "jinja": {
+                        "base": "JINJA_BASE",
+                        "nominal_suffix": "NOMINAL_SUFFIX",
+                        "contrast_suffix": "CONTRAST_SUFFIX",
+                        "error_recovery_suffix": "ERROR_RECOVERY_SUFFIX",
+                    },
+                    "theory": "THEORY_SUFFIX",
                 },
             },
         },

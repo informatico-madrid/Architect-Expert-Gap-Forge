@@ -303,7 +303,8 @@ class TestPerFileAdapterSelection:
             raw_subdir=".",
             output_subdir="output",
             category="test_repo",
-            profile="python",  # Python profile but TS files should still work
+            profile="python",  # Python profile but we'll add explicit extensions
+            profile_extensions={".py", ".ts", ".tsx"},  # Explicitly include TS files
         )
         processor = RepoProcessor(config)
         processor.run()

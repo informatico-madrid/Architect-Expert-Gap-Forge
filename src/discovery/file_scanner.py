@@ -770,7 +770,7 @@ def find_test(
     def _ok(p: Path) -> bool:
         return p.is_file() and min_size <= p.stat().st_size <= size_limit
 
-    # relative path from repo_root
+    # Get the relative path from repo_root
     try:
         rel = logic_file.relative_to(repo_root)
     except ValueError:
@@ -778,13 +778,19 @@ def find_test(
 
     logger.debug("find_test: rel=%s", rel)
 
-    # 1. Namespace mirror
+    # 1. Namespace mirror at repo_root/tests/<relative_parent>
     ns = repo_root / "tests" / rel.parent / test_name
     logger.debug("find_test: checking namespace mirror %s", ns)
     if _ok(ns):
         return ns
 
-    # 2. Component test dir
+    # 1b. Fallback: tests might be at parent level (e.g., owner/tests/ not owner/myrepo/tests/)
+    parent_tests = repo_root.parent / "tests" / rel.parent / test_name
+    logger.debug("find_test: checking parent namespace mirror %s", parent_tests)
+    if _ok(parent_tests):
+        return parent_tests
+
+    # 2. Component test dir at repo_root/tests/components/<component>
     component = logic_file.parent.name
     ctd = repo_root / "tests" / "components" / component
     if ctd.is_dir():
@@ -792,7 +798,20 @@ def find_test(
         if _ok(exact):
             return exact
 
-    # 3. Scored rglob (min score 2)
+    # 2b. Fallback: component tests at parent level
+    parent_ctd = repo_root.parent / "tests" / "components" / component
+    if parent_ctd.is_dir():
+        exact = parent_ctd / test_name
+        if _ok(exact):
+            return exact
+
+    # 3. Same directory test (for tests/<component>/test_*.py structure)
+    # Look for test_<name>.py in the same directory as the logic file's parent
+    same_dir_test = logic_file.parent / test_name
+    if _ok(same_dir_test):
+        return same_dir_test
+
+    # 4. Scored rglob in repo_root
     logic_parts = set(rel.parts[:-1])
     best, best_score = None, -1
     for c in repo_root.rglob(test_name):
@@ -800,6 +819,18 @@ def find_test(
             continue
         try:
             cp = set(c.relative_to(repo_root).parts[:-1])
+        except ValueError:
+            cp = set()
+        score = len(logic_parts & cp)
+        if score >= 2 and score > best_score:
+            best_score, best = score, c
+
+    # 4b. Scored rglob in parent tests
+    for c in (repo_root.parent / "tests").rglob(test_name):
+        if not _ok(c):
+            continue
+        try:
+            cp = set(c.relative_to(repo_root.parent).parts[:-1])
         except ValueError:
             cp = set()
         score = len(logic_parts & cp)

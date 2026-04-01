@@ -231,53 +231,42 @@ class RepoProcessor:
         for owner_dir in sorted(self.source_root.iterdir()):
             if not owner_dir.is_dir():
                 continue
-            for repo_dir in sorted(owner_dir.iterdir()):
-                if not repo_dir.is_dir():
-                    continue
-                repo_name = repo_dir.name
+            repo_name = owner_dir.name
 
-                # Skip directories that are not actual repos (tests, docs, etc.)
-                skip_dirs = {"tests", "test", "docs", "documentation", "assets", "static", "public"}
-                if repo_name in skip_dirs:
-                    continue
+            # Skip directories that are not actual repos (tests, docs, etc.)
+            skip_dirs = {"tests", "test", "docs", "documentation", "assets", "static", "public"}
+            if repo_name in skip_dirs:
+                continue
 
-                # Detect if this is a module directory at repo root (e.g., custom_components/)
-                # by checking if it contains only subdirectories with module indicators
-                # Only apply this to Python repos (HA integrations), not TypeScript/PHP/YAML
-                is_module_dir = False
-                subdirs = list(repo_dir.iterdir())
-                if subdirs and all(sub.is_dir() for sub in subdirs):
-                    # Check if subdirs have module indicators (manifest.json, __init__.py)
-                    # Use rglob to check recursively for module indicators in subdirs
-                    has_modules = any(
-                        any(sub.rglob("manifest.json")) or any(sub.rglob("__init__.py"))
-                        for sub in subdirs
-                    )
-                    # Only treat as module directory if it has module indicators
-                    if has_modules:
-                        is_module_dir = True
-
-                if is_module_dir:
-                    # This is a module directory, skip it - the actual repo is owner_dir
-                    # We need to process owner_dir as the repo instead
-                    logger.debug("Skipping module directory: %s, processing owner_dir as repo", repo_dir.name)
-                    # Replace repo_dir with owner_dir to process it as the repo
+            # Check if this directory IS a module directory (e.g., custom_components/)
+            # rather than a repo. If it contains only subdirectories with module indicators,
+            # the repo is actually at owner_dir, not owner_dir/subdir
+            subdirs = list(owner_dir.iterdir())
+            if subdirs and all(sub.is_dir() for sub in subdirs):
+                # Check if subdirs have module indicators (manifest.json, __init__.py)
+                has_modules = any(
+                    any(sub.rglob("manifest.json")) or any(sub.rglob("__init__.py"))
+                    for sub in subdirs
+                )
+                if has_modules:
+                    # This IS the repo (e.g., owner/myrepo contains custom_components/)
+                    # Process owner_dir directly as the repo
                     repo_dir = owner_dir
                 else:
-                    # T030c: Measure repository processing time
-                    repo_start = time.perf_counter()
-                    self._process_repository(owner_dir.name, repo_dir)
-                    repo_latency = time.perf_counter() - repo_start
-                    self._metrics.record_file_processing_time(repo_dir.name, repo_latency)
-                    self._metrics.increment_files_processed(repo_dir.name)
+                    # This is an owner folder, process its contents as repos
+                    for repo_dir in sorted(owner_dir.iterdir()):
+                        if not repo_dir.is_dir():
+                            continue
+                        self._process_repository(owner_dir.name, repo_dir)
+                        continue
                     continue
 
-                # T030c: Measure repository processing time
-                repo_start = time.perf_counter()
-                self._process_repository(owner_dir.name, repo_dir)
-                repo_latency = time.perf_counter() - repo_start
-                self._metrics.record_file_processing_time(repo_dir.name, repo_latency)
-                self._metrics.increment_files_processed(repo_dir.name)
+            # T030c: Measure repository processing time
+            repo_start = time.perf_counter()
+            self._process_repository(repo_name, owner_dir)
+            repo_latency = time.perf_counter() - repo_start
+            self._metrics.record_file_processing_time(owner_dir.name, repo_latency)
+            self._metrics.increment_files_processed(owner_dir.name)
 
         logger.info(
             "Processing complete — "

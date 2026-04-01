@@ -9,7 +9,7 @@
 Unit Tests for SIZE Gate Filtering
 ====================================
 
-Tests MIN_SIZE (300 bytes) and LOGIC_ONLY_MIN_CHARS (1000 chars) gates.
+Tests MIN_SIZE (300 bytes) and LOGIC_ONLY_MIN_CHARS (800 chars) gates.
 
 Requirements: AC-2.1, AC-2.2, FR-10
 """
@@ -19,6 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.discovery import ProcessingConfig, RepoProcessor
+from src.discovery.file_scanner import MIN_SIZE, LOGIC_ONLY_MIN_CHARS
 
 
 class TestSizeGates:
@@ -29,13 +30,11 @@ class TestSizeGates:
 
         AC-2.1: Files smaller than MIN_SIZE should be excluded from processing.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo"
+        repo_root.mkdir(parents=True)
 
-        myrepo = repo_root / "myrepo"
-        myrepo.mkdir()
-
-        component = myrepo / "custom_components" / "test_component"
+        component = repo_root / "custom_components" / "test_component"
         component.mkdir(parents=True, exist_ok=True)
 
         # Create manifest.json
@@ -52,16 +51,16 @@ class TestSizeGates:
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="myrepo",
+            category="owner/myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "owner/myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT but no LOGIC_ONLY for tiny file
@@ -90,13 +89,11 @@ class TestSizeGates:
 
         AC-2.1: Files at or above MIN_SIZE should be included in processing.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo"
+        repo_root.mkdir(parents=True)
 
-        myrepo = repo_root / "myrepo"
-        myrepo.mkdir()
-
-        component = myrepo / "custom_components" / "test_component"
+        component = repo_root / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -131,20 +128,20 @@ def filter_by_criteria(data, criteria):
     return [item for item in data if item.get('active', True)]
 """.strip())
 
-        assert len(medium_file.read_text()) >= 300, "File should be at least MIN_SIZE"
+        assert len(medium_file.read_text()) >= MIN_SIZE, "File should be at least MIN_SIZE"
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="myrepo",
+            category="owner/myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "owner/myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -158,17 +155,15 @@ def filter_by_criteria(data, criteria):
         )
 
     def test_file_below_logic_only_min_chars_not_type3(self, tmp_path: Path) -> None:
-        """Test that files below LOGIC_ONLY_MIN_CHARS (1000 chars) are not TYPE 3.
+        """Test that files below LOGIC_ONLY_MIN_CHARS are not TYPE 3.
 
         AC-2.2: Files below LOGIC_ONLY_MIN_CHARS should not generate TYPE 3.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo"
+        repo_root.mkdir(parents=True)
 
-        myrepo = repo_root / "myrepo"
-        myrepo.mkdir()
-
-        component = myrepo / "custom_components" / "test_component"
+        component = repo_root / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -179,7 +174,7 @@ def filter_by_criteria(data, criteria):
             "version": "1.0.0",
         }))
 
-        # Create file between MIN_SIZE and LOGIC_ONLY_MIN_CHARS (300-1000 chars)
+        # Create file between MIN_SIZE and LOGIC_ONLY_MIN_CHARS
         medium_file = component / "processor.py"
         medium_file.write_text("""
 def process_data(data):
@@ -204,23 +199,23 @@ def filter_by_criteria(data, criteria):
 """.strip())
 
         file_size = len(medium_file.read_text())
-        assert 300 <= file_size < 1000, (
-            f"File should be between MIN_SIZE (300) and LOGIC_ONLY_MIN_CHARS (1000). "
+        assert MIN_SIZE <= file_size < LOGIC_ONLY_MIN_CHARS, (
+            f"File should be between MIN_SIZE ({MIN_SIZE}) and LOGIC_ONLY_MIN_CHARS ({LOGIC_ONLY_MIN_CHARS}). "
             f"Actual size: {file_size}"
         )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="myrepo",
+            category="owner/myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "owner/myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -240,21 +235,19 @@ def filter_by_criteria(data, criteria):
         )
 
         assert len(logic_only_files) == 0, (
-            f"File below LOGIC_ONLY_MIN_CHARS ({file_size} < 1000) should not generate TYPE 3"
+            f"File below LOGIC_ONLY_MIN_CHARS ({file_size} < {LOGIC_ONLY_MIN_CHARS}) should not generate TYPE 3"
         )
 
     def test_file_above_logic_only_min_chars_is_type3(self, tmp_path: Path) -> None:
-        """Test that files above LOGIC_ONLY_MIN_CHARS (1000 chars) are TYPE 3.
+        """Test that files above LOGIC_ONLY_MIN_CHARS (800 chars) are TYPE 3.
 
         AC-2.2: Files at or above LOGIC_ONLY_MIN_CHARS should generate TYPE 3.
         """
-        repo_root = tmp_path / "test_repo"
-        repo_root.mkdir()
+        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo"
+        repo_root.mkdir(parents=True)
 
-        myrepo = repo_root / "myrepo"
-        myrepo.mkdir()
-
-        component = myrepo / "custom_components" / "test_component"
+        component = repo_root / "custom_components" / "test_component"
         component.mkdir(parents=True)
 
         # Create manifest.json
@@ -265,7 +258,7 @@ def filter_by_criteria(data, criteria):
             "version": "1.0.0",
         }))
 
-        # Create large file (>= 1000 chars)
+        # Create large file (>= 800 chars)
         large_file = component / "processor.py"
         large_file.write_text("""
 def complex_processor(data: dict) -> dict:
@@ -385,23 +378,23 @@ def normalize_values(data: list) -> list:
 """.strip())
 
         file_size = len(large_file.read_text())
-        assert file_size >= 1000, (
-            f"File should be at least LOGIC_ONLY_MIN_CHARS (1000). "
+        assert file_size >= LOGIC_ONLY_MIN_CHARS, (
+            f"File should be at least LOGIC_ONLY_MIN_CHARS ({LOGIC_ONLY_MIN_CHARS}). "
             f"Actual size: {file_size}"
         )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir="test_repo",
+            raw_subdir=".",
             output_subdir="output",
-            category="myrepo",
+            category="owner/myrepo",
             profile="homeassistant",
         )
         processor = RepoProcessor(config)
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "myrepo"
+        output_dir = tmp_path / "output" / "owner/myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -421,5 +414,5 @@ def normalize_values(data: list) -> list:
         )
 
         assert len(logic_only_files) > 0, (
-            f"File at or above LOGIC_ONLY_MIN_CHARS ({file_size} >= 1000) should generate TYPE 3"
+            f"File at or above LOGIC_ONLY_MIN_CHARS ({file_size} >= {LOGIC_ONLY_MIN_CHARS}) should generate TYPE 3"
         )
