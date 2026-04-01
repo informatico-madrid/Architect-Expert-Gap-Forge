@@ -126,7 +126,7 @@ class ProcessingConfig(BaseModel):
     # Module discovery configuration
     module_discovery_strategy: str = Field(
         default="manifest",
-        description="Strategy for discovering modules: manifest, init, directory, manual_mapping",
+        description="Strategy for discovering modules: manifest, init, directory, filesystem, typescript, yaml, manual_mapping, auto (auto-detects repository type)",
     )
     anchor_filenames: set[str] = Field(
         default_factory=lambda: set(ANCHOR_FILENAMES),
