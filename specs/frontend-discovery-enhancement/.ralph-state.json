@@ -1,19 +1,13 @@
 {
-  "spec": "frontend-discovery-enhancement",
   "phase": "execution",
-  "source": "user",
-  "name": "frontend-discovery-enhancement",
-  "basePath": "/mnt/bunker_data/ai/data_factory/specs/frontend-discovery-enhancement",
-  "commitSpec": false,
-  "relatedSpecs": [],
+  "taskIndex": 22,
   "totalTasks": 27,
-  "taskIndex": 21,
   "taskIteration": 1,
   "maxTaskIterations": 5,
   "recoveryMode": false,
   "maxFixTasksPerOriginal": 3,
   "maxFixTaskDepth": 3,
-  "globalIteration": 2,
+  "globalIteration": 1,
   "maxGlobalIterations": 100,
   "fixTaskMap": {},
   "modificationMap": {},
@@ -22,6 +16,5 @@
   "awaitingApproval": false,
   "nativeTaskMap": {},
   "nativeSyncEnabled": true,
-  "nativeSyncFailureCount": 0,
-  "maxFixTaskPerOriginal": 3
+  "nativeSyncFailureCount": 0
 }

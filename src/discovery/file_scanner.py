@@ -175,7 +175,11 @@ def _discover_by_manifest_and_init(
     anchor_filenames: Set[str],
     build_module_func: Optional[callable] = None,
 ) -> List["Module"]:
-    """Discover modules using manifest.json and __init__.py (default strategy)."""
+    """Discover modules using manifest.json and __init__.py (default strategy).
+
+    Also discovers TypeScript modules when no manifest.json is found,
+    by scanning for .ts/.tsx files in subdirectories.
+    """
     from src.discovery.fragment_parser import Module
 
     modules: List[Module] = []
@@ -234,6 +238,41 @@ def _discover_by_manifest_and_init(
                     neighbors=(),
                 )
             )
+
+    # 3. TypeScript modules: if no manifest.json found, scan for .ts/.tsx files
+    has_manifest = any(root.rglob("manifest.json"))
+    if not has_manifest:
+        ts_files: list[Path] = []
+        for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
+            if is_ignored(ts_file, ignore_patterns):
+                continue
+            ts_files.append(ts_file)
+
+        if ts_files:
+            # Group files by parent directory
+            dir_to_files: dict[Path, list[Path]] = {}
+            for ts_file in ts_files:
+                parent = ts_file.parent
+                if parent in seen_dirs:
+                    continue
+                seen_dirs.add(parent)
+                dir_to_files.setdefault(parent, []).append(ts_file)
+
+            # Build modules for TypeScript directories
+            for mod_dir, files in dir_to_files.items():
+                if build_module_func:
+                    modules.append(build_module_func(mod_dir, anchor_type="typescript"))
+                else:
+                    modules.append(
+                        Module(
+                            name=mod_dir.name,
+                            path=mod_dir,
+                            anchor_type="typescript",
+                            files=(),
+                            manifest={},
+                            neighbors=(),
+                        )
+                    )
 
     return modules
 
