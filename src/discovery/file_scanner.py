@@ -666,60 +666,17 @@ def _discover_by_yaml(
 def _detect_strategy(root: Path) -> str:
     """Detect the repository strategy type based on file patterns.
 
-    This function implements an intelligent detection strategy that examines
-    the repository structure to determine the appropriate module discovery
-    approach. Detection follows a strict priority order:
-
-    Detection Priority Order:
-    -------------------------
-    1. Manifest strategy: Checks for manifest.json files (npm, Composer, etc.)
-    2. PHP strategy: Looks for .php files indicating PHP-based repositories
-    3. Init strategy: Checks for __init__.py files indicating Python packages
-    4. YAML strategy: Scans for YAML/Jinja template files (themes, templates,
-       blueprints) - has priority over TypeScript
-    5. TypeScript strategy: Scans for .ts/.tsx files indicating TypeScript/
-       JavaScript repositories
-    6. Directory strategy: Final fallback - uses generic directory structure
-       analysis
-
-    Detection Checks:
-    -----------------
-    - Manifest: manifest.json files
-    - PHP: .php files excluding vendor/, node_modules/, tests/, cache/
-    - Init: Python package __init__.py files
-    - YAML: .yaml, .yml, .jinja, .jinja2 files in non-test directories
-    - TypeScript: .ts, .tsx files in non-test directories
-    - Directory: Generic directory scanning as last resort
-
-    Excluded Directories:
-    ---------------------
-    - node_modules/
-    - vendor/
-    - tests/
-    - test/
-    - __pycache__/
-    - cache/
-
-    Performance Characteristics:
-    ----------------------------
-    - O(n) where n = total number of files/directories in repository
-    - Early returns on first match for efficiency
-    - Single pass through directory tree for pattern matching
-    - Lightweight file metadata checks (no content reading)
-
-    Error Handling:
-    ---------------
-    - Silently ignores file access errors (permission denied, etc.)
-    - Never raises exceptions - always returns a valid strategy string
-    - Gracefully handles empty or malformed repositories
-    - Returns "directory" on any error condition to ensure safe fallback
-
     Args:
-        root: Repository root directory to analyze
+        root: Repository root directory (Path) to scan for file patterns
 
     Returns:
-        Strategy name string: "manifest", "php", "init", "yaml", "typescript",
-        or "directory" (fallback)
+        Strategy name string: 'yaml', 'typescript', 'filesystem',
+                             'manifest', 'init', or 'directory'
+
+    Note:
+        - O(n) performance with early returns on first match
+        - Returns 'directory' as fallback if no patterns detected
+        - Never raises exceptions - always returns a valid strategy
     """
     try:
         if not root.exists() or not root.is_dir():
