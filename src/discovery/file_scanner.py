@@ -754,49 +754,45 @@ def _detect_strategy(root: Path) -> str:
         try:
             if any(root.rglob("__init__.py")):
                 return "init"
+        except OSError as e:
+            logger.warning("OSError scanning for __init__.py files (broken symlink): %s", e)
         except Exception as exc:
             logger.warning("Error scanning for __init__.py files: %s", exc)
 
         # Check for YAML files (themes, templates, blueprints) - highest priority among remaining
-        yaml_count = 0
-        try:
-            for file_path in root.rglob("*"):
-                if not file_path.is_file():
-                    continue
-                if file_path.suffix in (".yaml", ".yml", ".jinja", ".jinja2"):
-                    # Exclude common non-source directories
-                    if not any(part in ("node_modules", "tests", "test", "__pycache__")
-                             for part in file_path.parts):
-                        yaml_count += 1
-        except Exception as exc:
-            logger.warning("Error scanning for YAML files: %s", exc)
-
-        if yaml_count > 0:
-            return "yaml"
+        for file_path in root.rglob("*"):
+            if not file_path.is_file():
+                continue
+            if file_path.suffix in (".yaml", ".yml", ".jinja", ".jinja2"):
+                # Exclude common non-source directories
+                if not any(part in ("node_modules", "tests", "test", "__pycache__")
+                         for part in file_path.parts):
+                    return "yaml"
 
         # Check for TypeScript files (frontend components) - after YAML
         # YAML has priority, so TypeScript is detected after YAML
-        ts_count = 0
-        try:
-            for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
-                # Exclude common non-source directories
-                if not any(part in ("node_modules", "tests", "test")
-                         for part in ts_file.parts):
-                    ts_count += 1
-        except PermissionError as exc:
-            logger.warning("Permission denied scanning TypeScript files: %s", exc)
-        except Exception as exc:
-            logger.warning("Error scanning for TypeScript files: %s", exc)
-
-        if ts_count > 0:
-            return "typescript"
+        for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
+            # Exclude common non-source directories
+            if not any(part in ("node_modules", "tests", "test")
+                     for part in ts_file.parts):
+                return "typescript"
 
         # Default fallback: directory-based strategy
         return "directory"
 
-    except Exception:
+    except Exception as e:
         # Always return a valid strategy on error
+        logger.warning("Unexpected error in _detect_strategy: %s", e)
         return "directory"
+    finally:
+        # Debug logging for detection counts - only when DEBUG level is enabled
+        if logger.isEnabledFor(logging.DEBUG):
+            manifest_count = 1 if any(root.rglob("manifest.json")) else 0
+            init_count = 1 if any(root.rglob("__init__.py")) else 0
+            logger.debug(
+                "Strategy detection counts: manifest=%d, init=%d",
+                manifest_count, init_count
+            )
 
 
 def _merge_with_overrides(
