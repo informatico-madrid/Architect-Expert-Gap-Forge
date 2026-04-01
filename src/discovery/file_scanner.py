@@ -729,6 +729,8 @@ def _detect_strategy(root: Path) -> str:
         try:
             if any(root.rglob("manifest.json")):
                 return "manifest"
+        except OSError as e:
+            logger.warning("Broken symlink scanning manifest.json: %s", e)
         except Exception as exc:
             logger.warning("Error scanning for manifest.json files: %s", exc)
 
