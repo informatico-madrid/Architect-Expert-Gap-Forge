@@ -732,20 +732,6 @@ def _detect_strategy(root: Path) -> str:
         except Exception as exc:
             logger.warning("Error scanning for manifest.json files: %s", exc)
 
-        # Check for TypeScript files (frontend components)
-        ts_count = 0
-        try:
-            for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
-                # Exclude common non-source directories
-                if not any(part in ("node_modules", "tests", "test")
-                         for part in ts_file.parts):
-                    ts_count += 1
-        except Exception as exc:
-            logger.warning("Error scanning for TypeScript files: %s", exc)
-
-        if ts_count > 0:
-            return "typescript"
-
         # Check for PHP files (filesystem-based)
         php_count = 0
         try:
