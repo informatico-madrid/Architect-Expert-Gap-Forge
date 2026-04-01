@@ -740,6 +740,8 @@ def _detect_strategy(root: Path) -> str:
                 if not any(part in ("vendor", "node_modules", "tests", "cache")
                          for part in php_file.parts):
                     php_count += 1
+        except PermissionError as e:
+            logger.warning("Permission denied scanning PHP files: %s", e)
         except Exception as exc:
             logger.warning("Error scanning for PHP files: %s", exc)
 
