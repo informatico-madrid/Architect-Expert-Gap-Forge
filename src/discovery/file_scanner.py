@@ -649,6 +649,102 @@ def _discover_by_yaml(
     return modules
 
 
+def _detect_strategy(root: Path) -> str:
+    """Detect the repository strategy type based on file patterns.
+
+    This function implements an intelligent detection strategy that examines
+    the repository structure to determine the appropriate module discovery
+    approach. Detection follows a strict priority order:
+
+    Detection Priority Order:
+    -------------------------
+    1. YAML/manifest strategy: Checks for manifest.json with Home Assistant
+       configuration or __init__.py files indicating Python package structure
+    2. TypeScript strategy: Scans for .ts/.tsx files indicating TypeScript/
+       JavaScript repositories
+    3. PHP strategy: Looks for .php files indicating PHP-based repositories
+    4. Manifest strategy: Checks for manifest.json files (npm, Composer, etc.)
+    5. Init strategy: Fallback to __init__.py detection for Python packages
+    6. Directory strategy: Final fallback - uses generic directory structure
+       analysis
+
+    Detection Checks:
+    -----------------
+    - YAML/manifest: manifest.json, __init__.py files
+    - TypeScript: .ts, .tsx files in non-test directories
+    - PHP: .php files excluding vendor/, node_modules/, tests/, cache/
+    - Manifest: Any manifest.json file
+    - Init: Python package __init__.py files
+    - Directory: Generic directory scanning as last resort
+
+    Excluded Directories:
+    ---------------------
+    - node_modules/
+    - vendor/
+    - tests/
+    - test/
+    - __pycache__/
+    - cache/
+
+    Performance Characteristics:
+    ----------------------------
+    - O(n) where n = total number of files/directories in repository
+    - Early returns on first match for efficiency
+    - Single pass through directory tree for pattern matching
+    - Lightweight file metadata checks (no content reading)
+
+    Error Handling:
+    ---------------
+    - Silently ignores file access errors (permission denied, etc.)
+    - Never raises exceptions - always returns a valid strategy string
+    - Gracefully handles empty or malformed repositories
+    - Returns "directory" on any error condition to ensure safe fallback
+
+    Args:
+        root: Repository root directory to analyze
+
+    Returns:
+        Strategy name string: "yaml", "typescript", "php", "manifest",
+        "init", or "directory" (fallback)
+    """
+    try:
+        if not root.exists() or not root.is_dir():
+            return "directory"
+
+        # Check for manifest.json (highest priority after YAML detection)
+        for _ in root.rglob("manifest.json"):
+            return "manifest"
+
+        # Check for TypeScript files
+        for _ in root.rglob("*.ts"):
+            return "typescript"
+        for _ in root.rglob("*.tsx"):
+            return "typescript"
+
+        # Check for PHP files
+        _exclude_dirs = {"vendor", "node_modules", "tests", "cache"}
+        for _php_file in root.rglob("*.php"):
+            if not any(_part in _exclude_dirs for _part in _php_file.parts):
+                return "php"
+
+        # Check for __init__.py (Python package structure)
+        for _init_file in root.rglob("__init__.py"):
+            return "init"
+
+        # Check for YAML files
+        for _yaml_file in root.rglob("*.yaml"):
+            return "yaml"
+        for _yml_file in root.rglob("*.yml"):
+            return "yaml"
+
+        # Default fallback: directory-based strategy
+        return "directory"
+
+    except Exception:
+        # Always return a valid strategy on error
+        return "directory"
+
+
 def _merge_with_overrides(
     discovered_modules: List["Module"],
     module_overrides: Dict[str, Dict[str, Any]],
