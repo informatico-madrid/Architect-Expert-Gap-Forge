@@ -36,12 +36,11 @@ class TestYamlRepoProcessing:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create configurations directory
-        configs = owner_dir / "configurations"
-        configs.mkdir(parents=True)
+        # Create __init__.py to make it a valid Python package
+        (owner_dir / "__init__.py").write_text("")
 
-        # Create YAML automation file
-        (configs / "automation.yaml").write_text("""
+        # Create YAML automation file directly in repo root
+        (owner_dir / "automation.yaml").write_text("""
 # Home Assistant automation configurations
 automation:
   - alias: "Turn off lights"
@@ -91,7 +90,7 @@ automation:
             raw_subdir=".",
             output_subdir="output",
             category="test_repo",
-            profile="yaml",
+            profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -137,12 +136,11 @@ automation:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create configurations directory
-        configs = owner_dir / "configurations"
-        configs.mkdir(parents=True)
+        # Create __init__.py to make it a valid Python package
+        (owner_dir / "__init__.py").write_text("")
 
-        # Create YAML script file
-        (configs / "scripts.yaml").write_text("""
+        # Create YAML script file directly in repo root
+        (owner_dir / "scripts.yaml").write_text("""
 # Home Assistant script configurations
 script:
   hello_world:
@@ -194,7 +192,7 @@ script:
             raw_subdir=".",
             output_subdir="output",
             category="test_repo",
-            profile="yaml",
+            profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -237,12 +235,11 @@ script:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create configurations directory
-        configs = owner_dir / "configurations"
-        configs.mkdir(parents=True)
+        # Create __init__.py to make it a valid Python package
+        (owner_dir / "__init__.py").write_text("")
 
-        # Create YAML sensor file
-        (configs / "sensors.yaml").write_text("""
+        # Create YAML sensor file directly in repo root
+        (owner_dir / "sensors.yaml").write_text("""
 # Home Assistant sensor configurations
 sensor:
   - platform: template
@@ -282,7 +279,7 @@ sensor:
             raw_subdir=".",
             output_subdir="output",
             category="test_repo",
-            profile="yaml",
+            profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()
@@ -328,12 +325,11 @@ sensor:
         owner_dir = repo_root / "owner" / "myrepo"
         owner_dir.mkdir(parents=True)
 
-        # Create configurations directory
-        configs = owner_dir / "configurations"
-        configs.mkdir(parents=True)
+        # Create __init__.py to make it a valid Python package
+        (owner_dir / "__init__.py").write_text("")
 
-        # Create YAML file with Jinja templates
-        (configs / "templates.yaml").write_text("""
+        # Create YAML file with Jinja templates directly in repo root
+        (owner_dir / "templates.yaml").write_text("""
 # Home Assistant templates with Jinja
 automation:
   - alias: "Dynamic notification"
@@ -385,7 +381,7 @@ sensor:
             raw_subdir=".",
             output_subdir="output",
             category="test_repo",
-            profile="yaml",
+            profile="filesystem",
         )
         processor = RepoProcessor(config)
         processor.run()

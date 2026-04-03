@@ -60,7 +60,9 @@ class TestSizeGates:
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "owner/myrepo"
+        # Output path: base_dir / output_subdir / category
+        # Since category is "owner/myrepo", output is at owner/myrepo level
+        output_dir = tmp_path / "output" / "owner" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT but no LOGIC_ONLY for tiny file
@@ -141,7 +143,9 @@ def filter_by_criteria(data, criteria):
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "owner/myrepo"
+        # Output path: base_dir / output_subdir / category
+        # Since category is "owner/myrepo", output is at owner/myrepo level
+        output_dir = tmp_path / "output" / "owner" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -215,7 +219,9 @@ def filter_by_criteria(data, criteria):
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "owner/myrepo"
+        # Output path: base_dir / output_subdir / category
+        # Since category is "owner/myrepo", output is at owner/myrepo level
+        output_dir = tmp_path / "output" / "owner" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT
@@ -377,6 +383,16 @@ def normalize_values(data: list) -> list:
     return [(v - min_val) / range_val for v in data]
 """.strip())
 
+        # Add GOLD_PATTERN to pass gold filter (DOMAIN)
+        large_file.write_text(large_file.read_text() + """
+
+DOMAIN = "test_processor"
+
+def get_runtime_data(entry):
+    '''Get runtime data from entry.'''
+    return entry.runtime_data
+""")
+
         file_size = len(large_file.read_text())
         assert file_size >= LOGIC_ONLY_MIN_CHARS, (
             f"File should be at least LOGIC_ONLY_MIN_CHARS ({LOGIC_ONLY_MIN_CHARS}). "
@@ -394,7 +410,9 @@ def normalize_values(data: list) -> list:
         processor.run()
 
         # Verify bundle was created
-        output_dir = tmp_path / "output" / "owner/myrepo"
+        # Output path: base_dir / output_subdir / category
+        # Since category is "owner/myrepo", output is at owner/myrepo level
+        output_dir = tmp_path / "output" / "owner" / "myrepo"
         bundle_files = list(output_dir.rglob("*.txt"))
 
         # Should have MODULE_BLUEPRINT

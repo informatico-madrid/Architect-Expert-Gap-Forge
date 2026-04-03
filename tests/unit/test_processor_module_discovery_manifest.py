@@ -163,15 +163,15 @@ class TestProcessorManifestStrategyConfig:
         )
         assert config.module_discovery_strategy == "manifest"
 
-    def test_config_defaults_to_auto_strategy(self) -> None:
-        """Test that module_discovery_strategy defaults to 'auto'."""
+    def test_config_defaults_to_manifest_strategy(self) -> None:
+        """Test that module_discovery_strategy defaults to 'manifest'."""
         config = ProcessingConfig(
             base_dir=Path.cwd(),
             raw_subdir="raw",
             output_subdir="output",
             category="test",
         )
-        assert config.module_discovery_strategy == "auto"
+        assert config.module_discovery_strategy == "manifest"
 
     def test_config_accepts_anchor_filenames(self) -> None:
         """Test that anchor_filenames can be customized."""

@@ -74,3 +74,4 @@ calibration_results/checkpoint_*.json
 calibration_results/calibration_report.json
 calibration_results/latest.json
 calibration_results/vllm_config.yaml
+.claude/settings.json

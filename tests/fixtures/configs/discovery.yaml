@@ -1,0 +1,39 @@
+# Discovery Configuration for Tests
+
+# Base directory for processing
+base_dir: .
+
+# Discovery settings
+category: test_repo
+mode: static
+profile: filesystem
+profile_extensions:
+  - ".py"
+  - ".ts"
+  - ".tsx"
+  - ".php"
+  - ".yaml"
+  - ".yml"
+
+# Ignore patterns
+ignore_patterns:
+  - ".git"
+  - "__pycache__"
+  - "venv"
+  - "node_modules"
+
+# Static repositories for testing
+static_repos: []
+
+# Processing settings
+min_stars: 0
+limit: 100
+per_page: 100
+
+# Output settings
+raw_subdir: data/raw
+output_subdir: data/output
+output_category: test_repo
+
+# Error handling
+on_parse_error: skip
