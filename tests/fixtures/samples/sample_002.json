@@ -1,0 +1,10 @@
+{
+  "id": "sample-002",
+  "conversation": {
+    "user": "What is the best practice for automations?",
+    "assistant": "Use clear aliases and organize by function."
+  },
+  "example_type": "best_practice",
+  "ldi": "automation",
+  "gold_injected": true
+}

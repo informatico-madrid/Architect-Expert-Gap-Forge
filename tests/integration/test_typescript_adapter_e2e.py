@@ -16,16 +16,13 @@ produce the expected output.
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import pytest
-import tempfile
-import os
 
 from src.utils.extractors.typescript_adapter import TypeScriptAdapter
 from src.utils.extractors.extractors.lit_component import LitComponentExtractor
 from src.utils.extractors.extractors.i18n_key import I18nKeyExtractor
 from src.utils.extractors.extractors.service_call import ServiceCallExtractor
-from src.utils.extractors.extractors.base import FrontendToken
 from src.utils.extractors.base import ParseResult
 from src.discovery import ProcessingConfig, RepoProcessor
 

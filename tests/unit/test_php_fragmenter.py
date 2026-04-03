@@ -525,8 +525,8 @@ class TestFragmentBySize:
         if len(fragments) > 1:
             # First fragment ends around line 30
             # Second fragment should start with some overlap content
-            first_content = fragments[0][2]
-            second_content = fragments[1][2]
+            fragments[0][2]
+            fragments[1][2]
 
             # The overlap should contain content from the end of first fragment
             # (exact behavior depends on implementation)

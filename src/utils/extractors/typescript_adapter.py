@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -67,8 +66,7 @@ REQUIRE_PATTERN = re.compile(
 )
 
 
-@dataclass
-class TypeScriptAdapter:
+class TypeScriptAdapter(ExtractorAdapter):
     """Adapter for parsing TypeScript/TSX files.
 
     This adapter integrates multiple TypeScript extractors to parse
@@ -81,8 +79,8 @@ class TypeScriptAdapter:
             parsing fails or is unavailable.
     """
 
-    extractors: List[TypeScriptExtractorProtocol] = field(default_factory=list)
-    use_regex_fallback: bool = True
+    extractors: List[TypeScriptExtractorProtocol]
+    use_regex_fallback: bool
 
     def __init__(
         self,

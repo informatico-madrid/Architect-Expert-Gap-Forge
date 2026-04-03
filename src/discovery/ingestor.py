@@ -56,13 +56,22 @@ class DiscoveryConfig(BaseModel):
         default=None,
         description="Profile name for filtering and configuration",
     )
+    # Support both 'extensions' and 'profile_extensions' for flexibility
     profile_extensions: Optional[Set[str]] = Field(
         default=None,
         description="File extensions to filter during discovery (e.g., {'.py', '.js'})",
     )
+    extensions: Optional[Set[str]] = Field(
+        default=None,
+        description="File extensions alias for profile_extensions",
+    )
     profile_ignored_paths: Optional[Set[str]] = Field(
         default=None,
         description="Paths to ignore during discovery (e.g., {'.git', 'node_modules'})",
+    )
+    ignore_patterns: Optional[Set[str]] = Field(
+        default=None,
+        description="Ignore patterns alias for profile_ignored_paths",
     )
 
     # Search logic (Domain-agnostic)
@@ -80,6 +89,16 @@ class DiscoveryConfig(BaseModel):
 
     # Authentication
     github_token: Optional[str] = Field(default=None, repr=False)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_extensions(cls, values: dict) -> dict:
+        """Map 'extensions' to 'profile_extensions' if profile_extensions not set."""
+        if values.get("extensions") and not values.get("profile_extensions"):
+            values["profile_extensions"] = values.pop("extensions")
+        if values.get("ignore_patterns") and not values.get("profile_ignored_paths"):
+            values["profile_ignored_paths"] = values.pop("ignore_patterns")
+        return values
 
     @model_validator(mode="after")
     def _validate_logic(self) -> "DiscoveryConfig":

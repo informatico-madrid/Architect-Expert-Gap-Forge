@@ -95,4 +95,4 @@ output_category: "homeassistant-main_txt"
 # Segmenta home-assistant/core por componente para evitar colisiones de entity_id
 # y limitar el repo_root del context-search a cada sub-componente.
 segment_path: "homeassistant/components"
-base_dir: /mnt/bunker_data/ai/data_factory
+base_dir: .

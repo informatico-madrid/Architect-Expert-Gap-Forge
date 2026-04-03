@@ -1,7 +1,20 @@
 {
-  "spec": "frontend-discovery-enhancement",
-  "phase": "design",
-  "phase_index": 7,
-  "awaitingApproval": true,
-  "commitSpec": false
+  "phase": "execution",
+  "taskIndex": 22,
+  "totalTasks": 27,
+  "taskIteration": 1,
+  "maxTaskIterations": 5,
+  "recoveryMode": false,
+  "maxFixTasksPerOriginal": 3,
+  "maxFixTaskDepth": 3,
+  "globalIteration": 1,
+  "maxGlobalIterations": 100,
+  "fixTaskMap": {},
+  "modificationMap": {},
+  "maxModificationsPerTask": 3,
+  "maxModificationDepth": 2,
+  "awaitingApproval": false,
+  "nativeTaskMap": {},
+  "nativeSyncEnabled": true,
+  "nativeSyncFailureCount": 0
 }

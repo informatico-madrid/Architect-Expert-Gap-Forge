@@ -1,0 +1,13 @@
+# Evaluation Configuration for AEGF
+
+# Output settings
+output_dir: ./outputs/eval
+
+# Evaluation settings
+enable_llm_evaluation: false
+enable_unit_tests: true
+
+# Report settings
+report_format: markdown
+include_statistics: true
+include_charts: false

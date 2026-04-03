@@ -21,9 +21,9 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.utils.extractors import get_adapter
 from src.utils.extractors.base import ParseError
@@ -90,11 +90,21 @@ class ProcessingConfig(BaseModel):
     output_category: Optional[str] = None
     segment_path: Optional[str] = None
     context_prefix: Optional[str] = None
-    extensions: set[str] = Field(default={".py", ".md"})
-    ignore_patterns: set[str] = Field(
-        default={".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
+    # Accept both 'extensions' and 'profile_extensions' for flexibility
+    extensions: Set[str] = Field(default_factory=lambda: {".py", ".md"})
+    ignore_patterns: Set[str] = Field(
+        default_factory=lambda: {".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
     )
-    backend_repos: set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
+    # Support profile_extensions alias for DiscoveryConfig compatibility
+    profile_extensions: Optional[Set[str]] = Field(
+        default=None,
+        description="File extensions for profile-based filtering (aliased from extensions)",
+    )
+    profile_ignored_paths: Optional[Set[str]] = Field(
+        default=None,
+        description="Paths to ignore for profile-based filtering (aliased from ignore_patterns)",
+    )
+    backend_repos: Set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
     profile: str = Field(
         default="homeassistant", description="Profile name for extractor adapter"
     )
@@ -103,10 +113,20 @@ class ProcessingConfig(BaseModel):
         description="Policy for parse errors: abort, skip, mark_and_continue, or fallback",
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _map_profile_extensions(cls, values: dict) -> dict:
+        """Map profile_extensions to extensions if extensions not set."""
+        if "extensions" not in values and values.get("profile_extensions"):
+            values["extensions"] = values.pop("profile_extensions")
+        if "ignore_patterns" not in values and values.get("profile_ignored_paths"):
+            values["ignore_patterns"] = values.pop("profile_ignored_paths")
+        return values
+
     # Module discovery configuration
     module_discovery_strategy: str = Field(
         default="manifest",
-        description="Strategy for discovering modules: manifest, init, directory, manual_mapping",
+        description="Strategy for discovering modules: manifest, init, directory, filesystem, typescript, yaml, manual_mapping, auto (auto-detects repository type)",
     )
     anchor_filenames: set[str] = Field(
         default_factory=lambda: set(ANCHOR_FILENAMES),
@@ -253,6 +273,20 @@ class RepoProcessor:
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
         """Discover modules using the configured strategy."""
+        if self.cfg.module_discovery_strategy == "auto":
+            from src.discovery.file_scanner import _detect_strategy
+            detected_strategy = _detect_strategy(root)
+            logger.info("Auto-detected strategy: %s for %s", detected_strategy, root)
+            self.cfg.module_discovery_strategy = detected_strategy
+            return discover_modules(
+                root=root,
+                strategy=detected_strategy,
+                ignore_patterns=self.cfg.ignore_patterns,
+                extensions=self.cfg.extensions,
+                anchor_filenames=self.cfg.anchor_filenames,
+                module_overrides=self.cfg.module_overrides,
+                build_module_func=self._build_module,
+            )
         if self.cfg.module_discovery_strategy == "directory_scan":
             return self._discover_modules_directory_scan(root)
         return discover_modules(
@@ -341,7 +375,9 @@ class RepoProcessor:
                 manifest_data = {}
 
         mod = self._build_module(mod_dir, anchor_type=anchor, manifest=manifest_data)
-        self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix)
+        # Extract owner_dir from repo_root (repo_root is owner_dir/owner_name)
+        owner_dir = repo_root.parent if repo_root.parent.name != "homeassistant" else None
+        self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix, owner_dir=owner_dir)
 
     # ------------------------------------------------------------------
     # Module emission: generates TIPO 1-4 bundles
@@ -356,7 +392,8 @@ class RepoProcessor:
     ) -> None:
         """For one module, emit all applicable fragment types."""
         # Each module gets its own subdirectory inside target_root
-        module_dir = self.target_root / mod.name
+        # Structure: target_root/repo_name/mod_name (no owner level)
+        module_dir = self.target_root / repo_root.name / mod.name
         module_dir.mkdir(parents=True, exist_ok=True)
 
         # Separate files by role

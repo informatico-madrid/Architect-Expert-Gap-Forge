@@ -31,6 +31,7 @@ from typing import List, Optional
 
 from src.utils.extractors.base import (
     Dependency,
+    ExtractorAdapter,
     ParseError,
     ParseResult,
 )
@@ -88,7 +89,7 @@ def _process_php_fragment_worker(args: tuple) -> dict:
         }
 
 
-class PhpLegacyAdapter:
+class PhpLegacyAdapter(ExtractorAdapter):
     """Adapter for parsing legacy PHP files and extracting fragments.
 
     This adapter implements the ExtractorAdapter protocol and provides:
@@ -246,6 +247,36 @@ class PhpLegacyAdapter:
                         name=var_name,
                         module_type="unknown",
                         source_module=f"global {var_name}",
+                    )
+                )
+
+        # Extract class instantiation patterns (new ClassName())
+        # Pattern: new ClassName(...), $this->ClassName(), or ClassName::
+        new_pattern = re.compile(r'\bnew\s+(\w+)')
+        for match in new_pattern.finditer(content):
+            class_name = match.group(1)
+            if class_name not in seen and class_name[0].isupper():
+                seen.add(class_name)
+                dependencies.append(
+                    Dependency(
+                        name=class_name,
+                        module_type="class",
+                        source_module=match.group(0),
+                    )
+                )
+
+        # Extract constructor injection patterns
+        # Pattern: function __construct(ClassName $var) or private ClassName $var;
+        constructor_injection = re.compile(r'(?:private|protected|public)\s+(\w+)\s+\$([a-zA-Z_][a-zA-Z0-9_]*)')
+        for match in constructor_injection.finditer(content):
+            class_name = match.group(1)
+            if class_name not in seen and class_name[0].isupper():
+                seen.add(class_name)
+                dependencies.append(
+                    Dependency(
+                        name=class_name,
+                        module_type="class",
+                        source_module=match.group(0),
                     )
                 )
 

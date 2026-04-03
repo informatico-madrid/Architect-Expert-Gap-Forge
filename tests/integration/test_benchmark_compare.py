@@ -21,7 +21,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from src.utils.extractors.factory import get_adapter
 from src.utils.extractors.base import ParseError

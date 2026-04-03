@@ -31,6 +31,10 @@ _ADAPTER_REGISTRY: Dict[str, str] = {
     "typescript": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
     "ts": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
     "tsx": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
+    "yaml": "src.utils.extractors.yaml_adapter.YamlAdapter",
+    "yml": "src.utils.extractors.yaml_adapter.YamlAdapter",
+    "jinja": "src.utils.extractors.jinja_adapter.JinjaAdapter",
+    "jinja2": "src.utils.extractors.jinja_adapter.JinjaAdapter",
     "default": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
 }
 
@@ -61,11 +65,6 @@ def get_adapter(profile: str) -> ExtractorAdapter:
     # Normalize profile name
     normalized = profile.lower().strip()
 
-    # Check cache first
-    if normalized in _adapter_cache:
-        logger.debug("Returning cached adapter for profile: %s", normalized)
-        return _adapter_cache[normalized]
-
     # Handle file extensions (e.g., ".ts", ".tsx", "test.ts")
     if normalized.startswith("."):
         # Bare extension like ".ts"
@@ -74,6 +73,10 @@ def get_adapter(profile: str) -> ExtractorAdapter:
             ".tsx": "typescript",
             ".py": "python",
             ".php": "php_legacy",
+            ".yaml": "yaml",
+            ".yml": "yaml",
+            ".jinja": "jinja",
+            ".jinja2": "jinja",
         }
         normalized = ext_mapping.get(normalized, "default")
     elif "." in normalized:
@@ -84,8 +87,17 @@ def get_adapter(profile: str) -> ExtractorAdapter:
             ".tsx": "typescript",
             ".py": "python",
             ".php": "php_legacy",
+            ".yaml": "yaml",
+            ".yml": "yaml",
+            ".jinja": "jinja",
+            ".jinja2": "jinja",
         }
         normalized = ext_mapping.get(ext, "default")
+
+    # Check cache first (using normalized profile name)
+    if normalized in _adapter_cache:
+        logger.debug("Returning cached adapter for profile: %s", normalized)
+        return _adapter_cache[normalized]
 
     # Get adapter class path from registry (default to python if unknown)
     adapter_path = _ADAPTER_REGISTRY.get(normalized, _ADAPTER_REGISTRY["default"])

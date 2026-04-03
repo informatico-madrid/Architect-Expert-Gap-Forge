@@ -1,0 +1,9 @@
+# AEGF Prompt Manager Configuration
+
+test_group:
+  system: "You are a test assistant for test_group."
+  user: "Test template for test_group with {name} and {question}"
+
+another_group:
+  system: "You are another test assistant."
+  user: "Another template with {placeholder}"

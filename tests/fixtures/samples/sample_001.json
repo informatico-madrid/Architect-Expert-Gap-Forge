@@ -1,0 +1,10 @@
+{
+  "id": "sample-001",
+  "conversation": {
+    "user": "How do I configure a sensor?",
+    "assistant": "You can configure a sensor using YAML or through the UI."
+  },
+  "example_type": "configuration",
+  "ldi": "sensor",
+  "gold_injected": false
+}

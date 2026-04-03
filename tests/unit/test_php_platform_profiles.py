@@ -18,9 +18,7 @@ Author: Joao Maria Arranz Aparicio
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 
 from src.discovery.php_platform_profiles import (
     PLATFORM_REGISTRY,
