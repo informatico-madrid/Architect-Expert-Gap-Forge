@@ -8717,4 +8717,9 @@ _bmad-output/planning-artifacts/research/aegf-technology-validation-research-202
 .roo/skills/bmad-testarch-nfr/resources/knowledge/pact-broker-webhooks.md
 .roo/skills/bmad-testarch-test-design/resources/knowledge/pact-broker-webhooks.md
 .roo/skills/bmad-testarch-test-review/resources/knowledge/pact-broker-webhooks.md
+
+# Smart Ralph spec state files
+specs/.current-spec
+specs/.current-epic
+**/.progress.md
 .roo/skills/bmad-testarch-trace/resources/knowledge/pact-broker-webhooks.md

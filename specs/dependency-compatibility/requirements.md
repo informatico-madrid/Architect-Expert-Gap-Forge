@@ -3,14 +3,14 @@ spec: dependency-compatibility
 epic: aegf-infrastructure
 size: XS (< 1 day)
 date: 2026-04-23
-version: 2.0 (Party Mode refined)
+version: 2.1 (adversarial review fixes)
 ---
 
 # Requirements: Dependency Compatibility
 
 ## Executive Summary
 
-This spec validates that the four new dependencies (`dspy`, `langgraph`, `torch`-optional, `openai`-moved) are compatible with the existing dependency set before they are merged. Deep research identified zero direct version conflicts among the new packages themselves, but surfaced three operational risks: (1) `litellm 1.82.6` — a transitive dependency pinned by `dspy<=3.2.0` — carries **6 CVEs** (2 Critical, 4 High) that cannot be patched without unpinning `dspy`; (2) `packaging 26.0→25.0` and `fsspec 2026.3.0→2024.6.1` are expected silent downgrades enforced by `langgraph` and `datasets` respectively; (3) `tokenizers` and `tiktoken` have no Python 3.14 wheels, so CI source builds require a Rust toolchain. The deliverables are: updated `requirements.txt` + `pyproject.toml` with strict `==` pins, updated `requirements-dev.txt` with `openai` removed from dev, optional `numpy` added (bugfix), and `docs/dependency-compatibility.md` covering CVEs, downgrades, install baselines, and Python 3.14 caveats.
+This spec validates that new dependencies are compatible with the existing dependency set before they are merged. The new dependencies are: `dspy` (new), `langgraph` (new), `openai` (moved from dev to runtime), and `torch` (optional, documented only). Two pre-existing deps also get pinned to prevent breakage: `datasets` (already present at `>=2.19`, needs `==2.21.0` to prevent 4.x API breakage) and `numpy` (missing from requirements but imported in two files). Deep research identified zero direct version conflicts among the new packages themselves, but surfaced three operational risks: (1) `litellm 1.82.6` — a transitive dependency pinned by `dspy` — carries **6 CVEs** (2 Critical, 4 High) that cannot be patched without unpinning `dspy`; (2) `packaging 26.0→25.0` and `fsspec 2026.3.0→2024.6.1` are expected silent downgrades enforced by `langgraph` and `datasets` respectively; (3) `tokenizers` and `tiktoken` have no Python 3.14 wheels, so CI source builds require a Rust toolchain. The deliverables are: updated `requirements.txt` + `pyproject.toml` with strict `==` pins (with bounded ranges where needed), updated `requirements-dev.txt` with `openai` removed from dev, `infrastructure/dependency_check.py`, and `docs/dependency-compatibility.md` covering CVEs, downgrades, install baselines, and Python 3.14 caveats.
 
 ---
 
@@ -35,7 +35,7 @@ Update all three dependency files in a single coordinated change. The strategy i
 - [ ] `torch` is **NOT** in `requirements.txt` (documented only as optional — see Out of Scope)
 - [ ] `openai` is **removed** from `requirements-dev.txt` (moved to runtime; `dspy` requires it at runtime)
 - [ ] `pyproject.toml` `[project].dependencies` includes all new pins:
-  `dspy==3.2.0`, `langgraph==0.2.76`, `openai==2.32.0`, `numpy==2.4.4`, `datasets==2.21.0`
+  `dspy==3.2.0`, `langgraph==0.2.76` (with `<1.0` upper bound to prevent major-version jumps), `openai==2.32.0`, `numpy==2.4.4`, `datasets==2.21.0`
 - [ ] `pyproject.toml` dev section `["pytest-cov>=7.0", "pytest-randomly>=3.0", "pytest-asyncio>=0.24"]` is retained; `openai` is **removed** from dev
 - [ ] `pip install -r requirements.txt` completes with zero version conflict warnings
 - [ ] `pip install .` includes all expected dependencies (synergy between requirements.txt and pyproject.toml)
@@ -43,10 +43,7 @@ Update all three dependency files in a single coordinated change. The strategy i
 - [ ] Expected downgrades are documented in `docs/dependency-compatibility.md`:
   - `packaging 26.0→25.0` (enforced by `langgraph<1.0` constraint)
   - `fsspec 2026.3.0→2024.6.1` (enforced by `datasets==2.21.0` pin)
-
-**Notes:**
-- `langchain-core 0.3.84` is in `langgraph 0.2.76`'s exclusion list but works by coincidence of the pip resolver — documented, not blocked.
-- `langgraph==0.2.76` needs an explicit `<1.0` upper bound added to `pyproject.toml` to prevent accidental major-version jumps.
+- [ ] `langchain-core` is documented in `docs/dependency-compatibility.md` as working in `langgraph 0.2.76`'s exclusion list by coincidence of pip resolver — this is a known fragility to monitor
 
 ---
 
@@ -80,26 +77,23 @@ A validation script that verifies the dependency setup is correct before merging
 - [ ] No bare `except` clauses — only explicit exception types
 - [ ] Module uses a single `logging.getLogger(__name__)` logger with lazy formatting
 - [ ] Script exit code is `0` on success, non-zero on any conflict or import error
-- [ ] Script verifies: (a) pip install succeeds, (b) all dependency imports work, (c) no version conflicts
+- [ ] Script verifies specific imports: `dspy`, `langgraph`, `numpy`, `datasets`, `openai` (torch excluded — optional dep)
+- [ ] Script is extensible: parses `requirements.txt` for import verification rather than hard-coding module names
 - [ ] Coverage config updated to include `infrastructure/` as a source path in `pyproject.toml`
 
 ---
 
-### FR-4: Project constitution compliance
+### FR-4: Project constitution compliance (cross-cutting)
 
-All new/modified files must adhere to the project constitution conventions. This is verified as part of the review process for FR-1 through FR-3.
+All new/modified files must adhere to the project constitution. This is verified via pre-commit hooks and `pyright --strict`. This FR is not a separate deliverable — it is a verification gate that applies to all new code across FR-1 through FR-3.
 
 **Acceptance Criteria:**
 
-- [ ] Every new Python file includes the required copyright header:
-  ```python
-  # AEGF — Copyright 2026
-  # SPDX-License-Identifier: Apache-2.0
-  ```
-- [ ] All public functions/methods in new files have full type annotations
-- [ ] No import-time side effects (module-level assignments are data only, no function calls, no I/O)
-- [ ] All exception handling uses explicit types — no bare `except`
-- [ ] Each module has exactly one logger instance using `logging.getLogger(__name__)`
+- [ ] `ruff check infrastructure/` passes with zero errors
+- [ ] `pyright --strict infrastructure/dependency_check.py` passes with zero errors
+- [ ] `scripts/check_headers.py --check` passes for all new Python files (copyright header present)
+- [ ] No new files contain bare `except` clauses (verified via `ruff` or manual review)
+- [ ] No new files have import-time side effects (no network calls, no I/O at module level)
 
 ---
 
@@ -115,9 +109,12 @@ Total installed size is documented and bounded:
 - With torch full: **~3.6 GB** (+3.0 GB)
 
 ### NFR-3: Reproducibility
-All production dependencies use exact version pins (`==`). No `>=` ranges for direct dependencies. Upper-bound `<` ranges allowed only for transitive dependencies with known breaking changes (`packaging`, `fsspec`).
+All production dependencies use exact version pins (`==`) unless an upper-bound range is explicitly required to prevent major-version breakage (`packaging>=25.0,<26.0`, `fsspec>=2023.1.0,<2025.0.0`). No unbounded `>=` ranges for any direct dependency.
 
-### NFR-4: Security transparency
+### NFR-4: Python version compatibility
+All pinned dependencies support the project's declared minimum Python version (`>=3.12` per `pyproject.toml`). Known caveat: `tokenizers` and `tiktoken` have no Python 3.14 wheels — CI requires Rust toolchain for these packages on Python 3.14.
+
+### NFR-5: Security transparency
 All known CVEs in transitive dependencies are documented and tracked. Known risk: `litellm 1.82.6` has 6 CVEs (2 Critical, 4 High). See Decision Gate below.
 
 ---
@@ -132,10 +129,10 @@ All known CVEs in transitive dependencies are documented and tracked. Known risk
 | CVE count | 6 (2 Critical, 4 High) |
 | Patched version | `litellm>=1.83.7` |
 | Blocker | `dspy<=3.2.0` pins `litellm<=1.82.6` |
-| Options | (A) Accept risk + monitor for dspy update; (B) Patch dspy pin manually; (C) Block merge |
+| Options | (A) Accept risk + monitor for dspy update; (B) Patch dspy pin manually; (C) Block merge; (D) Accept with automated CVE monitoring (GitHub Dependabot or Snyk) |
 | Sign-off required by | Project security lead or tech lead |
 
-**Decision:** [ ] ACCEPTED — [ ] BLOCKED — [ ] DEFERRED (with date: ____ )
+**Decision:** [ ] ACCEPTED — [ ] BLOCKED — [ ] DEFERRED (re-review by: ____ )
 **Signed by:** ____________________  **Date:** ___________
 
 ---

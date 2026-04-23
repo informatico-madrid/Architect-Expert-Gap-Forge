@@ -1,0 +1,12 @@
+{
+  "name": "aegf-infrastructure",
+  "goal": "ML Engineer gets objective baselines, externalized prompts, anchor datasets, and dependency validation -- all prerequisites for DSPy MIPROv2 optimization in Epic 1.",
+  "specs": [
+    { "name": "baseline-measurement", "status": "pending", "dependencies": ["dependency-compatibility"] },
+    { "name": "prompt-externalization", "status": "pending", "dependencies": [] },
+    { "name": "anchor-dataset", "status": "pending", "dependencies": ["baseline-measurement", "prompt-externalization"] },
+    { "name": "dependency-compatibility", "status": "pending", "dependencies": [] }
+  ],
+  "output": "spec-files",
+  "issueNumber": null
+}
