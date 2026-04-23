@@ -1,0 +1,40 @@
+{
+  "template_version": "1.0",
+  "project": "data_factory",
+  "sprint_id": "sprint-YYYY-MM-DD",
+  "epic_id": "EPIC-1",
+  "story_id": "STORY-1",
+  "status": "queued",
+  "allowed_statuses": ["queued", "running", "blocked", "done", "failed"],
+  "timestamps": {
+    "created_at": "2026-04-22T00:00:00Z",
+    "started_at": null,
+    "finished_at": null,
+    "last_update": null
+  },
+  "executor": {
+    "type": "smart-ralph",
+    "id": "smart-ralph#42"
+  },
+  "artifacts": {
+    "commits": [],
+    "prs": [],
+    "builds": []
+  },
+  "tests": {
+    "unit": {"status": "unknown", "report": null},
+    "integration": {"status": "unknown", "report": null},
+    "e2e": {"status": "unknown", "report": null}
+  },
+  "code_review": {"status": "pending", "reviewer": null, "summary": null},
+  "blockers": [],
+  "metrics": {
+    "estimated_effort_hours": null,
+    "actual_effort_hours": null
+  },
+  "deployment": {"environment": null, "status": null, "timestamp": null},
+  "acceptance": {"status": null, "evidence": []},
+  "risk": {"notes": null, "rollback_plan": null},
+  "links": [],
+  "notes": ""
+}

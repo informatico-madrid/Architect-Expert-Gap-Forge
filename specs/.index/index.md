@@ -25,7 +25,6 @@ See [index-state.json](./index-state.json) for machine-readable data.
 0/48 tasks |
 | 008-fix-ingestor-cli-execution | ./specs | tasks | 0
 0/9 tasks |
-| 010-agentic-dataset-redesign | ./specs | tasks | 37/39 tasks |
 | 011-fix-failing-tests | ./specs | tasks | 13/18 tasks |
 | 013-ingestor-yaml-tests | ./specs | tasks | 29/33 tasks |
 | 012-mejorar-cobertura-code | ./specs | tasks | 44/47 tasks |

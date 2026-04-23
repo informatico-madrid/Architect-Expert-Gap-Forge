@@ -4,7 +4,7 @@
   "directories": [
     {
       "path": "./specs",
-      "specsCount": 15,
+      "specsCount": 14,
       "isDefault": true
     }
   ],
@@ -53,24 +53,15 @@
       "name": "006-project-maintenance",
       "path": "./specs/006-project-maintenance",
       "phase": "tasks",
-      "taskIndex": 0
-0,
+      "taskIndex": 0,
       "totalTasks": 48
     },
     {
       "name": "008-fix-ingestor-cli-execution",
       "path": "./specs/008-fix-ingestor-cli-execution",
       "phase": "tasks",
-      "taskIndex": 0
-0,
+      "taskIndex": 0,
       "totalTasks": 9
-    },
-    {
-      "name": "010-agentic-dataset-redesign",
-      "path": "./specs/010-agentic-dataset-redesign",
-      "phase": "tasks",
-      "taskIndex": 37,
-      "totalTasks": 39
     },
     {
       "name": "011-fix-failing-tests",
@@ -97,13 +88,22 @@
       "name": "014-rich-cli-output",
       "path": "./specs/014-rich-cli-output",
       "phase": "tasks",
-      "taskIndex": 0
-0,
+      "taskIndex": 0,
       "totalTasks": 34
     },
     {
       "name": "yaml-adapter",
       "path": "./specs/yaml-adapter",
+      "phase": "tasks"
+    },
+    {
+      "name": "frontend-discovery-enhancement",
+      "path": "./specs/frontend-discovery-enhancement",
+      "phase": "tasks"
+    },
+    {
+      "name": "module-discovery-auto",
+      "path": "./specs/module-discovery-auto",
       "phase": "tasks"
     }
   ]
