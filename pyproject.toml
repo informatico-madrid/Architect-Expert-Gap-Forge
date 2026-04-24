@@ -21,6 +21,15 @@ dependencies = [
     "google-genai>=1.0",
     "python-dotenv>=1.0",
     "tqdm>=4.64",
+    "dspy>=3.2.0,<4.0.0",
+    "langgraph>=0.2.76,<1.0.0",
+    "openai==2.32.0",
+    "numpy==2.4.4",
+    "datasets==2.21.0",
+    "httpx>=0.27",
+    "huggingface-hub>=0.22",
+    "tiktoken>=0.7",
+    "click>=8.1",
 ]
 
 [project.optional-dependencies]
@@ -30,6 +39,7 @@ dev = [
     "pytest-randomly>=3.0",
     "pytest-asyncio>=0.24",
     "psutil>=5.9",
+    "ruff>=0.9",
 ]
 
 # ----------------------------------------------------------------
@@ -68,7 +78,7 @@ markers = [
 # ----------------------------------------------------------------
 
 [tool.coverage.run]
-source = ["src/audit", "src/utils", "src/factory", "src/curation", "src/discovery"]
+source = ["src/audit", "src/utils", "src/factory", "src/curation", "src/discovery", "infrastructure"]
 omit = [
     "*/research/*",
     "*/__pycache__/*",
