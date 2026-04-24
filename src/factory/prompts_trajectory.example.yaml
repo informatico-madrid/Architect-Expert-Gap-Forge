@@ -1,6 +1,22 @@
 # ─────────────────────────────────────────────────────────────
 # AEGF — Prompt Externalization (spec: prompt-externalization)
 # Source: src/factory/trajectory_generator.py._default_templates()
+#
+# NOTE: Source uses `templates.<key>.template` format (dict with
+# 'template' + 'turn_type'). Output maps to `prompts.<key>.system`
+# for DSPy consumption. These are raw template strings used by
+# TrajectoryGenerator._serialize_to_chatml(), NOT conversation
+# system/user roles.
+#
+# ⚠ CRITICAL: The consumer code at trajectory_generator.py:216,226
+# reads `.get("template", ...)` — NOT `.get("system", ...)`. This
+# YAML is a template-only artifact. DSPy consumer must read from
+# `.system` key (requires consumer refactor in Epic 1).
+#
+# Placeholder syntax: `{var}` (Python str.format, matching production
+# code at trajectory_generator.py:216). Conflicts with requirements.md
+# AC-1.5 which says `$var` — design.md resolves to `{var}` to match
+# actual production code.
 # ─────────────────────────────────────────────────────────────
 prompts:
   observation:

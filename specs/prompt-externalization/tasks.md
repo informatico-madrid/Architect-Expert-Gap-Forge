@@ -4,7 +4,7 @@
 
 Focus: Prove the conversion pipeline works end-to-end with the simplest source (plain text).
 
-- [ ] T-01 [POC] Create prompts_backtracking.example.yaml from plain text sources
+- [x] T-01 [POC] Create prompts_backtracking.example.yaml from plain text sources
   - **Do:**
     1. Read `configs/prompts/backtracking_system.txt` (26 lines, English) and `configs/prompts/reconstruction_system.txt` (36 lines, English)
     2. Create `src/curation/prompts_backtracking.example.yaml` with `prompts:` top-level key
@@ -44,7 +44,7 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
     3. Store `forbidden_terms` as YAML list under `prompts.forbidden_terms` (keep as-is — literal match strings)
     4. Store template as `prompts.problem_focused.system`
 
-- [ ] T-04 [P] Create prompts_trajectory.example.yaml from Python method
+- [x] T-04 [P] Create prompts_trajectory.example.yaml from Python method
   - **When:** Done when file exists with 6 turn template keys under `prompts:`, all translated to English.
   - **Verify:** `python -c "import yaml; d=yaml.safe_load(open('src/factory/prompts_trajectory.example.yaml')); assert len(d['prompts'])==6; print('T-04 PASS')"`
   - **Commit:** `feat(spec): externalize trajectory turn templates`
@@ -56,14 +56,14 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
     3. Translate each from Spanish to English (preserve `{var}` placeholders, use `$var` per DSPy convention per AC-1.5)
     4. Store as `prompts.<turn_type>.system` with empty `user` field
 
-- [ ] T-05 [VERIFY] Quality checkpoint: POC files valid
+- [x] T-05 [VERIFY] Quality checkpoint: POC files valid
   - **When:** Done when POC and POC-adjacent files all parse as valid YAML.
   - **Verify:** `python -c "import yaml; [yaml.safe_load(open(f)) for f in ['src/curation/prompts_backtracking.example.yaml','src/export/prompts_frontend.example.yaml','src/factory/prompts_hard_query.example.yaml','src/factory/prompts_trajectory.example.yaml']]; print('V1 PASS')"`
   - **Commit:** `chore(spec): pass quality checkpoint`
   - _Design: All above_
   - **Do:** Run the Python verify script below. If any file fails to parse, stop and report which file caused the failure. If all pass, proceed.
 
-- [ ] T-06 Create prompts_judge.example.yaml from eval_prompts.yaml
+- [x] T-06 Create prompts_judge.example.yaml from eval_prompts.yaml
   - **When:** Done when file exists with 4 prompt groups, `gap_analysis` translated from Spanish, English groups verified for fidelity.
   - **Verify:** `python -c "import yaml; d=yaml.safe_load(open('src/audit/prompts_judge.example.yaml')); assert set(d['prompts'].keys())=={'professor_exam','professor_judge','gap_analysis','professor_judge_calibration'}; print('T-06 PASS')"`
   - **Commit:** `feat(spec): externalize judge/evaluation prompts`
@@ -75,7 +75,7 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
     3. `gap_analysis` is Spanish -> translate to English
     4. `professor_exam`, `professor_judge`, `professor_judge_calibration` are English -> verify fidelity
 
-- [ ] T-07 Create prompts_calibration.example.yaml from list-of-objects
+- [x] T-07 Create prompts_calibration.example.yaml from list-of-objects
   - **When:** Done when file exists with 6 prompt keys (001-006), each with `.system` (parameter_target), `.user` (translated question), and `.metadata` dict.
   - **Verify:** `python -c "import yaml; d=yaml.safe_load(open('src/audit/prompts_calibration.example.yaml')); assert len(d['prompts'])==6; assert all('metadata' in v for v in d['prompts'].values()); print('T-07 PASS')"`
   - **Commit:** `feat(spec): externalize calibration prompts with metadata`
@@ -87,7 +87,7 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
     3. Store `type`, `parameter_target`, `evaluation_focus` as `prompts.<id>.metadata`
     4. Translate questions from Spanish to English
 
-- [ ] T-08 Create prompts_taxonomy.example.yaml from nested YAML
+- [x] T-08 Create prompts_taxonomy.example.yaml from nested YAML
   - **When:** Done when file exists with ~21 prompt group keys, excluded data sections, Spanish translated, agentic_taxonomy difference noted in header.
   - **Verify:** `python -c "import yaml; d=yaml.safe_load(open('src/factory/prompts_taxonomy.example.yaml')); k=list(d['prompts'].keys()); assert len(k)>=18; print(f'T-08 PASS ({len(k)} keys)')"`
   - **Commit:** `feat(spec): externalize taxonomy prompts consolidated`
@@ -102,7 +102,7 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
 
 ## Phase: Verification
 
-- [ ] T-09 [VERIFY] Final verification: all 7 files valid, schema-compliant, no Spanish remaining
+- [x] T-09 [VERIFY] Final verification: all 7 files valid, schema-compliant, no Spanish remaining
   - **Do:**
     1. Run the Python verify script below (checks parse, counts, zero diff)
     2. If any check fails, stop, report the specific failure, and fix
