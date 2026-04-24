@@ -1,8 +1,8 @@
 ---
 name: aegf-infrastructure
 goal: ML Engineer puede validar todo objectivamente con metrics y baselines antes de implementar features. Tiene datos ancla para DSPy MIPROv2 y dependencias compatibles.
-version: 1.0
-date: 2026-04-23
+version: 5.0
+date: 2026-04-24
 status: draft
 storyCount: 4
 specs:
@@ -44,6 +44,29 @@ All 4 stories, acceptance criteria, and user outcomes are sourced directly from 
 | 0.2 Prompt Externalization | `epics.md:230` |
 | 0.3 Anchor Dataset | `epics.md:255` |
 | 0.4 Dependency Compatibility | `epics.md:280` |
+
+## Smart Ralph Sync (2026-04-24)
+
+Corrections applied after the `dependency-compatibility` spec completed verification (19/19 tasks, all QGs APPROVED).
+Changes align BMAD artifacts with verified findings from Smart Ralph deep research.
+
+| Correction | BMAD Claim | Verified Fact | Action |
+|------------|-----------|---------------|--------|
+| dspy-ai deprecated | "dspy-ai package is deprecated" (epics.md v4.0 line 817) | Both `dspy` and `dspy-ai` are active on PyPI (latest 3.2.0). Neither is deprecated. | Removed "deprecated" claim; kept recommendation to use `dspy` directly (avoids unnecessary indirection) |
+| datasets version | `>=2.19,<3.0` (epics.md line 99, 814) | Spec uses exact pin `==2.21.0` per FR-1 version pinning rationale | Aligned both docs to `==2.21.0` |
+| openai version | `openai>=1.0.0` only in dev (epics.md line 316, epic.md line 304/315) | Now pinned `==2.32.0` in requirements.txt. The `>=1.0.0` reference was the pre-existing bug | Updated references to reflect `==2.32.0` |
+| torch statement | "torch via DSPy" in original BMAD Party Mode (corrupted) | Correct: torch is NOT from DSPy (dspy 3.x removed torch dependency) | Already correct in current epics.md — no fix needed |
+| scipy missing | Mentioned in baseline-measurement spec but never in epics.md | scipy is NOT in requirements.txt, NOT in dependency-compatibility scope, NOT installed | Noted as cross-spec gap: baseline-measurement requires scipy but dependency-compatibility never added it. Baseline-measurement must add `scipy` to its own scope |
+| dspy-ai risk | "dspy-ai resolves to dspy (wrapper, do not use)" (research.md) | dspy-ai depends on dspy as a runtime dep. Both packages are active. "Do not use" is advice, not fact | Removed from epic.md implementation notes |
+
+### Sync Status
+
+| Artifact | Status |
+|----------|--------|
+| `_bmad-output/planning-artifacts/epics.md` | Updated v5.0 (deprecated claim, datasets version, openai version) |
+| `specs/_epics/aegf-infrastructure/epic.md` | Updated v5.0 (openai version, sync section added) |
+| `specs/dependency-compatibility` | COMPLETE (19/19 tasks, QG-05 APPROVED) |
+| `specs/baseline-measurement` | scipy gap identified — must add to its own requirements |
 
 ## Scope
 
@@ -301,7 +324,7 @@ All 4 stories, acceptance criteria, and user outcomes are sourced directly from 
 - **datasets 4.x risk:** Latest datasets is 4.8.4 (from 2.21.0). Must pin `datasets==2.21.0` to prevent silent upgrade.
 - **tokenizers/tiktoken Python 3.14:** No wheels available. Must pin `<0.13.0` and ensure CI has Rust toolchain.
 - `datasets==2.21.0` and `tiktoken>=0.7,<0.13` already present (satisfies Spec 3 needs)
-- `openai>=1.0.0` only in dev, not runtime (must move to runtime for DSPy)
+- `openai` was only in dev (was `>=1.0.0`, now pinned `==2.32.0`), moved to runtime for DSPy
 - `google-genai>=1.0` already in requirements.txt as optional inference backend
 
 **MVP Scope:**
@@ -312,7 +335,7 @@ All 4 stories, acceptance criteria, and user outcomes are sourced directly from 
 
 **Dependencies:** None. BMAD lists Spec 2 as a dependency but it's weak -- dependency checks don't depend on prompt structure. Spec 4 should run FIRST to fix the numpy bug early.
 
-**Note:** `openai>=1.0.0` must be moved from `requirements-dev.txt` to `requirements.txt` (runtime dependency for DSPy).
+**Note:** `openai==2.32.0` was moved from `requirements-dev.txt` to `requirements.txt` (runtime dependency for DSPy).
 
 **Interface Contracts:**
 - **Writes:** `infrastructure/dependency_check.py`, `requirements.txt`, `pyproject.toml`, `docs/dependency-compatibility.md`

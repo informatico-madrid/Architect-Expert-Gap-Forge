@@ -5,7 +5,7 @@
     { "name": "baseline-measurement", "status": "pending", "dependencies": ["dependency-compatibility"] },
     { "name": "prompt-externalization", "status": "pending", "dependencies": [] },
     { "name": "anchor-dataset", "status": "pending", "dependencies": ["baseline-measurement", "prompt-externalization"] },
-    { "name": "dependency-compatibility", "status": "pending", "dependencies": [] }
+    { "name": "dependency-compatibility", "status": "completed", "completedAt": "2026-04-24", "qgVerdicts": ["APPROVE", "APPROVE", "APPROVE", "APPROVE", "APPROVE"] }
   ],
   "output": "spec-files",
   "issueNumber": null
