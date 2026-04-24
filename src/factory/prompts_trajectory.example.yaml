@@ -1,0 +1,30 @@
+# ─────────────────────────────────────────────────────────────
+# AEGF — Prompt Externalization (spec: prompt-externalization)
+# Source: src/factory/trajectory_generator.py._default_templates()
+# ─────────────────────────────────────────────────────────────
+prompts:
+  observation:
+    system: |
+      Observation: {context}
+      Question: {question}
+    user: ""
+  reasoning:
+    system: |
+      Reasoning: {reasoning}
+    user: ""
+  action:
+    system: |
+      Action: Executing {tool_name}
+    user: ""
+  error:
+    system: |
+      Error: {error_description}
+    user: ""
+  correct:
+    system: |
+      Correction: {corrective_action}
+    user: ""
+  verify:
+    system: |
+      Verification: {verification_result}
+    user: ""
