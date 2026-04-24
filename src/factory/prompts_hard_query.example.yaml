@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────
+# AEGF — Prompt Externalization (spec: prompt-externalization)
+# Source: src/factory/hard_query_builder.py
+# ─────────────────────────────────────────────────────────────────
+prompts:
+  forbidden_terms:
+    - async_forward_entry_setups
+    - DataUpdateCoordinator
+    - llama al servicio
+    - usa el componente
+    - async_setup_entry
+  problem_focused:
+    system: |
+      Objective: {objective}
+
+      Context: {context}
