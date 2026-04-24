@@ -3,7 +3,12 @@
 # Source: configs/stage_2_factory/taxonomy/home_assistant/prompts_taxonomy.yaml
 #
 # Excluded: version, ha_error_templates, legacy_2023_patterns,
-#           jinja_ha_error_templates, jinja_legacy_2023_patterns, tools_definition
+#           jinja_ha_error_templates, jinja_legacy_2023_patterns
+#
+# NOTE on tools_definition: EXCLUDED — contains Spanish descriptions
+# of tool functions (e.g. "Lista archivos en un directorio...").
+# These are injected into system prompts at runtime in their original
+# Spanish language. Not translated as they are internal tool metadata.
 #
 # NOTE: agentic_taxonomy.yaml is 99% identical to this file.
 # The only difference is in the prompt content — the structure

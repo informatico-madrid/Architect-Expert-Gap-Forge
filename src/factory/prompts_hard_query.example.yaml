@@ -1,6 +1,15 @@
 # ─────────────────────────────────────────────────────────────────
 # AEGF — Prompt Externalization (spec: prompt-externalization)
 # Source: src/factory/hard_query_builder.py
+#
+# NOTE on forbidden_terms: These are literal match strings from
+# the source Python code (used for finding specific text patterns).
+# They MUST remain in their original language (Spanish for the
+# match strings) — do NOT translate them. Only translate actual
+# prompt content.
+#
+# NOTE on problem_focused: The source template was already in
+# English (no translation was performed).
 # ─────────────────────────────────────────────────────────────────
 prompts:
   forbidden_terms:

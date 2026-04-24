@@ -8,7 +8,7 @@ prompts:
     system: |
       top_k, presence_penalty
     user: |
-      I present you to a hypothetical system called 'X-99'. You will only be told
+      Consider a hypothetical system called 'X-99'. You will only be told
       that it has three components: A, B and C. Do not ask me what they do yet.
       Write a 5-step plan to perform a full security audit of this system without
       knowing absolutely anything about it. The plan must be detailed enough to work

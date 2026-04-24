@@ -156,6 +156,40 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
   - **Commit:** `chore(spec): verify all 7 prompt files`
   - _Requirements: FR-1 through FR-9, NFR-1 through NFR-3_
 
+## Phase: Adversarial Fix
+
+Based on adversarial review (13 findings), 3 real issues require fix:
+
+- [ ] T-10 [P] Fix calibration_prompt_001.user grammar
+  - **Do:**
+    1. Read `src/audit/prompts_calibration.example.yaml`
+    2. Line 11: `I present you to a hypothetical system called 'X-99'.` → `Consider a hypothetical system called 'X-99'.`
+    3. Verify YAML still valid
+  - **When:** Done when file parses and grammar is natural English.
+  - **Verify:** `python -c "import yaml; yaml.safe_load(open('src/audit/prompts_calibration.example.yaml')); print('T-10 PASS')"`
+  - **Commit:** `fix(spec): correct calibration_prompt_001.user grammar`
+  - _Adversarial: F6 (MEDIUM severity) — awkward translation may confuse calibrated model_
+
+- [ ] T-11 [P] Add forbidden_terms explanation header to hard_query
+  - **Do:**
+    1. Read `src/factory/prompts_hard_query.example.yaml`
+    2. Add header comment explaining: forbidden_terms are literal match strings from source Python that must remain in Spanish
+    3. Also note that problem_focused was already English in source (no translation needed)
+  - **When:** Done when header clearly explains why Spanish strings exist in an English template.
+  - **Verify:** `python -c "import yaml; yaml.safe_load(open('src/factory/prompts_hard_query.example.yaml')); c=open('src/factory/prompts_hard_query.example.yaml').read(); assert 'literal match' in c.lower(); print('T-11 PASS')"`
+  - **Commit:** `fix(spec): document forbidden_terms language in header`
+  - _Adversarial: F3 + F10 (LOW severity) — consumers without spec context confused by Spanish in English file_
+
+- [ ] T-12 [P] Add tools_definition exclusion note to taxonomy
+  - **Do:**
+    1. Read `src/factory/prompts_taxonomy.example.yaml`
+    2. Update header comment: expand exclusion list to note that tools_definition descriptions are in Spanish and intentionally excluded
+    3. Add sentence: "Tool descriptions remain in Spanish — excluded from translation as they are injected at runtime."
+  - **When:** Done when header explicitly notes tools_definition exclusion and its Spanish language.
+  - **Verify:** `python -c "c=open('src/factory/prompts_taxonomy.example.yaml').read(); assert 'tools_definition' in c; assert 'Spanish' in c; print('T-12 PASS')"`
+  - **Commit:** `fix(spec): document tools_definition exclusion in taxonomy header`
+  - _Adversarial: F11 (LOW-MEDIUM severity) — tool descriptions untranslated, should be documented_
+
 ## Notes
 
 - POC shortcut: T-01 (backtracking) is the simplest source (plain text -> YAML, 2 keys). If this works, the harder sources (Python method extraction, nested YAML flattening) follow the same pattern.
