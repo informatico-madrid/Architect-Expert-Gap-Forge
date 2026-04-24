@@ -125,9 +125,14 @@ grep -q '## 7. Baselines Medidos' docs/dependency-compatibility.md || grep -q '#
 grep -q '## 8. Optional: Torch' docs/dependency-compatibility.md
 
 # All 6 CVE IDs
+CVE_MISSING=0
 for cve in GHSA-r75f-5x8p-qvmc GHSA-jjhc-v7c2-5hh6 GHSA-v4p8-mg3p-g94g GHSA-xqmj-j6mv-4862 GHSA-69x8-hrgq-fjj8 GHSA-53mr-6c8q-9789; do
-  grep -q "$cve" docs/dependency-compatibility.md || echo "MISSING: $cve"
+  grep -q "$cve" docs/dependency-compatibility.md || CVE_MISSING=1
 done
+if [ "$CVE_MISSING" -eq 1 ]; then
+  echo "FAIL: one or more CVE IDs missing from docs"
+  exit 1
+fi
 
 # langchain-core fragility documented
 grep -q 'langchain-core' docs/dependency-compatibility.md
