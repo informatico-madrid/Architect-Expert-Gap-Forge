@@ -57,11 +57,11 @@ Each QG task spawns a DIFFERENT adversarial review sub-agent whose ONLY mission 
 - [x] 01: [VERIFY] requirements.txt version pins
 - [x] 02: [VERIFY] requirements-dev.txt
 - [x] 03: [VERIFY] import success
-- [ ] QG-01: [QUALITY] Adversarial Review — Requirements Files (Product Reviewer)
+- [x] QG-01: [QUALITY] Adversarial Review — Requirements Files (Product Reviewer) — **APPROVED**
 
 ---
 
-- [ ] 04: [VERIFY] pyproject.toml dependencies
+- [x] 04: [VERIFY] pyproject.toml dependencies
 - [ ] 05: [VERIFY] headers and coverage config
 - [ ] 06: [VERIFY] ruff compliance
 - [ ] QG-02: [QUALITY] Adversarial Review — pyproject.toml and Tooling (Architecture Reviewer)
