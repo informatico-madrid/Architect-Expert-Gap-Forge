@@ -62,29 +62,29 @@ Each QG task spawns a DIFFERENT adversarial review sub-agent whose ONLY mission 
 ---
 
 - [x] 04: [VERIFY] pyproject.toml dependencies
-- [ ] 05: [VERIFY] headers and coverage config
-- [ ] 06: [VERIFY] ruff compliance
-- [ ] QG-02: [QUALITY] Adversarial Review — pyproject.toml and Tooling (Architecture Reviewer)
+- [x] 05: [VERIFY] headers and coverage config
+- [x] 06: [VERIFY] ruff compliance
+- [x] QG-02: [QUALITY] Adversarial Review — pyproject.toml and Tooling (Architecture Reviewer) — **APPROVED**
 
 ---
 
-- [ ] 07: [VERIFY] script structure
-- [ ] 08: [VERIFY] script execution
+- [x] 07: [VERIFY] script structure
+- [x] 08: [VERIFY] script execution
 - [x] QG-03: [QUALITY] Adversarial Review — dependency_check.py (Code Quality Reviewer) — **APPROVED**
 
 ---
 
 - [x] 09: [VERIFY] documentation sections
 - [x] 10: [VERIFY] CVE IDs and langchain-core documentation
-- [ ] 11: [VERIFY] decision gate documentation
-- [ ] QG-04: [QUALITY] Adversarial Review — Documentation (Research Reviewer)
+- [x] 11: [VERIFY] decision gate documentation
+- [x] QG-04: [QUALITY] Adversarial Review — Documentation (Research Reviewer) — **APPROVED**
 
 ---
 
-- [ ] 12: [VERIFY] pip install cleanliness
-- [ ] 13: [VERIFY] torch documented as optional
-- [ ] 14: [VERIFY] final integration — run full dependency check
-- [ ] QG-05: [QUALITY] Final Adversarial Review (Chief Reviewer)
+- [x] 12: [VERIFY] pip install cleanliness
+- [x] 13: [VERIFY] torch documented as optional
+- [x] 14: [VERIFY] final integration — run full dependency check
+- [x] QG-05: [QUALITY] Final Adversarial Review (Chief Reviewer) — **APPROVED**
 
 ---
 
