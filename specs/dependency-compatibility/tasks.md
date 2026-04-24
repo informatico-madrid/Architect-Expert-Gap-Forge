@@ -3,7 +3,7 @@
 ## Summary
 
 XS spec — all deliverables already committed to branch `rfactory-factory-frameworks`.
-Tasks are verification-only. Consolidated into **7 tasks** (no redundancy).
+Tasks are verification-only. Consolidated into **6 tasks** (no redundancy).
 
 ## AC Coverage Matrix
 
@@ -11,7 +11,7 @@ Tasks are verification-only. Consolidated into **7 tasks** (no redundancy).
 |-----------|-------------|
 | FR-1: requirements.txt pins | T-01 |
 | FR-1: torch NOT in requirements.txt | T-01 |
-| FR-1: pip install zero warnings | T-03 |
+| FR-1: pip install zero warnings | T-05 |
 | FR-1: openai removed from dev | T-01 |
 | FR-1: pyproject.toml deps + coverage | T-02 |
 | FR-2: docs sections + CVE IDs | T-03 |
@@ -24,7 +24,7 @@ Tasks are verification-only. Consolidated into **7 tasks** (no redundancy).
 | FR-4: ruff check passes | T-01 |
 | FR-4: check_headers passes | T-02 |
 | FR-4: pyright --strict | SKIPPED (not installed in venv — noted in design) |
-| Decision Gate: documented | T-07 |
+| Decision Gate: documented | T-06 |
 
 ---
 
@@ -53,6 +53,15 @@ grep -q 'logger = logging.getLogger(__name__)' infrastructure/dependency_check.p
 ! grep -q 'except:' infrastructure/dependency_check.py || grep -q 'except (FileNotFoundError' infrastructure/dependency_check.py
 grep -q '@dataclass(frozen=True)' infrastructure/dependency_check.py
 grep -q 'OPTIONAL_PACKAGES' infrastructure/dependency_check.py
+
+# dependency_check.py — copyright header (FR-3)
+grep -q 'AEGF' infrastructure/dependency_check.py
+grep -q 'Copyright 2026' infrastructure/dependency_check.py
+grep -q 'SPDX-License-Identifier: Apache-2.0' infrastructure/dependency_check.py
+
+# numpy imports in existing source files (FR-1)
+grep -n 'import numpy' src/audit/eval_bpb.py
+grep -n 'import numpy' scripts/benchmark/measure_performance.py
 
 # ruff
 ruff check infrastructure/
@@ -122,6 +131,9 @@ done
 
 # langchain-core fragility documented
 grep -q 'langchain-core' docs/dependency-compatibility.md
+
+# expected downgrades documented (FR-1)
+grep -qi 'downgrad' docs/dependency-compatibility.md
 ```
 
 **Files:** docs/dependency-compatibility.md
@@ -159,7 +171,11 @@ python -c "import openai; print(openai.__version__)"
 ```bash
 pip install -r requirements.txt 2>&1 | tee /tmp/pip-install.log
 # Check for version conflict warnings (not just exit code)
-grep -i 'conflict\|incompatible\|requires.*but' /tmp/pip-install.log && echo "WARNINGS FOUND" || echo "NO CONFLICTS"
+if grep -qi 'conflict\|incompatible\|requires.*but' /tmp/pip-install.log; then
+  echo "FAIL: version conflicts detected"
+  exit 1
+fi
+echo "No version conflicts"
 ```
 
 **Files:** requirements.txt (runtime verification)
