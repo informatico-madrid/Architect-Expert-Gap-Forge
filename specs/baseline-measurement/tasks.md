@@ -1286,7 +1286,7 @@ Full integration verification, documentation, and final checks.
 **Commit**:
 - `spec(baseline-measurement): end-to-end verification against fixture data`
 
-### Task 5.2: Verify baseline_results/ JSON output schema
+### Task 5.2: [x] Verify baseline_results/ JSON output schema
 
 **Do**:
 1. Read each output file in `baseline_results/` and verify the JSON schema:
@@ -1311,7 +1311,7 @@ Full integration verification, documentation, and final checks.
 **Commit**:
 - `spec(baseline-measurement): verify baseline_results JSON output schema`
 
-### Task 5.3: Verify idempotency — re-running produces same scores
+### Task 5.3: [x] Verify idempotency — re-running produces same scores
 
 **Do**:
 1. Run each script that produces a score (spearman, calibration, mipro) twice with the same inputs:
@@ -1334,7 +1334,7 @@ Full integration verification, documentation, and final checks.
 **Commit**:
 - `spec(baseline-measurement): verify idempotency — same inputs produce same scores`
 
-### Task 5.4: Verify .gitignore includes baseline_results/
+### Task 5.4: [x] Verify .gitignore includes baseline_results/ (confirmed via git ls-files)
 
 **Do**:
 1. Check that `.gitignore` contains `baseline_results/`
