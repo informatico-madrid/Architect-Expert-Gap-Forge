@@ -24,6 +24,7 @@ openai==2.32.0
 
 # Bugfix: previously missing, required by src/audit/eval_bpb.py and scripts/benchmark/measure_performance.py
 numpy==2.4.4
+scipy==1.17.1
 
 # Pinned to prevent 4.x API breakage (datasets 4.x changes core data format)
 datasets==2.21.0
