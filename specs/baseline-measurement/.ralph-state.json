@@ -1,0 +1,31 @@
+{
+  "source": "spec",
+  "name": "baseline-measurement",
+  "basePath": "./specs/baseline-measurement",
+  "epicName": "aegf-infrastructure",
+  "phase": "requirements",
+  "taskIndex": 0,
+  "totalTasks": 0,
+  "taskIteration": 1,
+  "maxTaskIterations": 5,
+  "globalIteration": 1,
+  "maxGlobalIterations": 100,
+  "commitSpec": true,
+  "quickMode": false,
+  "discoveredSkills": [],
+  "awaitingApproval": true,
+  "relatedSpecs": [
+    {
+      "name": "dependency-compatibility",
+      "status": "completed"
+    },
+    {
+      "name": "prompt-externalization",
+      "status": "completed"
+    },
+    {
+      "name": "anchor-dataset",
+      "status": "pending"
+    }
+  ]
+}

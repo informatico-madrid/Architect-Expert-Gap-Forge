@@ -414,3 +414,85 @@ fsspec>=2023.1.0,<2025.0.0  # Pin to match datasets 2.x
 9. **langgraph 0.2.x is the right choice, but 1.x is available.** langgraph 0.2.76 is the latest stable 0.2.x and has no breaking changes from the spec's perspective. 1.x has breaking API changes. **CRITICAL:** Must pin `<1.0` explicitly to prevent accidental upgrade.
 
 10. **datasets and tiktoken are runtime deps, not just dev.** They are used in src/curation/anchor_dataset_downloader.py and should be in pyproject.toml. **CRITICAL:** datasets must be pinned `<3.0` to avoid 4.x API breakage.
+
+---
+
+## DSPy Externalized Prompt Configuration — Additional Research (2026-04-24)
+
+This section was added to answer the prompt externalization spec's dependency on DSPy capabilities. It addresses whether DSPy can manage externally-loaded prompt templates.
+
+### Critical Finding: `dspy.PromptModule` Does NOT Exist
+
+The spec and requirements reference `dspy.PromptModule` as a DSPy class. **This class does not exist in DSPy 3.2.0.** Verified by inspecting `dir(dspy)`.
+
+### How DSPy Actually Manages Prompts
+
+| Mechanism | What It Is | External Config Support |
+|-----------|-----------|------------------------|
+| `dspy.Signature` class docstring | Becomes the system prompt sent to the LM | No — must be Python code |
+| `dspy.InputField(desc="...")` | Field description becomes part of user prompt | No |
+| `dspy.Predict(sig, instructions="...")` | Adds instructions to signature-based prompt | No |
+| `dspy.Module.__init__()` | Constructor; can load external YAML here | **Yes** (custom code) |
+| `dspy.configure(lm=..., adapter=...)` | Sets global defaults | **No prompt loading** |
+
+### DSPy's Actual Capabilities vs Spec Expectations
+
+| Spec Requirement | DSPy Native Support | Reality |
+|-----------------|--------------------|---------|
+| YAML prompt files | **No** | Must load YAML externally in custom code |
+| `.example.yaml` templates | **No** | Must load at runtime |
+| DSPy manages external config | **No** | DSPy manages nothing external — it works with Python objects |
+| English translations in prompts | **No built-in management** | Language is whatever you put in Signature docstrings |
+| DSPy optimizes loaded prompts | **Yes** (MIPROv2) | Optimizes signature instructions, not YAML files |
+| Coexistence with existing taxonomy YAMLs | **No conflict** | DSPy is separate from prompt_builder.py |
+
+### Key Architecture Decision
+
+**DSPy and the existing `PromptManager` serve different purposes:**
+
+- `PromptManager` loads YAML prompts for the Stage 2 Factory pipeline (Spanish prompts, Template-style `$var` substitution)
+- DSPy uses Python Signature classes where docstrings are system prompts
+
+**They do not compete.** The recommended pattern is:
+1. Keep existing `PromptManager` for Stage 2 Factory
+2. Create a parallel `.example.yaml` loading layer for DSPy Signatures
+3. Use a factory function: `yaml_to_signatures(path) -> dict[str, dspy.Signature]`
+
+### DSPy Signature Creation from External Data (Feasible)
+
+Since `dspy.Signature` is a Pydantic BaseModel, signatures can be created dynamically:
+
+```python
+def load_signatures(yaml_path: str) -> dict[str, type]:
+    with open(yaml_path) as f:
+        templates = yaml.safe_load(f)["prompts"]
+    sigs = {}
+    for key, tmpl in templates.items():
+        sig = dspy.Signature(
+            "question, context -> answer",  # field spec
+            instructions=tmpl["system"],     # from YAML
+        )
+        sigs[key] = sig
+    return sigs
+```
+
+This is a standard Python pattern and has no DSPy-specific complexity.
+
+### Risks
+
+1. **Optimization output goes to JSON, not YAML** — If DSPy MIPROv2 optimizes prompts, results save to DSPy's JSON format, not back to `.example.yaml` files
+2. **No prompt versioning in DSPy** — DSPy has no semantic versioning for prompts
+3. **No translation management in DSPy** — No built-in way to track multiple language versions
+4. **Signature recreation overhead** — Creating Signatures at import time means fresh objects each time; caching is optional
+
+### Sources
+
+| Source | Key Point |
+|--------|-----------|
+| `python3 -c "import dspy; print(dir(dspy))"` | No `PromptModule`; only `Module`, `Predict`, `Signature` |
+| `dspy.configure` help text | Only configures: `lm`, `adapter`, `callbacks`, `track_usage` |
+| `dspy.Signature` help text | Is a Pydantic BaseModel; docstring = system prompt |
+| DSPy docs (Context7) | Custom modules load external config in `__init__`; no YAML native support |
+| AEGF `prompt_manager.py` | Existing YAML loading with `yaml.safe_load()` + `.format()` |
+| AEGF `prompts_taxonomy.yaml` | 999 lines Spanish prompts, `$var` Template syntax |
+| AEGF `prompt-externalization/plan.md` | Spec defines 4 `.example.yaml` files with `prompts.{key}.system/user` schema |

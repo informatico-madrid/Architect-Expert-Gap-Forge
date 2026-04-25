@@ -3,15 +3,15 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-04-01T09:17:53Z
+**Last updated:** 2026-04-25T02:35:43Z
 
 ## Directories (1)
 
 | Directory | Specs | Default |
 |-----------|-------|---------|
-| ./specs | 15 | Yes |
+| ./specs | 21 | Yes |
 
-## All Specs (15)
+## All Specs (21)
 
 | Spec | Directory | Phase | Status |
 |------|-----------|-------|--------|
@@ -33,6 +33,14 @@ See [index-state.json](./index-state.json) for machine-readable data.
 | yaml-adapter | ./specs | tasks | 0
 0/0
 0 tasks |
+| frontend-discovery-enhancement | ./specs | execution | 22/27 tasks |
+| module-discovery-auto | ./specs | execution | 50/50 tasks |
+| aegf-infrastructure | ./specs | research |  |
+| _epics | ./specs | new |  |
+| baseline-measurement | ./specs | requirements | awaiting approval |
+| prompt-externalization | ./specs | execution | 10/12 tasks |
+| anchor-dataset | ./specs | new |  |
+| dependency-compatibility | ./specs | research | awaiting approval |
 
 ---
 
