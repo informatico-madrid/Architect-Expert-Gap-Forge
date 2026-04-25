@@ -12,13 +12,10 @@
 **Priority**: MUST
 **Dependencies**: Spec: dependency-compatibility (adds numpy)
 
-As an ML Engineer, I want scipy==1.17.1 declared in requirements.txt, pyproject.toml, and dependency_check.py so that the Spearman correlation baseline script can import scipy.stats.spearmanr.
+As an ML Engineer, I want scipy==1.17.1 declared in requirements.txt, pyproject.toml, and dependency_check.py so that the Spearman correlation baseline script can import scipy.stats.spearmanr. (See FR-001 for full specification.)
 
 **Acceptance Criteria**:
-- [ ] scipy==1.17.1 appears in requirements.txt
-- [ ] scipy==1.17.1 appears in pyproject.toml dependencies section
-- [ ] scipy appears in infrastructure/dependency_check.py PACKAGE_IMPORT_MAP
-- [ ] pip install scipy==1.17.1 works in the project environment (Python 3.14.3) — gating prerequisite; if it fails, escalate before proceeding
+- [ ] scipy==1.17.1 is importable in the project Python 3.14.3 environment (`python -c 'import scipy'` succeeds) — gating prerequisite; if it fails, escalate before proceeding
 
 ### US-2: Spearman correlation baseline
 **Priority**: MUST
@@ -206,21 +203,21 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 - [FR-002.2] Script MUST accept --dataset argument: a JSON file with two top-level keys `baseline_composites` (array of floats) and `adapter_composites` (array of floats), same length. If input has `judge_scores` instead of pre-computed composites, derives composites using SCORING_WEIGHTS.
 - [FR-002.3] Script MUST accept --output path argument (default: baseline_results/spearman_judge_baseline.json)
 - [FR-002.4] Script MUST import and use SCORING_WEIGHTS from src/audit/schema.py
-- [FR-002.5] Script MUST compute composite score: sum(score[dim] * weight for dim, weight in SCORING_WEIGHTS.items()) if input has judge_scores
+- [FR-002.5] Script MUST prefer pre-computed `composite_score` from fixture data when available (avoids floating-point discrepancies with SCORING_WEIGHTS). Only compute composite from judge_scores using SCORING_WEIGHTS when composite_score field is missing.
 - [FR-002.6] Script MUST call scipy.stats.spearmanr(baseline_composites, adapter_composites, method='auto') — relies on scipy 1.17.1 default auto-selection
 - [FR-002.7] Script MUST filter NaN values from both arrays before computation, preserving index pairing
 - [FR-002.8] Script MUST handle n=0: returns structured error with status="no_valid_data", rho="uncomputable", p_value="uncomputable". Script MUST handle n=1: status="single_sample_undefined". Script MUST handle n=2: status="insufficient_samples", reason="rho for 2 points is always ±1.0 (perfect correlation), meaningless for baseline"
-- [FR-002.9] Script MUST handle constant input: pre-checks len(set())<=1 BEFORE calling spearmanr; returns status="constant_input", rho=0.0, p_value=1.0
+- [FR-002.9] Script MUST handle constant input: pre-checks len(set(baseline_composites))<=1 OR len(set(adapter_composites))<=1 BEFORE calling spearmanr; returns status="constant_input", rho=0.0, p_value=1.0
 - [FR-002.10] Script MUST determine method="exact" for n<10, method="asymptotic" for n>=10 — this is implementation logic passed to scipy, not returned by scipy in its result
 - [FR-002.11] Script MUST output JSON with type="spearman_baseline", timestamp (ISO8601), score (float for ok, string "uncomputable" for edge cases), details (p_value, n, method, status, reason)
 - [FR-002.12] Script MUST validate input JSON has expected structure (baseline_composites and adapter_composites keys present) before processing
-- [FR-002.13] Script MUST accept two top-level keys `baseline_composites` and `adapter_composites` in the dataset JSON, both arrays of equal length
-- [FR-002.14] If only one data source available (only baseline or only adapter), exits with code 1 and clear error listing expected paired data
+- [FR-002.13] Script MUST validate that len(baseline_composites) == len(adapter_composites). If mismatched, exits 1 with error: "Array length mismatch: baseline has N values, adapter has M values. Both must be equal."
+- [FR-002.14] If input JSON has invalid key types (e.g., baseline_composites is not an array), exits 1 with error listing expected top-level keys and their required types.
 
 ### FR-003: Calibration baseline script
 - [FR-003.1] Script MUST exist at infrastructure/baselines/run_calibration_baseline.py
 - [FR-003.2] Script MUST auto-detect data stage: if any result entry contains Stage 6 keys (parameter_effectiveness, coherence, parameter_alignment, task_completion, style), treats as Stage 6; otherwise treats as Stage 5. MUST log the decision.
-- [FR-003.3] Script MUST capture mean coherence: for Stage 6 data, uses judge_scores["coherence"]; for Stage 5 data (like calibration_examples.json), coherence is NOT available and MUST output mean_coherence=null (Stage 5 dimensions are ha_modernity/reasoning_depth/functionality/completeness/style — coherence is exclusively a Stage 6 dimension)
+- [FR-003.3] Script MUST capture mean coherence: for Stage 6 data, uses judge_scores["coherence"]; for Stage 5 data, coherence is NOT available and MUST output mean_coherence=null (Stage 5 dimensions are ha_modernity/reasoning_depth/functionality/completeness/style — coherence is exclusively a Stage 6 dimension). NOTE: calibration_examples.json contains ONLY Stage 5 data (zero entries with coherence).
 - [FR-003.4] Script MUST source LDI from pre-computed values ONLY. MUST NOT compute LDI itself. Reads from --ldi-source file (JSON or JSONL where each record has "ldi" float field). If SampleRecord.ldi data available, uses that.
 - [FR-003.5] Script MUST accept --dataset path argument (JSON file with "calibration_results" array or top-level array of records) and --output path argument
 - [FR-003.6] Script MUST accept optional --ldi-source argument (JSON/JSONL file path; default: null) to specify LDI data file
@@ -241,17 +238,19 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 - [FR-004.5] If CalibrationReport exists but is malformed, missing statistics key, or execution_time_seconds is null: treats as "no report available", logs warning, falls back to estimated mode
 - [FR-004.6] If no CalibrationReport exists, computes estimated duration = total_iterations x avg_latency_seconds (default 0.5s, UNVERIFIED PLACEHOLDER, configurable via --avg-latency). NOT an actual grid execution. (source: "estimated")
 - [FR-004.7] Script MUST output JSON with type="mipro_compile", timestamp (ISO8601), score (duration_seconds), details (grid_config, profiles_tested, total_iterations, source, avg_latency_seconds)
-- [FR-004.8] Script MUST accept optional --num-prompts argument (default: 6) and --avg-latency argument (default: 0.5, documented as unverified placeholder)
+- [FR-004.8] Script MUST accept optional --num-prompts argument (default: 6) and --avg-latency argument (default: 0.5). When source is "estimated", MUST print to stderr: "WARNING: This is an ESTIMATED duration based on placeholder values. Actual compile time may differ significantly. Use --avg-latency with measured values." Output JSON details MUST include "estimated: true" when source is estimated.
 
 ### FR-005: Rollback verification script
 - [FR-005.1] Script MUST exist at infrastructure/rollback_check.py
 - [FR-005.2] Script MUST create a test commit (git add + git commit) in an isolated environment (temporary git worktree or cloned repo) to avoid affecting the developer's working tree
 - [FR-005.3] Script MUST measure git revert HEAD duration using time.perf_counter() — reverts the test commit itself (HEAD), not a prior commit (HEAD~1). The "clean working tree" check applies only to the isolated environment.
-- [FR-005.4] Script MUST verify < 60 second threshold (NFR-009)
+- [FR-005.4] Script MUST verify < 60 second threshold (NFR-005)
 - [FR-005.5] Script MUST verify git status is clean in the isolated environment only: no modified tracked files, no untracked files created by the script, no staged changes
 - [FR-005.6] Script MUST return exit code 0 if within target, 1 if exceeded
 - [FR-005.7] Script MUST clean up the isolated environment (remove temporary worktree/clone) after verification
 - [FR-005.8] Script MUST register atexit handler to clean up isolated environment on normal exit. MUST handle SIGINT and SIGTERM signals for cleanup. Errors during cleanup are non-fatal.
+- [FR-005.9] Script MUST print to stdout: "Creating isolated test environment...", "Test commit created: <hash>", "git revert HEAD completed in X.XXs (<threshold>s)" on success, "git revert HEAD exceeded threshold: X.XXs > 60s" on failure, "Cleaning up test environment..."
+- [FR-005.10] Script MUST print any errors (git failures, worktree creation failures) to stderr.
 
 ### FR-006: Project structure
 - [FR-006.1] infrastructure/baselines/ directory MUST be created with __init__.py
@@ -262,8 +261,13 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 - [FR-006.6] All scripts MUST pass pyright type checking
 - [FR-006.7] All scripts MUST include Apache-2.0 license header (3 tokens within first 4096 bytes)
 - [FR-006.8] All scripts MUST write output files atomically: write to `<output>.tmp` then `os.rename(tmp, output)`. After rename, call os.fsync() on the output file. Scripts MUST be idempotent — re-running with the same inputs produces the same score and details (timestamp may differ).
-- [FR-006.9] All scripts MUST support --dry-run flag: reads and validates input data, prints summary stats, exits 0 without writing output file.
-- [FR-006.10] All scripts that import from src/ MUST prepend project root to sys.path: `sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))`. MUST create output directory if missing: `os.makedirs(os.path.dirname(output), exist_ok=True)`.
+- [FR-006.9] All scripts MUST support --dry-run flag: reads and validates input data, prints summary stats to stdout, exits 0 without writing output file. Dry-run output MUST include: input file path and size, number of records detected, target output path (full resolved path), edge case status if data is insufficient, "DRY RUN complete. No output file written."
+- [FR-006.10] All scripts that import from src/ MUST ensure the project root is resolvable in the Python import path. Recommended: `sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))`. MUST create output directory if missing: `os.makedirs(os.path.dirname(output), exist_ok=True)`. NOTE: if pyright reports import errors for src/ imports, add `infrastructure/baselines/` to pyright exclude list in pyproject.toml.
+- [FR-006.11] All scripts MUST include `description` text on ArgumentParser and `help` text on every argument.
+- [FR-006.12] Output policy: stdout — output file writes only, plus --dry-run summary; stderr — error messages (_die output), progress updates during long operations; logging — debug/trace detail at INFO level for user-facing status.
+- [FR-006.13] If output file exists and is non-empty, print warning to stderr: "Output file exists: {path}. Overwriting." Include a --no-overwrite flag that exits 1 instead of overwriting.
+- [FR-006.14] All path arguments support absolute paths, relative paths (resolved from CWD), and ~ expansion. Output paths resolved relative to CWD.
+- [FR-006.15] Error messages on common failure paths: file not found errors include the file path ("Cannot read {path}: No such file"), invalid JSON errors include the file path, array length mismatches include both lengths.
 
 ---
 
@@ -383,10 +387,13 @@ This spec creates CLI scripts in `infrastructure/baselines/` that read data from
 - Atomic writes: all output files must be written atomically (temp file + rename) to prevent corruption on interrupt
 
 **Seed data**:
-- `tests/fixtures/calibration_examples.json`: 4 entries with composite_score (Stage 5). Use for Spearman baseline composite scores.
-- `tests/fixtures/judge_scoring_response.json`: full judge output (reference)
+- `tests/fixtures/calibration_examples.json`: 4 entries with composite_score (Stage 5). NOT suitable for Spearman baseline (lacks paired baseline+adapter scores). Only useful for calibration baseline (mean_coherence will be null).
+- `tests/fixtures/judge_scoring_response.json`: full judge output (reference). May be used to derive baseline+adapter composites for Spearman testing (extract baseline/adapter dicts from NormalizedJudgeResponse).
+- `tests/fixtures/inference_results.json`: baseline + adapter responses (text). May be used to derive composites for Spearman testing.
 - `src/audit/schema.py`: SCORING_WEIGHTS constant (required import)
 - `src/audit/calibration_schema.py`: CALIBRATION_GRID constant (required import for calibration/mipro baselines)
+
+**NOTE on Spearman testing**: No existing fixture provides paired `baseline_composites` and `adapter_composites` arrays. Testing will use either (a) extracted composites from judge_scoring_response.json or inference_results.json, or (b) synthetic data for verification. Epic 1 test suite should provide dedicated Spearman reference fixture.
 
 **Dependency map**:
 - `dependency-compatibility` spec: shares requirements.txt and pyproject.toml for scipy declaration
