@@ -77,7 +77,7 @@ def validate_input_file(
     # Path traversal: reject if resolved path is outside allowed directories
     if allowed_dirs is None:
         # Default: allow files under the project root (parent of infrastructure/)
-        allowed_dirs = (str(Path(__file__).resolve().parent.parent),)
+        allowed_dirs = (str(Path(__file__).resolve().parent.parent.parent),)
     allowed_resolved = [Path(d).resolve() for d in allowed_dirs]
     for allowed in allowed_resolved:
         try:
