@@ -25,10 +25,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+project_root = str(Path(__file__).resolve().parent.parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from infrastructure.baselines._shared import (
     BaselineError,
     validate_input_file,
 )
+from src.audit.calibration_schema import CALIBRATION_GRID
 
 logger = logging.getLogger(__name__)
 
