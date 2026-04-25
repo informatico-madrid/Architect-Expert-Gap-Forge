@@ -270,17 +270,13 @@ def _impl(args: argparse.Namespace) -> int:
         score = None
         p_value = None
         reason = "All data points are NaN or non-numeric"
-        score_description = (
-            "Spearman correlation could not be computed: all data points are NaN or non-numeric"
-        )
+        score_description = "rho: Spearman rank correlation, range [-1, 1]"
     elif n == 1:
         status = "single_sample_undefined"
         score = None
         p_value = None
         reason = "Single sample — correlation is undefined"
-        score_description = (
-            "Spearman correlation is undefined for a single sample"
-        )
+        score_description = "rho: Spearman rank correlation, range [-1, 1]"
     elif n == 2:
         status = "insufficient_samples"
         score = None
@@ -288,9 +284,7 @@ def _impl(args: argparse.Namespace) -> int:
         reason = (
             "rho for 2 points is always ±1.0 (perfect correlation), meaningless for baseline"
         )
-        score_description = (
-            "Spearman correlation for 2 points is always perfect (±1.0), not meaningful for baseline"
-        )
+        score_description = "rho: Spearman rank correlation, range [-1, 1]"
     else:
         # Check for constant input
         b_constant = all(math.isclose(paired_b[0], v) for v in paired_b)
@@ -300,9 +294,7 @@ def _impl(args: argparse.Namespace) -> int:
             score = 0.0
             p_value = 1.0
             reason = "One or both arrays contain constant values"
-            score_description = (
-                "Spearman correlation is 0.0 (p=1.0) because one or both arrays are constant"
-            )
+            score_description = "rho: Spearman rank correlation, range [-1, 1]"
         else:
             # 2. Determine method: n<10 → "exact", n>=10 → "asymptotic"
             method = "exact" if n < 10 else "asymptotic"
@@ -332,9 +324,7 @@ def _impl(args: argparse.Namespace) -> int:
             score = round(rho, 10)
             p_value = round(p_val, 10)
             status = "ok"
-            score_description = (
-                f"Spearman rank correlation (n={n}, method={method}): rho={score:.4f}, p={p_val:.6g}"
-            )
+            score_description = "rho: Spearman rank correlation, range [-1, 1]"
 
     # 5. Build output JSON
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -347,18 +337,15 @@ def _impl(args: argparse.Namespace) -> int:
         "score_description": score_description,
         "details": {
             "method": "exact" if n < 10 else ("asymptotic" if n >= 10 else None),
-            "n_valid_pairs": n,
+            "n": n,
+            "p_value": None,
             "reason": reason if status != "ok" else None,
         },
     }
 
-    # Include p_value in details when available
-    if status == "ok":
+    # Overwrite p_value with actual value when available
+    if status in ("ok", "constant_input"):
         output_dict["details"]["p_value"] = p_value
-    elif status == "constant_input":
-        output_dict["details"]["p_value"] = p_value
-    else:
-        output_dict["details"]["p_value"] = None
 
     # 6. Sanitize output dict (handles NaN/inf → null, numpy floats)
     output_dict = _sanitize_output_dict(output_dict)
