@@ -66,6 +66,9 @@ def detect_stage(results: list[dict[str, Any]]) -> str:
     has_stage6: list[bool] = []
     for entry in results:
         js = entry.get("judge_scores", {})
+        if not isinstance(js, dict):
+            has_stage6.append(False)
+            continue
         has_stage6_keys = bool(set(js.keys()) & STAGE_6_KEYS)
         has_stage6.append(has_stage6_keys)
 
@@ -143,11 +146,12 @@ def main(argv: list[str] | None = None) -> int:
     return _impl(args)
 
 
-def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float | None]:
+def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float | None, int]:
     """Parse an LDI source file (JSON or JSONL) and compute mean + pass rate.
 
     Returns:
-        (mean_ldi, ldi_pass_rate) — both None if no valid numeric LDI values.
+        (mean_ldi, ldi_pass_rate, record_count) — mean/pass_rate are None if no
+        valid numeric LDI values; record_count is total records parsed.
         LDI pass rate is computed as count(ldi >= threshold) / count(valid_numeric_ldi).
     """
     try:
@@ -169,6 +173,8 @@ def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float
     if not isinstance(data, list):
         data = [data]
 
+    record_count = len(data)
+
     ldi_values: list[float] = []
     for record in data:
         if not isinstance(record, dict):
@@ -182,11 +188,11 @@ def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float
             logger.warning("Non-numeric LDI value (%s) — excluding from mean/pass_rate", raw_val)
 
     if not ldi_values:
-        return None, None
+        return None, None, record_count
 
     mean_ldi = sum(ldi_values) / len(ldi_values)
     ldi_pass_rate = sum(1 for v in ldi_values if v >= threshold) / len(ldi_values)
-    return mean_ldi, ldi_pass_rate
+    return mean_ldi, ldi_pass_rate, record_count
 
 
 def _impl(args: argparse.Namespace) -> int:
@@ -245,18 +251,7 @@ def _impl(args: argparse.Namespace) -> int:
 
     if ldi_path is not None:
         try:
-            mean_ldi, ldi_pass_rate = _parse_ldi_source(ldi_path, args.ldi_threshold)
-            # Count records for dry-run reporting
-            try:
-                ldi_raw = ldi_path.read_text(encoding="utf-8")
-                ldi_data = json.loads(ldi_raw)
-                if isinstance(ldi_data, list):
-                    ldi_record_count = len(ldi_data)
-                else:
-                    ldi_record_count = 1
-            except (json.JSONDecodeError, Exception):
-                # JSONL fallback — count non-empty lines
-                ldi_record_count = sum(1 for line in ldi_raw.strip().splitlines() if line.strip())
+            mean_ldi, ldi_pass_rate, ldi_record_count = _parse_ldi_source(ldi_path, args.ldi_threshold)
         except Exception as e:
             logger.warning("LDI source failed: %s — treating as missing", e)
             mean_ldi = None
@@ -307,26 +302,25 @@ def _impl(args: argparse.Namespace) -> int:
 
     # ── Dry-run: report and exit ──────────────────────────────────────────
     if args.dry_run:
-        info = f"Dataset: {dataset_path} ({dataset_path.stat().st_size} bytes, {len(results)} records)"
-        logger.info("%s", info)
-        logger.info("Detected stage: %s", stage)
+        print(f"Dataset: {dataset_path} ({dataset_path.stat().st_size} bytes, {len(results)} records)")
+        print(f"Detected stage: {stage}")
         if mean_coherence is not None:
-            logger.info("Mean coherence: %.6f", mean_coherence)
+            print(f"Mean coherence: {mean_coherence:.6f}")
         else:
-            logger.info("Mean coherence: N/A (no valid values)")
+            print("Mean coherence: N/A (no valid values)")
         if ldi_path is not None:
-            logger.info("LDI source: %s (%d records)", ldi_path, ldi_record_count)
+            print(f"LDI source: {ldi_path} ({ldi_record_count} records)")
             if mean_ldi is not None:
-                logger.info("Mean LDI: %.6f", mean_ldi)
+                print(f"Mean LDI: {mean_ldi:.6f}")
             else:
-                logger.info("Mean LDI: N/A (no valid numeric values)")
+                print("Mean LDI: N/A (no valid numeric values)")
             if ldi_pass_rate is not None:
-                logger.info("LDI pass rate (>= %.2f): %.6f", args.ldi_threshold, ldi_pass_rate)
+                print(f"LDI pass rate (>= {args.ldi_threshold:.2f}): {ldi_pass_rate:.6f}")
             else:
-                logger.info("LDI pass rate: N/A")
+                print("LDI pass rate: N/A")
         else:
-            logger.info("LDI source: not provided")
-        logger.info("DRY RUN complete. No output file written.")
+            print("LDI source: not provided")
+        print("DRY RUN complete. No output file written.")
         return 0
 
     # ── Build output JSON ─────────────────────────────────────────────────
@@ -336,7 +330,7 @@ def _impl(args: argparse.Namespace) -> int:
     output: dict[str, Any] = {
         "schema_version": "1",
         "type": "calibration_baseline",
-        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S") + "Z",
+        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "score": round(mean_composite, 6) if mean_composite is not None else None,
         "status": "ok",
         "score_description": "mean_coherence: average coherence score, range [0, 1]",
@@ -352,7 +346,7 @@ def _impl(args: argparse.Namespace) -> int:
 
     # ── Output: no-overwrite check ────────────────────────────────────────
     output_path = Path(args.output)
-    if args.no_overwrite and output_path.exists():
+    if args.no_overwrite and output_path.exists() and output_path.stat().st_size > 0:
         logger.error("Output file already exists: %s", output_path)
         return 1
 

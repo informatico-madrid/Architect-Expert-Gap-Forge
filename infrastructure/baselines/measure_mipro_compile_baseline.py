@@ -190,7 +190,7 @@ def _impl(args: argparse.Namespace) -> int:
     output_parent = output_path.parent.resolve()
 
     # no-overwrite check
-    if args.no_overwrite and output_path.exists():
+    if args.no_overwrite and output_path.exists() and output_path.stat().st_size > 0:
         raise BaselineError(
             f"Output file already exists: {output_path}. "
             "Remove it or drop --no-overwrite."
