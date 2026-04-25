@@ -8835,3 +8835,4 @@ build/lib/utils/extractors/extractors/lit_component.py
 build/lib/utils/extractors/extractors/service_call.py
 build/lib/utils/extractors/extractors/yaml_base.py
 build/lib/utils/extractors/parsers/translation_json.py
+baseline_results/
