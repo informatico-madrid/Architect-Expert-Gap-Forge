@@ -61,11 +61,12 @@ def validate_input_file(
     Raises:
         BaselineError: If the file fails any validation check.
     """
-    p = Path(path).resolve()
+    p = Path(path)
     if p.is_symlink():
         raise BaselineError(
             f"Input file is a symlink: {p}. Refusing to follow symlinks for security."
         )
+    p = p.resolve()
     if not p.is_file():
         raise BaselineError(f"Input is not a regular file: {p}.")
     size = p.stat().st_size
@@ -195,12 +196,35 @@ def _make_json_safe(value: Any) -> Any:
     return value
 
 
+def _is_float_like(v: Any) -> bool:
+    """Check if value is a float-like type (including numpy float64, numpy.float32).
+
+    Uses math.isnan()/math.isinf() which work on any float-like type, unlike
+    isinstance(v, float) which returns False for numpy float types.
+    Explicitly excludes bool and int types (including numpy integer types).
+    """
+    if isinstance(v, (bool, int)):
+        return False
+    try:
+        math.isnan(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+    try:
+        math.isinf(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
 def _sanitize_output_dict(d: dict[str, Any]) -> dict[str, Any]:
     """Recursively sanitize dict and lists: replace NaN/inf floats with None (null).
 
     R3: Also handles list values -- if any output dict contains a list of floats,
     NaN values inside lists would otherwise pass through unsanitized and produce
     invalid JSON (bare NaN literal, not null).
+
+    Uses math.isnan()/math.isinf() for float detection to catch numpy float types
+    (numpy.float64, numpy.float32) that isinstance(v, float) misses.
 
     This function is MANDATORY: every script must call it before json.dump().
     Python's json.dumps() has allow_nan=True by default, producing invalid
@@ -214,10 +238,13 @@ def _sanitize_output_dict(d: dict[str, Any]) -> dict[str, Any]:
     """
     result: dict[str, Any] = {}
     for k, v in d.items():
-        if isinstance(v, float) and not isinstance(v, bool):
-            if math.isnan(v) or math.isinf(v):
-                result[k] = None
-            else:
+        if _is_float_like(v):
+            try:
+                if math.isnan(v) or math.isinf(v):  # type: ignore[arg-type]
+                    result[k] = None
+                else:
+                    result[k] = v
+            except (TypeError, ValueError):
                 result[k] = v
         elif isinstance(v, dict):
             result[k] = _sanitize_output_dict(v)
@@ -231,13 +258,15 @@ def _sanitize_output_dict(d: dict[str, Any]) -> dict[str, Any]:
 def _sanitize_list_item(v: Any) -> Any:
     """Sanitize a single list item: recurse if dict/list, sanitize float.
 
-    Handles numpy float types (numpy.float64, numpy.float32) because they
-    are subclasses of Python's float, so isinstance(v, float) catches them.
-    Also uses math.isnan()/math.isinf() which work on any float-like type.
+    Uses _is_float_like() to catch numpy float types (numpy.float64, numpy.float32).
     """
-    if isinstance(v, float) and not isinstance(v, bool):
-        if math.isnan(v) or math.isinf(v):
-            return None
+    if _is_float_like(v):
+        try:
+            if math.isnan(v) or math.isinf(v):  # type: ignore[arg-type]
+                return None
+        except (TypeError, ValueError):
+            pass
+        return v
     elif isinstance(v, dict):
         return _sanitize_output_dict(v)
     elif isinstance(v, list):

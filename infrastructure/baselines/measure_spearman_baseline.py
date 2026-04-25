@@ -25,8 +25,12 @@ to a JSON file with atomic write and file locking.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import math
+import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 project_root = str(Path(__file__).resolve().parent.parent.parent)
@@ -39,6 +43,7 @@ from infrastructure.baselines._shared import (
     release_lock,
     validate_input_file,
     write_output_atomic,
+    _is_float_like,
 )
 from src.audit.schema import SCORING_WEIGHTS
 
@@ -111,6 +116,25 @@ def main(argv: list[str] | None = None) -> int:
     return _impl(args)
 
 
+def _derive_composite(scores: dict[str, float]) -> float:
+    """Derive composite score from judge_scores dict using SCORING_WEIGHTS.
+
+    Prefers pre-computed composite_score when available (FR-002.5).
+
+    Args:
+        scores: Dict of dimension names to float scores.
+
+    Returns:
+        Computed composite score.
+    """
+    if "composite_score" in scores:
+        return scores["composite_score"]
+    total = 0.0
+    for dim, weight in SCORING_WEIGHTS.items():
+        total += scores.get(dim, 0.0) * weight
+    return total
+
+
 def _impl(args: argparse.Namespace) -> int:
     """Actual implementation logic.
 
@@ -121,6 +145,125 @@ def _impl(args: argparse.Namespace) -> int:
         Exit code (0 for success, 1 for error).
     """
     logger.info("spearman baseline CLI initialized")
+
+    dataset = Path(args.dataset)
+    output = Path(args.output)
+
+    # --- Input validation pipeline ---
+    try:
+        validate_input_file(dataset)
+    except BaselineError as e:
+        _die(str(e))
+
+    # Read and parse JSON
+    try:
+        raw = json.loads(dataset.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        _die(f"Invalid JSON in dataset: {e}")
+    except OSError as e:
+        _die(f"Cannot read dataset file: {e}")
+
+    # Validate JSON has required keys
+    if "baseline_composites" not in raw:
+        _die("Missing required key 'baseline_composites' in dataset JSON")
+    if "adapter_composites" not in raw:
+        _die("Missing required key 'adapter_composites' in dataset JSON")
+
+    baseline_raw = raw["baseline_composites"]
+    adapter_raw = raw["adapter_composites"]
+
+    # Validate both values are lists
+    if not isinstance(baseline_raw, list):
+        _die(f"'baseline_composites' must be a list, got {type(baseline_raw).__name__}")
+    if not isinstance(adapter_raw, list):
+        _die(f"'adapter_composites' must be a list, got {type(adapter_raw).__name__}")
+
+    # Derive composites: handle pre-computed composites or judge_scores
+    # None/null entries are accepted (treated as NaN, filtered later)
+    baseline_composites: list[float | None] = []
+    adapter_composites: list[float | None] = []
+
+    for i, (b_entry, a_entry) in enumerate(zip(baseline_raw, adapter_raw)):
+        # If entries are dicts with judge_scores, derive composite
+        if isinstance(b_entry, dict):
+            baseline_composites.append(_derive_composite(b_entry))
+        elif b_entry is None or _is_float_like(b_entry):
+            baseline_composites.append(float(b_entry) if b_entry is not None else None)
+        else:
+            _die(
+                f"baseline_composites[{i}] has invalid type {type(b_entry).__name__}, expected float"
+            )
+
+        if isinstance(a_entry, dict):
+            adapter_composites.append(_derive_composite(a_entry))
+        elif a_entry is None or _is_float_like(a_entry):
+            adapter_composites.append(float(a_entry) if a_entry is not None else None)
+        else:
+            _die(
+                f"adapter_composites[{i}] has invalid type {type(a_entry).__name__}, expected float"
+            )
+
+    # Validate lengths are equal
+    if len(baseline_composites) != len(adapter_composites):
+        _die(
+            f"Array length mismatch: baseline has {len(baseline_composites)} values, "
+            f"adapter has {len(adapter_composites)} values"
+        )
+
+    # Filter NaN/None values, preserving index pairing
+    paired_b: list[float] = []
+    paired_a: list[float] = []
+    for b, a in zip(baseline_composites, adapter_composites):
+        b_nan = b is None or (isinstance(b, float) and math.isnan(b))
+        a_nan = a is None or (isinstance(a, float) and math.isnan(a))
+        if not (b_nan or a_nan):
+            paired_b.append(b)
+            paired_a.append(a)
+
+    n = len(paired_b)
+    logger.info("Validated %d records after NaN filtering", n)
+
+    # --- Dry-run mode ---
+    if args.dry_run:
+        file_path = dataset.resolve()
+        file_size = file_path.stat().st_size
+        method = "exact" if n < 10 else "asymptotic"
+
+        print(f"Input file: {file_path}")
+        print(f"File size: {file_size} bytes")
+        print(f"Records (after NaN filtering): {n}")
+        print(f"Expected method: {method}")
+
+        if n < 3:
+            if n == 0:
+                print("Edge case: No valid data points after NaN filtering")
+            elif n == 1:
+                print("Edge case: Single data point -- correlation is undefined")
+            else:
+                print("Edge case: Only 2 data points -- correlation is always +-1.0")
+
+        print("DRY RUN complete. No output file written.")
+        return 0
+
+    # --- No-overwrite check ---
+    if output.exists() and output.stat().st_size > 0:
+        if args.no_overwrite:
+            _die(
+                f"Output file already exists: {output}. "
+                f"Use --no-overwrite to prevent overwriting."
+            )
+        else:
+            print(
+                f"Output file exists: {output}. Overwriting.",
+                file=sys.stderr,
+            )
+
+    # --- Output directory creation ---
+    os.makedirs(output.parent, exist_ok=True)
+
+    # --- Placeholder for Task 1.10: computation and output ---
+    # Input validation is complete; computation will be added in Task 1.10
+    logger.info("Input validation passed. Ready for computation (Task 1.10).")
     return 0
 
 
