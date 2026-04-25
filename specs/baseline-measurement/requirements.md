@@ -153,12 +153,15 @@ All baseline scripts output JSON matching this schema:
 
 ```json
 {
+  "schema_version": "1",
   "type": "spearman_baseline|calibration_baseline|mipro_compile",
   "timestamp": "ISO8601",
   "score": <float or string "uncomputable">,
   "details": {}
 }
 ```
+
+Output JSON MUST include `schema_version` field set to `"1"` for forward compatibility. Future schema changes MUST increment this field. Scripts reading output files MUST check schema_version and warn if unknown version.
 
 **Score semantics** (MUST check `type` before interpreting `score`):
 - **Spearman**: `score` = rho (range -1 to 1, correlation coefficient). String "uncomputable" when edge case prevents computation.
@@ -213,6 +216,10 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 - [FR-002.12] Script MUST validate input JSON has expected structure (baseline_composites and adapter_composites keys present) before processing
 - [FR-002.13] Script MUST validate that len(baseline_composites) == len(adapter_composites). If mismatched, exits 1 with error: "Array length mismatch: baseline has N values, adapter has M values. Both must be equal."
 - [FR-002.14] If input JSON has invalid key types (e.g., baseline_composites is not an array), exits 1 with error listing expected top-level keys and their required types.
+- [FR-002.15] Script MUST reject input files that are symlinks (not regular files). Exits 1 with error: "Input file is a symlink: {path}. Refusing to follow symlinks for security."
+- [FR-002.16] Script MUST reject empty input files (zero bytes) or JSON files containing empty arrays. Exits 1 with error indicating no data to process.
+- [FR-002.17] Script MUST reject input files exceeding 10 MB. Exits 1 with error: "Input file exceeds 10 MB limit: {path} ({size} bytes)."
+- [FR-002.18] Script MUST validate computed rho is in range [-1.0, 1.0]. If outside, logs warning and uses clamped value, noting clamp in details.
 
 ### FR-003: Calibration baseline script
 - [FR-003.1] Script MUST exist at infrastructure/baselines/run_calibration_baseline.py
@@ -229,6 +236,12 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 - [FR-003.12] ldi_pass_rate is the fraction of records in --ldi-source where LDI >= ldi_threshold. ldi_threshold configurable via --ldi-threshold argument (default: 0.01). ldi_pass_rate computed from --ldi-source records ONLY, NOT from --dataset.
 - [FR-003.13] If LDI data is unavailable (no --ldi-source given or file not found or unparseable): output mean_ldi=null, ldi_pass_rate=null, log a warning, and exit 0 (does not fail)
 - [FR-003.14] If coherence data is unavailable: output mean_coherence=null, exit 0 (does not fail)
+- [FR-003.15] Script MUST reject input files that are symlinks (not regular files). Exits 1 with error: "Input file is a symlink: {path}. Refusing to follow symlinks for security."
+- [FR-003.16] Script MUST reject empty input files (zero bytes). Exits 1 with error indicating no data to process.
+- [FR-003.17] Script MUST reject input files exceeding 10 MB. Exits 1 with error: "Input file exceeds 10 MB limit: {path} ({size} bytes)."
+- [FR-003.18] If dataset contains mixed-stage entries (some Stage 5, some Stage 6): treats as Stage 6 (most feature-complete), logs warning: "Mixed-stage data detected; using Stage 6 weight set for all entries." Outputs mean_coherence computed from entries that have coherence data, null for entries without.
+- [FR-003.19] Script MUST validate coherence scores are in range [0.0, 1.0]. If outside, logs warning and includes out-of-range value in mean calculation, noting count of clamped values in details.
+- [FR-003.20] Script MUST reject --ldi-source files that are symlinks or empty. Exits 1 with descriptive error.
 
 ### FR-004: MIPROv2 compile baseline script
 - [FR-004.1] Script MUST exist at infrastructure/baselines/measure_mipro_compile_baseline.py
@@ -268,6 +281,9 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 - [FR-006.13] If output file exists and is non-empty, print warning to stderr: "Output file exists: {path}. Overwriting." Include a --no-overwrite flag that exits 1 instead of overwriting.
 - [FR-006.14] All path arguments support absolute paths, relative paths (resolved from CWD), and ~ expansion. Output paths resolved relative to CWD.
 - [FR-006.15] Error messages on common failure paths: file not found errors include the file path ("Cannot read {path}: No such file"), invalid JSON errors include the file path, array length mismatches include both lengths.
+- [FR-006.16] All scripts MUST implement output file collision protection when multiple scripts write to the same baseline_results/ directory concurrently. MUST use file-level locking: create `<output>.lock` via `os.open(..., os.O_CREAT | os.O_EXCL)` before writing, remove lock on completion. If lock exists, waits up to 30 seconds, then exits 1 with error: "Another process is writing to {path}. Exiting."
+- [FR-006.17] All scripts MUST validate input files are regular files (not symlinks, not directories, not device nodes) using `os.path.islink()` and `os.path.isfile()`. Exits 1 with descriptive error for non-regular files.
+- [FR-006.18] All scripts MUST reject input files exceeding 10 MB, empty input files (zero bytes), and JSON files containing empty arrays. Exits 1 with descriptive error.
 
 ---
 
@@ -283,6 +299,9 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 | NFR-006 | Rollback isolation | no main repo modification | Test commit/revert confined to temporary worktree or clone |
 | NFR-007 | MIPROv2 compile duration ceiling | compile_time <= 3x baseline | baseline measured by this spec |
 | NFR-008 | Baseline output integrity | file write safety | Atomic writes (write to temp file, then fsync + rename) to prevent corruption on interrupt. Idempotent: same inputs produce same score/details (timestamp may differ). |
+| NFR-009 | Concurrent output safety | file lock mechanism | Scripts using file-level locking (O_CREAT|O_EXCL) to prevent concurrent writes to same output file. Max wait 30s before failing. |
+| NFR-010 | Input validation | file type and size checks | All input files validated: not symlinks, not empty, under 10 MB limit. |
+| NFR-011 | Schema versioning | forward compatibility | Output includes schema_version field. Readers warn on unknown versions. |
 
 ---
 
@@ -301,6 +320,7 @@ Within first 4096 bytes, must contain these 3 tokens (enforced by `scripts/check
 | **CalibrationReport** | Frozen dataclass (`src/audit/calibration_schema.py:209-251`) with timestamp, total_iterations, best_profile, statistics |
 | **CALIBRATION_GRID** | Parameter grid from `src/audit/calibration_schema.py:66-72`: temperature [0.3, 0.5, 0.6, 0.7, 0.9, 1.1], top_k [5, 10, 20, 40, 60, 80], min_p [0.0, 0.02, 0.05, 0.1, 0.15], repetition_penalty [1.0, 1.05, 1.1, 1.15, 1.2], presence_penalty [0.0, 0.5, 1.0, 1.5, 2.0] |
 | **baseline_results/** | Output directory at project root for baseline JSON files. Added to .gitignore. |
+| **schema_version** | Forward-compatibility field in baseline output JSON. Currently set to `"1"`. Incremented on schema changes. |
 | **infrastructure/baselines/** | Directory for baseline measurement scripts (created by this spec). |
 | **judge.py** | `/src/audit/judge.py` — main judge scoring module that produces judge_scores and composite_score |
 | **CalibrationResult** | Dataclass with profile, exam_id, judge_scores, composite_score, adjusted_score (`src/audit/calibration_schema.py`) |
