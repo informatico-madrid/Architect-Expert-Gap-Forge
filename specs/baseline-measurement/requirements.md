@@ -15,7 +15,7 @@
 As an ML Engineer, I want scipy==1.17.1 declared in requirements.txt, pyproject.toml, and dependency_check.py so that the Spearman correlation baseline script can import scipy.stats.spearmanr. (See FR-001 for full specification.)
 
 **Acceptance Criteria**:
-- [ ] scipy==1.17.1 is importable in the project Python 3.14.3 environment (`python -c 'import scipy'` succeeds) — gating prerequisite; if it fails, escalate before proceeding
+- [ ] scipy==1.17.1 is importable in the project Python 3.12+ environment (`python -c 'import scipy'` succeeds) — gating prerequisite; if it fails, escalate before proceeding
 
 ### US-2: Spearman correlation baseline
 **Priority**: MUST

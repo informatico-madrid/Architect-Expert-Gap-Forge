@@ -355,7 +355,7 @@ def _impl(args: argparse.Namespace) -> int:
         "schema_version": "1",
         "type": "calibration_baseline",
         "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "score": round(mean_composite, 6) if mean_composite is not None else None,
+        "score": round(mean_coherence, 6) if mean_coherence is not None else None,
         "status": "ok",
         "score_description": "mean_coherence: average coherence score, range [0, 1]",
         "details": {
