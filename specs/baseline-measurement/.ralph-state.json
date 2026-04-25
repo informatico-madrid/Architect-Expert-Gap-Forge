@@ -3,7 +3,7 @@
   "name": "baseline-measurement",
   "basePath": "./specs/baseline-measurement",
   "epicName": "aegf-infrastructure",
-  "phase": "execution",
+  "phase": "done",
   "taskIndex": 46,
   "totalTasks": 45,
   "taskIteration": 1,

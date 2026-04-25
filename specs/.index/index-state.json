@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-04-25T14:27:13Z",
+  "updated": "2026-04-25T15:38:32Z",
   "directories": [
     {
       "path": "./specs",
@@ -127,7 +127,7 @@
       "name": "baseline-measurement",
       "path": "./specs/baseline-measurement",
       "phase": "execution",
-      "taskIndex": 33,
+      "taskIndex": 46,
       "totalTasks": 45
     },
     {
