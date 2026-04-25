@@ -26,9 +26,13 @@ from __future__ import annotations
 import argparse
 import atexit
 import logging
+import os
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 project_root = str(Path(__file__).resolve().parent.parent)
@@ -50,6 +54,65 @@ _isolated_path: str | None = None
 _isolated_kind: str | None = None
 
 
+def create_isolated_env() -> tuple[str, str]:
+    """Create an isolated test environment for rollback measurement.
+
+    Tries git worktree first (faster, shares .git). Falls back to full clone.
+
+    Returns:
+        Tuple of (path, kind) where kind is "worktree" or "clone".
+    """
+    worktree_parent = tempfile.mkdtemp(
+        prefix="baseline-rollback-worktree-"
+    )
+    name = f"rollback-check-{os.getpid()}"
+    worktree_path = os.path.join(worktree_parent, name)
+
+    try:
+        subprocess.run(
+            ["git", "worktree", "add", worktree_path, "HEAD"],
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+        logger.info("Created worktree: %s", worktree_path)
+        return (worktree_path, "worktree")
+    except Exception:
+        logger.info("Worktree failed, falling back to clone...")
+
+    clone_path = os.path.join(worktree_parent, name)
+    os.makedirs(clone_path, exist_ok=True)
+    subprocess.run(
+        ["git", "clone", project_root, clone_path],
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    logger.info("Created clone: %s", clone_path)
+    return (clone_path, "clone")
+
+
+def cleanup_isolated_env(path: str, kind: str) -> None:
+    """Remove an isolated test environment.
+
+    Args:
+        path: Path to the isolated environment.
+        kind: "worktree" or "clone".
+    """
+    logger.info("Cleaning up test environment: %s", path)
+    try:
+        if kind == "worktree":
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", path],
+                check=True,
+                capture_output=True,
+            )
+        elif kind == "clone":
+            shutil.rmtree(path)
+    except Exception as exc:
+        logger.warning("Cleanup failed: %s", exc)
+
+
 def _die(msg: str) -> None:
     """Print error to stderr and exit with code 1."""
     print(f"Error: {msg}", file=sys.stderr)
@@ -60,20 +123,7 @@ def _cleanup() -> None:
     """Remove the isolated test environment if one was created."""
     global _isolated_path, _isolated_kind
     if _isolated_path is not None and _isolated_kind is not None:
-        logger.info("Cleaning up test environment: %s", _isolated_path)
-        try:
-            if _isolated_kind == "worktree":
-                subprocess.run(
-                    ["git", "worktree", "remove", "--force", _isolated_path],
-                    check=True,
-                    capture_output=True,
-                )
-            elif _isolated_kind == "clone":
-                import shutil
-
-                shutil.rmtree(_isolated_path)
-        except Exception as exc:
-            logger.warning("Cleanup failed: %s", exc)
+        cleanup_isolated_env(_isolated_path, _isolated_kind)
         _isolated_path = None
         _isolated_kind = None
 
@@ -107,6 +157,8 @@ def _impl(argv: argparse.Namespace) -> int:
     output: Path = Path(argv.output)
     dry_run: bool = argv.dry_run
 
+    global _isolated_path, _isolated_kind
+
     if dry_run:
         logger.info("Threshold: %.1fs", target)
         logger.info("Target output: %s", output)
@@ -115,7 +167,105 @@ def _impl(argv: argparse.Namespace) -> int:
         return 0
 
     print("Creating isolated test environment...")
-    return 0
+
+    try:
+        # 1. Create isolated environment
+        isolated_path, isolated_kind = create_isolated_env()
+        _isolated_path = isolated_path
+        _isolated_kind = isolated_kind
+
+        # 2. cd into isolated environment
+        os.chdir(isolated_path)
+
+        # Create a branch (worktrees have detached HEAD, git revert needs one)
+        subprocess.run(
+            ["git", "branch", "-f", "baseline-test-branch", "HEAD"],
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        subprocess.run(
+            ["git", "checkout", "baseline-test-branch"],
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+
+        # 3. Create test commit with a real file change
+        # Empty commits fail to revert in sparse-checkout environments
+        test_file = os.path.join(isolated_path, ".baseline-test-marker")
+        with open(test_file, "w") as f:
+            f.write("baseline-test-marker\n")
+        subprocess.run(
+            ["git", "add", test_file],
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        result = subprocess.run(
+            ["git", "commit", "-m", "baseline-test-commit"],
+            capture_output=True,
+            timeout=30,
+        )
+        if result.returncode != 0:
+            print(f"Error creating test commit: {result.stderr.decode()}", file=sys.stderr)
+            return 1
+
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        test_commit = result.stdout.decode().strip()
+        print(f"Test commit created: {test_commit}")
+
+        # 4. Time the revert
+        start = time.perf_counter()
+        result = subprocess.run(
+            ["git", "revert", "HEAD", "--no-edit"],
+            capture_output=True,
+            timeout=60.0,
+        )
+        duration = time.perf_counter() - start
+
+        if result.returncode != 0:
+            print(f"Revert failed: {result.stderr.decode()}", file=sys.stderr)
+            return 1
+
+        # 5. Determine status based on duration
+        if duration < target:
+            status = "ok"
+            print(f"git revert HEAD completed in {duration:.2f}s ({target:.0f}s)")
+        else:
+            status = "exceeded_threshold"
+            print(f"git revert HEAD exceeded threshold: {duration:.2f}s > {target:.0f}s")
+
+        # 6. Verify git status is clean
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        clean_status = result.stdout.decode().strip() == ""
+
+        if not clean_status:
+            status = "dirty_working_tree"
+            print("Warning: git status is not clean after revert", file=sys.stderr)
+
+        print("Isolated environment cleaned up.")
+        return 0
+
+    except Exception as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        # Ensure cleanup runs even on unexpected errors
+        if _isolated_path is not None and _isolated_kind is not None:
+            cleanup_isolated_env(_isolated_path, _isolated_kind)
+            _isolated_path = None
+            _isolated_kind = None
 
 
 def main(argv: list[str] | None = None) -> int:

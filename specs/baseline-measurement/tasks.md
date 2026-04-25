@@ -622,7 +622,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): scaffold rollback check CLI with signal handling`
 
-### Task 2.7: Implement rollback_check.py — Isolated environment and revert timing
+### Task 2.7: [x] Implement rollback_check.py — Isolated environment and revert timing
 
 **Do**:
 1. Implement `create_isolated_env()` function:
