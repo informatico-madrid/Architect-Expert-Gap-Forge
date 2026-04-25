@@ -20,7 +20,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
+import math
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -28,9 +30,6 @@ from pathlib import Path
 project_root = str(Path(__file__).resolve().parent.parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
-import json
-import math
 
 from infrastructure.baselines._shared import (
     BaselineError,
@@ -47,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 def _die(msg: str) -> None:
     """Print error to stderr and exit with code 1."""
-    logger.error(msg)
+    print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -64,7 +63,9 @@ def _compute_grid_info(grid: dict) -> tuple[int, dict]:
 
 def main(argv: list[str] | None = None) -> int:
     """Entry point: parse args, log setup, dispatch to _impl."""
-    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s", stream=sys.stderr)
+    logging.basicConfig(
+        level=logging.WARNING, format="%(levelname)s: %(message)s", stream=sys.stderr
+    )
     parser = argparse.ArgumentParser(
         description="Compute MIPRO compile-time baseline metrics."
     )
@@ -153,8 +154,7 @@ def _impl(args: argparse.Namespace) -> int:
             logger.error("Dataset validation failed: %s", e)
             return 1
         try:
-            with open(dataset_path) as f:
-                report = json.load(f)
+            report = json.loads(dataset_path.read_text(encoding="utf-8"))
             exec_time = report.get("statistics", {}).get("execution_time_seconds")
             if exec_time is not None and isinstance(exec_time, (int, float)):
                 score = float(exec_time)
@@ -167,7 +167,10 @@ def _impl(args: argparse.Namespace) -> int:
                     "falling back to estimated mode"
                 )
         except (FileNotFoundError, json.JSONDecodeError, KeyError):
-            logger.warning("Invalid dataset; falling back to estimated mode")
+            raise BaselineError(
+                f"Dataset exists but is invalid: {dataset_path}. "
+                "Cannot fall back to estimated mode when a dataset is explicitly provided."
+            )
 
     if score is None:
         score = total_iterations * args.avg_latency
@@ -178,9 +181,13 @@ def _impl(args: argparse.Namespace) -> int:
 
     # ── Step 3: Dry-run ──────────────────────────────────────────────────
     if args.dry_run:
-        print(f"Dataset: {args.dataset or '(estimated mode)'} "
-              f"(profiles_tested={profiles_tested}, total_iterations={total_iterations})")
-        print(f"Estimated mode: {source} | avg_latency={args.avg_latency}s | duration={score:.2f}s")
+        print(
+            f"Dataset: {args.dataset or '(estimated mode)'} "
+            f"(profiles_tested={profiles_tested}, total_iterations={total_iterations})"
+        )
+        print(
+            f"Estimated mode: {source} | avg_latency={args.avg_latency}s | duration={score:.2f}s"
+        )
         print(f"Target output: {args.output}")
         print("DRY RUN complete. No output file written.")
         return 0

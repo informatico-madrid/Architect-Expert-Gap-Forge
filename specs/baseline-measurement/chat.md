@@ -1392,9 +1392,85 @@ Proceeding to Phase 3.
 - Phase 1: 10/10 PASS ✓
 - Phase 2: 0/8 (Phase 2 scripts have [x] markers but review not yet done)
 - Phase 3: 11/12 PASS ✓ (3.12 PENDING - adversarial review required)
+
+---
+
+#### [2026-04-25 14:30:00] Coordinator — Phase 3 Adversarial Review (Task 3.12) Results
+
+**Review scope**: All 4 baseline scripts + _shared.py. Phase 3 edge case handling review.
+**Method**: 3 parallel reviewers (General, Security, Code Quality) — 15+14+16 = 45 findings total.
+
+**Phase 3 Adversarial Review — 10 Valid Fixes Applied**:
+
+| # | Severity | Finding | Fix Applied |
+|---|----------|---------|-------------|
+| F1 | CRITICAL | MIPRO silently falls back to estimated mode when dataset exists but is unparseable | **FIXED** — raises BaselineError with clear message, exits 1 |
+| F2 | HIGH | _die() implemented inconsistently (logger.error vs print to stderr) | **FIXED** — MIPRO and calibration now use print to stderr matching Spearman |
+| F3 | HIGH | Calibration no-overwrite error uses logger.error (invisible without --verbose) | **FIXED** — uses _die() for consistent stderr output |
+| F4 | HIGH | Spearman symlink check doesn't resolve path before is_symlink() | **FIXED** — now uses .resolve().parent before is_symlink() |
+| F5 | HIGH | No-overwrite check inconsistency (rollback_check missing st_size > 0) | **FIXED** — rollback_check now checks st_size > 0 like others |
+| F6 | HIGH | cleanup_isolated_env subprocess lacks timeout | **FIXED** — added timeout=30 + return code logging |
+| F7 | MEDIUM | MIPRO open() without explicit encoding | **FIXED** — uses read_text(encoding="utf-8") |
+| F8 | MEDIUM | MIPRO import ordering violation (json/math after sys.path block) | **FIXED** — stdlib imports moved before sys.path manipulation |
+| F9 | LOW | Dry-run message "No output file written." was inconsistent | Already fixed in commit 49e650c |
+| F10 | LOW | MIPRO no-overwrite missing st_size > 0 | Already fixed in previous round |
+
+**Findings Rejected or Deferred**:
+- SEC-02: JSON recursion depth — Deferred to Phase 4 (spec is not a general JSON parser)
+- SEC-04: Signal handler + subprocess nesting — Deferred (edge case, unlikely in practice)
+- SEC-05: Uncontrolled TMPDIR env var — Deferred (tempfile.mkdtemp uses 0o700)
+- QC-04: sys.path.insert duplication — Deferred to Phase 4 refactoring task
+- QC-06: BaselineError imported but unused in rollback_check — Deferred (cosmetic)
+- SEC-13: Output path traversal via unresolved paths — Partially mitigated by resolve().parent checks
+- P3-05: score_description inconsistency — Deferred (schema evolution, out of scope)
+- P3-07: detect_stage() dead "unknown" code path — Deferred (cosmetic)
+- P3-14: MIPRO avg_latency clamping asymmetry — Accepted (0.0 is valid edge case)
+
+**Verdict**: Phase 3 edge case handling is robust. 10 fixes applied across 4 scripts. All actionable findings resolved.
+**Phase 3 status**: COMPLETE — 12/12 tasks verified [x].
+
+**Next**: Phase 4 — Quality & Convention Compliance (Tasks 4.1-4.8).
 - Phase 4: 0/8 (not started)
 - Phase 5: 0/5 (not started)
 
 **No HOLD/PENDING/DEADLOCK signals.**
 
 **Next cycle in 3 min** — monitoring Phase 4 advancement
+
+#### [2026-04-25 14:13:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 46 COMPLETE
+
+**taskIndex=32** — No change this cycle. Executor committed Phase 3 completion (`33b27b6`). task_review.md now has 22 entries.
+
+**Note**: taskIndex=32 means executor is between Phase 3 and Phase 4. Awaiting coordinator to advance.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:17:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 47 COMPLETE
+
+**taskIndex=32, globalIteration=36** — No change. Executor seems paused.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:20:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 48 COMPLETE
+
+**taskIndex=32** — Still same. Awaiting coordinator or executor to advance to Phase 4.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:23:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 49 COMPLETE
+
+**taskIndex=32** — Executor modifying measure_mipro_compile_baseline.py and run_calibration_baseline.py (Phase 4 quality work).
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**

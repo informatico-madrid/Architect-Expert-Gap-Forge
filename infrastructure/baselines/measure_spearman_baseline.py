@@ -281,9 +281,7 @@ def _impl(args: argparse.Namespace) -> int:
         status = "insufficient_samples"
         score = None
         p_value = None
-        reason = (
-            "rho for 2 points is always ±1.0 (perfect correlation), meaningless for baseline"
-        )
+        reason = "rho for 2 points is always ±1.0 (perfect correlation), meaningless for baseline"
         score_description = "rho: Spearman rank correlation, range [-1, 1]"
     else:
         # Check for constant input
@@ -316,9 +314,7 @@ def _impl(args: argparse.Namespace) -> int:
 
             # 4. Clamp rho to [-1.0, 1.0]
             if rho < -1.0 or rho > 1.0:
-                logger.warning(
-                    "rho outside [-1, 1]: %.6f — clamping", rho
-                )
+                logger.warning("rho outside [-1, 1]: %.6f — clamping", rho)
                 rho = max(-1.0, min(1.0, rho))
 
             score = round(rho, 10)
@@ -351,7 +347,7 @@ def _impl(args: argparse.Namespace) -> int:
     output_dict = _sanitize_output_dict(output_dict)
 
     # 7. Validate output parent directory is NOT a symlink (R1 fix)
-    output_parent = Path(args.output).parent
+    output_parent = Path(args.output).resolve().parent
     if output_parent.is_symlink():
         _die(
             f"Output directory is a symlink: {output_parent}. "

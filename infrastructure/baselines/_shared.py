@@ -102,10 +102,14 @@ def write_output_atomic(path: str | Path, data: dict[str, Any]) -> None:
     )  # R2 CRITICAL: no follow_symlinks -- output parent must be validated by caller
     tmp_path = p.with_suffix(p.suffix + ".tmp")
     try:
-        fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, TEMP_FILE_MODE)
+        fd = os.open(
+            str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, TEMP_FILE_MODE
+        )
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)  # F7: support non-ASCII
+                json.dump(
+                    data, f, indent=2, ensure_ascii=False
+                )  # F7: support non-ASCII
                 f.flush()
                 os.fsync(f.fileno())
         except Exception:

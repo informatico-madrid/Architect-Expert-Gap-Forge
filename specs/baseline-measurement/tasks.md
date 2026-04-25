@@ -1033,7 +1033,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify rollback cleanup on SIGINT`
 
-### Task 3.12: [VERIFY] Adversarial Review of Phase 3 Tasks
+### Task 3.12: [x] Adversarial Review of Phase 3 Tasks
 
 **Do**:
 1. Run `/bmad-review-adversarial-general` with `/bmad-party-mode`

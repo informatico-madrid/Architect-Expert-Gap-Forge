@@ -69,9 +69,7 @@ def create_isolated_env() -> tuple[str, str]:
         Tuple of (path, kind) where kind is "worktree" or "clone".
     """
     global _isolated_path, _isolated_kind, _isolated_parent
-    worktree_parent = tempfile.mkdtemp(
-        prefix="baseline-rollback-worktree-"
-    )
+    worktree_parent = tempfile.mkdtemp(prefix="baseline-rollback-worktree-")
     _isolated_parent = worktree_parent
     name = f"rollback-check-{os.getpid()}"
     worktree_path = os.path.join(worktree_parent, name)
@@ -119,10 +117,17 @@ def cleanup_isolated_env(path: str, kind: str) -> None:
         if kind == "worktree":
             # Double --force: first --force allows removing checked-out branches,
             # second overrides locked worktrees (reason: "initializing" etc.)
-            subprocess.run(
+            result = subprocess.run(
                 ["git", "worktree", "remove", "--force", "--force", path],
                 capture_output=True,
+                timeout=30,
             )
+            if result.returncode != 0:
+                logger.warning(
+                    "Worktree removal returned %d: %s",
+                    result.returncode,
+                    result.stderr.decode(errors="replace").strip(),
+                )
         elif kind == "clone":
             shutil.rmtree(path, ignore_errors=True)
     except Exception as exc:
@@ -214,8 +219,11 @@ def _impl(argv: argparse.Namespace) -> int:
 
     global _isolated_path, _isolated_kind
 
-    if argv.no_overwrite and output.exists():
-        print(f"Output file already exists: {output}. Use --no-overwrite to skip.", file=sys.stderr)
+    if argv.no_overwrite and output.exists() and output.stat().st_size > 0:
+        print(
+            f"Output file already exists: {output}. Use --no-overwrite to skip.",
+            file=sys.stderr,
+        )
         return 1
 
     if dry_run:
@@ -301,7 +309,9 @@ def _impl(argv: argparse.Namespace) -> int:
             print(f"git revert HEAD completed in {duration:.2f}s ({target:.0f}s)")
         else:
             status = "exceeded_threshold"
-            print(f"git revert HEAD exceeded threshold: {duration:.2f}s > {target:.0f}s")
+            print(
+                f"git revert HEAD exceeded threshold: {duration:.2f}s > {target:.0f}s"
+            )
 
         # 6. Verify git status is clean
         result = subprocess.run(

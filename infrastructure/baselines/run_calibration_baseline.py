@@ -46,7 +46,13 @@ logger = logging.getLogger(__name__)
 
 # ── Stage detection ──────────────────────────────────────────────────────
 
-STAGE_6_KEYS = {"parameter_effectiveness", "coherence", "parameter_alignment", "task_completion", "style"}
+STAGE_6_KEYS = {
+    "parameter_effectiveness",
+    "coherence",
+    "parameter_alignment",
+    "task_completion",
+    "style",
+}
 
 
 def detect_stage(results: list[dict[str, Any]]) -> str:
@@ -84,13 +90,15 @@ def detect_stage(results: list[dict[str, Any]]) -> str:
 
 def _die(msg: str) -> None:
     """Print error to stderr and exit with code 1."""
-    logger.error(msg)
+    print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
 def main(argv: list[str] | None = None) -> int:
     """Entry point: parse args, log setup, dispatch to _impl."""
-    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s", stream=sys.stderr)
+    logging.basicConfig(
+        level=logging.WARNING, format="%(levelname)s: %(message)s", stream=sys.stderr
+    )
     parser = argparse.ArgumentParser(
         description="Compute calibration baseline metrics from scoring results."
     )
@@ -146,7 +154,9 @@ def main(argv: list[str] | None = None) -> int:
     return _impl(args)
 
 
-def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float | None, int]:
+def _parse_ldi_source(
+    path: Path, threshold: float
+) -> tuple[float | None, float | None, int]:
     """Parse an LDI source file (JSON or JSONL) and compute mean + pass rate.
 
     Returns:
@@ -185,7 +195,9 @@ def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float
         try:
             ldi_values.append(float(raw_val))
         except (TypeError, ValueError):
-            logger.warning("Non-numeric LDI value (%s) — excluding from mean/pass_rate", raw_val)
+            logger.warning(
+                "Non-numeric LDI value (%s) — excluding from mean/pass_rate", raw_val
+            )
 
     if not ldi_values:
         return None, None, record_count
@@ -251,13 +263,17 @@ def _impl(args: argparse.Namespace) -> int:
 
     if ldi_path is not None:
         try:
-            mean_ldi, ldi_pass_rate, ldi_record_count = _parse_ldi_source(ldi_path, args.ldi_threshold)
+            mean_ldi, ldi_pass_rate, ldi_record_count = _parse_ldi_source(
+                ldi_path, args.ldi_threshold
+            )
         except Exception as e:
             logger.warning("LDI source failed: %s — treating as missing", e)
             mean_ldi = None
             ldi_pass_rate = None
     else:
-        logger.warning("--ldi-source not provided; mean_ldi and ldi_pass_rate will be null")
+        logger.warning(
+            "--ldi-source not provided; mean_ldi and ldi_pass_rate will be null"
+        )
 
     # ── Coherence extraction ──────────────────────────────────────────────
     coherences: list[float | None] = []
@@ -280,7 +296,9 @@ def _impl(args: argparse.Namespace) -> int:
 
     # Compute mean coherence (skip None values)
     valid_coherences = [c for c in coherences if c is not None]
-    mean_coherence = sum(valid_coherences) / len(valid_coherences) if valid_coherences else None
+    mean_coherence = (
+        sum(valid_coherences) / len(valid_coherences) if valid_coherences else None
+    )
 
     # ── Composite score computation ───────────────────────────────────────
     composite_scores: list[float | None] = []
@@ -298,11 +316,15 @@ def _impl(args: argparse.Namespace) -> int:
             composite_scores.append(float(val) if val is not None else None)
 
     valid_composites = [s for s in composite_scores if s is not None]
-    mean_composite = sum(valid_composites) / len(valid_composites) if valid_composites else None
+    mean_composite = (
+        sum(valid_composites) / len(valid_composites) if valid_composites else None
+    )
 
     # ── Dry-run: report and exit ──────────────────────────────────────────
     if args.dry_run:
-        print(f"Dataset: {dataset_path} ({dataset_path.stat().st_size} bytes, {len(results)} records)")
+        print(
+            f"Dataset: {dataset_path} ({dataset_path.stat().st_size} bytes, {len(results)} records)"
+        )
         print(f"Detected stage: {stage}")
         if mean_coherence is not None:
             print(f"Mean coherence: {mean_coherence:.6f}")
@@ -315,7 +337,9 @@ def _impl(args: argparse.Namespace) -> int:
             else:
                 print("Mean LDI: N/A (no valid numeric values)")
             if ldi_pass_rate is not None:
-                print(f"LDI pass rate (>= {args.ldi_threshold:.2f}): {ldi_pass_rate:.6f}")
+                print(
+                    f"LDI pass rate (>= {args.ldi_threshold:.2f}): {ldi_pass_rate:.6f}"
+                )
             else:
                 print("LDI pass rate: N/A")
         else:
@@ -335,9 +359,13 @@ def _impl(args: argparse.Namespace) -> int:
         "status": "ok",
         "score_description": "mean_coherence: average coherence score, range [0, 1]",
         "details": {
-            "mean_coherence": round(mean_coherence, 6) if mean_coherence is not None else None,
+            "mean_coherence": round(mean_coherence, 6)
+            if mean_coherence is not None
+            else None,
             "mean_ldi": round(mean_ldi, 6) if mean_ldi is not None else None,
-            "ldi_pass_rate": round(ldi_pass_rate, 6) if ldi_pass_rate is not None else None,
+            "ldi_pass_rate": round(ldi_pass_rate, 6)
+            if ldi_pass_rate is not None
+            else None,
             "grid_config": grid_config,
             "data_stage": stage,
             "n_entries": len(results),
@@ -347,13 +375,16 @@ def _impl(args: argparse.Namespace) -> int:
     # ── Output: no-overwrite check ────────────────────────────────────────
     output_path = Path(args.output)
     if args.no_overwrite and output_path.exists() and output_path.stat().st_size > 0:
-        logger.error("Output file already exists: %s", output_path)
-        return 1
+        _die(
+            f"Output file already exists: {output_path}. Remove it or drop --no-overwrite."
+        )
 
     # ── Output: validate parent dir is not a symlink ──────────────────────
     output_parent = output_path.resolve().parent
     if output_parent.is_symlink():
-        logger.error("Output directory is a symlink: %s — refusing to write", output_parent)
+        logger.error(
+            "Output directory is a symlink: %s — refusing to write", output_parent
+        )
         return 1
 
     # ── Output: atomic write with lock ────────────────────────────────────
