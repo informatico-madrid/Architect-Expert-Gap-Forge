@@ -62,16 +62,24 @@ def create_isolated_env() -> tuple[str, str]:
 
     Tries git worktree first (faster, shares .git). Falls back to full clone.
 
+    Sets _isolated_path/_isolated_kind BEFORE any git command so signal
+    handlers can clean up even if SIGINT/SIGTERM arrives during creation.
+
     Returns:
         Tuple of (path, kind) where kind is "worktree" or "clone".
     """
-    global _isolated_parent
+    global _isolated_path, _isolated_kind, _isolated_parent
     worktree_parent = tempfile.mkdtemp(
         prefix="baseline-rollback-worktree-"
     )
     _isolated_parent = worktree_parent
     name = f"rollback-check-{os.getpid()}"
     worktree_path = os.path.join(worktree_parent, name)
+
+    # Set cleanup state BEFORE any git command so signal handlers can
+    # remove the worktree even if interrupted during create_isolated_env.
+    _isolated_path = worktree_path
+    _isolated_kind = "worktree"
 
     try:
         subprocess.run(
@@ -85,16 +93,18 @@ def create_isolated_env() -> tuple[str, str]:
     except Exception:
         logger.info("Worktree failed, falling back to clone...")
 
-    clone_path = os.path.join(worktree_parent, name)
-    os.makedirs(clone_path, exist_ok=True)
+    # Update state for clone fallback
+    _isolated_path = worktree_path
+    _isolated_kind = "clone"
+    os.makedirs(worktree_path, exist_ok=True)
     subprocess.run(
-        ["git", "clone", project_root, clone_path],
+        ["git", "clone", project_root, worktree_path],
         check=True,
         capture_output=True,
         timeout=120,
     )
-    logger.info("Created clone: %s", clone_path)
-    return (clone_path, "clone")
+    logger.info("Created clone: %s", worktree_path)
+    return (worktree_path, "clone")
 
 
 def cleanup_isolated_env(path: str, kind: str) -> None:
@@ -107,13 +117,14 @@ def cleanup_isolated_env(path: str, kind: str) -> None:
     logger.info("Cleaning up test environment: %s", path)
     try:
         if kind == "worktree":
+            # Double --force: first --force allows removing checked-out branches,
+            # second overrides locked worktrees (reason: "initializing" etc.)
             subprocess.run(
-                ["git", "worktree", "remove", "--force", path],
-                check=True,
+                ["git", "worktree", "remove", "--force", "--force", path],
                 capture_output=True,
             )
         elif kind == "clone":
-            shutil.rmtree(path)
+            shutil.rmtree(path, ignore_errors=True)
     except Exception as exc:
         logger.warning("Cleanup failed: %s", exc)
 
@@ -168,10 +179,7 @@ def _cleanup() -> None:
         _isolated_kind = None
     # Remove the tempfile parent directory (worktree_parent)
     if _isolated_parent is not None:
-        try:
-            shutil.rmtree(_isolated_parent, ignore_errors=True)
-        except OSError:
-            pass
+        shutil.rmtree(_isolated_parent, ignore_errors=True)
         _isolated_parent = None
 
 
@@ -220,10 +228,8 @@ def _impl(argv: argparse.Namespace) -> int:
     print("Creating isolated test environment...")
 
     try:
-        # 1. Create isolated environment
+        # 1. Create isolated environment (sets _isolated_path/_isolated_kind internally)
         isolated_path, isolated_kind = create_isolated_env()
-        _isolated_path = isolated_path
-        _isolated_kind = isolated_kind
 
         # 2. cd into isolated environment
         os.chdir(isolated_path)
