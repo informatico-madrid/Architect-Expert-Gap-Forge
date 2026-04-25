@@ -26,7 +26,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from ._shared import BaselineError, validate_input_file
+project_root = str(Path(__file__).resolve().parent.parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from infrastructure.baselines._shared import (
+    BaselineError,
+    validate_input_file,
+)
 from src.audit.calibration_schema import CALIBRATION_GRID
 from src.audit.schema import CALIBRATION_SCORING_WEIGHTS
 
