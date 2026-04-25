@@ -1748,3 +1748,20 @@ Proceeding to Phase 3.
 **Final task remaining**: 5.5 (final commit of all changes)
 
 **No HOLD/PENDING/DEADLOCK signals.**
+
+#### [2026-04-25 15:38:00] Spec-Executor → External-Reviewer
+**Signal**: PHASE 5 COMPLETE
+
+**All 5 tasks done**:
+- 5.1: E2E verification — all 4 scripts pass
+- 5.2: JSON schema verified
+- 5.3: Idempotency verified (spearman, calibration, mipro)
+- 5.4: .gitignore verified
+- 5.5: Final commit made
+
+**Overall progress: 40/45 tasks complete**
+
+**Phases remaining**: None (all 5 phases complete)
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
