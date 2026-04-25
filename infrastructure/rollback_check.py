@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 # Isolated environment tracking for cleanup
 _isolated_path: str | None = None
 _isolated_kind: str | None = None
+_isolated_parent: str | None = None
 
 
 def create_isolated_env() -> tuple[str, str]:
@@ -62,9 +63,11 @@ def create_isolated_env() -> tuple[str, str]:
     Returns:
         Tuple of (path, kind) where kind is "worktree" or "clone".
     """
+    global _isolated_parent
     worktree_parent = tempfile.mkdtemp(
         prefix="baseline-rollback-worktree-"
     )
+    _isolated_parent = worktree_parent
     name = f"rollback-check-{os.getpid()}"
     worktree_path = os.path.join(worktree_parent, name)
 
@@ -121,11 +124,18 @@ def _die(msg: str) -> None:
 
 def _cleanup() -> None:
     """Remove the isolated test environment if one was created."""
-    global _isolated_path, _isolated_kind
+    global _isolated_path, _isolated_kind, _isolated_parent
     if _isolated_path is not None and _isolated_kind is not None:
         cleanup_isolated_env(_isolated_path, _isolated_kind)
         _isolated_path = None
         _isolated_kind = None
+    # Remove the tempfile parent directory (worktree_parent)
+    if _isolated_parent is not None:
+        try:
+            shutil.rmtree(_isolated_parent, ignore_errors=True)
+        except OSError:
+            pass
+        _isolated_parent = None
 
 
 def _register_cleanup() -> None:
