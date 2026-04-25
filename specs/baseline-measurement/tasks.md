@@ -11,7 +11,7 @@
 
 Fastest path to a working baseline. Verify scipy, scaffold the package structure, build the shared module, and deliver a complete Spearman script.
 
-### Task 1.1: Verify scipy==1.17.1 installs on Python 3.14.3
+### Task 1.1: [x] Verify scipy==1.17.1 installs on Python 3.14.3
 
 **Do**:
 1. Run `python -c 'import scipy; print(scipy.__version__)'` in the project environment
@@ -35,7 +35,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Notes**:
 - This is a gating prerequisite per US-1. Do not proceed until scipy is importable.
 
-### Task 1.2: Add scipy==1.17.1 to requirements.txt
+### Task 1.2: [x] Add scipy==1.17.1 to requirements.txt
 
 **Do**:
 1. Read `requirements.txt` to find the numpy line
@@ -56,7 +56,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): add scipy==1.17.1 to requirements.txt`
 
-### Task 1.3: Add scipy==1.17.1 to pyproject.toml dependencies
+### Task 1.3: [x] Add scipy==1.17.1 to pyproject.toml dependencies
 
 **Do**:
 1. Read `pyproject.toml` to find the `[project.dependencies]` section
@@ -77,7 +77,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): add scipy==1.17.1 to pyproject.toml dependencies`
 
-### Task 1.4: Add scipy to dependency_check.py PACKAGE_IMPORT_MAP
+### Task 1.4: [x] Add scipy to dependency_check.py PACKAGE_IMPORT_MAP
 
 **Do**:
 1. Read `infrastructure/dependency_check.py` to find PACKAGE_IMPORT_MAP
@@ -96,7 +96,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): add scipy to dependency_check.py PACKAGE_IMPORT_MAP`
 
-### Task 1.5: Create infrastructure/baselines/ package structure
+### Task 1.5: [x] Create infrastructure/baselines/ package structure
 
 **Do**:
 1. Create `infrastructure/baselines/` directory
@@ -118,7 +118,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): create baselines package and baseline_results directory`
 
-### Task 1.6: Add baseline_results/ to .gitignore
+### Task 1.6: [x] Add baseline_results/ to .gitignore
 
 **Do**:
 1. Read `.gitignore` to check if `baseline_results/` already exists
@@ -140,7 +140,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): add baseline_results/ to .gitignore`
 
-### Task 1.7: Create shared module infrastructure/baselines/_shared.py
+### Task 1.7: [x] Create shared module infrastructure/baselines/_shared.py
 
 **Do**:
 1. Create `infrastructure/baselines/_shared.py` with the following functions:
@@ -173,7 +173,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): create shared utilities module`
 
-### Task 1.8: Implement measure_spearman_baseline.py — CLI scaffold and shared imports
+### Task 1.8: [x] Implement measure_spearman_baseline.py — CLI scaffold and shared imports
 
 **Do**:
 1. Create `infrastructure/baselines/measure_spearman_baseline.py`
@@ -212,7 +212,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): scaffold spearman baseline CLI with argparse`
 
-### Task 1.9: Implement measure_spearman_baseline.py — Input validation and NaN filtering
+### Task 1.9: [x] Implement measure_spearman_baseline.py — Input validation and NaN filtering
 
 **Do**:
 1. In `_impl()`, implement the full input validation pipeline:
@@ -253,7 +253,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): implement spearman input validation and NaN filtering`
 
-### Task 1.10: Implement measure_spearman_baseline.py — Computation and output
+### Task 1.10: [x] Implement measure_spearman_baseline.py — Computation and output
 
 **Do**:
 1. Implement edge case detection BEFORE calling scipy.stats.spearmanr:
@@ -306,7 +306,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 **Commit**:
 - `spec(baseline-measurement): implement spearman computation and atomic output`
 
-### Task 1.11: [VERIFY] Adversarial Review of Phase 1 Tasks
+### Task 1.11: [x] [VERIFY] Adversarial Review of Phase 1 Tasks
 
 **Do**:
 1. Run `/bmad-review-adversarial-general` with `/bmad-party-mode`
@@ -342,7 +342,7 @@ Fastest path to a working baseline. Verify scipy, scaffold the package structure
 
 Fill in the remaining three scripts using the established pattern from Spearman.
 
-### Task 2.1: Implement run_calibration_baseline.py — CLI scaffold and shared imports
+### Task 2.1: [x] Implement run_calibration_baseline.py — CLI scaffold and shared imports
 
 **Do**:
 1. Create `infrastructure/baselines/run_calibration_baseline.py`
@@ -381,7 +381,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): scaffold calibration baseline CLI with argparse`
 
-### Task 2.2: Implement run_calibration_baseline.py — Stage detection and coherence extraction
+### Task 2.2: [x] Implement run_calibration_baseline.py — Stage detection and coherence extraction
 
 **Do**:
 1. Implement `detect_stage(results)` function:
@@ -420,7 +420,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): implement calibration stage detection and coherence extraction`
 
-### Task 2.3: Implement run_calibration_baseline.py — LDI sourcing and output
+### Task 2.3: [x] Implement run_calibration_baseline.py — LDI sourcing and output
 
 **Do**:
 1. Implement LDI source parsing:
@@ -480,7 +480,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): implement calibration LDI sourcing and output`
 
-### Task 2.4: Implement measure_mipro_compile_baseline.py — CLI scaffold and grid parsing
+### Task 2.4: [x] Implement measure_mipro_compile_baseline.py — CLI scaffold and grid parsing
 
 **Do**:
 1. Create `infrastructure/baselines/measure_mipro_compile_baseline.py`
@@ -519,7 +519,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): scaffold MIPRO compile baseline CLI with argparse`
 
-### Task 2.5: Implement measure_mipro_compile_baseline.py — Mode selection and computation
+### Task 2.5: [x] Implement measure_mipro_compile_baseline.py — Mode selection and computation
 
 **Do**:
 1. Implement CALIBRATION_GRID parsing:
@@ -668,7 +668,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): implement rollback isolation and revert timing`
 
-### Task 2.8: Implement rollback_check.py — Output and result reporting
+### Task 2.8: [x] Implement rollback_check.py — Output and result reporting
 
 **Do**:
 1. Implement output JSON construction:
@@ -723,7 +723,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): implement rollback check output and result reporting`
 
-### Task 2.9: [VERIFY] Adversarial Review of Phase 2 Tasks
+### Task 2.9: [x] [VERIFY] Adversarial Review of Phase 2 Tasks
 
 **Do**:
 1. Run `/bmad-review-adversarial-general` with `/bmad-party-mode`
@@ -1355,7 +1355,7 @@ Full integration verification, documentation, and final checks.
 **Commit**:
 - `spec(baseline-measurement): verify baseline_results/ is gitignored`
 
-### Task 5.5: Final — Commit all changes
+### Task 5.5: [x] Final — Commit all changes
 
 **Do**:
 1. Stage all modified and new files:
