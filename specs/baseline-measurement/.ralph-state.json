@@ -27,5 +27,6 @@
       "name": "anchor-dataset",
       "status": "pending"
     }
-  ]
+  ],
+  "roundsOfAdversarialReview": 3
 }
