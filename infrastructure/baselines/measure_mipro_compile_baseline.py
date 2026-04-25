@@ -178,7 +178,11 @@ def _impl(args: argparse.Namespace) -> int:
 
     # ── Step 3: Dry-run ──────────────────────────────────────────────────
     if args.dry_run:
-        print("DRY RUN complete.")
+        print(f"Dataset: {args.dataset or '(estimated mode)'} "
+              f"(profiles_tested={profiles_tested}, total_iterations={total_iterations})")
+        print(f"Estimated mode: {source} | avg_latency={args.avg_latency}s | duration={score:.2f}s")
+        print(f"Target output: {args.output}")
+        print("DRY RUN complete. No output file written.")
         return 0
 
     # ── Step 4: Output path validation ───────────────────────────────────
