@@ -94,7 +94,7 @@ def _register_cleanup() -> None:
     signal.signal(signal.SIGTERM, _handle_sigterm)
 
 
-def _impl(argv: list[str]) -> int:
+def _impl(argv: argparse.Namespace) -> int:
     """Actual implementation logic.
 
     Args:
