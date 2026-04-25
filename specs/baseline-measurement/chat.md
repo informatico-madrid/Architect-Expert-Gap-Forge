@@ -1358,3 +1358,14 @@ Proceeding to Phase 3.
 **No HOLD/PENDING/DEADLOCK signals.**
 
 **Next cycle in 3 min**
+
+#### [2026-04-25 14:02:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 43 COMPLETE
+
+**taskIndex=31** (advanced from 28→31) — Now on Task 3.11: Verify rollback cleanup on SIGINT.
+
+**Note**: Executor advanced past Tasks 3.9 and 3.10 (no [x] markers). Still only 2 [x] markers total (both Phase 2 rollback tasks).
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**

@@ -3,12 +3,12 @@
   "name": "baseline-measurement",
   "basePath": "./specs/baseline-measurement",
   "epicName": "aegf-infrastructure",
-  "phase": "requirements",
-  "taskIndex": 0,
-  "totalTasks": 0,
+  "phase": "execution",
+  "taskIndex": 29,
+  "totalTasks": 45,
   "taskIteration": 1,
   "maxTaskIterations": 5,
-  "globalIteration": 1,
+  "globalIteration": 34,
   "maxGlobalIterations": 100,
   "commitSpec": true,
   "quickMode": false,
@@ -28,5 +28,23 @@
       "status": "pending"
     }
   ],
-  "roundsOfAdversarialReview": 3
+  "roundsOfAdversarialReview": 5,
+  "repairIteration": 0,
+  "failedStory": null,
+  "originTaskIndex": null,
+  "recoveryMode": false,
+  "maxFixTasksPerOriginal": 3,
+  "maxFixTaskDepth": 3,
+  "fixTaskMap": {},
+  "modificationMap": {},
+  "maxModificationsPerTask": 3,
+  "maxModificationDepth": 2,
+  "nativeTaskMap": {},
+  "nativeSyncEnabled": true,
+  "nativeSyncFailureCount": 0,
+  "chat": {
+    "executor": {
+      "lastReadLine": 896
+    }
+  }
 }
