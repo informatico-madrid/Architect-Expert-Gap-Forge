@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import json
 import logging
 import os
 import shutil
@@ -33,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 project_root = str(Path(__file__).resolve().parent.parent)
@@ -41,6 +43,7 @@ if project_root not in sys.path:
 
 from infrastructure.baselines._shared import (
     BaselineError,
+    _sanitize_output_dict,
     check_output_lock,
     release_lock,
     validate_input_file,
@@ -264,6 +267,33 @@ def _impl(argv: argparse.Namespace) -> int:
             status = "dirty_working_tree"
             print("Warning: git status is not clean after revert", file=sys.stderr)
 
+        # 6. Build and write output JSON
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        output_dict = {
+            "schema_version": "1",
+            "type": "rollback_check",
+            "timestamp": timestamp,
+            "score": duration,
+            "status": status,
+            "score_description": "duration_seconds: wall-clock git revert time in seconds",
+            "details": {
+                "duration_seconds": round(duration, 4),
+                "threshold_seconds": target,
+                "within_target": status == "ok",
+                "clean_status": clean_status,
+                "isolation_method": isolated_kind,
+            },
+        }
+
+        # 7. Atomic write with lock
+        lock_path = check_output_lock(output)
+        try:
+            sanitized = _sanitize_output_dict(output_dict)
+            write_output_atomic(output, sanitized)
+        finally:
+            release_lock(lock_path)
+
+        print(f"Wrote output to {output}")
         print("Isolated environment cleaned up.")
         return 0
 
