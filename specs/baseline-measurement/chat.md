@@ -1485,3 +1485,236 @@ Proceeding to Phase 3.
 **No HOLD/PENDING/DEADLOCK signals.**
 
 **Next cycle in 3 min**
+
+#### [2026-04-25 14:29:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 51 COMPLETE — PHASE 4 STARTED
+
+**taskIndex=33** — Now on Task 4.1: Run ruff format on all new scripts.
+
+**Progress**: 14 [x] markers (Phase 3 now has 3.12 marked too). Executor committed Phase 3 adversarial review results.
+
+**Phase 4 Tasks** (8 tasks):
+- 4.1: Run ruff format on all new scripts
+- 4.2: Verify Apache-2.0 license headers
+- 4.3: Verify sys.path import handling by pyright
+- 4.4: Verify timestamp format (UTC with Z suffix)
+- 4.5: Verify _shared.py edge cases in write_output_atomic
+- 4.6: Verify _shared.py edge cases in check_output_lock
+- 4.7: Verify _sanitize_output_dict handles nested structures
+- 4.8: Verify output path resolution
+
+**Review progress**: 22/45 tasks reviewed (48.9%)
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min** — monitoring Phase 4 progress
+
+#### [2026-04-25 14:33:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 52 COMPLETE
+
+**taskIndex=33** — Still on 4.1 (ruff format). Executor modifying spec files.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:36:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 53 COMPLETE
+
+**taskIndex=33** — Same state. Awaiting executor to progress on Phase 4.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:39:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 54 COMPLETE
+
+**taskIndex=33** — Phase 4 seems paused.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:42:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 55 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 5+ cycles. No new [x] markers.
+
+**Note**: Executor may be working on ruff format verification but not committing results.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:45:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 56 COMPLETE
+
+**taskIndex=33** — Phase 4 still stalled.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:49:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 57 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 7+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:52:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 58 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 8+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:55:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 59 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 9+ cycles (Task 4.1: ruff format).
+
+**Concern**: Executor seems stuck on Phase 4. No new commits or [x] markers for 9+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 14:58:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 60 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 10+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:01:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 61 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 11+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:04:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 62 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 12+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:07:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 63 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 13+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:11:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 64 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 14+ cycles (Task 4.1: ruff format).
+
+**Note**: spec-executor may be idle or in another session. No progress.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:14:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 65 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 15+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:17:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 66 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 16+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:20:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 67 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 17+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:23:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 68 COMPLETE
+
+**taskIndex=33** — Phase 4 stalled for 18+ cycles.
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:27:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 69 COMPLETE — PHASE 4 MAJOR PROGRESS
+
+**taskIndex=38** (Task 4.6: check_output_lock). Phase 4 significantly advanced — 19 [x] markers now (from 14).
+
+**Completed Phase 4 tasks** (5 entries written to task_review.md):
+- 4.1: Run ruff format on all new scripts ✓
+- 4.2: Verify Apache-2.0 license headers ✓
+- 4.3: Verify sys.path import handling by pyright ✓
+- 4.4: Verify timestamp format (UTC with Z suffix) ✓
+- 4.5: Verify _shared.py edge cases in write_output_atomic ✓
+
+**Remaining Phase 4**: 4.6, 4.7, 4.8 (in progress at taskIndex=38)
+
+**Review progress**: 27/45 tasks reviewed (60.0%)
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min** — monitoring Phase 4 completion
+
+#### [2026-04-25 15:31:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 70 COMPLETE
+
+**taskIndex=38** — Phase 4 tasks 4.6 and 4.7 marked [x].
+
+**Phase 4 progress**: 7/8 tasks complete (only 4.8 remaining: output path resolution)
+
+**Review progress**: 29/45 tasks reviewed (64.4%)
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min**
+
+#### [2026-04-25 15:35:00] Spec-Executor → External-Reviewer
+**Signal**: PHASE 4 COMPLETE
+
+**Task 4.7**: _sanitize_output_dict handles nested structures — VERIFIED
+- Recursive dict + list processing confirmed via code review
+- Test: `_sanitize_output_dict({"a": nan, "b": {"c": [inf, "str"]}})` → `{"a": null, "b": {"c": [null, "str"]}}`
+
+**Task 4.8**: Output path resolution — VERIFIED
+- All 4 scripts use `resolve()` for output parent validation
+- Input paths go through `validate_input_file()` which resolves paths internally
+- Relative paths work correctly from any working directory
+- ~ expansion relies on shell expansion (standard CLI behavior)
+
+**Phase 4**: 8/8 tasks complete [x]
+**Phase 5**: Starting next (E2E verification & final commit)
+
+**No HOLD/PENDING/DEADLOCK signals.**

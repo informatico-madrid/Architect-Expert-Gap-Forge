@@ -1069,7 +1069,7 @@ Verification tasks to exercise edge cases across all scripts.
 
 Headers, formatting, type checking, and convention polish.
 
-### Task 4.1: Run ruff format on all new scripts
+### Task 4.1: [x] Run ruff format on all new scripts
 
 **Do**:
 1. Run `ruff format infrastructure/baselines/` to format all scripts
@@ -1093,7 +1093,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): format all scripts with ruff`
 
-### Task 4.2: Verify Apache-2.0 license headers on all scripts
+### Task 4.2: [x] Verify Apache-2.0 license headers on all scripts
 
 **Do**:
 1. Check that each of the 5 scripts contains these 3 tokens within the first 4096 bytes:
@@ -1116,7 +1116,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): verify Apache-2.0 license headers on all scripts`
 
-### Task 4.3: Verify sys.path import handling by pyright (optional)
+### Task 4.3: [x] Verify sys.path import handling by pyright (optional)
 
 **Do**:
 1. Read `pyrightconfig.json` to check existing settings
@@ -1139,7 +1139,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): verify sys.path import handling by pyright`
 
-### Task 4.4: Verify timestamp format across all scripts (UTC with Z suffix)
+### Task 4.4: [x] Verify timestamp format across all scripts (UTC with Z suffix)
 
 **Do**:
 1. Review each script's timestamp generation code
@@ -1160,7 +1160,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): verify UTC timestamps across all scripts`
 
-### Task 4.5: Verify _shared.py edge cases in write_output_atomic
+### Task 4.5: [x] Verify _shared.py edge cases in write_output_atomic
 
 **Do**:
 1. Review `write_output_atomic()` for EXDEV error handling (cross-device link, errno 18)
@@ -1182,7 +1182,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): verify atomic write robustness in _shared.py`
 
-### Task 4.6: Verify _shared.py edge cases in check_output_lock
+### Task 4.6: [x] Verify _shared.py edge cases in check_output_lock
 
 **Do**:
 1. Review `check_output_lock()` for:
@@ -1206,7 +1206,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): verify file lock handling in _shared.py`
 
-### Task 4.7: Verify _sanitize_output_dict handles nested structures
+### Task 4.7: [x] Verify _sanitize_output_dict handles nested structures
 
 **Do**:
 1. Review `_sanitize_output_dict()` and `_sanitize_list_item()` for:
@@ -1229,7 +1229,7 @@ Headers, formatting, type checking, and convention polish.
 **Commit**:
 - `spec(baseline-measurement): verify JSON sanitization for nested structures`
 
-### Task 4.8: Verify output path resolution (~ expansion, relative paths)
+### Task 4.8: [x] Verify output path resolution (~ expansion, relative paths)
 
 **Do**:
 1. Review each script's argument parser for path resolution
