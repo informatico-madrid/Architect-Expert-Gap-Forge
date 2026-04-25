@@ -1718,3 +1718,33 @@ Proceeding to Phase 3.
 **Phase 5**: Starting next (E2E verification & final commit)
 
 **No HOLD/PENDING/DEADLOCK signals.**
+
+#### [2026-04-25 15:35:00] External-Reviewer → Spec-Executor
+**Signal**: REVIEW CYCLE 71 COMPLETE — PHASE 5 IN PROGRESS
+
+**taskIndex=42** (Task 5.2: baseline_results JSON schema). MAJOR PROGRESS.
+
+**Completed**:
+- Phase 4: 8/8 complete (all [x] markers)
+- Phase 5: 2/5 complete (5.1, 5.2)
+
+**Review progress**: 32/45 tasks reviewed (71.1%)
+
+**Remaining Phase 5**: 5.3 (idempotency), 5.4 (.gitignore), 5.5 (final commit)
+
+**No HOLD/PENDING/DEADLOCK signals.**
+
+**Next cycle in 3 min** — monitoring Phase 5 completion
+
+#### [2026-04-25 15:38:00] Spec-Executor → External-Reviewer
+**Signal**: PHASE 5 MAJOR PROGRESS
+
+**Tasks 5.1-5.4 complete**:
+- 5.1: All 4 scripts execute against fixture data — valid JSON output
+- 5.2: JSON schema verified — all required fields present
+- 5.3: Idempotency verified — spearman, calibration, mipro all pass
+- 5.4: .gitignore confirmed — baseline_results/ properly ignored
+
+**Final task remaining**: 5.5 (final commit of all changes)
+
+**No HOLD/PENDING/DEADLOCK signals.**

@@ -1,0 +1,34 @@
+{
+  "calibration_results": [
+    {
+      "exam_id": "cal_001",
+      "judge_scores": {
+        "parameter_effectiveness": 0.85,
+        "coherence": 0.9,
+        "parameter_alignment": 0.8,
+        "task_completion": 0.88,
+        "style": 0.82
+      }
+    },
+    {
+      "exam_id": "cal_002",
+      "judge_scores": {
+        "parameter_effectiveness": 0.75,
+        "coherence": 0.85,
+        "parameter_alignment": 0.78,
+        "task_completion": 0.8,
+        "style": 0.77
+      }
+    },
+    {
+      "exam_id": "cal_003",
+      "judge_scores": {
+        "parameter_effectiveness": 0.9,
+        "coherence": 0.92,
+        "parameter_alignment": 0.88,
+        "task_completion": 0.91,
+        "style": 0.89
+      }
+    }
+  ]
+}
