@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import atexit
-import json
 import logging
 import os
 import shutil
@@ -119,6 +118,41 @@ def cleanup_isolated_env(path: str, kind: str) -> None:
         logger.warning("Cleanup failed: %s", exc)
 
 
+def _write_error_output(
+    output: Path, error_kind: str, error_detail: str, isolation_kind: str | None
+) -> None:
+    """Write a partial error output JSON when an operation fails.
+
+    Ensures diagnostic information is available even when the main
+    operation (commit or revert) fails.
+    """
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    output_dict = {
+        "schema_version": "1",
+        "type": "rollback_check",
+        "timestamp": timestamp,
+        "score": None,
+        "status": error_kind,
+        "score_description": "duration_seconds: wall-clock git revert time in seconds",
+        "details": {
+            "duration_seconds": None,
+            "threshold_seconds": None,
+            "within_target": None,
+            "clean_status": None,
+            "isolation_method": isolation_kind,
+            "error": error_kind,
+            "error_detail": error_detail,
+        },
+    }
+    lock_path = check_output_lock(output)
+    try:
+        sanitized = _sanitize_output_dict(output_dict)
+        write_output_atomic(output, sanitized)
+    finally:
+        release_lock(lock_path)
+    logger.info("Wrote error output to %s", output)
+
+
 def _die(msg: str) -> None:
     """Print error to stderr and exit with code 1."""
     print(f"Error: {msg}", file=sys.stderr)
@@ -172,6 +206,10 @@ def _impl(argv: argparse.Namespace) -> int:
 
     global _isolated_path, _isolated_kind
 
+    if argv.no_overwrite and output.exists():
+        print(f"Output file already exists: {output}. Use --no-overwrite to skip.", file=sys.stderr)
+        return 1
+
     if dry_run:
         logger.info("Threshold: %.1fs", target)
         logger.info("Target output: %s", output)
@@ -221,7 +259,9 @@ def _impl(argv: argparse.Namespace) -> int:
             timeout=30,
         )
         if result.returncode != 0:
-            print(f"Error creating test commit: {result.stderr.decode()}", file=sys.stderr)
+            err = result.stderr.decode().strip()
+            print(f"Error creating test commit: {err}", file=sys.stderr)
+            _write_error_output(output, "commit_failed", err, isolated_kind)
             return 1
 
         result = subprocess.run(
@@ -243,11 +283,14 @@ def _impl(argv: argparse.Namespace) -> int:
         duration = time.perf_counter() - start
 
         if result.returncode != 0:
-            print(f"Revert failed: {result.stderr.decode()}", file=sys.stderr)
+            err = result.stderr.decode().strip()
+            print(f"Revert failed: {err}", file=sys.stderr)
+            _write_error_output(output, "revert_failed", err, isolated_kind)
             return 1
 
         # 5. Determine status based on duration
-        if duration < target:
+        timing_ok = duration < target
+        if timing_ok:
             status = "ok"
             print(f"git revert HEAD completed in {duration:.2f}s ({target:.0f}s)")
         else:
@@ -269,15 +312,16 @@ def _impl(argv: argparse.Namespace) -> int:
 
         # 6. Build and write output JSON
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        rounded_duration = round(duration, 4)
         output_dict = {
             "schema_version": "1",
             "type": "rollback_check",
             "timestamp": timestamp,
-            "score": duration,
+            "score": rounded_duration,
             "status": status,
             "score_description": "duration_seconds: wall-clock git revert time in seconds",
             "details": {
-                "duration_seconds": round(duration, 4),
+                "duration_seconds": rounded_duration,
                 "threshold_seconds": target,
                 "within_target": status == "ok",
                 "clean_status": clean_status,
@@ -341,6 +385,11 @@ def main(argv: list[str] | None = None) -> int:
         "--dry-run",
         action="store_true",
         help="Print diagnostics without creating isolated environment",
+    )
+    parser.add_argument(
+        "--no-overwrite",
+        action="store_true",
+        help="Exit 1 if output file already exists",
     )
     parser.add_argument(
         "--verbose",
