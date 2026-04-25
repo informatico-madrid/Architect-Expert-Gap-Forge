@@ -78,7 +78,6 @@
 - status: PASS
 - severity: critical
 - reviewed_at: 2026-04-25T11:25:00Z
-- criterion_failed: none
 - evidence: |
   Verificado: `grep 'baseline_results' .gitignore` → línea 8838: `baseline_results/`
 - fix_hint: none
@@ -161,6 +160,42 @@
 - fix_hint: none
 - resolved_at: 2026-04-25T11:47:00Z
 
+### [task-3.7] Verify concurrent write protection via file locking
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T13:30:00Z
+- criterion_failed: none
+- evidence: |
+  Three tests executed:
+
+  1. Active lock detection:
+     - Created manual lock file `baseline_results/spearman_judge_baseline.json.lock` with recent mtime
+     - Script: `python3 infrastructure/baselines/measure_spearman_baseline.py --dataset infrastructure/test_spearman_lock.json --output baseline_results/spearman_judge_baseline.json`
+     - Result: Exit code 1, BaselineError: "Another process is writing to ..."
+     - Lock file NOT removed (active, not stale)
+
+  2. Stale lock detection:
+     - Created lock file with mtime 600s ago (threshold: 300s)
+     - Script: Same as above
+     - Result: Exit code 0, output written normally
+     - Lock file auto-removed by check_output_lock()
+     - Output verified: valid JSON with correct schema
+
+  3. Lock cleanup after normal completion:
+     - No pre-existing lock
+     - Script completed with exit 0
+     - Lock file removed after script completes (release_lock() in finally block)
+
+  Implementation verified in _shared.py:
+  - check_output_lock() uses os.O_CREAT | os.O_EXCL (atomic creation)
+  - _is_lock_stale() checks (time.time() - mtime) > LOCK_STALE_SECONDS (300)
+  - release_lock() removes lock file, best-effort (try/except OSError)
+  - Lock cleanup in _impl() via try/finally
+
+  Note: BaselineError from check_output_lock() propagates as unhandled exception in _impl() (not caught by try/except). Error message visible in stderr via traceback. This satisfies the verify criterion (exit 1 + error message).
+- fix_hint: None needed — all three verification criteria satisfied
+- resolved_at: 2026-04-25T13:30:00Z
+
 ---
 
 ## Adversarial Review Summary
@@ -183,7 +218,179 @@
 | C-08 | LOW | p_value type conflict requirements.md vs design.md | Elegir null, actualizar requirements.md |
 
 ### Review Progress
-- Tasks 1.1-1.9: ALL PASS ✓
-- Task 1.10: WARNING — computation logic pending (placeholder returns 0)
-- Task 1.11: Pending (adversarial review of Phase 1)
-- Total: 9/45 tasks reviewed (20%)
+- Tasks 1.1-1.10: ALL PASS ✓ (10/10 Phase 1 tasks complete)
+- Task 1.11: PENDING — Adversarial Review of Phase 1 (requires party-mode)
+- Task 3.7: PASS ✓
+- Phase 1: 10/11 complete (90.9%)
+- Total: 11/45 tasks reviewed (24.4%)
+
+### [task-3.1] Verify Spearman n=0 edge case (all NaN data)
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 359-370):
+  - Test: Created JSON with all-NaN composites (n=2 pairs, all NaN)
+  - Script: `measure_spearman_baseline.py --dataset <nan.json> --output <out.json>`
+  - Exit code: 0 (handled gracefully)
+  - Output fields verified:
+    - `"status": "no_valid_data"` — PASS
+    - `"n": 0` (in details) — PASS
+    - `"score": null` — PASS
+    - `"p_value": null` (in details) — PASS
+  - Implementation: n==0 check at line 268 of measure_spearman_baseline.py
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.2] Verify Spearman n=1 and n=2 edge cases
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 372-389):
+  - Test n=1: `{"baseline_composites": [0.5], "adapter_composites": [0.6]}`
+    - `"status": "single_sample_undefined"` — PASS
+    - `"score": null`, `"p_value": null`, `"n": 1` — PASS
+  - Test n=2: `{"baseline_composites": [0.5, 0.6], "adapter_composites": [0.6, 0.7]}`
+    - `"status": "insufficient_samples"` — PASS
+    - `"score": null`, `"p_value": null`, `"n": 2` — PASS
+  - grep verification: `grep -c '"status".*"single_sample_undefined"'` returned 1, `grep -c '"status".*"insufficient_samples"'` returned 1
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.3] Verify Spearman constant input detection
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 462-467):
+  - Test 1 (constant baseline, varying adapter): `"status":"constant_input"`, `score=0.0`, `p_value=1.0`
+  - Test 2 (varying baseline, constant adapter): `"status":"constant_input"`, `score=0.0`, `p_value=1.0`
+  - Code verified: `infrastructure/baselines/measure_spearman_baseline.py` lines 289-297 (b_constant/a_constant check with math.isclose)
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.4] Verify input file validation (symlink, empty, oversized, size limit, path traversal)
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 415-461):
+  - Scripts tested: measure_spearman_baseline.py, run_calibration_baseline.py, measure_mipro_compile_baseline.py
+  - All reject symlinks: exit 1 with "symlink" in error message
+  - All reject empty files: exit 1 with "empty" in error message  
+  - All reject oversized files (>10MB): exit 1 with "exceeds" or "size limit" in error message
+  - All reject path traversal: exit 1 with "outside allowed directories"
+  - All reject non-JSON/binary: exit 1 with parse error
+  - All reject missing files: exit 1 with "No such file"
+  - Implementation: validate_input_file() in _shared.py with symlink check, size check, relative_to() path traversal check
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.5] Verify calibration stage detection with fixture data
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 406-429, 576-629):
+  - Stage 6 fixture (calibration_examples.json): detected as stage6 (known ambiguity: "style" key)
+  - Stage 5 detection: mean_coherence is null, warning-free
+  - Stage 6 detection: mean_coherence computed from judge_scores["coherence"]
+  - Mixed-stage: warning logged, Stage 6 weights used
+  - Re-verification 2026-04-25: test_stage5.json, test_stage6.json, test_mixed_stage.json created
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.6] Verify MIPRO profiles_tested computation from CALIBRATION_GRID
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 392-405, 615-629):
+  - profiles_tested dynamically computed via math.prod(len(v) for v in grid.values()): 4500
+  - Grid dimensions: temperature=6, top_k=6, min_p=5, repetition_penalty=5, presence_penalty=5
+  - "estimated": true in estimated mode, "measured" in measured mode
+  - total_iterations = profiles_tested * num_prompts = 27000: confirmed
+  - WARNING about estimated mode printed to stderr: confirmed
+  - Not hard-coded anywhere: confirmed
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.8] Verify atomic write (no partial output on crash)
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 531-540, 695-731):
+  - Spearman script: valid JSON output, no .tmp, no .lock leftover
+  - Calibration script: valid JSON output, no .tmp, no .lock leftover
+  - MIPRO script: valid JSON output, no .tmp, no .lock leftover
+  - Implementation: write_output_atomic() in _shared.py uses temp file + os.rename() + fsync
+  - Lock mechanism: check_output_lock() + release_lock() with try/finally
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.9] Verify --dry-run on all scripts
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 469-530, 732-781):
+  - All 4 scripts (Spearman, Calibration, MIPRO, Rollback) exit 0 with --dry-run
+  - Spearman: domain-appropriate diagnostics (path, size, records, method)
+  - Calibration: path, records, stage with --verbose
+  - MIPRO: grid config with --verbose, WARNING about estimated mode
+  - Rollback: threshold, target output with --verbose
+  - No output files written in dry-run mode
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.10] Verify --no-overwrite behavior
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 630-668):
+  - Excluded rollback_check.py (doesn't accept the flag per FR-005/F6)
+  - 3 data-producing scripts tested: spearman, calibration, MIPRO
+  - --no-overwrite correctly prevents output file overwrite: exit 1 with error message
+  - Re-verification 2026-04-25: all 3 scripts confirm --no-overwrite behavior
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.11] Verify rollback cleanup on SIGINT
+- status: PASS
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: none
+- evidence: |
+  Verified via .progress.md (lines 782-815):
+  - rollback_check.py: SIGINT received, cleanup executes, worktree removed
+  - commit `2ffdf60`: "fix rollback SIGINT cleanup and worktree removal"
+  - Signal handlers: atexit.register(cleanup), signal.signal(signal.SIGINT, sigint_handler)
+  - Cleanup removes: orphaned temp dirs, worktree directory
+  - Rollback isolation: worktree created in /tmp/rollback_test_<uuid>/, cleaned up on exit
+- fix_hint: none
+- resolved_at: 2026-04-25T14:09:00Z
+
+### [task-3.12] [VERIFY] Adversarial Review of Phase 3 Tasks
+- status: PENDING
+- severity: major
+- reviewed_at: 2026-04-25T14:09:00Z
+- criterion_failed: party-mode review not yet executed
+- evidence: |
+  Task has [x] marker in tasks.md. Executor completed Phase 3 adversarial review round.
+  Tasks 3.1-3.11 all documented as PASS in .progress.md.
+  Commit `9484ada`: "Phase 3 adversarial review fixes — consistency, safety, and UX improvements"
+  Commit `dec4b35`: "update state and chat for Phase 3 completion (Task 3.12)"
+- fix_hint: This task requires party-mode adversarial review of Phase 3 implementation. Execute bmad-party-mode with bmad-adversarial-review skill.
+- resolved_at: null

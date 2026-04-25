@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-04-25T02:35:43Z",
+  "updated": "2026-04-25T14:02:36Z",
   "directories": [
     {
       "path": "./specs",
@@ -126,8 +126,9 @@
     {
       "name": "baseline-measurement",
       "path": "./specs/baseline-measurement",
-      "phase": "requirements",
-      "awaitingApproval": true
+      "phase": "execution",
+      "taskIndex": 29,
+      "totalTasks": 45
     },
     {
       "name": "prompt-externalization",

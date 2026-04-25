@@ -3,7 +3,7 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-04-25T02:35:43Z
+**Last updated:** 2026-04-25T14:02:36Z
 
 ## Directories (1)
 
@@ -37,7 +37,7 @@ See [index-state.json](./index-state.json) for machine-readable data.
 | module-discovery-auto | ./specs | execution | 50/50 tasks |
 | aegf-infrastructure | ./specs | research |  |
 | _epics | ./specs | new |  |
-| baseline-measurement | ./specs | requirements | awaiting approval |
+| baseline-measurement | ./specs | execution | 29/45 tasks |
 | prompt-externalization | ./specs | execution | 10/12 tasks |
 | anchor-dataset | ./specs | new |  |
 | dependency-compatibility | ./specs | research | awaiting approval |

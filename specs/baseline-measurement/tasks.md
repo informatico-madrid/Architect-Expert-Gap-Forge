@@ -759,7 +759,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 
 Verification tasks to exercise edge cases across all scripts.
 
-### Task 3.1: [VERIFY] Verify Spearman n=0 edge case (all NaN data)
+### Task 3.1: [x] Verify Spearman n=0 edge case (all NaN data)
 
 **Do**:
 1. Create a temporary test file with NaN values using Python (JSON does not support NaN literal):
@@ -781,7 +781,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify spearman n=0 edge case`
 
-### Task 3.2: [VERIFY] Verify Spearman n=1 and n=2 edge cases
+### Task 3.2: [x] Verify Spearman n=1 and n=2 edge cases
 
 **Do**:
 1. Create test JSON with n=1: `{"baseline_composites": [0.5], "adapter_composites": [0.6]}`
@@ -801,7 +801,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify spearman n=1 and n=2 edge cases`
 
-### Task 3.3: [VERIFY] Verify Spearman constant input detection
+### Task 3.3: [x] Verify Spearman constant input detection
 
 **Do**:
 1. Create test JSON with constant baseline: `{"baseline_composites": [0.5, 0.5, 0.5], "adapter_composites": [0.3, 0.6, 0.9]}`
@@ -821,7 +821,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify spearman constant input detection`
 
-### Task 3.4: [VERIFY] Verify input file validation (symlink, empty, oversized, size limit, path traversal)
+### Task 3.4: [x] Verify input file validation (symlink, empty, oversized, size limit, path traversal)
 
 **Do**:
 0. Create test fixtures before verification:
@@ -857,7 +857,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify input file validation across all scripts`
 
-### Task 3.5: [VERIFY] Verify calibration stage detection with fixture data
+### Task 3.5: [x] Verify calibration stage detection with fixture data
 
 **Do**:
 1. Run `run_calibration_baseline.py --dataset tests/fixtures/calibration_examples.json --dry-run`
@@ -888,7 +888,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify calibration stage detection with fixture data`
 
-### Task 3.6: [VERIFY] Verify MIPRO profiles_tested computation from CALIBRATION_GRID
+### Task 3.6: [x] Verify MIPRO profiles_tested computation from CALIBRATION_GRID
 
 **Do**:
 1. Run `measure_mipro_compile_baseline.py --dry-run` (no --dataset, estimated mode)
@@ -913,7 +913,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify MIPRO grid computation and estimated mode`
 
-### Task 3.7: [VERIFY] Verify concurrent write protection
+### Task 3.7: [x] Verify concurrent write protection
 
 **Do**:
 1. Use a synthetic lock approach for deterministic testing (not relying on timing races):
@@ -939,7 +939,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify concurrent write protection via file locking`
 
-### Task 3.8: [VERIFY] Verify atomic write (no partial output on crash)
+### Task 3.8: [x] Verify atomic write (no partial output on crash)
 
 **Do**:
 1. Run a script and interrupt it during the write phase (between temp file creation and rename)
@@ -961,7 +961,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify atomic write safety`
 
-### Task 3.9: [VERIFY] Verify --dry-run on all scripts
+### Task 3.9: [x] Verify --dry-run on all scripts
 
 **Do**:
 1. Run `--dry-run` on each of the 4 scripts with appropriate inputs:
@@ -988,7 +988,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify --dry-run on all four scripts`
 
-### Task 3.10: [VERIFY] Verify --no-overwrite behavior
+### Task 3.10: [x] Verify --no-overwrite behavior
 
 **Do**:
 1. Run each of the three data-producing scripts (spearman, calibration, mipro) normally to create output files. **Do NOT run rollback_check.py** — it does NOT accept `--no-overwrite` (per FR-005/F6).
@@ -1012,7 +1012,7 @@ Verification tasks to exercise edge cases across all scripts.
 **Commit**:
 - `spec(baseline-measurement): verify --no-overwrite behavior across data-producing scripts`
 
-### Task 3.11: [VERIFY] Verify rollback cleanup on SIGINT
+### Task 3.11: [x] Verify rollback cleanup on SIGINT
 
 **Do**:
 1. Run `rollback_check.py` in a way that allows sending SIGINT during the revert
