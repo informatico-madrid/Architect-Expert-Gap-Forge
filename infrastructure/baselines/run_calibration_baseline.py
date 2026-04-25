@@ -34,6 +34,10 @@ if project_root not in sys.path:
 from infrastructure.baselines._shared import (
     BaselineError,
     validate_input_file,
+    write_output_atomic,
+    check_output_lock,
+    release_lock,
+    _sanitize_output_dict,
 )
 from src.audit.calibration_schema import CALIBRATION_GRID
 from src.audit.schema import CALIBRATION_SCORING_WEIGHTS
@@ -139,26 +143,81 @@ def main(argv: list[str] | None = None) -> int:
     return _impl(args)
 
 
+def _parse_ldi_source(path: Path, threshold: float) -> tuple[float | None, float | None]:
+    """Parse an LDI source file (JSON or JSONL) and compute mean + pass rate.
+
+    Returns:
+        (mean_ldi, ldi_pass_rate) — both None if no valid numeric LDI values.
+        LDI pass rate is computed as count(ldi >= threshold) / count(valid_numeric_ldi).
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        # Try JSONL: one JSON object per line
+        records: list[dict[str, Any]] = []
+        for line in raw.strip().splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                logger.warning("Skipping invalid JSONL line: %s", e)
+        data = records
+
+    if not isinstance(data, list):
+        data = [data]
+
+    ldi_values: list[float] = []
+    for record in data:
+        if not isinstance(record, dict):
+            continue
+        raw_val = record.get("ldi")
+        if raw_val is None:
+            continue
+        try:
+            ldi_values.append(float(raw_val))
+        except (TypeError, ValueError):
+            logger.warning("Non-numeric LDI value (%s) — excluding from mean/pass_rate", raw_val)
+
+    if not ldi_values:
+        return None, None
+
+    mean_ldi = sum(ldi_values) / len(ldi_values)
+    ldi_pass_rate = sum(1 for v in ldi_values if v >= threshold) / len(ldi_values)
+    return mean_ldi, ldi_pass_rate
+
+
 def _impl(args: argparse.Namespace) -> int:
     """Calibration baseline logic: validate, parse, detect stage, extract metrics.
 
     Returns:
         0 on success, 1 on error.
     """
-    # ── Input validation ──────────────────────────────────────────────────
+    # ── Input validation: dataset ─────────────────────────────────────────
     dataset_path = Path(args.dataset)
     try:
         validate_input_file(dataset_path)
     except BaselineError as e:
-        logger.error("Validation failed: %s", e)
+        logger.error("Dataset validation failed: %s", e)
         return 1
 
-    # ── Parse JSON ────────────────────────────────────────────────────────
+    # ── Input validation: LDI source (if provided) ────────────────────────
+    ldi_path = Path(args.ldi_source) if args.ldi_source else None
+    if ldi_path is not None:
+        try:
+            validate_input_file(ldi_path)
+        except BaselineError as e:
+            logger.error("LDI source validation failed: %s", e)
+            return 1
+
+    # ── Parse dataset JSON ────────────────────────────────────────────────
     try:
         raw = dataset_path.read_text(encoding="utf-8")
         data = json.loads(raw)
     except json.JSONDecodeError as e:
-        logger.error("Failed to parse JSON: %s", e)
+        logger.error("Failed to parse dataset JSON: %s", e)
         return 1
 
     # Handle both formats: {"calibration_results": [...]} and top-level [{...}, ...]
@@ -179,13 +238,34 @@ def _impl(args: argparse.Namespace) -> int:
     logger.info("Detected calibration stage: %s", stage)
     logger.info("Number of results: %d", len(results))
 
-    # ── Dry-run: report and exit ──────────────────────────────────────────
-    if args.dry_run:
-        logger.info("Dry-run complete — stage=%s, results=%d", stage, len(results))
-        return 0
+    # ── LDI parsing ───────────────────────────────────────────────────────
+    mean_ldi: float | None = None
+    ldi_pass_rate: float | None = None
+    ldi_record_count = 0
+
+    if ldi_path is not None:
+        try:
+            mean_ldi, ldi_pass_rate = _parse_ldi_source(ldi_path, args.ldi_threshold)
+            # Count records for dry-run reporting
+            try:
+                ldi_raw = ldi_path.read_text(encoding="utf-8")
+                ldi_data = json.loads(ldi_raw)
+                if isinstance(ldi_data, list):
+                    ldi_record_count = len(ldi_data)
+                else:
+                    ldi_record_count = 1
+            except (json.JSONDecodeError, Exception):
+                # JSONL fallback — count non-empty lines
+                ldi_record_count = sum(1 for line in ldi_raw.strip().splitlines() if line.strip())
+        except Exception as e:
+            logger.warning("LDI source failed: %s — treating as missing", e)
+            mean_ldi = None
+            ldi_pass_rate = None
+    else:
+        logger.warning("--ldi-source not provided; mean_ldi and ldi_pass_rate will be null")
 
     # ── Coherence extraction ──────────────────────────────────────────────
-    coherenties: list[float | None] = []
+    coherences: list[float | None] = []
     for entry in results:
         if stage == "stage6":
             js = entry.get("judge_scores", {})
@@ -196,15 +276,15 @@ def _impl(args: argparse.Namespace) -> int:
                         "Coherence value out of [0,1] range: %s — including in mean",
                         val,
                     )
-                coherenties.append(float(val))
+                coherences.append(float(val))
             else:
-                coherenties.append(None)
+                coherences.append(None)
         else:
             # Stage 5: coherence is null (not derived from composite_score)
-            coherenties.append(None)
+            coherences.append(None)
 
     # Compute mean coherence (skip None values)
-    valid_coherences = [c for c in coherenties if c is not None]
+    valid_coherences = [c for c in coherences if c is not None]
     mean_coherence = sum(valid_coherences) / len(valid_coherences) if valid_coherences else None
 
     # ── Composite score computation ───────────────────────────────────────
@@ -225,30 +305,72 @@ def _impl(args: argparse.Namespace) -> int:
     valid_composites = [s for s in composite_scores if s is not None]
     mean_composite = sum(valid_composites) / len(valid_composites) if valid_composites else None
 
-    # ── Build output ──────────────────────────────────────────────────────
+    # ── Dry-run: report and exit ──────────────────────────────────────────
+    if args.dry_run:
+        info = f"Dataset: {dataset_path} ({dataset_path.stat().st_size} bytes, {len(results)} records)"
+        logger.info("%s", info)
+        logger.info("Detected stage: %s", stage)
+        if mean_coherence is not None:
+            logger.info("Mean coherence: %.6f", mean_coherence)
+        else:
+            logger.info("Mean coherence: N/A (no valid values)")
+        if ldi_path is not None:
+            logger.info("LDI source: %s (%d records)", ldi_path, ldi_record_count)
+            if mean_ldi is not None:
+                logger.info("Mean LDI: %.6f", mean_ldi)
+            else:
+                logger.info("Mean LDI: N/A (no valid numeric values)")
+            if ldi_pass_rate is not None:
+                logger.info("LDI pass rate (>= %.2f): %.6f", args.ldi_threshold, ldi_pass_rate)
+            else:
+                logger.info("LDI pass rate: N/A")
+        else:
+            logger.info("LDI source: not provided")
+        logger.info("DRY RUN complete. No output file written.")
+        return 0
+
+    # ── Build output JSON ─────────────────────────────────────────────────
     now = datetime.now(timezone.utc)
-    output = {
-        "baseline_type": "calibration",
-        "generated_at": now.isoformat(),
-        "stage": stage,
-        "result_count": len(results),
-        "metrics": {
-            "mean_composite_score": round(mean_composite, 6) if mean_composite is not None else None,
+    grid_config = {k: v for k, v in CALIBRATION_GRID.items()}
+
+    output: dict[str, Any] = {
+        "schema_version": "1",
+        "type": "calibration_baseline",
+        "timestamp": now.strftime("%Y-%m-%dT%H:%M:%S") + "Z",
+        "score": round(mean_composite, 6) if mean_composite is not None else None,
+        "status": "ok",
+        "score_description": "mean_coherence: average coherence score, range [0, 1]",
+        "details": {
             "mean_coherence": round(mean_coherence, 6) if mean_coherence is not None else None,
+            "mean_ldi": round(mean_ldi, 6) if mean_ldi is not None else None,
+            "ldi_pass_rate": round(ldi_pass_rate, 6) if ldi_pass_rate is not None else None,
+            "grid_config": grid_config,
+            "data_stage": stage,
+            "n_entries": len(results),
         },
     }
 
-    # ── Write output (or dry-run already exited above) ────────────────────
+    # ── Output: no-overwrite check ────────────────────────────────────────
     output_path = Path(args.output)
     if args.no_overwrite and output_path.exists():
         logger.error("Output file already exists: %s", output_path)
         return 1
 
-    from infrastructure.baselines._shared import write_output_atomic, _sanitize_output_dict
+    # ── Output: validate parent dir is not a symlink ──────────────────────
+    output_parent = output_path.resolve().parent
+    if output_parent.is_symlink():
+        logger.error("Output directory is a symlink: %s — refusing to write", output_parent)
+        return 1
 
-    sanitized = _sanitize_output_dict(output)
-    write_output_atomic(output_path, sanitized)
-    logger.info("Baseline written to %s", output_path)
+    # ── Output: atomic write with lock ────────────────────────────────────
+    lock_path = check_output_lock(output_path)
+    try:
+        sanitized = _sanitize_output_dict(output)
+        write_output_atomic(output_path, sanitized)
+    finally:
+        release_lock(lock_path)
+
+    logger.info("Wrote output to %s", output_path)
     return 0
 
 
