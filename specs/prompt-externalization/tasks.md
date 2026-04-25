@@ -20,7 +20,7 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
 
 ## Phase: Remaining Files
 
-- [ ] T-02 [P] Create prompts_frontend.example.yaml from Python constants
+- [x] T-02 [P] Create prompts_frontend.example.yaml from Python constants
   - **When:** Done when file exists with 5 prompt keys (4 system + 1 user) and dead code header comment.
   - **Verify:** `python -c "import yaml; d=yaml.safe_load(open('src/export/prompts_frontend.example.yaml')); assert len(d['prompts'])==5; print('T-02 PASS')"`
   - **Commit:** `feat(spec): externalize frontend taxonomy prompts`
@@ -160,7 +160,7 @@ Focus: Prove the conversion pipeline works end-to-end with the simplest source (
 
 Based on adversarial review (13 findings), 3 real issues require fix:
 
-- [ ] T-10 [P] Fix calibration_prompt_001.user grammar
+- [x] T-10 [P] Fix calibration_prompt_001.user grammar
   - **Do:**
     1. Read `src/audit/prompts_calibration.example.yaml`
     2. Line 11: `I present you to a hypothetical system called 'X-99'.` → `Consider a hypothetical system called 'X-99'.`
@@ -170,7 +170,7 @@ Based on adversarial review (13 findings), 3 real issues require fix:
   - **Commit:** `fix(spec): correct calibration_prompt_001.user grammar`
   - _Adversarial: F6 (MEDIUM severity) — awkward translation may confuse calibrated model_
 
-- [ ] T-11 [P] Add forbidden_terms explanation header to hard_query
+- [x] T-11 [P] Add forbidden_terms explanation header to hard_query
   - **Do:**
     1. Read `src/factory/prompts_hard_query.example.yaml`
     2. Add header comment explaining: forbidden_terms are literal match strings from source Python that must remain in Spanish
@@ -180,7 +180,7 @@ Based on adversarial review (13 findings), 3 real issues require fix:
   - **Commit:** `fix(spec): document forbidden_terms language in header`
   - _Adversarial: F3 + F10 (LOW severity) — consumers without spec context confused by Spanish in English file_
 
-- [ ] T-12 [P] Add tools_definition exclusion note to taxonomy
+- [x] T-12 [P] Add tools_definition exclusion note to taxonomy
   - **Do:**
     1. Read `src/factory/prompts_taxonomy.example.yaml`
     2. Update header comment: expand exclusion list to note that tools_definition descriptions are in Spanish and intentionally excluded
