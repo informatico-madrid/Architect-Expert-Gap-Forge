@@ -36,6 +36,7 @@ from infrastructure.baselines._shared import (
     BaselineError,
     check_output_lock,
     release_lock,
+    validate_input_file,
     write_output_atomic,
     _sanitize_output_dict,
 )
@@ -146,6 +147,11 @@ def _impl(args: argparse.Namespace) -> int:
 
     if args.dataset:
         dataset_path = Path(args.dataset)
+        try:
+            validate_input_file(dataset_path)
+        except BaselineError as e:
+            logger.error("Dataset validation failed: %s", e)
+            return 1
         try:
             with open(dataset_path) as f:
                 report = json.load(f)
