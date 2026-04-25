@@ -87,6 +87,7 @@ PACKAGE_IMPORT_MAP: dict[str, tuple[str, ...]] = {
     "click": ("click",),
     "tqdm": ("tqdm",),
     "requests": ("requests",),
+    "scipy": ("scipy",),
     "packaging": ("packaging",),
     "fsspec": ("fsspec",),
 }
