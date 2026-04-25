@@ -39,6 +39,7 @@ if project_root not in sys.path:
 
 from infrastructure.baselines._shared import (
     BaselineError,
+    _sanitize_output_dict,
     check_output_lock,
     release_lock,
     validate_input_file,
@@ -261,9 +262,123 @@ def _impl(args: argparse.Namespace) -> int:
     # --- Output directory creation ---
     os.makedirs(output.parent, exist_ok=True)
 
-    # --- Placeholder for Task 1.10: computation and output ---
-    # Input validation is complete; computation will be added in Task 1.10
-    logger.info("Input validation passed. Ready for computation (Task 1.10).")
+    # ── Task 1.10: Spearman computation, edge cases, and atomic output ──
+
+    # 1. Edge case detection BEFORE scipy call
+    if n == 0:
+        status = "no_valid_data"
+        score = None
+        p_value = None
+        reason = "All data points are NaN or non-numeric"
+        score_description = (
+            "Spearman correlation could not be computed: all data points are NaN or non-numeric"
+        )
+    elif n == 1:
+        status = "single_sample_undefined"
+        score = None
+        p_value = None
+        reason = "Single sample — correlation is undefined"
+        score_description = (
+            "Spearman correlation is undefined for a single sample"
+        )
+    elif n == 2:
+        status = "insufficient_samples"
+        score = None
+        p_value = None
+        reason = (
+            "rho for 2 points is always ±1.0 (perfect correlation), meaningless for baseline"
+        )
+        score_description = (
+            "Spearman correlation for 2 points is always perfect (±1.0), not meaningful for baseline"
+        )
+    else:
+        # Check for constant input
+        b_constant = all(math.isclose(paired_b[0], v) for v in paired_b)
+        a_constant = all(math.isclose(paired_a[0], v) for v in paired_a)
+        if b_constant or a_constant:
+            status = "constant_input"
+            score = 0.0
+            p_value = 1.0
+            reason = "One or both arrays contain constant values"
+            score_description = (
+                "Spearman correlation is 0.0 (p=1.0) because one or both arrays are constant"
+            )
+        else:
+            # 2. Determine method: n<10 → "exact", n>=10 → "asymptotic"
+            method = "exact" if n < 10 else "asymptotic"
+            logger.info("Computing Spearman rho (n=%d, method=%s)", n, method)
+
+            # 3. Call scipy.stats.spearmanr (method param added in scipy 1.18)
+            from scipy.stats import spearmanr
+            import scipy
+
+            _scipy_has_method = tuple(
+                int(x) for x in scipy.__version__.split(".")[:2]
+            ) >= (1, 18)
+            if _scipy_has_method:
+                result = spearmanr(paired_b, paired_a, method=method)
+            else:
+                result = spearmanr(paired_b, paired_a)
+            rho = float(result.correlation)
+            p_val = float(result.pvalue)
+
+            # 4. Clamp rho to [-1.0, 1.0]
+            if rho < -1.0 or rho > 1.0:
+                logger.warning(
+                    "rho outside [-1, 1]: %.6f — clamping", rho
+                )
+                rho = max(-1.0, min(1.0, rho))
+
+            score = round(rho, 10)
+            p_value = round(p_val, 10)
+            status = "ok"
+            score_description = (
+                f"Spearman rank correlation (n={n}, method={method}): rho={score:.4f}, p={p_val:.6g}"
+            )
+
+    # 5. Build output JSON
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    output_dict = {
+        "schema_version": "1",
+        "type": "spearman_baseline",
+        "timestamp": timestamp,
+        "score": score,
+        "status": status,
+        "score_description": score_description,
+        "details": {
+            "method": "exact" if n < 10 else ("asymptotic" if n >= 10 else None),
+            "n_valid_pairs": n,
+            "reason": reason if status != "ok" else None,
+        },
+    }
+
+    # Include p_value in details when available
+    if status == "ok":
+        output_dict["details"]["p_value"] = p_value
+    elif status == "constant_input":
+        output_dict["details"]["p_value"] = p_value
+    else:
+        output_dict["details"]["p_value"] = None
+
+    # 6. Sanitize output dict (handles NaN/inf → null, numpy floats)
+    output_dict = _sanitize_output_dict(output_dict)
+
+    # 7. Validate output parent directory is NOT a symlink (R1 fix)
+    output_parent = Path(args.output).parent
+    if output_parent.is_symlink():
+        _die(
+            f"Output directory is a symlink: {output_parent}. "
+            "Refusing to write to symlinked paths for security."
+        )
+
+    # 8. Acquire lock, write atomically, release lock
+    lock_path = check_output_lock(output)
+    try:
+        write_output_atomic(output, output_dict)
+    finally:
+        release_lock(lock_path)
+
+    print(f"Wrote output to {output.resolve()}")
     return 0
 
 

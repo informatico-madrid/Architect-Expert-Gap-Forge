@@ -102,10 +102,15 @@ def write_output_atomic(path: str | Path, data: dict[str, Any]) -> None:
     )  # R2 CRITICAL: no follow_symlinks -- output parent must be validated by caller
     tmp_path = p.with_suffix(p.suffix + ".tmp")
     try:
-        with open(tmp_path, "w", mode=TEMP_FILE_MODE) as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)  # F7: support non-ASCII
-            f.flush()
-            os.fsync(f.fileno())
+        fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, TEMP_FILE_MODE)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)  # F7: support non-ASCII
+                f.flush()
+                os.fsync(f.fileno())
+        except Exception:
+            os.close(fd)
+            raise
         os.rename(str(tmp_path), str(p))
     except OSError as e:
         # R2: EXDEV -- cross-device link (NFS, bind mount, tmpfs)
