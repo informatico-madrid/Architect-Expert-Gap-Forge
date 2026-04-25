@@ -582,7 +582,7 @@ Fill in the remaining three scripts using the established pattern from Spearman.
 **Commit**:
 - `spec(baseline-measurement): implement MIPRO compile mode selection and computation`
 
-### Task 2.6: Implement rollback_check.py — CLI scaffold and isolation
+### Task 2.6: [x] Implement rollback_check.py — CLI scaffold and isolation
 
 **Do**:
 1. Create `infrastructure/rollback_check.py`
