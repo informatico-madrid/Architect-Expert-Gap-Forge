@@ -1255,7 +1255,7 @@ Headers, formatting, type checking, and convention polish.
 
 Full integration verification, documentation, and final checks.
 
-### Task 5.1: Verify all scripts can execute against real fixture data
+### Task 5.1: [x] Verify all scripts can execute against real fixture data
 
 **Do**:
 1. **Spearman**: Create a temp file with correct baseline_composites/adapter_composites structure:
