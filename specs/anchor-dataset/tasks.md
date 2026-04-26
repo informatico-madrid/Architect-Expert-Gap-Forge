@@ -534,7 +534,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_distribution.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): distribution and sample config tests`
 
-- [ ] 5.7 [P] Persistence tests (checkpoint, exporter, failed log)
+- [x] 5.7 [P] Persistence tests (checkpoint, exporter, failed log)
   - **Do**: Create `tests/unit/test_persistence.py` testing: (1) CheckpointManager save/load/resume with tmp_path, (2) corrupted checkpoint returns None, (3) JSONLExporter atomic write (tmp+rename), (4) manifest generation with correct counts, (5) FailedSampleLogger appends correct JSONL entries, truncation to 2000 chars.
   - **Files**: tests/unit/test_persistence.py
   - **Done when**: All persistence tests pass
@@ -548,7 +548,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_startup.py tests/unit/test_cli.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): startup and CLI tests`
 
-- [ ] 5.9 [P] Integration test for full pipeline
+- [x] 5.9 [P] Integration test for full pipeline
   - **Do**: Create `tests/integration/test_pipeline.py` testing: (1) Full pipeline with stubbed providers: load seeds -> generate configs -> build prompts -> call providers (stub) -> export to temp dir -> verify JSONL + manifest. (2) Idempotency: two runs with same seed produce same (id, domain, difficulty) tuples.
   - **Files**: tests/integration/test_pipeline.py
   - **Done when**: Integration test passes with stubbed providers
