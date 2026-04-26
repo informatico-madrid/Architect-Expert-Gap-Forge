@@ -506,7 +506,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_schema.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): schema validation tests`
 
-- [ ] 5.3 [P] Provider unit tests
+- [x] 5.3 [P] Provider unit tests
   - **Do**: Create `tests/unit/test_providers.py` testing: (1) VLLMProvider returns AnchorRecord on valid JSON, None on parse error, retries on connection error (mock requests.post), auth fallback works, (2) OpenAIProvider similar tests, (3) GeminiProvider similar tests, (4) name property for all providers, (5) PROVIDER_MAP correctness, (6) get_provider factory correctness.
   - **Files**: tests/unit/test_providers.py
   - **Done when**: All provider tests pass with mocked HTTP
