@@ -143,3 +143,10 @@ class CircuitBreaker:
         if not self._results:
             return 0.0
         return sum(1 for r in self._results if not r) / len(self._results)
+
+    def _evaluate_batch(self, batch: list[bool]) -> bool:
+        """Evaluate a batch of results; return True if failure rate >= threshold."""
+        if not batch:
+            return False
+        failures = sum(1 for r in batch if not r)
+        return (failures / len(batch)) >= self.threshold

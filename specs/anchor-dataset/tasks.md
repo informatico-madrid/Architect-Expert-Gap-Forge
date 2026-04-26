@@ -513,7 +513,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_providers.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): provider unit tests`
 
-- [ ] 5.4 [P] QualityChecker and CircuitBreaker tests
+- [x] 5.4 [P] QualityChecker and CircuitBreaker tests
   - **Do**: Create `tests/unit/test_quality.py` testing: (1) QualityChecker returns passed=True for valid record, passed=False for anti-laziness, turn_count_mismatch, low quality score, (2) QualityChecker with custom threshold, (3) CircuitBreaker phases: warmup (no switch), calibration (no switch), production (switch at threshold), (4) CircuitBreaker try_reset after consecutive passes, (5) CircuitBreaker get_failure_rate, (6) CircuitBreaker _evaluate_batch.
   - **Files**: tests/unit/test_quality.py
   - **Done when**: All quality tests pass
