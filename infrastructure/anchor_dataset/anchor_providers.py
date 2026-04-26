@@ -10,6 +10,7 @@ import os
 import time
 from abc import ABC, abstractmethod
 
+import httpx
 import requests
 
 from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord
@@ -104,3 +105,72 @@ class VLLMProvider(AnchorProvider):
                 return None
 
         return None
+
+
+class OpenAIProvider(AnchorProvider):
+    """Generate anchor records via OpenAI's API."""
+
+    DEFAULT_MODEL = "gpt-4o"
+    API_URL = "https://api.openai.com/v1/chat/completions"
+
+    def __init__(self, model: str = DEFAULT_MODEL) -> None:
+        self.model = model
+
+    @property
+    def name(self) -> str:
+        return "openai"
+
+    def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        timeout: float = 30.0,
+    ) -> AnchorRecord | None:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            return None
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.4,
+        }
+
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=timeout) as client:
+                    resp = client.post(
+                        self.API_URL,
+                        headers={"Authorization": f"Bearer {api_key}"},
+                        json=payload,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    content = data["choices"][0]["message"]["content"]
+                    return AnchorRecord.model_validate(json.loads(content))
+            except (httpx.HTTPError, json.JSONDecodeError, KeyError, ValueError):
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    return None
+        return None
+
+
+class GeminiProvider(AnchorProvider):
+    """Generate anchor records via Google Gemini API."""
+
+    def __init__(self, model: str = "gemini-2.0-flash") -> None:
+        self.model = model
+
+    @property
+    def name(self) -> str:
+        return "gemini"
+
+    def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
