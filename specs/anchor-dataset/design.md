@@ -316,7 +316,7 @@ class AnchorProvider(ABC):
 - **No retry on semantic failures** — only retry on network errors (requests.ConnectionError, requests.Timeout, httpx.ConnectError)
 - **Temperature 0.3-0.5** recommended (0.4 default for deterministic output)
 - **No inheritance from TeacherProvider** — separate concern (static data vs agentic execution)
-- **Retry logic**: Each provider implements its own retry loop inside `generate()`. Retry on network errors (connection refused, timeout, 5xx) up to `config.max_retries` times with exponential backoff (1s, 2s, 4s). Do NOT retry on: 400 Bad Request, 429 rate limit (handled by external rate limiter), semantic validation failure (JSON parse succeeds but AnchorRecord validation fails).
+- **Retry logic**: Each provider implements its own retry loop inside `generate()`. Retry on network errors (connection refused, timeout, 5xx) up to `config.max_retries` times with exponential backoff (1s, 2s, 4s). Do NOT retry on: 400 Bad Request, 429 rate limit (handled by external rate limiter), semantic validation failure (JSON parse succeeds but AnchorRecord validation fails). **Exception scope**: The retry loop catches only `requests.ConnectionError` and `requests.Timeout` (NOT `requests.HTTPError`). `resp.raise_for_status()` in `_api_call()` raises `HTTPError` for 4xx/5xx — this bubbles up past the retry loop, so `generate()` returns None and the orchestration handles it.
 
 **JSON parse -> AnchorRecord pipeline** (inside each provider's `generate()`):
 
@@ -1041,7 +1041,7 @@ class FailedSampleEntry:
 | `field_incomplete` | Required field missing | No (manual review) |
 | `anti_laziness` | Lazy code patterns found | No (manual review) |
 | `turn_count_mismatch` | Turn count outside tolerance | No (manual review) |
-| `self_assessed_quality` | Self-assessed quality < 0.3 | No (manual review) |
+| `self_assessed_quality` | Self-assessed quality < threshold (default 0.3, calibrated) | No (manual review) |
 | `tool_call_invalid` | Invalid tool call syntax | No (manual review) |
 | `json_parse_error` | API returned non-JSON | Yes (fallback provider) |
 | `api_error` | HTTP/network error | Yes (fallback provider) |
@@ -1435,8 +1435,8 @@ AnchorDatasetError (RuntimeError)
 | `SeedSynthesizer` | Stub provider returning abstracted seeds, stub provider returning seeds with forbidden strings | Inline fixture dicts in test module |
 | `SeedLoader` | Valid YAML content, missing file, empty file, malformed YAML | Test fixture files in `tests/fixtures/` |
 | `SampleConfigGenerator` | Distribution config for 50 samples (default), 200 samples (max), edge cases (1 domain, 0 seeds) | Inline constants in test module |
-| `QualityChecker` | Record passing all checks, record failing anti-laziness, record with wrong turn count, record with quality < 0.3 | Inline state construction |
-| `CircuitBreaker` | Batch with 0 failures, batch with 2 failures (threshold), batch with 10 consecutive passes, warmup/calibration/production phases | Inline state construction |
+| `QualityChecker` | Record passing all checks, record failing anti-laziness, record with wrong turn count, record with quality below threshold (0.3 default) | Inline state construction |
+| `CircuitBreaker` | Batch with 0 failures, batch with 2 failures (threshold), batch with consecutive_pass_threshold passes (default 10), warmup/calibration/production phases | Inline state construction |
 | `StartupValidator` | Valid CLI args, missing API key, unreachable vLLM, empty reference corpus | Stub network calls, use real validation |
 | `CheckpointManager` | Valid checkpoint file, corrupted checkpoint file, missing file, .tmp file on disk | `tmp_path` fixture with JSON content |
 | `JSONLExporter` | Valid records list, empty list, manifest with domain counts | `tmp_path` fixture with JSONL content |
