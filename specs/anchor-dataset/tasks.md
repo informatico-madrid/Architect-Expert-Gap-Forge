@@ -541,7 +541,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_persistence.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): persistence tests`
 
-- [ ] 5.8 [P] StartupValidator and CLI tests
+- [x] 5.8 [P] StartupValidator and CLI tests
   - **Do**: Create `tests/unit/test_startup.py` testing: (1) valid CLI args pass all 4 steps, (2) missing API key fails at step 2, (3) invalid count fails at step 1, (4) dry_run returns warnings. Create `tests/unit/test_cli.py` testing: (1) --count 50, (2) --provider openai, (3) --dry-run writes nothing, (4) --no-overwrite exits 1 when file exists, (5) --domain-distribution override, (6) --difficulty-distribution override, (7) default values correct.
   - **Files**: tests/unit/test_startup.py, tests/unit/test_cli.py
   - **Done when**: All startup and CLI tests pass
