@@ -9,6 +9,7 @@ import argparse
 import json
 import logging
 import sys
+import datetime
 import time
 from collections import Counter
 from pathlib import Path
@@ -16,6 +17,11 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def _generate_id(cfg_idx: int) -> str:
+    """Generate a deterministic sample ID from config index."""
+    return f"sample_{cfg_idx:03d}"
+
+def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser with 12 CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Anchor dataset builder — generate labeled anchor samples"
@@ -207,12 +213,65 @@ def main(argv: list[str] | None = None) -> int:
     failed_log_path = Path(config.output_dir) / "failed_samples.jsonl"
     failed_logger = FailedSampleLogger(log_path=failed_log_path)
 
+    # Checkpoint tracking
+    cp_path = Path(config.output_dir) / f".checkpoint_{Path(config.output_file).stem}.json"
+    cp_manager = CheckpointManager()
+    completed_ids: set[str] = set()
+    failed_ids: dict[str, str] = {}
+    sample_counter = 0
+    domain_remaining: dict[str, int] = dict(Counter(cfg.domain for cfg in configs))
+
+    # Resume from checkpoint if requested
+    if config.resume and cp_path.exists():
+        loaded = cp_manager.load(cp_path)
+        if loaded:
+            completed_ids = loaded.completed_ids
+            failed_ids = loaded.failed_ids
+            sample_counter = loaded.sample_counter
+            domain_remaining = loaded.domain_allocation_remaining.copy()
+            id_to_config = {_generate_id(i): c for i, c in enumerate(configs)}
+            failed_configs = [
+                id_to_config[fid]
+                for fid in failed_ids
+                if fid in id_to_config
+            ]
+            logger.info(
+                "Resuming from checkpoint: %d completed, %d failed, %d samples generated",
+                len(completed_ids), len(failed_ids), sample_counter,
+            )
+
+            for fid in failed_ids:
+                if fid in id_to_config:
+                    cfg = id_to_config[fid]
+                    idx = int(fid.split("_")[1])
+                    logger.info(
+                        "Re-attempting failed sample: %s",
+                        fid,
+                    )
+                    try:
+                        system, user = prompt_builder.build(cfg)
+                        record = provider.generate(system, user, timeout=30.0)
+                    except Exception:
+                        record = None
+
+                    if record is not None:
+                        records.append(record)
+                        successful += 1
+                        circuit_breaker.record_result(qresult.passed if quality_enabled else True)
+                    else:
+                        failed += 1
+
     logger.info(
         "Starting generation: %d samples, provider=%s",
         len(configs), config.provider,
     )
 
     for idx, cfg in enumerate(configs):
+        # Skip completed IDs from previous run
+        cfg_id = _generate_id(idx)
+        if cfg_id in completed_ids:
+            logger.info("Skipping completed: %s", cfg_id)
+            continue
         system, user = prompt_builder.build(cfg)
 
         record = None
@@ -252,11 +311,28 @@ def main(argv: list[str] | None = None) -> int:
             failed += 1
             continue
 
+        completed_ids.add(cfg_id)
+        sample_counter += 1
+        domain_remaining[cfg.domain] = domain_remaining.get(cfg.domain, 0) - 1
+
         if (idx + 1) % 10 == 0:
             logger.info(
                 "Progress: %d/%d (success=%d, failed=%d)",
                 idx + 1, len(configs), successful, failed,
             )
+
+            # Save checkpoint after each batch
+            checkpoint_data = CheckpointData(
+                completed_ids=completed_ids,
+                failed_ids=failed_ids,
+                provider_active=provider.name,
+                sample_counter=sample_counter,
+                domain_allocation_remaining=domain_remaining,
+                timestamp=datetime.datetime.utcnow().isoformat(),
+                circuit_breaker_triggered=circuit_breaker.triggered,
+                next_variant_map={},
+            )
+            cp_manager.save(cp_path, checkpoint_data)
 
         if circuit_breaker.should_switch():
             logger.warning(

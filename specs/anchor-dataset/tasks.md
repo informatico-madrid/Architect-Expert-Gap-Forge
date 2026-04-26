@@ -393,7 +393,7 @@ print('PASS: circuit breaker integration correct')
 "`
   - **Commit**: `feat(anchor-dataset): integrate circuit breaker into builder`
 
-- [ ] 3.3 [P] Integrate checkpoint save into builder
+- [x] 3.3 [P] Integrate checkpoint save into builder
   - **Do**: In builder loop, after each batch: call CheckpointManager.save() with current completed_ids, failed_ids, provider_active, sample_counter, domain_allocation_remaining. On --resume: load checkpoint, skip completed IDs, re-attempt failed IDs.
   - **Files**: infrastructure/anchor_dataset_builder.py
   - **Done when**: Checkpoint saved after batches, resume skips completed IDs
