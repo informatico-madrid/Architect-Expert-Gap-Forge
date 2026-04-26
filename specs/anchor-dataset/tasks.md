@@ -330,11 +330,11 @@ print('PASS: StartupValidator dry_run works')
 "`
   - **Commit**: `feat(anchor-dataset): add StartupValidator`
 
-- [ ] 2.12 [P] Create main CLI builder script
+- [x] 2.12 [P] Create main CLI builder script
   - **Do**: Create `infrastructure/anchor_dataset_builder.py` at project root. 12 CLI arguments via argparse. Orchestration flow: startup validation -> seed loading -> synthesis -> config generation -> generation loop -> export. KeyboardInterrupt handling: save checkpoint, log, exit 1. --dry-run mode: validate seeds, compute distribution, log planned generation, exit 0 without writing. --no-overwrite: exit 1 if output exists. Apache-2.0 license header.
   - **Files**: infrastructure/anchor_dataset_builder.py
   - **Done when**: Script runs --dry-run, exits 0, logs planned distribution
-  - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python infrastructure/anchor_dataset_builder.py --dry-run --count 50 2>&1 | grep -q 'Would generate' && grep -q 'HA=' && echo PASS || echo FAIL`
+  - **Verify**: `cd /mnt/bunker_data/ai/data_factory && OUTPUT=$(PYTHONPATH=. python infrastructure/anchor_dataset_builder.py --dry-run --count 50 2>&1) && echo "$OUTPUT" | grep -q 'Would generate' && echo "$OUTPUT" | grep -q 'home_assistant' && echo PASS || echo FAIL`
   - **Commit**: `feat(anchor-dataset): add main CLI builder script`
 
 - [ ] 2.13 [VERIFY] E2E verification: dry-run end-to-end
