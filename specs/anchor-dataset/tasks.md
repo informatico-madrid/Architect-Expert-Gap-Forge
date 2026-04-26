@@ -459,7 +459,7 @@ print(f'PASS: reference_scan found {len(patterns)} patterns')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python infrastructure/anchor_dataset_builder.py --dry-run 2>&1 | grep -q 'Would generate' && echo 'PASS: dry-run works' && python infrastructure/anchor_dataset_builder.py --help | grep -q -- '--resume' && echo PASS || echo FAIL`
   - **Commit**: `feat(anchor-dataset): implement --resume flag`
 
-- [ ] 4.3 [P] Add --no-overwrite and output warning
+- [x] 4.3 [P] Add --no-overwrite and output warning
   - **Do**: Add --no-overwrite flag. If output file exists and --no-overwrite is set, print to stderr and exit 1. If output exists and --no-overwrite not set, print warning to stderr: 'Output file exists: {path}. Overwriting.'
   - **Files**: infrastructure/anchor_dataset_builder.py
   - **Done when**: --no-overwrite prevents overwrite, warning printed when overwriting

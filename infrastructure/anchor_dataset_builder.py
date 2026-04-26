@@ -128,6 +128,21 @@ def main(argv: list[str] | None = None) -> int:
             print("  Warning: {}".format(w))
         return 0
 
+    # 2.5. Overwrite protection
+    output_path = Path(config.output_dir) / config.output_file
+    if output_path.exists():
+        if config.no_overwrite:
+            print(
+                "Output file exists: {}. Aborting.".format(output_path),
+                file=sys.stderr,
+            )
+            return 1
+        else:
+            print(
+                "Output file exists: {}. Overwriting.".format(output_path),
+                file=sys.stderr,
+            )
+
     # 3. Seed synthesis for unseeded domains
     from infrastructure.anchor_dataset.seed_synthesizer import SeedSynthesizer
 
