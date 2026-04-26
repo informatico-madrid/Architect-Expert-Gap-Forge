@@ -562,7 +562,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_edge_cases.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): edge case tests`
 
-- [ ] 5.11 [VERIFY] Final quality gate: full CI
+- [x] 5.11 [VERIFY] Final quality gate: full CI
   - **Do**: Run the complete local CI suite: lint, types, all tests
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && ruff check infrastructure/anchor_dataset/ infrastructure/anchor_dataset_builder.py && ruff format --check infrastructure/anchor_dataset/ infrastructure/anchor_dataset_builder.py && pyright infrastructure/anchor_dataset/ infrastructure/anchor_dataset_builder.py --pythonversion 3.12 && python -m pytest tests/unit/ tests/integration/test_pipeline.py -v --tb=short && echo PASS`
   - **Done when**: All commands pass with no errors
