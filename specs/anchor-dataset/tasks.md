@@ -25,7 +25,7 @@ Focus: Prove the core pipeline works end-to-end. Schema + basic provider + simpl
   - **Verify**: `python -c "from infrastructure.anchor_dataset.config import AnchorsConfig, QualitySettings, apply_calibration; c = AnchorsConfig(); assert c.total_samples == 50; assert c.provider == 'vllm'; qs = QualitySettings(); assert qs.check_threshold == 0.3"`
   - **Commit**: `feat(anchor-dataset): add AnchorsConfig dataclass`
 
-- [ ] 1.4 [P] Create AnchorRecord Pydantic model
+- [x] 1.4 [P] Create AnchorRecord Pydantic model
   - **Do**: Create `infrastructure/anchor_dataset/anchor_dataset_schema.py` with `AnchorRecord` Pydantic v2 model (frozen=True, all fields from spec with constraints), `AnchorManifest` Pydantic model, and `DSPY_FIELD_MAP` constant.
   - **Files**: infrastructure/anchor_dataset/anchor_dataset_schema.py
   - **Done when**: Model validates correctly, rejects invalid data
