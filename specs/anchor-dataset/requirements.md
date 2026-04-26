@@ -251,7 +251,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 
 ### FR-006: Provider implementations
 - [FR-006.1] `AnchorProvider` interface defines: `generate(sample_config: dict) -> AnchorRecord | None`, `name` property (str)
-- [FR-006.2] `VLLMProvider`: connects to `localhost:8000` with API key from `VLLM_API_KEY` env var (with documented development fallback), uses `response_format: {"type": "json_object"}`, model default `qwen3-30b-a3b-nvfp4`
+- [FR-006.2] `VLLMProvider`: connects to `localhost:8000` with API key from `VLLM_API_KEY` env var (with documented development fallback), uses `response_format: {"type": "json_object"}`, model default `qwen3-5-35b-a3b-nvfp4`
 - [FR-006.3] `OpenAIProvider`: uses `response_format: {"type": "json_object"}`, model configurable (default GPT-4o), API key from `OPENAI_API_KEY` env var
 - [FR-006.4] `GeminiProvider`: uses `response_mime_type: "application/json"`, model configurable (default Gemini 2.0 Flash), API key from `GOOGLE_API_KEY` env var
 - [FR-006.5] Provider MUST NOT retry on semantic failures (only on network errors)
@@ -335,7 +335,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 | **TrajectorySignature** | DSPy Signature that maps (domain_context, expected_trajectory, difficulty, turn_count, legacy_pattern) -> (expected_tool_usage_patterns) |
 | **JudgeSignature** | DSPy Signature that maps (expected_trajectory, domain_context) -> (expected_coherence, expected_overall) |
 | **CalibrationSignature** | DSPy Signature that maps (expected_trajectory, expected_tool_usage_patterns) -> (expected_optimized_parameters, expected_quality_score) |
-| **vLLM** | Self-hosted LLM inference server. Project runs `qwen3-30b-a3b-nvfp4` at `localhost:8000`. Primary backend for anchor generation |
+| **vLLM** | Self-hosted LLM inference server. Project runs `qwen3-5-35b-a3b-nvfp4` at `localhost:8000`. Primary backend for anchor generation |
 | **OpenAI GPT-4o** | Cloud LLM with strongest structured output guarantees (guided decoding). Fallback backend |
 | **Gemini 2.0 Flash** | Google's LLM with good JSON mode and lower cost. Secondary fallback / diversity source |
 | **Circuit Breaker** | Quality monitoring pattern: check every N samples; if failure rate >= threshold, switch to fallback provider |
@@ -390,7 +390,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 | `src/factory/config.py` | Available | `TeacherModelConfig` -- config pattern |
 | `src/audit/inference.py` | Available | `VLLMClient`, `GeminiClient` -- underlying clients |
 | `src/curation/anchor_dataset_downloader.py` | Available | Existing JSONL export pattern reference |
-| vLLM server at `localhost:8000` | Required | `qwen3-30b-a3b-nvfp4` -- must be running before primary provider can be used |
+| vLLM server at `localhost:8000` | Required | `qwen3-5-35b-a3b-nvfp4` -- must be running before primary provider can be used |
 | OpenAI API key (`OPENAI_API_KEY`) | Required for fallback | Fallback provider, required if circuit breaker triggers |
 | Google API key (`GOOGLE_API_KEY`) | Optional | Gemini provider for diversity; not required for core generation |
 
@@ -465,7 +465,7 @@ This spec creates a CLI tool (`infrastructure/anchor_dataset_builder.py`) that r
 
 **Escalate if**:
 - vLLM server is not running and no OpenAI API key is available (no generation possible)
-- `qwen3-30b-a3b-nvfp4` does not support JSON mode (circuit breaker triggers immediately, falls back to OpenAI for everything)
+- `qwen3-5-35b-a3b-nvfp4` does not support JSON mode (circuit breaker triggers immediately, falls back to OpenAI for everything)
 - Circuit breaker threshold never met but quality is still poor (suggests quality criteria are not discriminating enough)
 - Seed data is insufficient for target domain (generic_domain and other have 0 seeds; generation must rely entirely on templates)
 - Human verification bottleneck becomes a schedule risk (> 100 hours for 100+ samples)
@@ -474,7 +474,7 @@ This spec creates a CLI tool (`infrastructure/anchor_dataset_builder.py`) that r
 
 ## Next Steps
 
-1. [PREREQ] Verify vLLM server is running at `localhost:8000` with `qwen3-30b-a3b-nvfp4` and JSON mode works (test with 1 sample)
+1. [PREREQ] Verify vLLM server is running at `localhost:8000` with `qwen3-5-35b-a3b-nvfp4` and JSON mode works (test with 1 sample)
 2. [PREREQ] Verify OpenAI API key is available (`OPENAI_API_KEY` env var set) for fallback
 3. [FR-001] Create `infrastructure/anchor_dataset_schema.py` with `AnchorRecord`, `AnchorManifest`, `DSPY_FIELD_MAP`
 4. [FR-003] Implement seed loader for `tests/fixtures/seed_examples.yaml`
