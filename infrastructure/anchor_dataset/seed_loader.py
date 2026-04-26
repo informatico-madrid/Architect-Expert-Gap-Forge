@@ -88,12 +88,12 @@ def load_seeds(seed_file: Path | None = None) -> list[NormalizedSeed]:
     seeds: list[NormalizedSeed] = []
 
     # Top-level seeds → home_assistant domain
-    for raw in data.get("seeds", []):
+    for raw in data.get("seeds") or []:
         if isinstance(raw, dict):
             seeds.append(_normalize_seed(raw, "home_assistant"))
 
     # PHP legacy seeds
-    for raw in data.get("php_legacy_seeds", []):
+    for raw in data.get("php_legacy_seeds") or []:
         if isinstance(raw, dict):
             seeds.append(_normalize_seed(raw, "php_legacy"))
 

@@ -195,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     generator = SampleConfigGenerator(seeds=seeds, seed=args.seed)
-    configs = generator.generate_configs(configs_count=args.count)
+    configs = generator.generate_configs(count=args.count)
 
     logger.info(
         "Generated %d configs", len(configs),
@@ -286,70 +286,67 @@ def main(argv: list[str] | None = None) -> int:
         len(configs), config.provider,
     )
 
-    for idx, cfg in enumerate(configs):
-        # Skip completed IDs from previous run
-        cfg_id = _generate_id(idx)
-        if cfg_id in completed_ids:
-            logger.info("Skipping completed: %s", cfg_id)
-            continue
-        system, user = prompt_builder.build(cfg)
+    checkpoint_data = None
 
-        record = None
-        failure_reason = None
-        raw_response = ""
+    try:
+        for idx, cfg in enumerate(configs):
+            # Skip completed IDs from previous run
+            cfg_id = _generate_id(idx)
+            if cfg_id in completed_ids:
+                logger.info("Skipping completed: %s", cfg_id)
+                continue
+            system, user = prompt_builder.build(cfg)
 
-        for attempt in range(3):
-            try:
-                record = provider.generate(system, user, timeout=30.0)
-                if record is not None:
-                    break
-                failure_reason = "provider_error"
-                if attempt < 2:
-                    logger.debug(
-                        "Sample %d attempt %d failed (%s), retrying...",
-                        idx, attempt + 1, failure_reason,
-                    )
-                    time.sleep(1)
-                    continue
-            except Exception as exc:
-                record = None
-                failure_reason = "provider_error"
-                raw_response = str(exc)
-                if attempt < 2:
-                    continue
+            record = None
+            failure_reason = None
+            raw_response = ""
 
-        if record is None:
-            failed_logger.log(
-                sample_id=f"sample_{idx:04d}",
-                domain=cfg.domain,
-                difficulty=cfg.difficulty,
-                failure_reason=failure_reason or "provider_error",
-                provider=provider.name,
-                attempt=attempt,
-                raw_response=raw_response,
-            )
-            failed += 1
-            continue
+            for attempt in range(3):
+                try:
+                    record = provider.generate(system, user, timeout=30.0)
+                    if record is not None:
+                        break
+                    failure_reason = "provider_error"
+                    if attempt < 2:
+                        logger.debug(
+                            "Sample %d attempt %d failed (%s), retrying...",
+                            idx, attempt + 1, failure_reason,
+                        )
+                        time.sleep(1)
+                        continue
+                except Exception as exc:
+                    record = None
+                    failure_reason = "provider_error"
+                    raw_response = str(exc)
+                    if attempt < 2:
+                        continue
 
-        completed_ids.add(cfg_id)
-        sample_counter += 1
-        domain_remaining[cfg.domain] = domain_remaining.get(cfg.domain, 0) - 1
+            if record is None:
+                failed_logger.log(
+                    sample_id=f"sample_{idx:04d}",
+                    domain=cfg.domain,
+                    difficulty=cfg.difficulty,
+                    failure_reason=failure_reason or "provider_error",
+                    provider=provider.name,
+                    attempt=attempt,
+                    raw_response=raw_response,
+                )
+                failed += 1
+                continue
 
-        # Quality check and circuit breaker
-        if quality_enabled:
-            qpassed = quality_checker.check(record, cfg.turn_count).passed
-            circuit_breaker.record_result(qpassed)
-            if circuit_breaker.should_switch():
-                logger.warning("Circuit breaker triggered — switching provider")
-                config.provider = "fallback" if config.provider != "fallback" else config.provider
+            completed_ids.add(cfg_id)
+            sample_counter += 1
+            domain_remaining[cfg.domain] = domain_remaining.get(cfg.domain, 0) - 1
 
-        if (idx + 1) % 10 == 0:
-            logger.info(
-                "Progress: %d/%d (success=%d, failed=%d)",
-                idx + 1, len(configs), successful, failed,
-            )
+            # Quality check and circuit breaker
+            if quality_enabled:
+                qpassed = quality_checker.check(record, cfg.turn_count).passed
+                circuit_breaker.record_result(qpassed)
+                if circuit_breaker.should_switch():
+                    logger.warning("Circuit breaker triggered — switching provider")
+                    config.provider = "fallback" if config.provider != "fallback" else config.provider
 
-            # Save checkpoint after each batch
+            # Save checkpoint after each successful generation for crash recovery
             checkpoint_data = CheckpointData(
                 completed_ids=completed_ids,
                 failed_ids=failed_ids,
@@ -362,12 +359,25 @@ def main(argv: list[str] | None = None) -> int:
             )
             cp_manager.save(cp_path, checkpoint_data)
 
-        if circuit_breaker.should_switch():
-            logger.warning(
-                "Circuit breaker triggered at batch %d, failure_rate=%.2f",
-                idx + 1, circuit_breaker.get_failure_rate(),
-            )
-            circuit_breaker.try_reset()
+            if (idx + 1) % 10 == 0:
+                logger.info(
+                    "Progress: %d/%d (success=%d, failed=%d)",
+                    idx + 1, len(configs), successful, failed,
+                )
+
+            if circuit_breaker.should_switch():
+                logger.warning(
+                    "Circuit breaker triggered at batch %d, failure_rate=%.2f",
+                    idx + 1, circuit_breaker.get_failure_rate(),
+                )
+                circuit_breaker.try_reset()
+
+    except KeyboardInterrupt:
+        # Save any pending checkpoint before exit
+        if checkpoint_data is not None:
+            cp_manager.save(cp_path, checkpoint_data)
+        logger.info("Interrupted — checkpoint saved at %s", cp_path)
+        return 1
 
     # 6. Export
     output_path = Path(config.output_dir) / config.output_file

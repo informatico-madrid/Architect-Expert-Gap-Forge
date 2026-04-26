@@ -555,7 +555,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/integration/test_pipeline.py -v -m integration --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): full pipeline integration test`
 
-- [ ] 5.10 [P] Edge case tests
+- [x] 5.10 [P] Edge case tests
   - **Do**: Create `tests/unit/test_edge_cases.py` testing: (1) 0 seeds for generic_domain -> template generation produces valid samples, (2) very long trajectory (>10000 chars) not truncated, (3) malformed API responses handled gracefully, (4) empty seed file handled gracefully, (5) KeyboardInterrupt saves checkpoint and exits 1.
   - **Files**: tests/unit/test_edge_cases.py
   - **Done when**: All edge case tests pass
