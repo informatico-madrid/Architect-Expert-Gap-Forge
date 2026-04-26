@@ -42,7 +42,7 @@ print('FIELD_MAP inputs:', len(DSPY_FIELD_MAP['inputs']), 'labels:', len(DSPY_FI
 "`
   - **Commit**: `feat(anchor-dataset): add AnchorRecord Pydantic model`
 
-- [ ] 1.5 [P] Create DSPy converter stub
+- [x] 1.5 [P] Create DSPy converter stub
   - **Do**: Add `jsonl_to_dspy_examples(path: str) -> list[dspy.Example]` to schema.py. Import dspy lazily; raise ImportError with guidance if not installed. Handle empty files returning [].
   - **Files**: infrastructure/anchor_dataset/anchor_dataset_schema.py
   - **Done when**: Function exists, raises ImportError when dspy unavailable, returns [] for empty file
