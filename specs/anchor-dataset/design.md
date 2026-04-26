@@ -615,7 +615,8 @@ class SampleConfig:
     difficulty: str
     turn_count: int
     legacy_pattern: str
-    seed_id: str | None      # None for generic_domain/other
+    seed_id: str | None      # Original seed_id from YAML (e.g., "ha_seed_001"), None for generic_domain/other
+    seed_pool: int           # Numeric pool index for ID generation (1-8 HA, 9-13 PHP, 100-119 generic, 200-219 other)
     variant_index: int
     domain_context: str
     generation_instruction: str
@@ -1163,7 +1164,7 @@ def jsonl_to_dspy_examples(path: str) -> list[dspy.Example]:
 
 **Purpose**: CLI orchestration of the entire generation pipeline.
 
-**CLI arguments** (10 total, FR-002.2):
+**CLI arguments** (12 total, FR-002.2):
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -1177,6 +1178,8 @@ def jsonl_to_dspy_examples(path: str) -> list[dspy.Example]:
 | `--timeout` | `int` | `60` | API request timeout (seconds) |
 | `--max-retries` | `int` | `3` | Max retries for rate-limited responses |
 | `--no-overwrite` | `flag` | `False` | Exit 1 if output exists |
+| `--domain-distribution` | `str` | N/A | JSON string override, e.g. `'{"home_assistant":50,"php_legacy":25}'` |
+| `--difficulty-distribution` | `str` | N/A | JSON string override, e.g. `'{"easy":30,"medium":50,"hard":20}'` |
 
 **Orchestration flow** (with FR-006a 4-step startup):
 ```
@@ -1306,7 +1309,7 @@ sequenceDiagram
 | Failed sample log | JSONL, JSON array, SQLite, DLQ system | JSONL | One-off task, simple to read/write, supports grep/jq for manual review |
 | Trajectory format | Structured conversation array, single string, XML | Single string | Simpler to validate, matches existing AgenticTrajectory string serialization, less API payload |
 | Seed gap handling | Reference corpus mining, template synthesis, generic prompts | Template synthesis from reference corpus | No seeds for generic_domain/other; reference corpus provides domain context inspiration |
-| ID format | UUID, hash, deterministic index | `anchor_{seed_index:03d}_{variant:02d}` | Deterministic, human-readable, reproducible across runs |
+| ID format | UUID, hash, deterministic index | `anchor_{seed_pool:03d}_{variant:02d}` | Deterministic, human-readable, reproducible across runs. `seed_pool` is a numeric index: 1-8 for HA seeds, 9-13 for PHP seeds, 100-119 for synthetic generic_domain, 200-219 for synthetic other |
 | Turn count per difficulty | Fixed values, random within range, configurable | Fixed (easy=3, medium=4, hard=5) | Simpler, predictable, matches existing trajectory patterns |
 
 ## Error Handling Strategy
