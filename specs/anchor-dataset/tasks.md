@@ -520,7 +520,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_quality.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): quality checker and circuit breaker tests`
 
-- [ ] 5.5 [P] Seed loader and SeedSynthesizer tests
+- [x] 5.5 [P] Seed loader and SeedSynthesizer tests
   - **Do**: Create `tests/unit/test_seed_loader.py` testing: (1) Loads existing YAML with correct NormalizedSeed objects, (2) Missing file returns empty list with INFO log, (3) Idempotent loads, (4) Malformed YAML handling. Create `tests/unit/test_seed_synthesizer.py` testing: (1) validate_no_leakage returns correct booleans, (2) reference_scan reads files, (3) synthesize() returns seeds with domain labels.
   - **Files**: tests/unit/test_seed_loader.py, tests/unit/test_seed_synthesizer.py
   - **Done when**: All seed tests pass
