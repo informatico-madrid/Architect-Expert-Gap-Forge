@@ -76,8 +76,7 @@ graph TB
     AP -.->|ABC| VP
     AP -.->|ABC| OP
     AP -.->|ABC| GP
-    QC -.->|delegate| CB
-    Orch --> AR
+        Orch --> AR
     AR --> DFM
     Orch --> CB
     CB --> FSL
@@ -229,22 +228,22 @@ class QualitySettings:
     calibration_adjustments_applied: int = 0
 ```
 
-**Calibration decision tree** (modifies `QualitySettings`, NOT `AnchorsConfig`):
+**Calibration decision tree** (standalone function — modifies a `QualitySettings` instance, NOT `AnchorsConfig`):
 
 ```python
-def apply_calibration(self, scores: list[float]) -> QualitySettings:
-    """Run calibration decision tree on observed scores. Returns updated settings."""
+def apply_calibration(settings: QualitySettings, scores: list[float]) -> QualitySettings:
+    """Run calibration decision tree on observed scores. Returns updated settings in-place."""
     pct_above_03 = sum(1 for s in scores if s >= 0.3) / len(scores) if scores else 0
     pct_above_07 = sum(1 for s in scores if s >= 0.7) / len(scores) if scores else 0
 
     if pct_above_07 > 0.7:
-        self.quality_score_threshold = 0.4  # tighten
-        self.calibration_adjustments_applied += 1
+        settings.quality_score_threshold = 0.4  # tighten
+        settings.calibration_adjustments_applied += 1
     elif pct_above_03 < 0.3:
-        self.quality_score_threshold = 0.2  # loosen
-        self.calibration_adjustments_applied += 1
+        settings.quality_score_threshold = 0.2  # loosen
+        settings.calibration_adjustments_applied += 1
     # else: keep threshold at 0.3
-    return self
+    return settings
 ```
 ```
 
@@ -651,6 +650,8 @@ Rounding: use `math.floor` for first N domains, remainder goes to last domain to
 - For `generic_domain` and `other`: always template-based (no seeds)
 - Template contexts derived from `tests/fixtures/reference_corpus/homeassistant/` repos
 
+**Note on frozen `SampleConfig`**: The dataclass is frozen, but `generation_instruction` varies between variants because `SampleConfigGenerator` creates a NEW `SampleConfig` instance for each variant with a distinct instruction string. The instruction is computed from `variant_index` (e.g., different reference corpus excerpts, different seed pairings) — it is never mutated after construction.
+
 **Deterministic ordering** (FR-004.6): Given the same seed (`--seed` argument), configs are generated in the same order for reproducibility.
 
 ### PromptBuilder
@@ -811,14 +812,14 @@ Include:
 
 **File**: `infrastructure/anchor_dataset/quality.py`
 
-**Purpose**: Separate, testable class that evaluates individual samples against quality criteria. The QualityCircuitBreaker (below) DELEGATES to this class for per-sample evaluation. This separation makes both components independently testable.
+**Purpose**: Separate, testable class that evaluates individual samples against quality criteria. `CircuitBreaker` and `QualityChecker` are independent — `QualityChecker.check()` evaluates per-sample quality, `CircuitBreaker.record_result()` receives a boolean from the caller (who called QualityChecker). This separation makes both components independently testable.
 
 **Quality check criteria** (FR-007.2, per sample):
 1. All required fields present (check `AnchorRecord.model_fields_set` — if called after construction, Pydantic validation is assumed; this check exists for raw dict input pre-construction)
 2. Anti-laziness: no `...`, `# TODO`, `pass # implement`, `# resto del codigo` in `expected_trajectory`
 3. Turn count within +/-1 of target
 4. Tool call syntactic validity (parse tool call blocks — see format below)
-5. Self-assessed quality >= 0.3
+5. Self-assessed quality >= self._threshold (default 0.3, adjustable via constructor)
 
 **Note**: Step 1 is a pre-construction guard — `QualityChecker.check_raw_dict()` accepts `dict | str` and returns `QualityResult | ValidationError`. The main `check()` method receives a constructed `AnchorRecord`, so Pydantic validation has already passed.
 
@@ -832,14 +833,27 @@ class QualityResult:
     turn_count_actual: int    # For logging
 
 class QualityChecker:
-    """Evaluates a single sample against quality criteria."""
+    """Evaluates a single sample against quality criteria.
+
+    Accepts an optional threshold parameter — the calibration decision tree
+    adjusts this value during calibration phase.  Defaults to 0.3.
+    """
 
     ANTI_LAZINESS_PATTERNS: Final[frozenset[str]] = frozenset([
         "...", "# TODO", "pass # implement", "# resto del codigo",
     ])
 
+    def __init__(self, threshold: float = 0.3) -> None:
+        self._threshold = threshold
+
     def check(self, record: AnchorRecord, target_turn_count: int) -> QualityResult:
-        """Evaluate a sample. Returns QualityResult with pass/fail and reasons."""
+        """Evaluate a sample. Returns QualityResult with pass/fail and reasons.
+
+        Uses self._threshold (default 0.3) — adjustable via constructor during
+        calibration phase (apply_calibration returns updated settings in-place;
+        caller recreates QualityChecker with new threshold:
+        `checker = QualityChecker(threshold=settings.quality_score_threshold)`).
+        """
         ...
 
     def check_raw(self, raw: dict | str, target_turn_count: int) -> QualityResult | ValidationError:
@@ -881,7 +895,7 @@ class QualityChecker:
 
 **File**: `infrastructure/anchor_dataset/quality.py` (co-located with QualityChecker)
 
-**Purpose**: Monitor batch-level quality, trigger fallback provider if failure rate exceeds threshold. DELEGATES per-sample evaluation to `QualityChecker`.
+**Purpose**: Monitor batch-level quality, trigger fallback provider if failure rate exceeds threshold. Receives boolean `passed` from the caller (who called `QualityChecker` for per-sample evaluation). These are independent, separately testable classes.
 
 **Two batch sizes** (independent parameters):
 | Parameter | Default | Purpose |
@@ -898,7 +912,8 @@ class CircuitBreaker:
     batch_size: int = 10                 # evaluation batch size
     failures_in_batch: int = 0
     passes_in_batch: int = 0
-    consecutive_passes: int = 0          # for auto-reset after 10 consecutive
+    consecutive_passes: int = 0          # for auto-reset after consecutive_pass_threshold
+    consecutive_pass_threshold: int = 10 # synced from AnchorsConfig.consecutive_pass_threshold
     active_provider: str = "vllm"
     fallback_provider: str = "openai"
     triggered: bool = False
@@ -928,8 +943,8 @@ class CircuitBreaker:
             self.failures_in_batch = 0
             self.passes_in_batch = 0
 
-        # Phase transition (internal)
-        self._transition_phase(self._total_samples)
+        # Phase transition (internal) — uses self._total_samples directly
+        self._transition_phase()
 
     def should_switch(self) -> bool:
         """Only triggers in production phase with sufficient failures."""
@@ -939,8 +954,8 @@ class CircuitBreaker:
         return rate >= self.threshold
 
     def try_reset(self) -> bool:
-        """If 10 consecutive passes while triggered, switch back to primary."""
-        if self.consecutive_passes >= 10 and self.triggered:
+        """If consecutive_pass_threshold consecutive passes while triggered, switch back to primary."""
+        if self.consecutive_passes >= self.consecutive_pass_threshold and self.triggered:
             self.triggered = False
             return True
         return False
@@ -956,10 +971,10 @@ class CircuitBreaker:
             self.triggered = True
             self.reason = f"{self.failures_in_batch}/{self.batch_size} failures ({self.get_failure_rate():.0%})"
 
-    def _transition_phase(self, total: int) -> None:
-        if total < 5:
+    def _transition_phase(self) -> None:
+        if self._total_samples < 5:
             self.phase = "warmup"
-        elif total < 20:
+        elif self._total_samples < 20:
             self.phase = "calibration"
         else:
             self.phase = "production"
@@ -967,7 +982,7 @@ class CircuitBreaker:
 
 **Note**: `CircuitBreaker` does NOT delegate to `QualityChecker`. These are separate, independent classes. `QualityChecker.check()` evaluates per-sample quality. `CircuitBreaker.record_result()` receives a boolean `passed` from the caller (who called QualityChecker) and tracks batch-level failure rates.
 
-**Phase transition thresholds**:
+**Phase transition thresholds** (based on `self._total_samples`):
 - 0-4 samples: **warmup** — no circuit breaker checks. Log scores for baseline.
 - 5-19 samples: **calibration** — run checks, log failure rate, log score distribution. Do NOT switch provider. Apply calibration decision tree from research.md.
 - 20+ samples: **production** — full circuit breaker behavior. Trigger switch if threshold breached.
@@ -982,16 +997,19 @@ class CircuitBreaker:
 | Production | 20+ | Full circuit breaker behavior — trigger switch if threshold breached. |
 
 **Calibration decision tree** (from research.md, applied during calibration phase):
-1. If >70% of scores >0.7: tighten `quality_score_threshold` to 0.4, update prompt assessment instructions
-2. If <30% of scores >0.3: loosen `quality_score_threshold` to 0.2, relax prompt assessment instructions
+1. If >70% of scores >0.7: tighten `quality_score_threshold` to 0.4
+2. If <30% of scores >0.3: loosen `quality_score_threshold` to 0.2
 3. If 30-70% >0.3: keep `quality_score_threshold` at 0.3
+
+**Applying calibration to QualityChecker**: After `apply_calibration(settings, scores)` mutates the `QualitySettings`, the builder recreates `QualityChecker` with the new threshold:
+`checker = QualityChecker(threshold=settings.quality_score_threshold)`. This keeps the threshold change explicit and atomic.
 
 **Provider switching flow**:
 1. During batch evaluation, if `failures_in_batch / batch_size >= threshold` AND phase == "production":
 2. Log: `Circuit breaker triggered: {failures}/{batch_size} failures ({rate:.0%}). Switching from {active} to {fallback}.`
 3. Set `triggered = True`, `active_provider = fallback_provider`
 4. Builder switches provider instance for remaining samples
-5. After `consecutive_passes >= 10` (10 consecutive batch passes), log reset and switch back
+5. After `consecutive_passes >= consecutive_pass_threshold` (default 10, configurable), log reset and switch back
 
 **Rate limit coordination** (research.md R14-01): If cross-model judge calls use the same API key as generation calls, both must serialize through a shared `RateLimitCoordinator`. Implementation: single `httpx.Client` per API key with request queue. Judge calls are lower priority and wait behind generation calls.
 
@@ -1200,7 +1218,7 @@ PHASE 3: Execution
   3c. For each SampleConfig:
       a. Build prompt (PromptBuilder)
       b. Call provider (AnchorProvider.generate)
-      c. If result is None: log to failed sample log, record in circuit breaker
+      c. If result is None: log to failed sample log, call CB.record_result(False)
       d. If result is AnchorRecord: append to output list, mark completed in checkpoint
       e. After batch_size samples: run QualityChecker, then circuit breaker
       f. If circuit breaker triggered: switch provider, log event
@@ -1279,9 +1297,7 @@ sequenceDiagram
         else failure
             Provider-->>Builder: None
             Builder->>FSL: log_failed(record)
-            Builder->>QC: check(None)
-            QC-->>Builder: QualityResult(failed)
-            Builder->>CB: record_result(failed)
+            Builder->>CB: record_result(False)
             alt cb.should_switch()
                 CB-->>Builder: SWITCH to fallback
                 Builder->>Provider: switch_to_fallback()
@@ -1332,19 +1348,19 @@ AnchorDatasetError (RuntimeError)
 |----------------|---------------|-------------------|-------------|
 | vLLM server unreachable | ConfigurationError | Pre-flight health check, exit 1 with message suggesting `--provider openai` | Clear guidance on next step |
 | Missing API key | ConfigurationError | Pre-flight env var check, exit 1 with specific env var name | No confusion about what's missing |
-| API rate limit (429) | ProviderError | Exponential backoff with jitter, up to `--max-retries` | Automatic retry, user sees progress |
-| Non-JSON API response | SerializationError | Catch on parse, log to failed_samples.jsonl with reason `json_parse_error`, auto-retry with fallback provider | Automatic recovery, manual review of non-retryable failures |
-| Pydantic validation failure | ValidationError | Return None from provider, log to failed_samples.jsonl with reason, increment circuit breaker counter | Sample lost from output, quality monitored |
-| Anti-laziness filter triggered | ValidationError | Log to failed_samples.jsonl with reason `anti_laziness`, increment circuit breaker | Sample rejected, quality gate enforced |
-| Circuit breaker triggered | ProviderError | Switch to fallback provider, log event, continue generation | Higher cost (OpenAI), but quality maintained |
+| API rate limit (429) | — | Provider does NOT retry 429 (per design: "no retry on 429 rate limit (handled by external rate limiter)"). Orchestration calls CB.record_result(False). | Rate limit handled externally |
+| Non-JSON API response | — | Provider catches JSON decode error, returns None. Orchestration logs to failed_samples.jsonl with reason `json_parse_error`, calls CB.record_result(False). | Automatic recovery (fallback provider retry at provider level), manual review at orchestration level |
+| Pydantic validation failure | — | Provider catches ValidationError, returns None. Orchestration logs to failed_samples.jsonl with reason, calls CB.record_result(False). | Sample lost from output, quality monitored |
+| Anti-laziness filter triggered | — | QC catches anti-laziness, returns QualityResult(passed=False). Orchestration logs with reason `anti_laziness`, calls CB.record_result(False). | Sample rejected, quality gate enforced |
+| Circuit breaker triggered | — | Orchestration calls `CB.should_switch()`, if True switches provider instance, logs event, continues generation with fallback | Higher cost (OpenAI), but quality maintained |
 | KeyboardInterrupt | — | Save checkpoint, log clean shutdown message, exit 1 with resume instruction | Progress saved, can resume |
 | Corrupted checkpoint | CheckpointError | Log warning, start from scratch | May regenerate some samples (idempotent by ID) |
 | Empty seed file | SeedError | Log warning, continue with empty seed list for that domain | Template-based generation kicks in |
 | Output file exists + --no-overwrite | ConfigurationError | Exit 1 immediately | Protects against accidental overwrite |
 | Rename/fsync failure | CheckpointError / SerializationError | Clean up .tmp file, raise domain exception with clear message | No corrupt files left on disk |
 | Disk full during write | SerializationError | Catch OSError, clean up .tmp, log with disk space info | No corrupt files, user knows why |
-| Model hot-swap during calibration | ProviderError | Log warning, restart calibration for affected samples | Brief pause, then continue |
-| Network timeout mid-batch | ProviderError | Retry with backoff; if exhausted, log as api_error, fallback to secondary provider | Automatic recovery |
+| Model hot-swap during calibration | — | Orchestration detects model change, logs warning, continues generation. Samples with failed QC get re-attempted. | Brief pause, then continue |
+| Provider retry exhausted | — | Provider returns None after exhausting max_retries on network errors. Orchestration logs `api_error`, calls CB.record_result(False). | Automatic recovery via CB fallback |
 | Corrupted seed data | SeedError | Log warning with file position, skip malformed seed, continue with remaining | Partial seed set used |
 
 ## Edge Cases
@@ -1446,11 +1462,14 @@ AnchorDatasetError (RuntimeError)
 | `SeedLoader.load_seeds()` | unit | Returns list[NormalizedSeed] with correct fields; graceful on missing file | Fake filesystem (`tmp_path`) |
 | `SampleConfigGenerator.generate_configs()` | unit | Total matches --count (50 default); domain distribution exact (within rounding); difficulty distribution applied; deterministic order | none |
 | `PromptBuilder.build()` | unit | System prompt contains schema definition; user prompt contains generation instruction; few-shot examples included for HA/PHP | none |
-| `QualityChecker.check()` | unit | Returns passed=True for valid record; returned reasons list for failures; turn_count_tolerance enforced | none |
+| `QualityChecker.check()` | unit | Returns passed=True for valid record; returned reasons list for failures; turn_count_tolerance enforced; respects configurable threshold | none |
+| `QualityChecker(check_threshold=0.4)` | unit | Quality result uses 0.4 threshold instead of default 0.3 | none |
 | `CircuitBreaker.record_result()` | unit | Increments failure count; triggers switch at threshold (2/10); phase-aware (no switch in warmup) | none |
-| `CircuitBreaker.try_reset()` | unit | Returns True after 10 consecutive passes; does not reset after 9 | none |
+| `CircuitBreaker.try_reset()` | unit | Returns True after `consecutive_pass_threshold` (default 10) consecutive passes; does not reset after 9 | none |
+| `CircuitBreaker.__init__` | unit | Syncs `consecutive_pass_threshold` from `AnchorsConfig`; defaults to 10 if not provided | none |
 | `CircuitBreaker.get_failure_rate()` | unit | Returns correct float; handles 0 total | none |
-| `CircuitBreaker._transition_phase()` | unit | warmup for <5, calibration 5-19, production 20+ | none |
+| `CircuitBreaker._transition_phase()` | unit | warmup for <5, calibration 5-19, production 20+ (uses self._total_samples) | none |
+| `CircuitBreaker._evaluate_batch()` | unit | Sets triggered=True when failure rate >= threshold; does not set when below threshold | none |
 | `QualitySettings` | unit | Default threshold 0.3; calibration decision tree modifies threshold; frozen config unaffected | none |
 | `VLLMProvider` | unit | Auth fallback: uses "sk-master-bunker-2026" when VLLM_API_KEY missing | Mock `requests.post` |
 | `FailedSampleLogger.log()` | unit | Appends JSON object to JSONL file with correct structure; truncates raw_response to 2000 chars | Fake filesystem (`tmp_path`) |
@@ -1535,7 +1554,7 @@ All modules go under `infrastructure/anchor_dataset/` subpackage (to avoid names
 21. Write unit tests for CheckpointManager save/load/resume
 22. Write unit tests for JSONLExporter atomic write
 23. Write integration test for full pipeline with stubbed providers
-23. Run `ruff format` + `pyright` on all new files
+24. Run `ruff format` + `pyright` on all new files
 
 ## Unresolved Questions
 
