@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from typing import Any
 
 from .seed_loader import NormalizedSeed
 
@@ -92,7 +91,6 @@ class SampleConfigGenerator:
     seed: int = 42
 
     def __post_init__(self) -> None:
-        self._rng = random.Random(self.seed)
         self._domain_pools: dict[str, list[NormalizedSeed]] = {}
         for s in self.seeds:
             self._domain_pools.setdefault(s.domain, []).append(s)
@@ -141,7 +139,7 @@ class SampleConfigGenerator:
                     configs.append(cfg)
                     sample_idx += 1
 
-        self._rng.shuffle(configs)
+        random.Random(self.seed).shuffle(configs)
         return configs
 
 

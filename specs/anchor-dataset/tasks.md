@@ -63,7 +63,7 @@ print('PASS: function signature correct')
 "`
   - **Commit**: `feat(anchor-dataset): add jsonl_to_dspy_examples stub`
 
-- [ ] 1.6 [P] Create seed loader
+- [x] 1.6 [P] Create seed loader
   - **Do**: Create `infrastructure/anchor_dataset/seed_loader.py` with `NormalizedSeed` dataclass and `load_seeds()` function. Load from `tests/fixtures/seed_examples.yaml`. Tag by domain. Handle missing file gracefully (log INFO, return []).
   - **Files**: infrastructure/anchor_dataset/seed_loader.py
   - **Done when**: Loads existing YAML, returns NormalizedSeed objects with domain tags
@@ -78,7 +78,7 @@ print(f'Loaded {len(seeds)} seeds across {domains}')
 "`
   - **Commit**: `feat(anchor-dataset): add seed loader`
 
-- [ ] 1.7 [P] Create sample config generator
+- [x] 1.7 [P] Create sample config generator
   - **Do**: Create `infrastructure/anchor_dataset/sample_generator.py` with `SampleConfig` frozen dataclass and `SampleConfigGenerator` class. Implement distribution math: floor-based rounding so total matches count exactly. HA=40%, PHP=30%, generic_domain=20%, other=10%. Difficulty: easy=30%, medium=50%, hard=20%. Turn count: easy=3, medium=4, hard=5. Deterministic ordering via random seed.
   - **Files**: infrastructure/anchor_dataset/sample_generator.py
   - **Done when**: Generates correct distribution for count=50 (HA=20, PHP=15, Generic=10, Other=5)
