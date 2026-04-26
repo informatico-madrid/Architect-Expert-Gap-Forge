@@ -106,7 +106,7 @@ class CircuitBreaker:
         n = len(self._results)
         if n < 5:
             self._phase = "warmup"
-        elif n < 20:
+        elif n < 10:
             self._phase = "calibration"
         else:
             self._phase = "production"

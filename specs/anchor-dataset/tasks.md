@@ -337,7 +337,7 @@ print('PASS: StartupValidator dry_run works')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && OUTPUT=$(PYTHONPATH=. python infrastructure/anchor_dataset_builder.py --dry-run --count 50 2>&1) && echo "$OUTPUT" | grep -q 'Would generate' && echo "$OUTPUT" | grep -q 'home_assistant' && echo PASS || echo FAIL`
   - **Commit**: `feat(anchor-dataset): add main CLI builder script`
 
-- [ ] 2.13 [VERIFY] E2E verification: dry-run end-to-end
+- [x] 2.13 [VERIFY] E2E verification: dry-run end-to-end
   - **Do**:
     1. Run full dry-run with count=50: `python infrastructure/anchor_dataset_builder.py --dry-run --count 50`
     2. Verify it logs planned distribution
@@ -375,7 +375,7 @@ Focus: Add circuit breaker, quality checker, failed sample log, checkpoint integ
   - **Done when**: No lint errors, no type errors
   - **Commit**: `chore(anchor-dataset): pass quality checkpoint phase 3`
 
-- [ ] 3.2 [P] Integrate circuit breaker into builder generation loop
+- [x] 3.2 [P] Integrate circuit breaker into builder generation loop
   - **Do**: Modify `anchor_dataset_builder.py` generation loop: after each batch, call QualityChecker.check(), then CircuitBreaker.record_result(). If cb.should_switch(), log event, switch to fallback provider. Handle phase transitions.
   - **Files**: infrastructure/anchor_dataset_builder.py
   - **Done when**: Builder uses circuit breaker during generation, switches provider at threshold
