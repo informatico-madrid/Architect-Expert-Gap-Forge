@@ -11,7 +11,7 @@ Focus: Prove the core pipeline works end-to-end. Schema + basic provider + simpl
   - **Verify**: `python -c "from infrastructure.anchor_dataset import __version__; print(__version__)"`
   - **Commit**: `feat(anchor-dataset): add package init`
 
-- [ ] 1.2 [P] Create exception hierarchy
+- [x] 1.2 [P] Create exception hierarchy
   - **Do**: Create `infrastructure/anchor_dataset/errors.py` with `AnchorDatasetError(RuntimeError)` base + 6 subclasses (ValidationError, ProviderError, SerializationError, ConfigurationError, SeedError, CheckpointError). Follow existing pattern from `src/utils/exceptions.py`.
   - **Files**: infrastructure/anchor_dataset/errors.py
   - **Done when**: All exception classes exist and inherit correctly
@@ -120,7 +120,7 @@ print('PASS: prompt contains required sections')
 "`
   - **Commit**: `feat(anchor-dataset): add PromptBuilder`
 
-- [ ] 1.9 [VERIFY] Quality checkpoint: schema + config + seed loader + generator
+- [x] 1.9 [VERIFY] Quality checkpoint: schema + config + seed loader + generator
   - **Do**: Run quality checks on all Phase 1 foundation modules
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && ruff check infrastructure/anchor_dataset/ && pyright infrastructure/anchor_dataset/ --pythonversion 3.12`
   - **Done when**: No lint errors, no type errors
