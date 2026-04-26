@@ -206,7 +206,7 @@ print('PASS: QualityChecker correctly detects anti-laziness')
 "`
   - **Commit**: `feat(anchor-dataset): add QualityChecker`
 
-- [ ] 2.6 [P] Create CircuitBreaker state machine
+- [x] 2.6 [P] Create CircuitBreaker state machine
   - **Do**: Add `CircuitBreaker` class to quality.py (co-located). 3 phases: warmup (0-4), calibration (5-19), production (20+). record_result(passed), should_switch(), try_reset(), get_failure_rate(), _evaluate_batch(), _transition_phase(). threshold=0.2, batch_size=10, consecutive_pass_threshold=10.
   - **Files**: infrastructure/anchor_dataset/quality.py
   - **Done when**: State machine transitions correctly, triggers at threshold in production only
