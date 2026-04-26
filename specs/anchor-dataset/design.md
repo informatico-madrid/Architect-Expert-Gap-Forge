@@ -94,7 +94,7 @@ graph TB
 
 ### AnchorRecord / AnchorManifest / DSPY_FIELD_MAP
 
-**File**: `infrastructure/anchor_dataset/anchor_dataset/anchor_dataset_schema.py`
+**File**: `infrastructure/anchor_dataset/anchor_dataset_schema.py`
 
 **Purpose**: Pydantic v2 models for data validation, serialization, and DSPy integration.
 
@@ -168,7 +168,7 @@ DSPY_FIELD_MAP: Final[dict[str, list[str]]] = {
 
 ### AnchorsConfig (Centralized Configuration)
 
-**File**: `infrastructure/anchor_dataset/anchor_dataset/config.py`
+**File**: `infrastructure/anchor_dataset/config.py`
 
 **Purpose**: Single source of truth for all thresholds and parameters. All components import from this module instead of defining their own constants.
 
@@ -206,17 +206,46 @@ class AnchorsConfig:
         "hard": 20,
     })
 
-    # Quality configuration
-    circuit_breaker_threshold: float = 0.2    # 20% failure rate
-    quality_score_threshold: float = 0.3      # per-sample self-assessed minimum
-    evaluation_batch_size: int = 10           # quality check interval
-    consecutive_pass_threshold: int = 10      # for auto-reset
+    # Quality configuration (immutable defaults)
+    quality_score_threshold_default: float = 0.3   # per-sample self-assessed minimum
+    circuit_breaker_threshold: float = 0.2          # 20% failure rate
+    evaluation_batch_size: int = 10                 # quality check interval
+    consecutive_pass_threshold: int = 10            # for auto-reset
 
     # Paths
     seed_file: str = "tests/fixtures/seed_examples.yaml"
     failed_samples_log: str = "outputs/failed_samples.jsonl"
     checkpoint_path: str = "datasets/anchors/v1/.checkpoint.json"
     reference_corpus_path: str = "tests/fixtures/reference_corpus/homeassistant/"
+```
+
+**Mutable QualitySettings** (for calibration phase adjustments — separate from frozen AnchorsConfig):
+
+```python
+@dataclass
+class QualitySettings:
+    """Mutable quality thresholds adjusted during calibration phase."""
+    quality_score_threshold: float = 0.3       # adjusted by calibration decision tree
+    calibration_adjustments_applied: int = 0
+```
+
+**Calibration decision tree** (modifies `QualitySettings`, NOT `AnchorsConfig`):
+
+```python
+def apply_calibration(self, scores: list[float]) -> QualitySettings:
+    """Run calibration decision tree on observed scores. Returns updated settings."""
+    pct_above_03 = sum(1 for s in scores if s >= 0.3) / len(scores) if scores else 0
+    pct_above_07 = sum(1 for s in scores if s >= 0.7) / len(scores) if scores else 0
+
+    if pct_above_07 > 0.7:
+        self.quality_score_threshold = 0.4  # tighten
+        self.calibration_adjustments_applied += 1
+    elif pct_above_03 < 0.3:
+        self.quality_score_threshold = 0.2  # loosen
+        self.calibration_adjustments_applied += 1
+    # else: keep threshold at 0.3
+    return self
+```
 ```
 
 **Environment variable validation** (during construction):
@@ -229,7 +258,7 @@ class AnchorsConfig:
 
 ### StartupValidator (FR-006a — 4-step sequence)
 
-**File**: `infrastructure/anchor_dataset/anchor_dataset/startup.py`
+**File**: `infrastructure/anchor_dataset/startup.py`
 
 **Purpose**: Execute pre-flight checks in strict order before generation begins. All four steps must pass.
 
@@ -257,7 +286,7 @@ class StartupValidator:
 
 ### AnchorProvider Interface + Implementations
 
-**File**: `infrastructure/anchor_dataset/anchor_dataset/anchor_providers.py`
+**File**: `infrastructure/anchor_dataset/anchor_providers.py`
 
 **Purpose**: Strategy-pattern abstraction for LLM API backends. Reuses underlying HTTP clients (httpx, google-genai) but has separate abstraction from `TeacherProvider` — different error handling (validation failures -> None + failed log, not retry).
 
@@ -285,9 +314,51 @@ class AnchorProvider(ABC):
 
 **Key design decisions**:
 - **Return `AnchorRecord | None`** (not raised exception) — caller decides routing (success -> export, None -> failed log)
-- **No retry on semantic failures** — only retry on network errors (httpx.TimeoutException, connection errors)
+- **No retry on semantic failures** — only retry on network errors (requests.ConnectionError, requests.Timeout, httpx.ConnectError)
 - **Temperature 0.3-0.5** recommended (0.4 default for deterministic output)
 - **No inheritance from TeacherProvider** — separate concern (static data vs agentic execution)
+- **Retry logic**: Each provider implements its own retry loop inside `generate()`. Retry on network errors (connection refused, timeout, 5xx) up to `config.max_retries` times with exponential backoff (1s, 2s, 4s). Do NOT retry on: 400 Bad Request, 429 rate limit (handled by external rate limiter), semantic validation failure (JSON parse succeeds but AnchorRecord validation fails).
+
+**JSON parse -> AnchorRecord pipeline** (inside each provider's `generate()`):
+
+```python
+def generate(self, system_prompt: str, user_prompt: str, ...) -> AnchorRecord | None:
+    """Full pipeline: API call -> JSON parse -> Pydantic validation -> return or None."""
+    # 1. API call: send chat completion request
+    resp = self._api_call(system_prompt, user_prompt, ...)
+
+    # 2. JSON parse: extract JSON from response text
+    try:
+        data = json.loads(resp.text)
+    except (json.JSONDecodeError, AttributeError):
+        # Non-JSON response (truncated, malformed)
+        return None
+
+    # 3. Pydantic validation: construct AnchorRecord
+    try:
+        record = AnchorRecord(**data)
+    except (ValidationError, ValueError, TypeError, KeyError):
+        # Schema mismatch: missing fields, wrong types, extra fields
+        return None
+
+    return record
+```
+
+**Each provider-specific `_api_call()` implementation**:
+
+```python
+# VLLMProvider
+def _api_call(self, system, user, *, temperature, max_tokens, timeout) -> requests.Response:
+    resp = requests.post(
+        url=self._base_url + "/chat/completions",
+        headers={"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"},
+        json={"model": self.model, "messages": [...], "temperature": temperature,
+              "max_tokens": max_tokens, "response_format": {"type": "json_object"}},
+        timeout=timeout,
+    )
+    resp.raise_for_status()
+    return resp
+```
 
 **VLLMProvider**:
 - Base URL: `http://localhost:8000/v1`
@@ -295,7 +366,7 @@ class AnchorProvider(ABC):
 - Model: `qwen3-5-35b-a3b-nvfp4` (matches `src/factory/config.py:36 DEFAULT_MODEL`)
 - Uses `requests.post()` (sync, consistent with existing `VLLMClient` pattern in `src/audit/inference.py`)
 - Payload: `"response_format": {"type": "json_object"}`
-- Uses `httpx` timeout
+- Timeout: passed as `timeout` parameter to `requests.post()`
 
 **OpenAIProvider**:
 - Base URL: `https://api.openai.com/v1` (or configurable `OPENAI_BASE_URL`)
@@ -306,10 +377,13 @@ class AnchorProvider(ABC):
 - For test stubs: use `unittest.mock.patch.object(OpenAIProvider, "_http", ...)` or `monkeypatch` to replace `_http` attribute with a test client
 
 **GeminiProvider**:
-- Uses `google-genai` SDK
+- Uses `google-genai` SDK (`genai.Client` is synchronous)
 - Auth: `GOOGLE_API_KEY` env var
 - Model: `gemini-2.0-flash` (configurable)
 - Config: `"response_mime_type": "application/json"`
+- `_client` attribute: `self._client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])` (for testability)
+- API call: `self._client.models.generate_content(model=self.model, contents=[user_prompt], config=...)`
+- Returns `response.text` which MUST be valid JSON (the provider parses it as described in the pipeline above)
 
 **Provider selection** (factory function in builder):
 
@@ -325,7 +399,7 @@ PROVIDER_MAP: Final[dict[str, type[AnchorProvider]]] = {
 
 ### AnchorDatasetError Exception Hierarchy
 
-**File**: `infrastructure/anchor_dataset/anchor_dataset/errors.py`
+**File**: `infrastructure/anchor_dataset/errors.py`
 
 **Purpose**: Domain-specific exceptions for the anchor dataset module. Consistent with existing exception pattern in `src/utils/exceptions.py`.
 
@@ -450,23 +524,27 @@ class SeedSynthesizer:
 Extract {count} code patterns from the following reference materials and
 reframe them as domain-agnostic programming problems.
 
-For each pattern, provide:
-- context: Technical background (2-3 sentences, domain-agnostic)
-- question: A realistic programming question a developer might ask (1 sentence)
-- complexity: One of nominal_easy, nominal_medium, nominal_hard
-- expected_patterns: List of 1-2 relevant code patterns
+Return a JSON array (use valid JSON, nothing else). Each object MUST match this schema:
+[
+  {{
+    "context": "string (2-3 sentences, domain-agnostic technical background)",
+    "question": "string (1 sentence, realistic programming question)",
+    "complexity": "string (one of: nominal_easy, nominal_medium, nominal_hard)",
+    "expected_patterns": ["string (1-2 relevant code patterns)"]
+  }}
+]
 
 FORBIDDEN WORDS (do not use in any output): home_assistant, HA, IoT,
 smart_home, zigbee, zwave, mqtt, HomeAssistant
 
 REFERENCE MATERIALS:
 {patterns}
-
-Return a JSON array of objects matching the schema above.
 """
 
     def abstract_seeds(self, patterns: list[str]) -> list[dict]:
-        """Step 2: LLM call to abstract concrete patterns into generic seeds."""
+        """Step 2: LLM call to abstract concrete patterns into generic seeds.
+        Returns list[dict] with keys: context, question, complexity, expected_patterns.
+        The `count` parameter comes from synthesize(domain, count) and is passed via prompt template."""
         ...
 
     # Step 3 — LLM call
@@ -484,9 +562,10 @@ FORBIDDEN WORDS: home_assistant, HA, IoT, smart_home, zigbee, zwave, mqtt
 INPUT:
 {seeds}
 
-Return a JSON array of objects with an added "category" field set to
-one of "generic_domain" or "other", and a "subcategory" field (one of
-"api", "data", "config", "legacy", "migration", "other").
+Return a JSON array (use valid JSON, nothing else). Each object MUST include:
+- The original fields from input (context, question, complexity, expected_patterns)
+- "category": one of "generic_domain" or "other"
+- "subcategory": one of "api", "data", "config", "legacy", "migration", "other"
 """
 
     def classify_domains(self, abstracts: list[dict]) -> list[dict]:
@@ -626,7 +705,28 @@ Include:
 - For PHP domain: select 2-3 seeds from PHP seeds
 - For generic_domain/other: select from reference corpus patterns as generic code examples
 
-**Output**: Returns tuple `(system_prompt: str, user_prompt: str)`
+**Template variable mapping** (SampleConfig fields to template placeholders):
+
+| Template placeholder | Source | Description |
+|---------------------|--------|-------------|
+| `{domain}` | `config.domain` | Domain string (e.g., "home_assistant") |
+| `{difficulty}` | `config.difficulty` | "easy", "medium", or "hard" |
+| `{turn_count}` | `config.turn_count` | Integer (3, 4, or 5) |
+| `{legacy_pattern}` | `config.legacy_pattern` | Pattern description string |
+| `{generation_instruction}` | `config.generation_instruction` | Full generation instruction |
+| `{few_shot}` | `_select_few_shot(domain, difficulty)` | Formatted few-shot examples string |
+| `{{` / `}}` | Literal `{{` / `}}` | Python `.format()` escaping for JSON braces in schema example |
+
+**Few-shot output format** (G2.8 fix): `_select_few_shot()` returns a human-readable string, NOT JSON:
+```
+--- Example 1 ---
+Context: {seed.context}
+Question: {seed.question}
+Expected Patterns: {', '.join(seed.expected_patterns)}
+
+--- Example 2 ---
+...
+```
 
 **Class definition**:
 
@@ -634,7 +734,6 @@ Include:
 class PromptBuilder:
     """Constructs system and user prompts for anchor generation."""
 
-    # System prompt template (Jinja2-like, rendered with .format())
     SYSTEM_TEMPLATE: Final[str] = """\
 You are a domain expert tasked with generating training anchor samples
 for AI model optimization (DSPy MIPROv2).
@@ -678,15 +777,32 @@ Include:
     def __init__(self, seeds: list[NormalizedSeed]) -> None:
         self._seeds = seeds
 
-    def build(
-        self,
-        config: SampleConfig,
-    ) -> tuple[str, str]:
-        """Build (system_prompt, user_prompt) tuple for a sample config."""
-        ...
+    def build(self, config: SampleConfig) -> tuple[str, str]:
+        """Build (system_prompt, user_prompt) tuple for a sample config.
+
+        Pipeline:
+        1. Select few-shot examples matching config.domain + config.difficulty
+        2. Format few-shot into human-readable string
+        3. Render SYSTEM_TEMPLATE with config fields + few_shot
+        4. Render USER_TEMPLATE with config fields
+        """
+        few_shot = self._select_few_shot(config.domain, config.difficulty)
+        system_prompt = self.SYSTEM_TEMPLATE.format(
+            domain=config.domain,
+            difficulty=config.difficulty,
+            turn_count=config.turn_count,
+            legacy_pattern=config.legacy_pattern,
+            few_shot=few_shot,
+        )
+        user_prompt = self.USER_TEMPLATE.format(
+            generation_instruction=config.generation_instruction,
+            turn_count=config.turn_count,
+        )
+        return system_prompt, user_prompt
 
     def _select_few_shot(self, domain: str, difficulty: str) -> str:
-        """Select 2-3 seed examples matching domain + difficulty."""
+        """Select 2-3 seed examples matching domain + difficulty.
+        Returns human-readable formatted string (not JSON)."""
         ...
 ```
 
@@ -733,20 +849,32 @@ class QualityChecker:
 
 **Turn delimiter format in `expected_trajectory` string**:
 ```
-[role:user]\n{user message text}\n\n[role:assistant]\n{assistant message text}\n[tool_call:tool_name]\n{tool input JSON}\n\n[role:tool]\n{tool result}\n\n...
+[ROLE:user]\n{user message text}\n\n[ROLE:assistant]\n{assistant message text}\n[TOOL_CALL:tool_name]\n{tool input JSON}\n\n[ROLE:tool]\n{tool result}\n\n...
 ```
-- Turns are delimited by `\n\n` (double newline)
-- Role changes marked with `[role:<role_name>]` prefix
-- Tool calls marked with `[tool_call:<tool_name>]` prefix, followed by JSON on next line
-- Tool results marked with `[role:tool]` prefix, followed by result text
-- This format is a plain string (not structured array), matching existing `AgenticTrajectory` serialization
+- Uses **uppercase** markers (`[ROLE:...]`, `[TOOL_CALL:...]`) to minimize collision with natural text
+- Turn boundaries marked by `\n\n` (double newline)
+- Role changes: `[ROLE:<role_name>]` prefix at start of line
+- Tool calls: `[TOOL_CALL:<tool_name>]` prefix, followed by JSON on the next line (single-line JSON only)
+- Tool results: `[ROLE:tool]` prefix, followed by result text
+
+**Turn counting algorithm** (G2.2 fix):
+- Count `[ROLE:user]` markers using regex: `re.findall(r'^\[ROLE:user\]', trajectory_text, re.MULTILINE)`
+- This counts user turns only (each user turn initiates a conversation round)
+- `turn_count_actual` = number of `[ROLE:user]` occurrences
+- Does NOT count `[ROLE:assistant]` or `[ROLE:tool]` as separate turns
+- Does NOT count `[TOOL_CALL:...]` as turns (tool calls are part of an assistant turn)
+
+**Edge case mitigation** (G2.3 fix):
+- All regex matching uses `re.MULTILINE` mode and `^` anchor to match start-of-line only
+- If the trajectory text contains `[ROLE:...]` as literal text within a message body, it is NOT at the start of a line (preceded by message content), so it is correctly ignored
 
 **Tool call syntactic validation** (QualityChecker step 4):
-1. Find all `[tool_call:<name>]` markers in the string
-2. Parse the JSON on the next line after each marker
-3. Verify JSON is valid (not truncated, not `...`)
-4. If JSON is invalid, flag `tool_call_invalid` reason
-```
+1. Find all `[TOOL_CALL:<name>]` markers at start of line: `re.findall(r'^\[TOOL_CALL:\w+\]', trajectory_text, re.MULTILINE)`
+2. For each marker, find the immediately following line (single line only)
+3. Parse the next line as JSON — if it contains `...` or is empty, flag as invalid
+4. If JSON is valid, proceed; otherwise flag `tool_call_invalid` reason
+
+**Note**: Tool call JSON must be single-line. Multi-line JSON after `[TOOL_CALL:...]` is considered a validation failure (G2.4 fix).
 
 ### QualityCircuitBreaker
 
@@ -765,37 +893,78 @@ class QualityChecker:
 ```python
 @dataclass
 class CircuitBreaker:
-    threshold: float = 0.2        # 20% failure rate triggers switch
-    batch_size: int = 10           # evaluation batch size
+    threshold: float = 0.2              # 20% failure rate triggers switch
+    batch_size: int = 10                 # evaluation batch size
     failures_in_batch: int = 0
     passes_in_batch: int = 0
-    consecutive_passes: int = 0    # for auto-reset after 10 consecutive
+    consecutive_passes: int = 0          # for auto-reset after 10 consecutive
     active_provider: str = "vllm"
     fallback_provider: str = "openai"
     triggered: bool = False
     reason: str = ""
-    phase: str = "warmup"           # "warmup" -> "calibration" -> "production"
+    phase: str = "warmup"               # "warmup" -> "calibration" -> "production"
+    _total_samples: int = 0             # cumulative count for phase transitions
 ```
 
-**Methods**:
-- `record_result(result: QualityResult) -> None`: delegate to QualityChecker internally, increment counters
-- `should_switch() -> bool`: returns True if failures >= threshold * batch_size AND phase == "production" (NOTE: changed from `!= "warmup"` to `== "production"` — calibration phase never triggers switch)
-- `record_pass()` / `record_fail()`: increment respective counters, call `_transition_phase()` with updated total
-- `try_reset() -> bool`: if `consecutive_passes >= 10` and `triggered`, return True (switch back)
-- `get_failure_rate() -> float`: `failures / (failures + passes)` in current batch
-- `_transition_phase(total_samples: int) -> None`: advances phase based on total samples counter
-
-**Phase transition logic** (called after each `record_pass`/`record_fail`):
+**Methods** (single public API — all entry through `record_result`):
 
 ```python
-def _transition_phase(self, total_samples: int) -> None:
-    if total_samples < 5:
-        self.phase = "warmup"
-    elif total_samples < 20:
-        self.phase = "calibration"
-    else:
-        self.phase = "production"
+class CircuitBreaker:
+    def record_result(self, passed: bool) -> None:
+        """Record pass/fail. Increments counters, checks phase transitions."""
+        self._total_samples += 1
+
+        if passed:
+            self.consecutive_passes += 1
+            self.passes_in_batch += 1
+        else:
+            self.consecutive_passes = 0
+            self.failures_in_batch += 1
+
+        # Reset batch when full
+        if (self.failures_in_batch + self.passes_in_batch) >= self.batch_size:
+            self._evaluate_batch()
+            self.failures_in_batch = 0
+            self.passes_in_batch = 0
+
+        # Phase transition (internal)
+        self._transition_phase(self._total_samples)
+
+    def should_switch(self) -> bool:
+        """Only triggers in production phase with sufficient failures."""
+        if self.phase != "production":
+            return False
+        rate = self.failures_in_batch / self.batch_size if self.batch_size else 0
+        return rate >= self.threshold
+
+    def try_reset(self) -> bool:
+        """If 10 consecutive passes while triggered, switch back to primary."""
+        if self.consecutive_passes >= 10 and self.triggered:
+            self.triggered = False
+            return True
+        return False
+
+    def get_failure_rate(self) -> float:
+        """Current batch failure rate."""
+        total = self.failures_in_batch + self.passes_in_batch
+        return self.failures_in_batch / total if total else 0.0
+
+    def _evaluate_batch(self) -> None:
+        """Run batch evaluation, trigger switch if needed."""
+        if self.should_switch():
+            self.triggered = True
+            self.reason = f"{self.failures_in_batch}/{self.batch_size} failures ({self.get_failure_rate():.0%})"
+
+    def _transition_phase(self, total: int) -> None:
+        if total < 5:
+            self.phase = "warmup"
+        elif total < 20:
+            self.phase = "calibration"
+        else:
+            self.phase = "production"
 ```
+
+**Note**: `CircuitBreaker` does NOT delegate to `QualityChecker`. These are separate, independent classes. `QualityChecker.check()` evaluates per-sample quality. `CircuitBreaker.record_result()` receives a boolean `passed` from the caller (who called QualityChecker) and tracks batch-level failure rates.
 
 **Phase transition thresholds**:
 - 0-4 samples: **warmup** — no circuit breaker checks. Log scores for baseline.
@@ -1264,9 +1433,9 @@ AnchorDatasetError (RuntimeError)
 | `AnchorRecord.model_dump_json()` | unit | Round-trips to valid AnchorRecord | none |
 | `DSPY_FIELD_MAP` | unit | Keys are "inputs" and "labels"; inputs has 5 fields; labels has 5 fields | none |
 | `jsonl_to_dspy_examples()` | unit | Returns `list[dspy.Example]`; input fields are inputs; label fields are attributes; empty file returns `[]`; invalid record raises `ValueError` | none (dspy available in test env) |
-| `VLLMProvider.generate()` | unit | Returns AnchorRecord on valid JSON; returns None on parse error; retries on connection error | Stub `requests.post()` |
-| `OpenAIProvider.generate()` | unit | Returns AnchorRecord on valid JSON; returns None on parse error | Patch `_http` attribute with test client; or `monkeypatch.setattr(OpenAIProvider, "_http", ...)` |
-| `GeminiProvider.generate()` | unit | Returns AnchorRecord on valid JSON; returns None on parse error | Patch `google-genai` SDK: `monkeypatch.setattr(ProviderClass._client.models, "generate_content", ...)` returning a `GenerateContentResponse` with valid JSON in `text` field |
+| `VLLMProvider.generate()` | unit | Returns AnchorRecord on valid JSON; returns None on parse error; retries on connection error; auth fallback works | `patch.object(requests, 'post', return_value=Mock(...))` |
+| `OpenAIProvider.generate()` | unit | Returns AnchorRecord on valid JSON; returns None on parse error; retries on connection error | `monkeypatch.setattr(OpenAIProvider, '_http', Mock(...))` — mock `_http` attribute, `mock_post.return_value.text = '{"id":"anchor_001_00",...}'` |
+| `GeminiProvider.generate()` | unit | Returns AnchorRecord on valid JSON; returns None on parse error | `monkeypatch.setattr(google.genai.Client, '__init__', lambda self, api_key=None: None)`, then `provider._client.models.generate_content.return_value.text = '{"id":"anchor_001_00",...}'` (the `.text` attribute IS the JSON string, not a field containing JSON) |
 | `SeedSynthesizer.synthesize()` | unit | Returns seeds with domain labels; validates no forbidden strings | Stub provider calls |
 | `SeedSynthesizer.validate_no_leakage()` | unit | Returns True for clean seeds; False for seeds with "home_assistant" | none |
 | `AnchorsConfig` construction | unit | Defaults are correct (count=50, threshold=0.2); env var validation works | none |
@@ -1278,6 +1447,9 @@ AnchorDatasetError (RuntimeError)
 | `CircuitBreaker.record_result()` | unit | Increments failure count; triggers switch at threshold (2/10); phase-aware (no switch in warmup) | none |
 | `CircuitBreaker.try_reset()` | unit | Returns True after 10 consecutive passes; does not reset after 9 | none |
 | `CircuitBreaker.get_failure_rate()` | unit | Returns correct float; handles 0 total | none |
+| `CircuitBreaker._transition_phase()` | unit | warmup for <5, calibration 5-19, production 20+ | none |
+| `QualitySettings` | unit | Default threshold 0.3; calibration decision tree modifies threshold; frozen config unaffected | none |
+| `VLLMProvider` | unit | Auth fallback: uses "sk-master-bunker-2026" when VLLM_API_KEY missing | Mock `requests.post` |
 | `FailedSampleLogger.log()` | unit | Appends JSON object to JSONL file with correct structure; truncates raw_response to 2000 chars | Fake filesystem (`tmp_path`) |
 | `CheckpointManager.save()` / `load()` | unit | Atomic write; resume skips completed IDs; corrupted checkpoint returns None | Fake filesystem (`tmp_path`) |
 | `JSONLExporter.atomic_write()` | unit | .tmp file created then renamed; output file contains valid JSONL; error contract (clean up .tmp on failure) | Fake filesystem (`tmp_path`) |
