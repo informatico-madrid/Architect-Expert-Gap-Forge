@@ -3,7 +3,7 @@ name: aegf-infrastructure
 goal: ML Engineer puede validar todo objectivamente con metrics y baselines antes de implementar features. Tiene datos ancla para DSPy MIPROv2 y dependencias compatibles.
 version: 5.0
 date: 2026-04-24
-status: draft
+status: complete
 storyCount: 4
 specs:
   - baseline-measurement
@@ -69,7 +69,7 @@ Changes align BMAD artifacts with verified findings from Smart Ralph deep resear
 | `specs/dependency-compatibility` | COMPLETE (19/19 tasks, QG-05 APPROVED) — all files committed |
 | `specs/baseline-measurement` | COMPLETE (45/45 tasks, all phases verified) — all files committed |
 | `specs/prompt-externalization` | COMPLETE (12/12 tasks, all phases verified) — all 7 .example.yaml files committed |
-| `specs/anchor-dataset` | PLAN ONLY — plan.md exists, full pipeline not yet started |
+| `specs/anchor-dataset` | ✅ COMPLETE — 43/43 tasks, full CI passing (852 tests, 0 errors) |
 
 ## Scope
 
@@ -354,10 +354,9 @@ Changes align BMAD artifacts with verified findings from Smart Ralph deep resear
 ```
 Spec 4: dependency-compatibility    ──┐  [COMPLETE]
 Spec 2: prompt-externalization    ────┤  [COMPLETE]
+Spec 1: baseline-measurement    ─────┤  [COMPLETE]
                                        ▼
-Spec 1: baseline-measurement   ───────►  [COMPLETE]
-                                       │
-Spec 3: anchor-dataset            ─────┼──►  [PLAN ONLY — full pipeline pending]
+Spec 3: anchor-dataset            ────┼──►  [COMPLETE]
 ```
 
 | Spec | Depends On | Status |
@@ -365,7 +364,7 @@ Spec 3: anchor-dataset            ─────┼──►  [PLAN ONLY — fu
 | Spec 4 (dependency-compatibility) | None | ✅ COMPLETE — 19/19 tasks, QG-05 APPROVED |
 | Spec 2 (prompt-externalization) | None | ✅ COMPLETE — 12/12 tasks, all phases verified |
 | Spec 1 (baseline-measurement) | Spec 4 | ✅ COMPLETE — 45/45 tasks, all phases verified |
-| Spec 3 (anchor-dataset) | Spec 1, Spec 2 | ⏳ PLAN ONLY — plan.md exists, implementation pending |
+| Spec 3 (anchor-dataset) | Spec 1, Spec 2 | ✅ COMPLETE — 43/43 tasks, full CI passing |
 
 ## Interface Contracts
 
