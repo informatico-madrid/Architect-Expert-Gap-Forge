@@ -100,7 +100,7 @@ print('PASS: distribution correct')
 "`
   - **Commit**: `feat(anchor-dataset): add sample config generator`
 
-- [ ] 1.8 [P] Create PromptBuilder
+- [x] 1.8 [P] Create PromptBuilder
   - **Do**: Add `PromptBuilder` class to `sample_generator.py` (co-located). Build system and user prompts with few-shot examples from matching seeds. SYSTEM_TEMPLATE and USER_TEMPLATE as class constants.
   - **Files**: infrastructure/anchor_dataset/sample_generator.py
   - **Done when**: build(config) returns (system_prompt, user_prompt) tuple with all template variables filled
