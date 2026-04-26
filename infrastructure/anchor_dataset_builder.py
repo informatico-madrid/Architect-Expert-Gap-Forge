@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import json
 import logging
 import sys
@@ -13,6 +14,9 @@ import datetime
 import time
 from collections import Counter
 from pathlib import Path
+
+# Ensure `infrastructure.` imports resolve when this script runs in-place.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logger = logging.getLogger(__name__)
 
