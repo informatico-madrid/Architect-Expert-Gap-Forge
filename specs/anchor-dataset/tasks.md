@@ -347,7 +347,7 @@ print('PASS: StartupValidator dry_run works')
   - **Commit**: None
   - **Skills**: cli-execution
 
-- [ ] 2.14 [P] Create SeedSynthesizer
+- [x] 2.14 [P] Create SeedSynthesizer
   - **Do**: Create `infrastructure/anchor_dataset/seed_synthesizer.py` with `SeedSynthesizer` class. 5-step pipeline: reference_scan (read code files), abstract_seeds (LLM call), classify_domains (LLM call), filter_leakage (regex check), validate_freshness (NormalizedSeed conversion). ValidateNo_leakage checks forbidden strings. On synthesis failure, log warning and fall back gracefully.
   - **Files**: infrastructure/anchor_dataset/seed_synthesizer.py
   - **Done when**: synthesizes seeds from reference corpus, validates no HA/IoT leakage
