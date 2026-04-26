@@ -316,7 +316,7 @@ print('PASS: JSONLExporter correct')
   - **Done when**: No lint errors, no type errors
   - **Commit**: `chore(anchor-dataset): pass quality checkpoint phase 2`
 
-- [ ] 2.11 [P] Create StartupValidator
+- [x] 2.11 [P] Create StartupValidator
   - **Do**: Create `infrastructure/anchor_dataset/startup.py` with `StartupValidator` class implementing 4-step sequence: (1) validate CLI args — count 1-200, provider in {vllm,openai,gemini}, distribution JSON parses; (2) validate API keys — required env var for provider; (3) health-check vLLM endpoint — HTTP GET /v1/models if vLLM; (4) pre-flight seed validation — load seeds, warn if generic_domain/other without reference corpus.
   - **Files**: infrastructure/anchor_dataset/startup.py
   - **Done when**: All 4 steps execute in order, dry_run returns warnings instead of exiting
