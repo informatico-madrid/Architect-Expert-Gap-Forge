@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     # 1. Startup validation
-    from infrastructure.anchor_dataset.config import AnchorsConfig, QualitySettings, apply_calibration
+    from infrastructure.anchor_dataset.config import AnchorsConfig
     from infrastructure.anchor_dataset.startup import StartupValidator
 
     config = AnchorsConfig(
@@ -160,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     try:
-        domain_dist = json.loads(
+        _domain_dist = json.loads(
             config.domain_distribution or '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
         )
     except json.JSONDecodeError as exc:
@@ -168,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        diff_dist = json.loads(
+        _diff_dist = json.loads(
             config.difficulty_distribution or '{"easy": 0.3, "medium": 0.5, "hard": 0.2}'
         )
     except json.JSONDecodeError as exc:
@@ -197,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         CheckpointData,
     )
     from infrastructure.anchor_dataset.exporter import JSONLExporter
-    from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorManifest
+    # AnchorManifest used in exporter.generate_manifest
 
     provider = get_provider(config.provider, config)
     quality_checker = QualityChecker(threshold=0.3)
@@ -230,7 +230,7 @@ def main(argv: list[str] | None = None) -> int:
             sample_counter = loaded.sample_counter
             domain_remaining = loaded.domain_allocation_remaining.copy()
             id_to_config = {_generate_id(i): c for i, c in enumerate(configs)}
-            failed_configs = [
+            _failed_configs = [
                 id_to_config[fid]
                 for fid in failed_ids
                 if fid in id_to_config
@@ -257,7 +257,8 @@ def main(argv: list[str] | None = None) -> int:
                     if record is not None:
                         records.append(record)
                         successful += 1
-                        circuit_breaker.record_result(qresult.passed if quality_enabled else True)
+                        passed = quality_checker.check(record, cfg.turn_count).passed if quality_enabled else True
+                        circuit_breaker.record_result(passed)
                     else:
                         failed += 1
 
@@ -314,6 +315,14 @@ def main(argv: list[str] | None = None) -> int:
         completed_ids.add(cfg_id)
         sample_counter += 1
         domain_remaining[cfg.domain] = domain_remaining.get(cfg.domain, 0) - 1
+
+        # Quality check and circuit breaker
+        if quality_enabled:
+            qpassed = quality_checker.check(record, cfg.turn_count).passed
+            circuit_breaker.record_result(qpassed)
+            if circuit_breaker.should_switch():
+                logger.warning("Circuit breaker triggered — switching provider")
+                config.provider = "fallback" if config.provider != "fallback" else config.provider
 
         if (idx + 1) % 10 == 0:
             logger.info(

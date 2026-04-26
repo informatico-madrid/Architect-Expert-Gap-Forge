@@ -369,7 +369,7 @@ print('PASS: SeedSynthesizer leakage detection correct')
 
 Focus: Add circuit breaker, quality checker, failed sample log, checkpoint integration into builder.
 
-- [ ] 3.1 [VERIFY] Quality checkpoint: all modules pass linting and types
+- [x] 3.1 [VERIFY] Quality checkpoint: all modules pass linting and types
   - **Do**: Run linting and type checking on all anchor_dataset modules
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && ruff check infrastructure/anchor_dataset/ && pyright infrastructure/anchor_dataset/ --pythonversion 3.12`
   - **Done when**: No lint errors, no type errors
