@@ -1,3 +1,82 @@
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass, field
+from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord
+
+
+@dataclass(frozen=True)
+class QualityResult:
+    passed: bool
+    reasons: list[str] = field(default_factory=list)
+    score: float = 0.0
+
+
+class QualityChecker:
+    ANTI_LAZINESS_PATTERNS = ["...", "# TODO", "pass # implement", "# resto del codigo"]
+
+    def __init__(self, threshold: float = 0.3):
+        self.threshold = threshold
+        self._tool_call_re = re.compile(r"\[TOOL_CALL:[^\]]*\]")
+
+    def check(self, record: AnchorRecord, target_turns: int) -> QualityResult:
+        reasons = []
+
+        # Anti-laziness check
+        trajectory = record.expected_trajectory
+        for pat in self.ANTI_LAZINESS_PATTERNS:
+            if pat in trajectory:
+                reasons.append("anti_laziness")
+                break
+
+        # Turn count check
+        if abs(record.turn_count - target_turns) > 1:
+            reasons.append("turn_count_mismatch")
+
+        # Quality score check
+        if record.expected_quality_score < self.threshold:
+            reasons.append("low_quality_score")
+
+        # Tool call syntax check
+        if "[TOOL_CALL:" in trajectory:
+            if not self._tool_call_re.search(trajectory):
+                reasons.append("tool_call_syntax")
+
+        return QualityResult(
+            passed=len(reasons) == 0,
+            reasons=reasons,
+            score=record.expected_quality_score,
+        )
+
+    def check_raw(self, data: dict, target_turns: int) -> QualityResult:
+        trajectory = data.get("expected_trajectory", "")
+        reasons = []
+
+        for pat in self.ANTI_LAZINESS_PATTERNS:
+            if pat in trajectory:
+                reasons.append("anti_laziness")
+                break
+
+        turn_count = data.get("turn_count", 0)
+        if abs(turn_count - target_turns) > 1:
+            reasons.append("turn_count_mismatch")
+
+        quality_score = data.get("expected_quality_score", 0.0)
+        if quality_score < self.threshold:
+            reasons.append("low_quality_score")
+
+        if "[TOOL_CALL:" in trajectory:
+            if not self._tool_call_re.search(trajectory):
+                reasons.append("tool_call_syntax")
+
+        return QualityResult(
+            passed=len(reasons) == 0,
+            reasons=reasons,
+            score=quality_score,
+        )
+
+
 class CircuitBreaker:
     def __init__(self, threshold: float = 0.2, batch_size: int = 10, consecutive_pass_threshold: int = 10):
         self.threshold = threshold

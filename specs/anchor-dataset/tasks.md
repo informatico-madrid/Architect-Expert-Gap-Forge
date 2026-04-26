@@ -184,7 +184,7 @@ print('PASS: provider factory correct')
 "`
   - **Commit**: `feat(anchor-dataset): add provider factory`
 
-- [ ] 2.5 [P] Create QualityChecker
+- [x] 2.5 [P] Create QualityChecker
   - **Do**: Create `infrastructure/anchor_dataset/quality.py` with `QualityResult` frozen dataclass and `QualityChecker` class. Check: anti-laziness patterns (no "...", "# TODO", "pass # implement", "# resto del codigo"), turn count within +/-1 of target, self-assessed quality >= threshold (default 0.3), tool call syntactic validity via regex on [TOOL_CALL:...] markers. Also add `check_raw()` method for pre-construction validation on raw dict.
   - **Files**: infrastructure/anchor_dataset/quality.py
   - **Done when**: checker.check(record, target) returns QualityResult with correct pass/fail
@@ -282,7 +282,7 @@ print('PASS: CheckpointManager save/load/corruption correct')
 "`
   - **Commit**: `feat(anchor-dataset): add CheckpointManager`
 
-- [ ] 2.9 [P] Create JSONLExporter
+- [x] 2.9 [P] Create JSONLExporter
   - **Do**: Create `infrastructure/anchor_dataset/exporter.py` with `JSONLExporter` class. `write_all(records, path)` atomic write (tmp+rename+fsync). `generate_manifest(records, provider_name, cb_triggered, failed_count) -> AnchorManifest`. Write manifest to `<path>_manifest.json`.
   - **Files**: infrastructure/anchor_dataset/exporter.py
   - **Done when**: Export writes valid JSONL, manifest has correct counts, atomic write pattern verified
