@@ -63,10 +63,13 @@ Changes align BMAD artifacts with verified findings from Smart Ralph deep resear
 
 | Artifact | Status |
 |----------|--------|
-| `_bmad-output/planning-artifacts/epics.md` | Updated v5.0 (deprecated claim, datasets version, openai version) |
-| `specs/_epics/aegf-infrastructure/epic.md` | Updated v5.0 (openai version, sync section added) |
-| `specs/dependency-compatibility` | COMPLETE (19/19 tasks, QG-05 APPROVED) |
-| `specs/baseline-measurement` | scipy gap identified — must add to its own requirements |
+| `_bmad-output/planning-artifacts/epics.md` | Updated v5.0 (deprecated claim, datasets version, openai version, TypeScript→generic_domain, Story 0.4 independence) |
+| `_bmad-output/implementation-artifacts/sprint-status.yaml` | Updated v5.0 (Stories 0.1/0.2/0.4 → done, counts corrected) |
+| `specs/_epics/aegf-infrastructure/epic.md` | Updated v5.0 (sync section, openai version) |
+| `specs/dependency-compatibility` | COMPLETE (19/19 tasks, QG-05 APPROVED) — all files committed |
+| `specs/baseline-measurement` | COMPLETE (45/45 tasks, all phases verified) — all files committed |
+| `specs/prompt-externalization` | COMPLETE (12/12 tasks, all phases verified) — all 7 .example.yaml files committed |
+| `specs/anchor-dataset` | PLAN ONLY — plan.md exists, full pipeline not yet started |
 
 ## Scope
 
@@ -349,23 +352,20 @@ Changes align BMAD artifacts with verified findings from Smart Ralph deep resear
 ## Dependencies (Spec-Level Graph)
 
 ```
-Spec 4: dependency-compatibility    ──┐
-Spec 2: prompt-externalization    ────┤ (parallel start, no deps)
+Spec 4: dependency-compatibility    ──┐  [COMPLETE]
+Spec 2: prompt-externalization    ────┤  [COMPLETE]
                                        ▼
-Spec 1: baseline-measurement   ───────► (needs scipy/numpy from Spec 4)
-Spec 2: prompt-externalization ───────┘ (parallel, independent of 1 and 4)
+Spec 1: baseline-measurement   ───────►  [COMPLETE]
                                        │
-Spec 3: anchor-dataset            ─────┼──► (needs baselines + English prompts)
-                                       │
-Spec 4: dependency-compatibility    ───┘
+Spec 3: anchor-dataset            ─────┼──►  [PLAN ONLY — full pipeline pending]
 ```
 
-| Spec | Depends On | Can Start When |
-|------|-----------|----------------|
-| Spec 4 (dependency-compatibility) | None | Immediately (RUN FIRST to fix numpy bug) |
-| Spec 2 (prompt-externalization) | None | Immediately (parallel with Spec 4) |
-| Spec 1 (baseline-measurement) | Spec 4 | Spec 4 PR merged |
-| Spec 3 (anchor-dataset) | Spec 1, Spec 2 | Both PRs merged |
+| Spec | Depends On | Status |
+|------|-----------|--------|
+| Spec 4 (dependency-compatibility) | None | ✅ COMPLETE — 19/19 tasks, QG-05 APPROVED |
+| Spec 2 (prompt-externalization) | None | ✅ COMPLETE — 12/12 tasks, all phases verified |
+| Spec 1 (baseline-measurement) | Spec 4 | ✅ COMPLETE — 45/45 tasks, all phases verified |
+| Spec 3 (anchor-dataset) | Spec 1, Spec 2 | ⏳ PLAN ONLY — plan.md exists, implementation pending |
 
 ## Interface Contracts
 

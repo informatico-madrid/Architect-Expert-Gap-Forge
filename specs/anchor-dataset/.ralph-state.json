@@ -1,0 +1,17 @@
+{
+  "source": "spec",
+  "name": "anchor-dataset",
+  "basePath": "/mnt/bunker_data/ai/data_factory/specs/anchor-dataset",
+  "phase": "requirements",
+  "taskIndex": 0,
+  "totalTasks": 0,
+  "taskIteration": 1,
+  "maxTaskIterations": 5,
+  "globalIteration": 1,
+  "maxGlobalIterations": 100,
+  "commitSpec": true,
+  "quickMode": true,
+  "discoveredSkills": [],
+  "epicName": "aegf-infrastructure",
+  "awaitingApproval": true
+}
