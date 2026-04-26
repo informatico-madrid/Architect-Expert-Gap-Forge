@@ -14,6 +14,7 @@ import httpx
 import requests
 
 from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord
+from infrastructure.anchor_dataset.errors import ConfigurationError
 
 
 class AnchorProvider(ABC):
@@ -163,7 +164,9 @@ class OpenAIProvider(AnchorProvider):
 class GeminiProvider(AnchorProvider):
     """Generate anchor records via Google Gemini API."""
 
-    def __init__(self, model: str = "gemini-2.0-flash") -> None:
+    DEFAULT_MODEL = "gemini-2.0-flash"
+
+    def __init__(self, model: str = DEFAULT_MODEL) -> None:
         self.model = model
 
     @property
@@ -174,3 +177,54 @@ class GeminiProvider(AnchorProvider):
         self,
         system_prompt: str,
         user_prompt: str,
+        timeout: float = 30.0,
+    ) -> AnchorRecord | None:
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return None
+
+        try:
+            import google.genai as genai
+        except ImportError:
+            return None
+
+        client = genai.Client(api_key=api_key)
+
+        payload = [
+            {"role": "user", "parts": system_prompt},
+            {"role": "model", "parts": user_prompt},
+        ]
+
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=self.model,
+                    contents=payload,
+                    config={"response_mime_type": "application/json"},
+                    generation_config={"temperature": 0.4},
+                )
+                return AnchorRecord.model_validate(json.loads(response.text))
+            except (genai.errors.APIError, json.JSONDecodeError, ValueError):
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                else:
+                    return None
+        return None
+
+
+PROVIDER_MAP = {
+    "vllm": VLLMProvider,
+    "openai": OpenAIProvider,
+    "gemini": GeminiProvider,
+}
+
+
+def get_provider(provider_name: str, config=None) -> AnchorProvider:
+    """Return an instance of the named provider."""
+    cls = PROVIDER_MAP.get(provider_name)
+    if cls is None:
+        raise ConfigurationError(
+            f"Unknown provider: {provider_name}. "
+            f"Available: {list(PROVIDER_MAP.keys())}"
+        )
+    return cls()

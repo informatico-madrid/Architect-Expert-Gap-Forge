@@ -171,7 +171,7 @@ print('PASS: GeminiProvider basic behavior correct')
 "`
   - **Commit**: `feat(anchor-dataset): add GeminiProvider`
 
-- [ ] 2.4 [P] Create Provider factory map
+- [x] 2.4 [P] Create Provider factory map
   - **Do**: Add PROVIDER_MAP dict mapping 'vllm'/'openai'/'gemini' to provider classes in anchor_providers.py. Add a `get_provider(provider_name: str, config) -> AnchorProvider` factory function.
   - **Files**: infrastructure/anchor_dataset/anchor_providers.py
   - **Done when**: get_provider() returns correct provider type, raises ConfigurationError for unknown provider
