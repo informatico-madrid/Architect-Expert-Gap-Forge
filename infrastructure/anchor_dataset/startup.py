@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Bunker AI
+# SPDX-License-Identifier: Apache-2.0
 # -*- coding: utf-8 -*-
 """
 Anchor Dataset — Startup Validation
@@ -54,7 +56,7 @@ class StartupValidator:
             self.warnings.append(f"Unknown provider: {config.provider}")
 
         try:
-            json.loads(getattr(config, "domain_distribution", "{}"))
+            json.loads(getattr(config, "domain_distribution", "{}") or "{}")
         except json.JSONDecodeError:
             self.warnings.append("Invalid domain_distribution JSON")
 

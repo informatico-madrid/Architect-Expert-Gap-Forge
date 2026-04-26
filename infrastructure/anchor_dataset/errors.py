@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright 2026 Bunker AI
+# SPDX-License-Identifier: Apache-2.0
 # -*- coding: utf-8 -*-
 """
 Anchor Dataset — Exception Hierarchy

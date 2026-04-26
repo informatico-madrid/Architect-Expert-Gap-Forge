@@ -438,7 +438,7 @@ print('PASS: failed sample log integration correct')
 
 Focus: CLI args, dry-run completeness, atomic writes, license headers, --no-overwrite, idempotency.
 
-- [ ] 4.1 [P] Implement SeedSynthesizer fully in builder
+- [x] 4.1 [P] Implement SeedSynthesizer fully in builder
   - **Do**: Wire SeedSynthesizer into builder pre-generation phase. Call synthesize() for generic_domain and other domains. If synthesis fails, log warning and use template-based generation.
   - **Files**: infrastructure/anchor_dataset_builder.py, infrastructure/anchor_dataset/seed_synthesizer.py
   - **Done when**: Builder synthesizes seeds for unseeded domains, handles synthesis failure gracefully
@@ -452,7 +452,7 @@ print(f'PASS: reference_scan found {len(patterns)} patterns')
 "`
   - **Commit**: `feat(anchor-dataset): integrate SeedSynthesizer into builder`
 
-- [ ] 4.2 [P] Implement --resume flag fully
+- [x] 4.2 [P] Implement --resume flag fully
   - **Do**: Wire --resume flag in argparse. Load checkpoint if flag present. Skip completed IDs in generation loop. Re-attempt failed IDs with fallback provider. Log "Resuming from checkpoint: N samples completed, M failed".
   - **Files**: infrastructure/anchor_dataset_builder.py
   - **Done when**: --resume flag loads checkpoint and skips completed samples
@@ -466,14 +466,14 @@ print(f'PASS: reference_scan found {len(patterns)} patterns')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && mkdir -p /tmp/anchor_test && touch /tmp/anchor_test/anchor_dataset.jsonl && python infrastructure/anchor_dataset_builder.py --count 1 --output-dir /tmp/anchor_test/ --no-overwrite 2>&1; echo $? | grep -q '1' && echo PASS || echo FAIL`
   - **Commit**: `feat(anchor-dataset): add --no-overwrite flag`
 
-- [ ] 4.4 [P] Add Apache-2.0 license headers
+- [x] 4.4 [P] Add Apache-2.0 license headers
   - **Do**: Add 4-line license header to all new Python files: `#!/usr/bin/env python3`, copyright line, SPDX tag. Ensure header is within first 4096 bytes (3 tokens required).
   - **Files**: infrastructure/anchor_dataset/*.py, infrastructure/anchor_dataset_builder.py
   - **Done when**: All files have license header
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && for f in infrastructure/anchor_dataset_builder.py infrastructure/anchor_dataset/*.py; do head -5 "$f" | grep -q 'Apache-2.0' || echo "MISSING: $f"; done && echo PASS`
   - **Commit**: `chore(anchor-dataset): add Apache-2.0 license headers`
 
-- [ ] 4.5 [VERIFY] Quality checkpoint: all modules pass linting and types
+- [x] 4.5 [VERIFY] Quality checkpoint: all modules pass linting and types
   - **Do**: Run full linting and type checking
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && ruff check infrastructure/anchor_dataset/ infrastructure/anchor_dataset_builder.py && pyright infrastructure/anchor_dataset/ infrastructure/anchor_dataset_builder.py --pythonversion 3.12`
   - **Done when**: No lint errors, no type errors

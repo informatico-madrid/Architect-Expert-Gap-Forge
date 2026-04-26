@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# Copyright 2026 Bunker AI
+# SPDX-License-Identifier: Apache-2.0
 """Configuration for the anchor dataset builder."""
 
 from __future__ import annotations

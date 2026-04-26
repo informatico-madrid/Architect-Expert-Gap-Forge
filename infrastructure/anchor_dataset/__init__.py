@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# Copyright 2026 Bunker AI
+# SPDX-License-Identifier: Apache-2.0
 """Anchor Dataset Builder — generate anchor samples for LLM evaluation."""
 
 __version__ = "0.1.0"
