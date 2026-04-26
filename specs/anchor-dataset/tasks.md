@@ -483,7 +483,7 @@ print(f'PASS: reference_scan found {len(patterns)} patterns')
 
 Focus: Unit tests, integration tests, ruff + pyright compliance on tests.
 
-- [ ] 5.1 [P] Create test factories
+- [x] 5.1 [P] Create test factories
   - **Do**: Create `tests/factories.py` with `build_anchor_record(**overrides)` factory function. Default creates a valid AnchorRecord for home_assistant/easy. Overrides merge into defaults. Used across all test modules.
   - **Files**: tests/factories.py
   - **Done when**: Factory creates valid records, overrides work correctly
@@ -499,7 +499,7 @@ print('PASS: factories correct')
 "`
   - **Commit**: `test(anchor-dataset): add test factories`
 
-- [ ] 5.2 [P] Schema validation tests
+- [x] 5.2 [P] Schema validation tests
   - **Do**: Create `tests/unit/test_schema.py` testing: (1) valid record passes validation, (2) out-of-range float raises, (3) invalid id pattern raises, (4) extra field raises (model_config extra='forbid'), (5) round-trip model_dump_json -> model_validate works, (6) DSPY_FIELD_MAP has correct keys and field counts, (7) jsonl_to_dspy_examples with valid JSONL, empty file, invalid record.
   - **Files**: tests/unit/test_schema.py
   - **Done when**: All schema tests pass
