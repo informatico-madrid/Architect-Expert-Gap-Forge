@@ -13,5 +13,19 @@
   "quickMode": true,
   "discoveredSkills": [],
   "epicName": "aegf-infrastructure",
-  "awaitingApproval": true
+  "awaitingApproval": true,
+  "relatedSpecs": [
+    {
+      "name": "baseline-measurement",
+      "dependency": "Prerequisite",
+      "status": "Completed",
+      "relationship": "Anchor quality must exceed baseline measurements"
+    },
+    {
+      "name": "prompt-externalization",
+      "dependency": "Prerequisite",
+      "status": "Completed",
+      "relationship": "English prompts required for generating anchor trajectories"
+    }
+  ]
 }

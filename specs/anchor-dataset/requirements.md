@@ -25,7 +25,7 @@ As an ML Engineer, I want a Pydantic-based anchor record schema with DSPy field 
   - Label fields: `expected_tool_usage_patterns`, `expected_coherence`, `expected_overall`, `expected_quality_score`, `expected_optimized_parameters`
   - Note: `expected_optimized_parameters` maps to the CalibrationSignature label output; `difficulty` and `turn_count` are inputs used by the TrajectorySignature to control generation complexity
 - [ ] AC-1.5: Float fields (`expected_coherence`, `expected_overall`, `expected_quality_score`) validate range [0.0, 1.0] with a custom validator
-- [ ] AC-1.6: `id` field validates format `anchor_\d+_\\d+` (two non-negative integers separated by underscore, e.g. `anchor_001_03`) via regex
+- [ ] AC-1.6: `id` field validates format with regex `r"^anchor_\d+_\d+$"` (two non-negative integers separated by underscore, e.g. `anchor_001_03`). Implementation MUST use raw string prefix to avoid escape confusion.
 - [ ] AC-1.7: Model serializes to JSON matching the spec schema exactly (no extra fields, no missing fields)
 
 ### US-2: Seed data loader
@@ -38,7 +38,7 @@ As the dataset builder, I want to load and normalize seed data from existing fix
 - [ ] AC-2.1: Seeds loaded from `tests/fixtures/seed_examples.yaml` (currently 8 HA seeds + 5 PHP legacy seeds)
 - [ ] AC-2.2: Seed normalization extracts: `seed_id`, `category`, `context`, `question`, `complexity`, `expected_patterns` into a uniform representation
 - [ ] AC-2.3: Seeds tagged by domain: `home_assistant` for HA seeds, `php_legacy` for PHP seeds
-- [ ] AC-2.4: Graceful handling when seed file is missing (log warning, continue with empty seed list for that domain)
+- [ ] AC-2.4: When seed file is missing: log INFO-level warning message "Seed file not found, continuing with empty seed list", return empty normalized seed list, continue generation without error (exit code 0)
 - [ ] AC-2.5: Seed loading is idempotent (re-reading produces identical normalized output)
 
 ### US-3: Domain distribution controller
@@ -48,7 +48,7 @@ As the dataset builder, I want to load and normalize seed data from existing fix
 As the dataset builder, I want to enforce a domain distribution of 40% HA / 30% PHP / 20% Generic / 10% Other so that the anchor dataset covers the target taxonomy structure.
 
 **Acceptance Criteria:**
-- [ ] AC-3.1: Total sample count is configurable, defaulting to 110 (minimum viable for MIPROv2 bootstrap) with an upper bound of 200
+- [ ] AC-3.1: Total sample count is configurable, defaulting to 50 (v0.1 minimum viable for MIPROv2 bootstrap) with an upper bound of 200 (v0.2 full scale)
 - [ ] AC-3.2: Distribution enforced: home_assistant = 40%, php_legacy = 30%, generic_domain = 20%, other = 10% (rounded so total equals requested count)
 - [ ] AC-3.3: v0.1 targets 50 samples minimum: home_assistant=20, php_legacy=15, generic_domain=10, other=5
 - [ ] AC-3.4: Distribution is parameterizable via CLI argument or config (for experimentation)
@@ -63,7 +63,7 @@ As the dataset builder, I want to generate anchor samples from real seed data fo
 **Acceptance Criteria:**
 - [ ] AC-4.1: For each HA seed, generate 4-5 variants by varying: difficulty level, legacy pattern specificity, and trajectory detail level
 - [ ] AC-4.2: For each PHP legacy seed, generate 5-6 variants by varying: PHP version target, migration aggressiveness, and error handling depth
-- [ ] AC-4.3: Total HA samples: 40 (8 seeds x 5 variants), PHP samples: 30 (5 seeds x 6 variants)
+- [ ] AC-4.3: Per-seed variant counts scale with target sample count: for v0.1 (50 samples), each HA seed produces 2-3 variants (total HA=20), each PHP seed produces 3 variants (total PHP=15). For full scale (200 samples), each HA seed produces 5 variants (total HA=40), each PHP seed produces 6 variants (total PHP=30). Variant counts are parameterizable via `--variants-per-seed` CLI argument.
 - [ ] AC-4.4: Each generated sample includes a complete set of expected labels (trajectory, tool_usage_patterns, coherence, overall, quality_score)
 - [ ] AC-4.5: Seeds are used to construct few-shot examples in generation prompts (2-3 seeds per prompt for domain context)
 - [ ] AC-4.6: Generated samples preserve the architectural intent of the seed while creating novel scenarios
@@ -80,9 +80,10 @@ As the dataset builder, I want an `AnchorProvider` abstraction that supports mul
 - [ ] AC-5.3: `OpenAIProvider` implementation uses `response_format: {"type": "json_object"}` with configurable model (default GPT-4o)
 - [ ] AC-5.4: `GeminiProvider` implementation uses `response_mime_type: "application/json"` with configurable model (default Gemini 2.0 Flash)
 - [ ] AC-5.5: Provider is configurable via CLI argument `--provider vllm|openai|gemini` (default: vllm)
-- [ ] AC-5.6: Each provider supports temperature 0.3-0.5, max_tokens 4096, and configurable batch size
+- [ ] AC-5.6: Each provider supports temperature 0.3-0.5, max_tokens 8192, and configurable batch size
+  - Justification: research.md analyzed 3000 estimated response tokens + ~2000 system prompt + ~1500 user prompt = ~6500 input+output. 4096 was too tight. 8192 provides 170% headroom.
 - [ ] AC-5.7: Provider does NOT inherit from `TeacherProvider` -- it is a separate abstraction for static data production with different error handling (validation failures -> failed sample log, not retry)
-- [ ] AC-5.8: Provider reuses underlying HTTP clients from existing code (`TeacherModelClient`, `VLLMClient`, `GeminiClient`) but adds anchor-specific error handling
+- [ ] AC-5.8: Provider reuses HTTP connection infrastructure from existing code: `VLLMClient` and `GeminiClient` from `src/audit/inference.py` for raw HTTP POST patterns with JSON response handling; `TeacherModelConfig` from `src/factory/config.py` for configuration patterns. Note: does NOT reuse method contracts (existing clients return `str`, AnchorProvider returns `AnchorRecord | None`).
 
 ### US-6: Quality circuit breaker with circuit breaker fallback
 **Priority**: MUST
@@ -121,7 +122,7 @@ As the dataset builder, I want to synthesize samples for `generic_domain` and `o
 - [ ] AC-7.6: At least 2 difficulty levels represented per sub-category (python_legacy, javascript_angular, etc.)
 
 ### US-8: Checkpoint and resume
-**Priority**: SHOULD
+**Priority**: MUST (changed from SHOULD — checkpoint is essential for a long-running generation process of 50-200 samples. Without it, any interruption loses all progress and the generator wastes API cost.)
 **Dependencies**: US-5 (API provider), US-9 (failed sample log)
 
 As the dataset builder, I want checkpoint/resume support so that generation can be paused and resumed without losing progress or duplicating samples.
@@ -131,12 +132,12 @@ As the dataset builder, I want checkpoint/resume support so that generation can 
 - [ ] AC-8.2: Checkpoint includes: completed sample IDs, current domain/difficulty allocation, failed sample IDs, provider state, sample counter
 - [ ] AC-8.3: Resume skips all completed sample IDs (idempotent by sample ID)
 - [ ] AC-8.4: Resume skips all failed sample IDs that were logged in the failed sample log (same ID reused with fallback provider)
-- [ ] AC-8.5: Checkpoint file is written atomically (temp file + rename)
+- [ ] AC-8.5: Checkpoint file is written atomically: write to `<path>.tmp` then `os.rename(tmp, path)` then `os.fsync(fd)`. If rename or fsync fails, `.tmp` file is deleted and error is raised. This ensures no partially-written checkpoint on disk.
 - [ ] AC-8.6: If checkpoint is missing or corrupted, generation starts from scratch (logs warning)
 - [ ] AC-8.7: `--resume` CLI flag restores from last checkpoint
 
 ### US-9: Failed sample log
-**Priority**: SHOULD
+**Priority**: MUST (changed from SHOULD — failed sample log is the only mechanism to track what went wrong and retry with fallback. Without it, quality assurance during generation is impossible.)
 **Dependencies**: US-6 (circuit breaker)
 
 As the dataset builder, I want failed samples logged with reason codes so that manual review and retry (with fallback provider) is possible.
@@ -189,8 +190,8 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 - [ ] AC-12.2: Verification workflow documented: first 20 samples per domain fully verified, then 10% random spot-check of remaining
 - [ ] AC-12.3: Each verification entry includes: `sample_id`, `verified_by` (name/initials), `verified_at` (ISO8601), `label_corrections` (optional dict of corrected fields), `confidence` (0.0-1.0)
 - [ ] AC-12.4: Verification does NOT modify the dataset files -- corrections are recorded separately in the log
-- [ ] AC-12.5: Verification is a checklist-driven process (documented in `docs/anchor-dataset-verification.md` or similar)
-- [ ] AC-12.6: Human verification cost estimated and communicated: ~25-50 hours for 50 samples, ~50-100 hours for 100 samples, ~100-200 hours for 200 samples
+- [ ] AC-12.5: Verification workflow is documented in `docs/anchor-dataset-verification.md` including step-by-step checklist of what to verify per sample
+- [ ] AC-12.6: Human verification cost is documented and communicated to the engineer before generation starts: the documented cost range appears in `docs/anchor-dataset-verification.md`
 
 ---
 
@@ -198,14 +199,14 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 
 ### FR-001: Anchor record Pydantic schema
 - [FR-001.1] `AnchorRecord` Pydantic model MUST be defined in `infrastructure/anchor_dataset_schema.py`
-- [FR-001.2] Model fields: `id` (str, regex `^anchor_\d+_\\d+$`), `domain` (Literal["home_assistant", "php_legacy", "generic_domain", "other"]), `difficulty` (Literal["easy", "medium", "hard"]), `turn_count` (int, gt 0), `legacy_pattern` (str, min_length 1), `domain_context` (str, min_length 1), `expected_trajectory` (str, min_length 1), `expected_tool_usage_patterns` (list[str]), `expected_coherence` (float, ge 0.0, le 1.0), `expected_overall` (float, ge 0.0, le 1.0), `expected_optimized_parameters` (dict[str, Any], default_factory=dict), `expected_quality_score` (float, ge 0.0, le 1.0), `verified` (bool, default False), `verified_by` (str, default "")
+- [FR-001.2] Model fields: `id` (str, regex `r"^anchor_\d+_\d+$"`), `domain` (Literal["home_assistant", "php_legacy", "generic_domain", "other"]), `difficulty` (Literal["easy", "medium", "hard"]), `turn_count` (int, gt 0), `legacy_pattern` (str, min_length 1), `domain_context` (str, min_length 1), `expected_trajectory` (str, min_length 1), `expected_tool_usage_patterns` (list[str]), `expected_coherence` (float, ge 0.0, le 1.0), `expected_overall` (float, ge 0.0, le 1.0), `expected_optimized_parameters` (dict[str, Any], default_factory=dict), `expected_quality_score` (float, ge 0.0, le 1.0), `verified` (bool, default False), `verified_by` (str, default "")
 - [FR-001.3] `AnchorManifest` Pydantic model MUST include: `version` (str, default "v1"), `created` (str, ISO8601 format), `total_samples` (int, gt 0), `domain_distribution` (dict[str, int]), `difficulty_distribution` (dict[str, int]), `provider_used` (str), `circuit_breaker_triggered` (bool, default False), `failed_sample_count` (int, default 0)
 - [FR-001.4] `DSPY_FIELD_MAP` constant: `{"inputs": ["domain_context", "expected_trajectory", "difficulty", "turn_count", "legacy_pattern"], "labels": ["expected_tool_usage_patterns", "expected_coherence", "expected_overall", "expected_quality_score", "expected_optimized_parameters"]}`. The 5 label fields map to the three DSPy Signatures: TrajectorySignature uses `expected_tool_usage_patterns`, JudgeSignature uses `expected_coherence` + `expected_overall`, CalibrationSignature uses `expected_quality_score` + `expected_optimized_parameters`.
 - [FR-001.5] Model MUST be strict: any field not defined in the model MUST cause validation failure
 
 ### FR-002: Dataset builder main script
 - [FR-002.1] Script MUST exist at `infrastructure/anchor_dataset_builder.py`
-- [FR-002.2] Script MUST accept CLI arguments: `--count` (total samples, default 110), `--provider` (vllm|openai|gemini, default vllm), `--batch-size` (default 10), `--output-dir` (default `datasets/anchors/v1/`), `--resume` (flag), `--dry-run` (flag), `--seed` (random seed for reproducibility), `--timeout` (request timeout in seconds, default 60), `--max-retries` (max retries for rate-limited API responses, default 3), `--no-overwrite` (exit 1 if output file already exists)
+- [FR-002.2] Script MUST accept CLI arguments: `--count` (total samples, default 50 for v0.1, upper bound 200 for v0.2), `--provider` (vllm|openai|gemini, default vllm), `--batch-size` (default 10), `--output-dir` (default `datasets/anchors/v1/`), `--resume` (flag), `--dry-run` (flag), `--seed` (random seed for reproducibility), `--timeout` (request timeout in seconds, default 60), `--max-retries` (max retries for rate-limited API responses, default 3), `--no-overwrite` (exit 1 if output file already exists), `--domain-distribution` (JSON string, e.g. `--domain-distribution '{"home_assistant":50,"php_legacy":25,"generic_domain":15,"other":10}'` to override default 40/30/20/10), `--difficulty-distribution` (JSON string, e.g. `--difficulty-distribution '{"easy":30,"medium":50,"hard":20}'` to override default 30/50/20)
 - [FR-002.3] Script MUST provide a complete CLI with configurable arguments, pre-flight validation, structured user output, and semantic exit codes
 - [FR-002.4] Script MUST create output directory if missing: `os.makedirs(output_dir, exist_ok=True)`
 - [FR-002.5] Script MUST load seeds from `tests/fixtures/seed_examples.yaml` (graceful if missing)
@@ -227,7 +228,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 
 ### FR-004: Sample configuration generator
 - [FR-004.1] Generate `SampleConfig` dicts matching domain distribution (FR-002.6) and difficulty distribution (FR-002.7)
-- [FR-004.2] Each config includes: `domain`, `difficulty`, `turn_count` (target, default 4), `legacy_pattern` (description string), `seed_id` (if available, null otherwise), `variant_index` (per-seed variant number)
+- [FR-004.2] Each config includes: `domain`, `difficulty`, `turn_count` (target, default 4), `legacy_pattern` (description string), `seed_id` (if available, synthetic pool name like "synthetic_generic_005" for unseeded domains), `variant_index` (per-seed variant number), `seed_pool` (numeric pool index: 1-8 HA, 9-13 PHP, 100+ generic_domain, 200+ other)
 - [FR-004.3] HA/PHP configs derive `legacy_pattern` and `domain_context` from seed data
 - [FR-004.4] Generic/other configs derive `legacy_pattern` and `domain_context` from domain templates (no seeds)
 - [FR-004.5] `turn_count` varies by difficulty: easy=3, medium=4, hard=5-6 (configurable)
@@ -242,10 +243,12 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 - [FR-005.6] For generic_domain and other domains, few-shot examples sourced from HA reference repos as generic code patterns
 
 ### FR-006a: Provider connectivity and configuration
-- [FR-006a.1] Script MUST verify vLLM server connectivity before starting generation (curl/HTTP health check to `localhost:8000`)
-- [FR-006a.2] If vLLM is unreachable: fail with clear error message suggesting `--provider openai` fallback
-- [FR-006a.3] Script MUST validate that required API keys are available at startup (OPENAI_API_KEY for OpenAIProvider, GOOGLE_API_KEY for GeminiProvider, VLLM_API_KEY for VLLMProvider when --provider vllm is selected)
-- [FR-006a.4] Missing required API key: fail with clear error message, exit code 1
+Startup sequence (strict ordering, all checked before generation begins):
+1. **Validate CLI arguments** — parse and validate all arguments, fail with exit code 1 on invalid values
+2. **Validate API keys** — check required env var for requested provider: `VLLM_API_KEY` for vllm, `OPENAI_API_KEY` for openai, `GOOGLE_API_KEY` for gemini. Missing key: fail with clear error message, exit code 1
+3. **Health-check provider endpoint** — if `--provider vllm`, verify connectivity to `localhost:8000` via HTTP GET. If unreachable: fail with error message suggesting `--provider openai` fallback. For openai/gemini, no endpoint health check needed (cloud providers).
+4. **Pre-flight seed validation** — load seeds, verify at least some exist for requested domains. Warn if generic_domain or other requested but no reference corpus available.
+After startup passes all four steps, generation begins. API request-level behavior:
 - [FR-006a.5] API requests MUST have configurable timeout (default 60s per request, via `--timeout` CLI argument)
 - [FR-006a.6] Rate limit handling: exponential backoff with jitter for 429 responses (configurable max retries via `--max-retries`)
 
@@ -254,9 +257,9 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 - [FR-006.2] `VLLMProvider`: connects to `localhost:8000` with API key from `VLLM_API_KEY` env var (with documented development fallback), uses `response_format: {"type": "json_object"}`, model default `qwen3-5-35b-a3b-nvfp4`
 - [FR-006.3] `OpenAIProvider`: uses `response_format: {"type": "json_object"}`, model configurable (default GPT-4o), API key from `OPENAI_API_KEY` env var
 - [FR-006.4] `GeminiProvider`: uses `response_mime_type: "application/json"`, model configurable (default Gemini 2.0 Flash), API key from `GOOGLE_API_KEY` env var
-- [FR-006.5] Provider MUST NOT retry on semantic failures (only on network errors)
+- [FR-006.5] Provider retries only on network errors (connection refused, timeout, 429 rate limit) up to `--max-retries` times (default 3). Provider MUST NOT retry on semantic failures (schema validation failure, anti-laziness rejection, field incompleteness). After `--max-retries` network retries are exhausted, the provider returns `None` with an error classification (`"api_error"` or `"json_parse_error"` for network/parse, or any other reason for semantic failures).
 - [FR-006.6] Provider MUST NOT inherit from `TeacherProvider` (separate abstraction)
-- [FR-006.7] Provider returns `None` on validation failure (not a raised exception); caller routes to failed sample log
+- [FR-006.7] Provider returns `None` on any failure (network after retries exhausted, or semantic validation failure); caller routes to failed sample log with the appropriate `failure_reason` from FR-008.3. If the `failure_reason` is `"api_error"` or `"json_parse_error"`, the caller automatically retries with the fallback provider (per FR-008.4).
 
 ### FR-007: Quality circuit breaker
 - [FR-007.1] Quality check runs after every `batch_size` samples (default 10)
@@ -271,7 +274,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 - [FR-008.1] Failed samples written to `outputs/failed_samples.jsonl` at project root
 - [FR-008.2] Each entry: `sample_id`, `domain`, `difficulty`, `failure_reason` (enum), `provider`, `attempt` (int), `raw_response` (str, truncated to 2000 chars)
 - [FR-008.3] Failure reasons: "schema_validation", "field_incomplete", "anti_laziness", "turn_count_mismatch", "self_assessed_quality", "tool_call_invalid", "json_parse_error", "api_error"
-- [FR-008.4] Failed samples with `json_parse_error` or `api_error` are automatically retried with fallback provider
+- [FR-008.4] Failed samples with `json_parse_error` or `api_error` are automatically retried with the fallback provider (per FR-006.7 retry routing). After fallback retry exhaustion, if still failing, the sample is logged with an additional `fallback_exhausted` flag.
 - [FR-008.5] Failed samples with semantic reasons require manual review
 
 ### FR-009: Checkpoint/resume
@@ -287,7 +290,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 - [FR-010.2] Manifest written to `datasets/anchors/v1/anchor_manifest.json`
 - [FR-010.3] Manifest fields: `version`, `created`, `total_samples`, `domain_distribution`, `difficulty_distribution`, `provider_used`, `circuit_breaker_triggered`, `failed_sample_count`
 - [FR-010.4] Both files written atomically (temp + rename + fsync)
-- [FR-010.5] Re-run with same seeds produces same sample IDs (deterministic ID generation: `anchor_{seed_index:03d}_{variant:02d}`, e.g. `anchor_001_03`). ID format validated by regex `^anchor_\d+_\\d+$` (FR-001.2).
+- [FR-010.5] Re-run with same seeds produces same sample IDs (deterministic ID generation). ID format: `anchor_{seed_pool:03d}_{variant:02d}` where `seed_pool` is the seed index for seeded domains (HA=1-8, PHP=9-13) and a synthetic pool for unseeded domains: `generic_domain` uses pool 100-119, `other` uses pool 200-219. Example: `anchor_001_03` (HA seed 1 variant 3), `anchor_100_05` (generic_domain synthetic seed 5). ID format validated by regex `^anchor_\d+_\d+$`.
 
 ### FR-011: DSPy Example conversion utility
 - [FR-011.1] `jsonl_to_dspy_examples(path: str) -> list[dspy.Example]` function in `infrastructure/anchor_dataset_schema.py`
@@ -332,9 +335,9 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 | **DSPy** | Deep Learning Prompt You framework (v3.2.0) -- uses Python class docstrings for prompts, `dspy.Example` for training data |
 | **dspy.Example** | DSPy data container. Created via `dspy.Example(field1=val1, field2=val2).with_inputs("field1", "field2")` where inputs are provided at compile time and labels are ground truth |
 | **DSPY_FIELD_MAP** | Constant mapping JSONL record fields to DSPy input/label roles. Input fields passed to signatures, label fields used as ground truth for optimization |
-| **TrajectorySignature** | DSPy Signature that maps (domain_context, expected_trajectory, difficulty, turn_count, legacy_pattern) -> (expected_tool_usage_patterns) |
-| **JudgeSignature** | DSPy Signature that maps (expected_trajectory, domain_context) -> (expected_coherence, expected_overall) |
-| **CalibrationSignature** | DSPy Signature that maps (expected_trajectory, expected_tool_usage_patterns) -> (expected_optimized_parameters, expected_quality_score) |
+| **TrajectorySignature** | DSPy Signature (defined in Epic 1, aegf-dspy-integration) — maps domain_context + expected_trajectory + difficulty + turn_count + legacy_pattern -> expected_tool_usage_patterns. Field-level definition deferred to Epic 1. |
+| **JudgeSignature** | DSPy Signature (defined in Epic 1, aegf-dspy-integration) — maps expected_trajectory + domain_context -> expected_coherence + expected_overall. Field-level definition deferred to Epic 1. |
+| **CalibrationSignature** | DSPy Signature (defined in Epic 1, aegf-dspy-integration) — maps expected_trajectory + expected_tool_usage_patterns -> expected_optimized_parameters + expected_quality_score. Field-level definition deferred to Epic 1. |
 | **vLLM** | Self-hosted LLM inference server. Project runs `qwen3-5-35b-a3b-nvfp4` at `localhost:8000`. Primary backend for anchor generation |
 | **OpenAI GPT-4o** | Cloud LLM with strongest structured output guarantees (guided decoding). Fallback backend |
 | **Gemini 2.0 Flash** | Google's LLM with good JSON mode and lower cost. Secondary fallback / diversity source |
@@ -398,20 +401,20 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 
 ## Success Criteria
 
-- [ ] `infrastructure/anchor_dataset_builder.py` exists and runs without errors against seed data in dry-run mode
+- [ ] `infrastructure/anchor_dataset_builder.py` exists and runs without errors against seed data in dry-run mode (exits 0, logs planned generation)
 - [ ] `infrastructure/anchor_dataset_schema.py` exists with `AnchorRecord`, `AnchorManifest`, `DSPY_FIELD_MAP`, and `jsonl_to_dspy_examples()`
-- [ ] Running builder produces `datasets/anchors/v1/anchor_dataset.jsonl` with the requested number of samples
-- [ ] Running builder produces `datasets/anchors/v1/anchor_manifest.json` with correct domain and difficulty distributions
-- [ ] All samples in JSONL pass `AnchorRecord` Pydantic validation
-- [ ] Domain distribution matches: home_assistant=40%, php_legacy=30%, generic_domain=20%, other=10%
-- [ ] Circuit breaker correctly switches provider when quality threshold is breached
-- [ ] Checkpoint/resume works: interrupt during generation, resume produces no duplicate samples
-- [ ] `jsonl_to_dspy_examples()` produces valid `dspy.Example` objects with correct input/label mapping
-- [ ] Failed samples are logged to `outputs/failed_samples.jsonl` with reason codes
-- [ ] All new scripts pass `ruff format` and `pyright` type checking
-- [ ] All scripts include Apache-2.0 license header
-- [ ] Manual verification workflow is documented (checklist + `verification_log.json`)
-- [ ] Dry-run mode validates seeds and distribution without writing files
+- [ ] Running builder produces `datasets/anchors/v1/anchor_dataset.jsonl` with sample count equal to `--count` argument value
+- [ ] Running builder produces `datasets/anchors/v1/anchor_manifest.json` with domain_distribution matching target (home_assistant=40%, php_legacy=30%, generic_domain=20%, other=10%, tolerance ±5 percentage points) and difficulty_distribution matching target (easy=30%, medium=50%, hard=20%)
+- [ ] All samples in JSONL pass `AnchorRecord` Pydantic validation (0 validation failures in exported file)
+- [ ] Domain distribution matches: home_assistant=40%, php_legacy=30%, generic_domain=20%, other=10% (±5 percentage points)
+- [ ] Circuit breaker switches to fallback provider when failure rate >= CIRCUIT_BREAKER_THRESHOLD (default 0.2) across EVALUATION_BATCH_SIZE (default 10) samples, with log entry recording the switch event and active provider
+- [ ] Checkpoint/resume works: interrupt during generation produces valid `.checkpoint.json`; resume with `--resume` flag produces no duplicate sample IDs (verified by checking all IDs in resumed output are new)
+- [ ] `jsonl_to_dspy_examples()` produces valid `dspy.Example` objects with correct input/label mapping per `DSPY_FIELD_MAP` (stub in this spec: function exists, raises ImportError if DSPy not installed)
+- [ ] Failed samples are logged to `outputs/failed_samples.jsonl` with valid JSON per line, each entry containing `sample_id`, `domain`, `difficulty`, `failure_reason` (valid enum value), `provider`, `attempt`, `raw_response` (truncated to 2000 chars)
+- [ ] All new scripts pass `ruff format --check` and `pyright` with zero errors/warnings
+- [ ] All new scripts include Apache-2.0 license header (3 required tokens within first 4096 bytes)
+- [ ] Verification workflow is documented in `docs/anchor-dataset-verification.md` with step-by-step checklist
+- [ ] Dry-run mode validates seeds and distribution without writing any files (exits 0, logs planned generation count per domain)
 
 ---
 
@@ -422,7 +425,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 This spec creates a CLI tool (`infrastructure/anchor_dataset_builder.py`) that reads seed data from fixtures and generates anchor dataset files. The tool depends on external LLM inference services (vLLM, OpenAI, Gemini) via HTTP. No HTTP server, no browser UI, no API endpoints.
 
 **Entry points**:
-- CLI: `python infrastructure/anchor_dataset_builder.py --count 110 --provider vllm --output-dir datasets/anchors/v1/`
+- CLI: `python infrastructure/anchor_dataset_builder.py --count 50 --provider vllm --output-dir datasets/anchors/v1/`
 - CLI: `python infrastructure/anchor_dataset_builder.py --dry-run` (pre-flight validation)
 - CLI: `python infrastructure/anchor_dataset_builder.py --resume` (resume from checkpoint)
 - File reads: `tests/fixtures/seed_examples.yaml`, `src/factory/agentic_teacher_client.py` (for underlying HTTP clients)
@@ -430,7 +433,7 @@ This spec creates a CLI tool (`infrastructure/anchor_dataset_builder.py`) that r
 - Import: `infrastructure/anchor_dataset_schema.py` (AnchorRecord, AnchorManifest, DSPY_FIELD_MAP)
 
 **Observable signals**:
-- PASS: Script exits with code 0, output JSONL file exists with sample count == `--count` argument value (default 110), manifest matches distribution, all records pass Pydantic validation
+- PASS: Script exits with code 0, output JSONL file exists with sample count == `--count` argument value (default 50), manifest matches distribution, all records pass Pydantic validation
 - FAIL: Script exits with code 1, stderr contains error, output files missing, schema validation fails, or domain distribution deviates from targets
 - Quality PASS: >= 80% of samples pass all FR-007.2 quality criteria per batch (Pydantic validation + field completeness + anti-laziness + turn count compliance + tool call validity + self-assessed quality >= 0.3)
 - Circuit Breaker PASS: When >= 2/10 samples fail quality checks in a batch, provider switches to fallback with log message
@@ -450,18 +453,24 @@ This spec creates a CLI tool (`infrastructure/anchor_dataset_builder.py`) that r
 - `tests/fixtures/reference_corpus/homeassistant/`: 5 repos (repo1-repo5). Used for generic_domain sample synthesis when no seeds are available.
 - `tests/fixtures/anchor_dataset_examples.json`: Format reference fixtures. NOT used as ground truth; format reference only.
 
-**Test strategy** (8 categories):
+**Test strategy** (14 categories):
 
 | # | Category | What it tests | Priority |
 |---|----------|---------------|----------|
-| 1 | Schema validation | All generated records pass `AnchorRecord` Pydantic validation | P0 |
-| 2 | JSON mode reliability | Each backend (vLLM, OpenAI, Gemini) produces parseable JSON on 20+ samples | P0 |
-| 3 | Circuit breaker | Correctly triggers when failure rate >= threshold; correctly resets | P0 |
-| 4 | Failed sample log | Failed samples logged with correct reason codes; file format valid JSONL | P1 |
-| 5 | Idempotency | Re-running with same seeds produces same sample IDs (not duplicated) | P1 |
-| 6 | JSONL export | Atomic write (.tmp -> rename -> fsync), file integrity after partial writes | P1 |
-| 7 | Edge cases | Concrete scenarios: (a) 0 seeds for generic_domain/other → template-based generation produces valid samples; (b) valid JSON but garbage trajectory → fails anti-laziness, logged to failed sample log; (c) partial completion (e.g., 150/110 interrupted) → checkpoint is valid JSON, resume skips completed IDs; (d) duplicate seed usage → same seed produces same sample ID (`anchor_{seed_index:03d}_{variant:02d}`); (e) malformed API responses (503, timeout, empty body) → circuit breaker or fallback triggered appropriately | P1 |
-| 8 | DSPy conversion | `jsonl_to_dspy_examples()` produces valid `dspy.Example.with_inputs()` declarations | P0 (deferred to Epic 1 — a stub implementation that validates the function exists and raises `ImportError` with guidance if DSPy is not installed, is required in this spec) |
+| 1 | Schema validation | All generated records pass `AnchorRecord` Pydantic validation (field types, range checks, regex on `id`) | P0 |
+| 2 | JSON mode reliability | Each backend (vLLM, OpenAI, Gemini) produces parseable JSON on 20+ samples with stub/mock responses | P0 |
+| 3 | Provider unit tests | VLLMProvider, OpenAIProvider, GeminiProvider: constructor with valid/invalid API key, `generate()` with valid JSON response, `generate()` with non-JSON response (returns None), `generate()` with timeout (mock), `name` property returns correct string | P0 |
+| 4 | Circuit breaker | Correctly triggers when failure rate >= threshold; correctly resets after 10 consecutive passes | P0 |
+| 5 | Failed sample log | Failed samples logged with correct reason codes; file format valid JSONL; retry routing for api_error/json_parse_error | P1 |
+| 6 | Idempotency | Re-running with same seeds produces same sample IDs (not duplicated); generic/other synthetic IDs also deterministic | P1 |
+| 7 | JSONL export | Atomic write (.tmp -> rename -> fsync), file integrity after partial writes, error contract on rename/fsync failure | P1 |
+| 8 | Seed loader | Correct YAML parsing, graceful handling of missing file (log warning + empty list), idempotent loads, malformed YAML handling | P1 |
+| 9 | Domain distribution math | count=50: HA=20, PHP=15, Generic=10, Other=5; count=110: HA=44, PHP=33, Generic=22, Other=11; count=200: HA=80, PHP=60, Generic=40, Other=20; rounding algorithm specified (round half up, distribute remainder to largest domains first) | P1 |
+| 10 | Edge cases | (a) 0 seeds for generic_domain/other → template-based generation produces valid samples; (b) valid JSON but garbage trajectory → fails anti-laziness, logged to failed sample log; (c) partial completion → checkpoint is valid JSON, resume skips completed IDs; (d) malformed API responses (503, timeout, empty body) → circuit breaker or fallback triggered appropriately; (e) network timeout during generation → retry with backoff; (f) rate limit 429 → exponential backoff with jitter; (g) read-only output directory → clear error message; (h) API returns valid JSON but schema doesn't match → returns None, logged to failed sample log | P1 |
+| 11 | CLI argument parsing | `--count 50` produces 50 samples, `--provider openai` uses OpenAIProvider, `--resume` loads checkpoint, `--dry-run` writes nothing, default values correct, `--domain-distribution` overrides default distribution, `--difficulty-distribution` overrides default | P1 |
+| 12 | KeyboardInterrupt | Signal saves checkpoint, logs clean shutdown message, exits with code 1, checkpoint file is valid for resume | P1 |
+| 13 | DSPy conversion | `jsonl_to_dspy_examples()` produces valid `dspy.Example.with_inputs()` declarations with correct field mapping per `DSPY_FIELD_MAP` | P0 (deferred to Epic 1 — stub implementation required: validates function exists, raises `ImportError` with guidance if DSPy not installed) |
+| 14 | Prompt construction | Generated prompts include: role definition, domain context, output schema, 2-3 few-shot examples from correct domain, quality constraints (no lazy code) | P2 |
 
 **Escalate if**:
 - vLLM server is not running and no OpenAI API key is available (no generation possible)
