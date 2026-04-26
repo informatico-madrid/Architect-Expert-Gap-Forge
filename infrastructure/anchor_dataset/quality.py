@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord

@@ -130,7 +130,7 @@ print('PASS: prompt contains required sections')
 
 Focus: Add all provider implementations, quality system, persistence, and orchestration. Generate full 50 samples.
 
-- [ ] 2.1 [P] Create AnchorProvider ABC + VLLMProvider
+- [x] 2.1 [P] Create AnchorProvider ABC + VLLMProvider
   - **Do**: Create `infrastructure/anchor_dataset/anchor_providers.py` with `AnchorProvider` ABC (name property, generate method returning AnchorRecord|None), and `VLLMProvider` implementation using `requests.post()` to localhost:8000/v1/chat/completions with response_format json_object. Include retry loop on ConnectionError/Timeout (exponential backoff 1,2,4s). Auth fallback to "sk-master-bunker-2026" when VLLM_API_KEY missing.
   - **Files**: infrastructure/anchor_dataset/anchor_providers.py
   - **Done when**: VLLMProvider imports, constructor accepts config, generate() returns None for unreachable server
@@ -147,7 +147,7 @@ print('PASS: VLLMProvider basic behavior correct')
 "`
   - **Commit**: `feat(anchor-dataset): add AnchorProvider ABC and VLLMProvider`
 
-- [ ] 2.2 [P] Create OpenAIProvider
+- [x] 2.2 [P] Create OpenAIProvider
   - **Do**: Add `OpenAIProvider` to anchor_providers.py. Uses httpx.Client (sync). response_format json_object. Model configurable (default gpt-4o). API key from OPENAI_API_KEY env var. Same retry pattern as VLLMProvider.
   - **Files**: infrastructure/anchor_dataset/anchor_providers.py
   - **Done when**: OpenAIProvider imports, returns None when OPENAI_API_KEY missing
@@ -159,7 +159,7 @@ print('PASS: OpenAIProvider basic behavior correct')
 "`
   - **Commit**: `feat(anchor-dataset): add OpenAIProvider`
 
-- [ ] 2.3 [P] Create GeminiProvider
+- [x] 2.3 [P] Create GeminiProvider
   - **Do**: Add `GeminiProvider` to anchor_providers.py. Uses google-genai SDK (genai.Client). response_mime_type application/json. Model configurable (default gemini-2.0-flash). API key from GOOGLE_API_KEY env var. Parse response.text as JSON -> AnchorRecord.
   - **Files**: infrastructure/anchor_dataset/anchor_providers.py
   - **Done when**: GeminiProvider imports, returns None when GOOGLE_API_KEY missing
@@ -234,7 +234,7 @@ print('PASS: CircuitBreaker phase transitions and switch logic correct')
 "`
   - **Commit**: `feat(anchor-dataset): add CircuitBreaker state machine`
 
-- [ ] 2.7 [P] Create FailedSampleLogger
+- [x] 2.7 [P] Create FailedSampleLogger
   - **Do**: Create `infrastructure/anchor_dataset/failed_sample_logger.py` with `FailedSampleEntry` frozen dataclass and `FailedSampleLogger` class. Log to `outputs/failed_samples.jsonl`. Each entry: sample_id, domain, difficulty, failure_reason, provider, attempt, raw_response (truncated to 2000 chars). Append mode, one JSON per line.
   - **Files**: infrastructure/anchor_dataset/failed_sample_logger.py
   - **Done when**: Logger appends entries, entries are valid JSONL, truncation works
@@ -257,7 +257,7 @@ print('PASS: FailedSampleLogger correct')
 "`
   - **Commit**: `feat(anchor-dataset): add FailedSampleLogger`
 
-- [ ] 2.8 [P] Create CheckpointManager
+- [x] 2.8 [P] Create CheckpointManager
   - **Do**: Create `infrastructure/anchor_dataset/checkpoint.py` with `CheckpointData` dataclass and `CheckpointManager` class. Methods: save(path, data) with atomic write (temp+rename+fsync), load(path) returns data or None if missing/corrupted. Resume logic: skip completed_ids, re-attempt failed_ids.
   - **Files**: infrastructure/anchor_dataset/checkpoint.py
   - **Done when**: save/load round-trip works, corrupted file returns None, atomic write verified
@@ -310,7 +310,7 @@ print('PASS: JSONLExporter correct')
 "`
   - **Commit**: `feat(anchor-dataset): add JSONLExporter`
 
-- [ ] 2.10 [VERIFY] Quality checkpoint: providers + quality + persistence
+- [x] 2.10 [VERIFY] Quality checkpoint: providers + quality + persistence
   - **Do**: Run quality checks on all Phase 2 modules
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && ruff check infrastructure/anchor_dataset/ && pyright infrastructure/anchor_dataset/ --pythonversion 3.12`
   - **Done when**: No lint errors, no type errors
