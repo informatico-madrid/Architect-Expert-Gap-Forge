@@ -527,7 +527,7 @@ print('PASS: factories correct')
   - **Verify**: `cd /mnt/bunker_data/ai/data_factory && python -m pytest tests/unit/test_seed_loader.py tests/unit/test_seed_synthesizer.py -v --tb=short && echo PASS`
   - **Commit**: `test(anchor-dataset): seed loader and synthesizer tests`
 
-- [ ] 5.6 [P] Distribution and SampleConfig tests
+- [x] 5.6 [P] Distribution and SampleConfig tests
   - **Do**: Create `tests/unit/test_distribution.py` testing: (1) count=50: HA=20, PHP=15, Generic=10, Other=5; (2) count=110: HA=44, PHP=33, Generic=22, Other=11; (3) count=200: HA=80, PHP=60, Generic=40, Other=20; (4) difficulty distribution per domain: 30/50/20; (5) deterministic ordering with same seed; (6) turn_count by difficulty: easy=3, medium=4, hard=5.
   - **Files**: tests/unit/test_distribution.py
   - **Done when**: All distribution math tests pass
