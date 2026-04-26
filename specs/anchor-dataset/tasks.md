@@ -413,7 +413,7 @@ print('PASS: checkpoint save/load/resume correct with pathlib.Path')
 "`
   - **Commit**: `feat(anchor-dataset): integrate checkpoint into builder`
 
-- [ ] 3.4 [P] Integrate failed sample log into builder
+- [x] 3.4 [P] Integrate failed sample log into builder
   - **Do**: In builder loop, when provider.generate() returns None: call FailedSampleLogger.log() with reason code. Handle auto-retry for json_parse_error and api_error (retry with fallback provider).
   - **Files**: infrastructure/anchor_dataset_builder.py
   - **Done when**: Failed samples logged with correct reason codes, auto-retry works for API errors

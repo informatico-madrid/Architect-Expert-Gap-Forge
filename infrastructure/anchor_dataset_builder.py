@@ -9,13 +9,13 @@ import argparse
 import json
 import logging
 import sys
+import time
 from collections import Counter
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
-def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser with 12 CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Anchor dataset builder — generate labeled anchor samples"
@@ -184,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # 5. Generation loop
     from infrastructure.anchor_dataset.anchor_providers import get_provider
+    from infrastructure.anchor_dataset.failed_sample_logger import FailedSampleLogger
     from infrastructure.anchor_dataset.quality import CircuitBreaker, QualityChecker
     from infrastructure.anchor_dataset.checkpoint import (
         CheckpointManager,
@@ -202,36 +203,54 @@ def main(argv: list[str] | None = None) -> int:
     successful = 0
     failed = 0
 
+    # Failed-sample logger: output next to the main output file
+    failed_log_path = Path(config.output_dir) / "failed_samples.jsonl"
+    failed_logger = FailedSampleLogger(log_path=failed_log_path)
+
     logger.info(
         "Starting generation: %d samples, provider=%s",
         len(configs), config.provider,
     )
 
     for idx, cfg in enumerate(configs):
-        try:
-            system, user = prompt_builder.build(cfg)
-            record = provider.generate(system, user)
-        except Exception:
-            record = None
+        system, user = prompt_builder.build(cfg)
+
+        record = None
+        failure_reason = None
+        raw_response = ""
+
+        for attempt in range(3):
+            try:
+                record = provider.generate(system, user, timeout=30.0)
+                if record is not None:
+                    break
+                failure_reason = "provider_error"
+                if attempt < 2:
+                    logger.debug(
+                        "Sample %d attempt %d failed (%s), retrying...",
+                        idx, attempt + 1, failure_reason,
+                    )
+                    time.sleep(1)
+                    continue
+            except Exception as exc:
+                record = None
+                failure_reason = "provider_error"
+                raw_response = str(exc)
+                if attempt < 2:
+                    continue
+
+        if record is None:
+            failed_logger.log(
+                sample_id=f"sample_{idx:04d}",
+                domain=cfg.domain,
+                difficulty=cfg.difficulty,
+                failure_reason=failure_reason or "provider_error",
+                provider=provider.name,
+                attempt=attempt,
+                raw_response=raw_response,
+            )
             failed += 1
             continue
-
-        if record is not None:
-            if quality_enabled:
-                calibration_fn = apply_calibration
-                qresult = quality_checker.check(record, cfg.turn_count)
-                quality_score = calibration_fn(qresult.score)
-                record = record.model_copy(
-                    update={
-                        "expected_quality_score": quality_score,
-                    },
-                )
-
-            records.append(record)
-            circuit_breaker.record_result(qresult.passed if quality_enabled else True)
-            successful += 1
-        else:
-            failed += 1
 
         if (idx + 1) % 10 == 0:
             logger.info(
