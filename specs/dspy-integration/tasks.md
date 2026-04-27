@@ -32,7 +32,7 @@
 
 ---
 
-### T1.2: Define TrajectorySignature docstring from source template
+### T1.2: Define TrajectorySignature docstring from source template [x]
 **Do:**
 1. Read `src/factory/prompts_trajectory.example.yaml` to extract prompt content
 2. Write docstring that captures the instruction for trajectory generation

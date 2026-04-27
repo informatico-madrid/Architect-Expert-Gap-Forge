@@ -15,10 +15,23 @@ import dspy
 
 
 class TrajectorySignature(dspy.Signature):
-    """Generate a structured agentic trajectory from seed data.
+    """Generate a structured agentic trajectory from seed metadata.
 
-    Takes seed metadata and context, then produces JSON-serialized turn logs,
-    error records, chat messages, and an inferred use-case label.
+    Input: seed_id, mode, use_case, question, context, error_probability,
+    has_error, is_cascade, tool_format.
+
+    The agent produces a turn-by-turn trajectory following this flow:
+      Observation: {context} — {question}
+      Reasoning: {reasoning}
+      Action: Executing {tool_name}
+      Error: {error_description}
+      Correction: {corrective_action}
+      Verification: {verification_result}
+
+    Output: turns_json (list of {turn_index}, {turn_type}, {content}, {tool_name},
+    {tool_args}, {tool_result}, {reasoning}), errors_json (list of {error_type},
+    {turn_index}, {description}, {recovery_turn_index}), messages_json (list of
+    {role}, {content}), and inferred_use_case (label from trajectory analysis).
     """
 
     # --- Input fields ---
