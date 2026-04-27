@@ -48,7 +48,7 @@
 
 ---
 
-### T1.3: Scaffold JudgeSignature file
+### T1.3: Scaffold JudgeSignature file [x]
 **Do:**
 1. Create `src/audit/judge_signature.py`
 2. Add module docstring with SPDX header and brief description
