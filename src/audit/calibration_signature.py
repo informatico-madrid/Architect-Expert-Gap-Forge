@@ -8,6 +8,7 @@ with effectiveness metrics and reasoning.
 """
 
 import dspy
+from pydantic.fields import FieldInfo
 from typing import Dict
 
 
@@ -62,7 +63,7 @@ except ImportError:
     pass
 
 
-class CalibrationSignature(dspy.Signature):
+class _CalibrationSignature(dspy.Signature):
     """Optimize sampling parameters to maximize quality for a target architecture.
 
     The calibration process performs a grid search over sampling parameter
@@ -81,7 +82,7 @@ class CalibrationSignature(dspy.Signature):
     the selection.
 
     Input: parameter_target (list[str]), evaluation_focus, question, temperature,
-    top_k, min_p, quality_target, judge_scores, composite_score.
+    top_k, min_p, quality_target, judge_scores.
 
     Output: best_profile_json (JSON string with temperature, top_k, min_p,
     repetition_penalty, presence_penalty), composite_score, reasoning,
@@ -113,9 +114,6 @@ class CalibrationSignature(dspy.Signature):
     judge_scores: Dict[str, float] = dspy.InputField(
         description="Judge scoring dictionary keyed by dimension with float scores"
     )
-    composite_score: float = dspy.InputField(
-        description="Weighted composite score from all dimensions"
-    )
 
     # --- Output fields ---
     best_profile_json: str = dspy.OutputField(
@@ -130,3 +128,43 @@ class CalibrationSignature(dspy.Signature):
     parameter_effectiveness: float = dspy.OutputField(
         description="Effectiveness metric (0.0-1.0) of current parameters"
     )
+
+
+# Wrapper to expose composite_score in both input and output fields.
+# DSPy (Pydantic) cannot have the same name as both InputField and
+# OutputField in a single Signature class definition. The output
+# 'composite_score' carries the best profile's expected composite score;
+# the input version (added by the wrapper) carries the input composite score.
+class _CalibrationSignatureWrapper:
+    """Wrapper that exposes composite_score in both input and output fields."""
+
+    def __init__(self, cls: type) -> None:
+        self._cls = cls
+
+    @property
+    def input_fields(self) -> dict[str, FieldInfo]:
+        d = dict(self._cls.input_fields)
+        d["composite_score"] = FieldInfo(
+            annotation=float,
+            description="Weighted composite score from all dimensions",
+            json_schema_extra={
+                "__dspy_field_type": "input",
+                "desc": "Weighted composite score from all dimensions",
+                "prefix": "Composite Score:",
+            },
+        )
+        return d
+
+    @property
+    def output_fields(self) -> dict[str, FieldInfo]:
+        return self._cls.output_fields
+
+    @property
+    def __doc__(self) -> str | None:  # type: ignore[override]
+        return self._cls.__doc__
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._cls, name)
+
+
+CalibrationSignature = _CalibrationSignatureWrapper(_CalibrationSignature)
