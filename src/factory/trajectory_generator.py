@@ -219,9 +219,9 @@ class TrajectoryGenerator:
 
             return AgenticTrajectory(
                 seed_id=seed_data_payload["seed_id"],
-                mode=TrajectoryMode(
-                    seed_data_payload["mode"]
-                ) if isinstance(seed_data_payload["mode"], str) else seed_data_payload["mode"],
+                mode=TrajectoryMode(seed_data_payload["mode"])
+                if isinstance(seed_data_payload["mode"], str)
+                else seed_data_payload["mode"],
                 turns=agentic_turns,
                 errors=agentic_errors,
                 use_case=result.inferred_use_case,
@@ -239,48 +239,63 @@ class TrajectoryGenerator:
         turn_index = 0
 
         # First turn: use HardQueryBuilder if mode is hard_query, otherwise use observation template
-        if self.mode == TrajectoryMode.HARD_QUERY and self._hard_query_builder is not None:
+        if (
+            self.mode == TrajectoryMode.HARD_QUERY
+            and self._hard_query_builder is not None
+        ):
             # Generate hard query prompt (abstract objective without tool names)
             first_content = self._hard_query_builder.build(seed_data)
-            turns.append(Turn(
-                turn_index=turn_index,
-                turn_type=TurnType.OBSERVATION,
-                content=first_content,
-            ))
+            turns.append(
+                Turn(
+                    turn_index=turn_index,
+                    turn_type=TurnType.OBSERVATION,
+                    content=first_content,
+                )
+            )
         else:
             # Standard observation turn with explicit template
-            obs_template = self._templates.get("observation", {}).get("template", "Obs: {question}")
+            obs_template = self._templates.get("observation", {}).get(
+                "template", "Obs: {question}"
+            )
             obs_content = obs_template.format(question=question, context=context)
-            turns.append(Turn(
-                turn_index=turn_index,
-                turn_type=TurnType.OBSERVATION,
-                content=obs_content,
-            ))
+            turns.append(
+                Turn(
+                    turn_index=turn_index,
+                    turn_type=TurnType.OBSERVATION,
+                    content=obs_content,
+                )
+            )
         turn_index += 1
 
         # Reasoning turn
-        reason_template = self._templates.get("reasoning", {}).get("template", "Reasoning...")
+        reason_template = self._templates.get("reasoning", {}).get(
+            "template", "Reasoning..."
+        )
         reason_content = reason_template.format(
             reasoning="Analizando los requisitos para resolver el problema..."
         )
-        turns.append(Turn(
-            turn_index=turn_index,
-            turn_type=TurnType.REASONING,
-            content=reason_content,
-        ))
+        turns.append(
+            Turn(
+                turn_index=turn_index,
+                turn_type=TurnType.REASONING,
+                content=reason_content,
+            )
+        )
         turn_index += 1
 
         # Action turn
         tool_name = "async_setup_entry"
         tool_args = {"entry": "config_entry"}
         action_content = self._serialize_tool_call(tool_name, tool_args, use_xml)
-        turns.append(Turn(
-            turn_index=turn_index,
-            turn_type=TurnType.ACTION,
-            content=action_content,
-            tool_name=tool_name,
-            tool_args=tool_args,
-        ))
+        turns.append(
+            Turn(
+                turn_index=turn_index,
+                turn_type=TurnType.ACTION,
+                content=action_content,
+                tool_name=tool_name,
+                tool_args=tool_args,
+            )
+        )
         turn_index += 1
 
         # Determine if we should inject error
@@ -294,27 +309,35 @@ class TrajectoryGenerator:
                 # Add another action turn (that will fail) - use same format as first action
                 tool2_name = "get_coordinator_data"
                 tool2_args = {"entity_id": "light.living_room"}
-                action2_content = self._serialize_tool_call(tool2_name, tool2_args, use_xml)
-                turns.append(Turn(
-                    turn_index=turn_index,
-                    turn_type=TurnType.ACTION,
-                    content=action2_content,
-                    tool_name=tool2_name,
-                    tool_args=tool2_args,
-                ))
+                action2_content = self._serialize_tool_call(
+                    tool2_name, tool2_args, use_xml
+                )
+                turns.append(
+                    Turn(
+                        turn_index=turn_index,
+                        turn_type=TurnType.ACTION,
+                        content=action2_content,
+                        tool_name=tool2_name,
+                        tool_args=tool2_args,
+                    )
+                )
                 turn_index += 1
 
                 # Error turn - cascade failure
-                error_template = self._templates.get("error", {}).get("template", "Error: {error_description}\\nDetalles: {error_details}")
+                error_template = self._templates.get("error", {}).get(
+                    "template", "Error: {error_description}\\nDetalles: {error_details}"
+                )
                 error_content = error_template.format(
                     error_description="Tool failed, then returned wrong data - cascade failure",
-                    error_details="El primer error fue de conexión, el segundo retornó datos vacíos"
+                    error_details="El primer error fue de conexión, el segundo retornó datos vacíos",
                 )
-                turns.append(Turn(
-                    turn_index=turn_index,
-                    turn_type=TurnType.ERROR,
-                    content=error_content,
-                ))
+                turns.append(
+                    Turn(
+                        turn_index=turn_index,
+                        turn_type=TurnType.ERROR,
+                        content=error_content,
+                    )
+                )
 
                 # Record the error
                 error = SimulatedError(
@@ -327,16 +350,20 @@ class TrajectoryGenerator:
                 turn_index += 1
             else:
                 # Simple error (tool_failure)
-                error_template = self._templates.get("error", {}).get("template", "Error: {error_description}\\nDetalles: {error_details}")
+                error_template = self._templates.get("error", {}).get(
+                    "template", "Error: {error_description}\\nDetalles: {error_details}"
+                )
                 error_content = error_template.format(
                     error_description="Tool failed to execute: ConfigEntryNotReady",
-                    error_details="La configuración no está lista para cargar"
+                    error_details="La configuración no está lista para cargar",
                 )
-                turns.append(Turn(
-                    turn_index=turn_index,
-                    turn_type=TurnType.ERROR,
-                    content=error_content,
-                ))
+                turns.append(
+                    Turn(
+                        turn_index=turn_index,
+                        turn_type=TurnType.ERROR,
+                        content=error_content,
+                    )
+                )
 
                 # Record the error
                 error = SimulatedError(
@@ -349,38 +376,50 @@ class TrajectoryGenerator:
                 turn_index += 1
 
             # Correct turn (mandatory after error)
-            correct_template = self._templates.get("correct", {}).get("template", "Corrección: {corrective_action}\\nRazón: {correction_reason}")
+            correct_template = self._templates.get("correct", {}).get(
+                "template",
+                "Corrección: {corrective_action}\\nRazón: {correction_reason}",
+            )
             correct_content = correct_template.format(
                 corrective_action="Corregido el error usando el patrón correcto de HA 2026",
-                correction_reason="El patrón async_setup_entry requiere await en el entry"
+                correction_reason="El patrón async_setup_entry requiere await en el entry",
             )
-            turns.append(Turn(
-                turn_index=turn_index,
-                turn_type=TurnType.CORRECT,
-                content=correct_content,
-            ))
+            turns.append(
+                Turn(
+                    turn_index=turn_index,
+                    turn_type=TurnType.CORRECT,
+                    content=correct_content,
+                )
+            )
             turn_index += 1
 
         # Verify turn (optional, adds depth)
         if len(turns) < 10 and random.random() < 0.5:
-            verify_template = self._templates.get("verify", {}).get("template", "Verificación: {verification_result}\\nEstado: {final_state}")
+            verify_template = self._templates.get("verify", {}).get(
+                "template",
+                "Verificación: {verification_result}\\nEstado: {final_state}",
+            )
             verify_content = verify_template.format(
                 verification_result="Verificación completada exitosamente",
-                final_state="Todos los checks pasaron correctamente"
+                final_state="Todos los checks pasaron correctamente",
             )
-            turns.append(Turn(
-                turn_index=turn_index,
-                turn_type=TurnType.VERIFY,
-                content=verify_content,
-            ))
+            turns.append(
+                Turn(
+                    turn_index=turn_index,
+                    turn_type=TurnType.VERIFY,
+                    content=verify_content,
+                )
+            )
 
         # Ensure we have between 3 and 10 turns
         while len(turns) < 3:
-            turns.append(Turn(
-                turn_index=len(turns),
-                turn_type=TurnType.VERIFY,
-                content="Additional verification turn",
-            ))
+            turns.append(
+                Turn(
+                    turn_index=len(turns),
+                    turn_type=TurnType.VERIFY,
+                    content="Additional verification turn",
+                )
+            )
 
         # Serialize to ChatML messages
         messages = self._serialize_to_chatml(turns)

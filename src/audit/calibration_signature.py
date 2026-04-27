@@ -93,21 +93,13 @@ class _CalibrationSignature(dspy.Signature):
     parameter_target: list[str] = dspy.InputField(
         description="Structured list of parameter targets to optimize"
     )
-    evaluation_focus: str = dspy.InputField(
-        description="Focus area for evaluation"
-    )
+    evaluation_focus: str = dspy.InputField(description="Focus area for evaluation")
     question: str = dspy.InputField(
         description="Question or prompt to calibrate against"
     )
-    temperature: float = dspy.InputField(
-        description="Current temperature setting"
-    )
-    top_k: int = dspy.InputField(
-        description="Current top-k setting"
-    )
-    min_p: float = dspy.InputField(
-        description="Current min-p setting"
-    )
+    temperature: float = dspy.InputField(description="Current temperature setting")
+    top_k: int = dspy.InputField(description="Current top-k setting")
+    min_p: float = dspy.InputField(description="Current min-p setting")
     quality_target: str = dspy.InputField(
         description="Target quality level or dimension"
     )

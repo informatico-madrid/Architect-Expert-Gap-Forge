@@ -201,8 +201,12 @@ def llm_judge_score(
         }
         _dspy_result = _dspy_predictor(**judge_input)
         return NormalizedJudgeResponse(
-            baseline=json.loads(_dspy_result.baseline) if isinstance(_dspy_result.baseline, str) else _dspy_result.baseline,
-            adapter=json.loads(_dspy_result.adapter) if isinstance(_dspy_result.adapter, str) else _dspy_result.adapter,
+            baseline=json.loads(_dspy_result.baseline)
+            if isinstance(_dspy_result.baseline, str)
+            else _dspy_result.baseline,
+            adapter=json.loads(_dspy_result.adapter)
+            if isinstance(_dspy_result.adapter, str)
+            else _dspy_result.adapter,
             reasoning=_dspy_result.reasoning,
         )
 

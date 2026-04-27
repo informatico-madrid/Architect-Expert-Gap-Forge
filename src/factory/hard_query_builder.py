@@ -239,7 +239,9 @@ class HardQueryBuilder:
         # Fallback: hardcoded mapping (used when no LM is configured)
         category_words = category.replace("_", " ")
         if "coordinator" in category.lower():
-            abstract = "El sistema debe coordinar actualizaciones de datos automáticamente"
+            abstract = (
+                "El sistema debe coordinar actualizaciones de datos automáticamente"
+            )
         elif "integration" in category.lower():
             abstract = "El sistema debe integrar componentes de forma autónoma"
         elif "entity" in category.lower():

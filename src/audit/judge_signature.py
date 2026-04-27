@@ -57,8 +57,12 @@ class JudgeSignature(dspy.Signature):
     # --- Input fields ---
     exam_question: str = dspy.InputField(description="The exam question to evaluate")
     eval_criteria: str = dspy.InputField(description="Evaluation criteria and rubric")
-    target_patterns: str = dspy.InputField(description="Target architectural patterns to look for")
-    baseline_response: str = dspy.InputField(description="Baseline (reference) response for comparison")
+    target_patterns: str = dspy.InputField(
+        description="Target architectural patterns to look for"
+    )
+    baseline_response: str = dspy.InputField(
+        description="Baseline (reference) response for comparison"
+    )
     adapter_response: str = dspy.InputField(description="Adapter response to evaluate")
 
     # --- Output fields ---
@@ -116,7 +120,13 @@ try:
     )
     # The five dimensions must be a plausible key set for both dicts
     _dims = set(_baseline_data.keys())
-    assert _dims == {"ha_modernity", "reasoning_depth", "functionality", "completeness", "style"}
+    assert _dims == {
+        "ha_modernity",
+        "reasoning_depth",
+        "functionality",
+        "completeness",
+        "style",
+    }
     del _baseline_data, _adapter_data, _reasoning, _response, _fields, _dims
     del NormalizedJudgeResponse
 except ImportError:

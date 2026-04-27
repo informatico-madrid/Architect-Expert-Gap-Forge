@@ -22,7 +22,9 @@ try:
     from src.factory.schema import Message, SimulatedError, Turn, TurnType
 
     # turns_json -> Turn
-    _turn_data = json.loads('{"turn_index":0,"turn_type":"observation","content":"test"}')
+    _turn_data = json.loads(
+        '{"turn_index":0,"turn_type":"observation","content":"test"}'
+    )
     _turn = Turn(**_turn_data)
     assert _turn.turn_type == TurnType.OBSERVATION
     # All TurnType enum values must be parseable
@@ -30,7 +32,9 @@ try:
         _test = Turn(turn_index=0, turn_type=_tt, content="x")
         assert _test.turn_type == _tt
     # errors_json -> SimulatedError
-    _err_data = json.loads('{"error_type":"tool_failure","turn_index":0,"description":"fail"}')
+    _err_data = json.loads(
+        '{"error_type":"tool_failure","turn_index":0,"description":"fail"}'
+    )
     _err = SimulatedError(**_err_data)
     assert _err.error_type.value == "tool_failure"
     assert _err.recovery_turn_index is None
@@ -80,9 +84,7 @@ class TrajectorySignature(dspy.Signature):
     tool_format: str = dspy.InputField(description="Tool output format specification")
 
     # --- Output fields ---
-    turns_json: str = dspy.OutputField(
-        description="JSON string of turn log entries"
-    )
+    turns_json: str = dspy.OutputField(description="JSON string of turn log entries")
     errors_json: str = dspy.OutputField(
         description="JSON string of simulated error records"
     )
