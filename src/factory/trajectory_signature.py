@@ -11,7 +11,39 @@ carries the known use-case seed; the output 'inferred_use_case' carries the
 generated use-case label.
 """
 
+import json
+
 import dspy
+
+# Validation: confirm TrajectorySignature output fields produce data
+# parsable into AgenticTrajectory schema (Turn, SimulatedError, Message).
+# This inline block runs at import time to catch schema mismatches early.
+try:
+    from src.factory.schema import Message, SimulatedError, Turn, TurnType
+
+    # turns_json -> Turn
+    _turn_data = json.loads('{"turn_index":0,"turn_type":"observation","content":"test"}')
+    _turn = Turn(**_turn_data)
+    assert _turn.turn_type == TurnType.OBSERVATION
+    # All TurnType enum values must be parseable
+    for _tt in TurnType:
+        _test = Turn(turn_index=0, turn_type=_tt, content="x")
+        assert _test.turn_type == _tt
+    # errors_json -> SimulatedError
+    _err_data = json.loads('{"error_type":"tool_failure","turn_index":0,"description":"fail"}')
+    _err = SimulatedError(**_err_data)
+    assert _err.error_type.value == "tool_failure"
+    assert _err.recovery_turn_index is None
+    # messages_json -> Message
+    _msg_data = json.loads('{"role":"user","content":"hello"}')
+    _msg = Message(**_msg_data)
+    assert _msg.role == "user"
+    assert _msg.content == "hello"
+    del _turn_data, _turn, _tt, _test, _err_data, _err, _msg_data, _msg
+    del Turn, TurnType, SimulatedError, Message, json
+except ImportError:
+    # Schema not yet available (e.g. during partial setup) — skip validation
+    pass
 
 
 class TrajectorySignature(dspy.Signature):

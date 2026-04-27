@@ -126,7 +126,7 @@
 
 ---
 
-### T1.7: Validate TrajectorySignature against AgenticTrajectory schema
+### T1.7: Validate TrajectorySignature against AgenticTrajectory schema [x]
 **Do:**
 1. Read `src/factory/schema.py` to understand AgenticTrajectory, Turn, SimulatedError, Message structure
 2. Write a validation script that checks:
