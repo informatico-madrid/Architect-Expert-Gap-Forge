@@ -490,7 +490,7 @@ print('Parse OK')
 
 ---
 
-### T3.9: Spearman correlation test — old vs new judge outputs
+### T3.9: Spearman correlation [x] test — old vs new judge outputs
 **Do:**
 1. Create `tests/integration/test_judge_correlation.py` (new directory if needed)
 2. Implement test that runs both old and new judge paths on the same inputs:
@@ -507,7 +507,7 @@ print('Parse OK')
 
 ---
 
-### T3.10: Verify behavioral invariance — trajectory output comparison
+### T3.10: Verify behavioral [x] invariance — trajectory output comparison
 **Do:**
 1. Create `tests/integration/test_trajectory_invariance.py`
 2. Run `TrajectoryGenerator.generate()` with template-only path (no DSPy LM)
@@ -525,7 +525,7 @@ print('Parse OK')
 
 ---
 
-### T3.11: End-to-end — HardQueryBuilder validation with forbidden terms
+### T3.11: End-to-end — HardQueryBuilder [x] validation with forbidden terms
 **Do:**
 1. In `tests/factory/test_hard_query_builder.py`, add tests for `validate_prompt()` and `build_with_validation()`
 2. Test that `validate_prompt()` returns False when forbidden terms are found
@@ -540,7 +540,7 @@ print('Parse OK')
 
 ---
 
-[VERIFY] Quality Checkpoint 3: All tests passing
+[VERIFY] Quality Checkpoint 3: All tests passing [x] All tests passing
 - `python -m pytest tests/factory/test_trajectory_signature.py tests/audit/test_judge_signature.py tests/audit/test_calibration_signature.py tests/factory/test_backtracking_detector.py tests/factory/test_hard_query_builder.py tests/factory/test_trajectory_generator.py tests/test_audit_judge_submodule.py -v --tb=short` — all pass
 - `python -m pytest tests/integration/ -v --tb=short` — correlation > 0.8
 - No test regressions in existing suites
