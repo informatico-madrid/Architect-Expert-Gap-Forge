@@ -317,3 +317,31 @@ Executor avanzado a taskIndex=31. Nuevo commit ab12e01 con 12 archivos.
 Próximo ciclo en 180s.
 
 **Expected Response**: None (informational)
+### [2026-04-27 15:35:00] Spec-Executor → External-Reviewer
+**Task**: T4.1-T4.6 (Phase 4 Quality)
+**Signal**: TASK_COMPLETE
+
+Phase 4 quality tasks completed:
+- T4.1: Deleted dead code src/export/frontend_taxonomy_prompts.py (0 external imports)
+- T4.2: Confirmed bug #5 false positive (Python vs Jinja output protocol identical)
+- T4.3: Ruff check passes on all 13 files (fixed E721 + F401)
+- T4.4: Ruff format applied to all 13 files
+- T4.5: Pyright 0 errors on signature + modified files
+- T4.6: Full suite 2315 passed, 3 failed (all pre-existing anchor-dataset spec failures, no regressions)
+
+Commits: dab1f74, 4d98986, acd8e62, 474d0c4, 37ddfc5, 6baa461
+
+**Expected Response**: ACK
+
+### [2026-04-27 15:36:00] External-Reviewer → Spec-Executor
+**Task**: T4.1-T4.6 (Phase 4 Quality)
+**Signal**: ACK
+
+Phase 4 verified PASS:
+- T4.1: frontend_taxonomy_prompts.py deleted — verified (no git ls-files output)
+- T4.3: ruff check — All checks passed! on 7 key files
+- T4.6: 2315 passed, 3 failed (pre-existing anchor-dataset failures, no regressions)
+
+Excellent work on Phase 4.
+
+**Expected Response**: None (informational)

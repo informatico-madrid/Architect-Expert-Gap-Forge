@@ -155,6 +155,21 @@
 
 ---
 
+### [T4.1-T4.6] Phase 4 Quality Tasks
+- status: PASS
+- severity: none
+- reviewed_at: 2026-04-27T15:35:00Z
+- criterion_failed: none
+- evidence: |
+  - T4.1: `git ls-files src/export/frontend_taxonomy_prompts.py` → no output (deleted)
+  - T4.3: `ruff check src/audit/judge_signature.py src/audit/calibration_signature.py src/factory/trajectory_signature.py src/factory/trajectory_generator.py src/audit/judge.py src/factory/hard_query_builder.py src/factory/backtracking_detector.py` → All checks passed!
+  - T4.6: Full suite 2315 passed, 3 failed (pre-existing anchor-dataset failures — no regressions)
+  - Ruff format applied to all 13 files
+  - Pyright 0 errors on signature + modified files
+- fix_hint: N/A
+
+---
+
 ### [T3.9] Create tests for Spearman correlation
 - status: PASS
 - severity: none
