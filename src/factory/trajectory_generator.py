@@ -20,6 +20,7 @@ from typing import Any
 
 import yaml
 
+from src.factory.dspy_utils import get_predict
 from src.factory.hard_query_builder import HardQueryBuilder
 from src.factory.schema import (
     AgenticTrajectory,
@@ -31,6 +32,7 @@ from src.factory.schema import (
     Turn,
     TurnType,
 )
+from src.factory.trajectory_signature import TrajectorySignature
 from src.utils.schema import Message
 
 logger = logging.getLogger(__name__)
@@ -191,6 +193,40 @@ class TrajectoryGenerator:
         seed_id = seed_data.get("seed_id", "unknown")
         question = seed_data.get("question", "")
         context = seed_data.get("context", "")
+
+        # DSPy dual-path: use predictor when LM configured, fall back to templates
+        predictor = get_predict(TrajectorySignature)
+        if predictor is not None:
+            seed_data_payload = {
+                "seed_id": seed_data.get("seed_id", "unknown"),
+                "mode": seed_data.get("mode", "explicit"),
+                "use_case": seed_data.get("use_case", ""),
+                "question": question,
+                "context": context,
+                "error_probability": self.error_probability,
+                "has_error": getattr(self, "has_error", False),
+                "is_cascade": self.cascade_failure_probability > 0.5,
+                "tool_format": self.tool_format,
+            }
+            result = predictor(**seed_data_payload)
+            turns_parsed = json.loads(result.turns_json)
+            errors_parsed = json.loads(result.errors_json)
+            messages_parsed = json.loads(result.messages_json)
+
+            agentic_turns = [Turn(**t) for t in turns_parsed]
+            agentic_errors = [SimulatedError(**e) for e in errors_parsed]
+            agentic_messages = [Message(**m) for m in messages_parsed]
+
+            return AgenticTrajectory(
+                seed_id=seed_data_payload["seed_id"],
+                mode=TrajectoryMode(
+                    seed_data_payload["mode"]
+                ) if isinstance(seed_data_payload["mode"], str) else seed_data_payload["mode"],
+                turns=agentic_turns,
+                errors=agentic_errors,
+                use_case=result.inferred_use_case,
+                messages=agentic_messages,
+            )
 
         # Sample tool args to determine format for this trajectory (in auto mode)
         sample_tool_args = seed_data.get("tool_args", {"sample": "data"})
