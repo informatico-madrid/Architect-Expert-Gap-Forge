@@ -76,6 +76,9 @@ class HardQueryTemplateLoader:
     def _default_templates(self) -> dict[str, Any]:
         """Return default templates when file is missing."""
         return {
+            # Note: These are literal text match strings for forbidden-term detection, not translatable
+            # prompt content. DSPy ChainOfThought receives only category+context — forbidden_terms are
+            # only used in validate_prompt() for string matching.
             "forbidden_terms": [
                 "async_forward_entry_setups",
                 "DataUpdateCoordinator",
