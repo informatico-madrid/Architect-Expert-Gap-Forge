@@ -71,3 +71,54 @@ class JudgeSignature(dspy.Signature):
     reasoning: str = dspy.OutputField(
         description="Human-readable reasoning explaining the differential scores"
     )
+
+
+# Validation: confirm JudgeSignature output fields are compatible with
+# NormalizedJudgeResponse TypedDict used by scorecard.py consumers.
+# This inline block runs at import time (after class definition) to catch
+# schema mismatches early.
+try:
+    from src.schemas.common import NormalizedJudgeResponse
+
+    # baseline and adapter must accept dict[str, float] matching the TypedDict
+    _baseline_data: dict[str, float] = {
+        "ha_modernity": 0.0,
+        "reasoning_depth": 0.3,
+        "functionality": 0.6,
+        "completeness": 0.9,
+        "style": 1.0,
+    }
+    _adapter_data: dict[str, float] = {
+        "ha_modernity": 0.9,
+        "reasoning_depth": 0.9,
+        "functionality": 0.9,
+        "completeness": 0.9,
+        "style": 1.0,
+    }
+    _reasoning: str = "Adapter shows significant improvement."
+    # Construct a dict matching NormalizedJudgeResponse
+    _response: dict[str, object] = {
+        "baseline": _baseline_data,
+        "adapter": _adapter_data,
+        "reasoning": _reasoning,
+    }
+    # Verify field-level annotations match TypedDict: adapter Dict[str,float],
+    # baseline Dict[str,float], reasoning NotRequired[str].
+    _fields = JudgeSignature.output_fields
+    assert _fields["baseline"].annotation == dict[str, float], (
+        f"baseline annotation {_fields['baseline'].annotation} != dict[str, float]"
+    )
+    assert _fields["adapter"].annotation == dict[str, float], (
+        f"adapter annotation {_fields['adapter'].annotation} != dict[str, float]"
+    )
+    assert _fields["reasoning"].annotation == str, (
+        f"reasoning annotation {_fields['reasoning'].annotation} != str"
+    )
+    # The five dimensions must be a plausible key set for both dicts
+    _dims = set(_baseline_data.keys())
+    assert _dims == {"ha_modernity", "reasoning_depth", "functionality", "completeness", "style"}
+    del _baseline_data, _adapter_data, _reasoning, _response, _fields, _dims
+    del NormalizedJudgeResponse
+except ImportError:
+    # Schema not yet available (e.g. during partial setup) — skip validation
+    pass

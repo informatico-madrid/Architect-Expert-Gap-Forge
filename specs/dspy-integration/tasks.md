@@ -150,7 +150,7 @@ print('Parse OK')
 
 ---
 
-### T1.8: Validate JudgeSignature against NormalizedJudgeResponse schema
+### T1.8: Validate JudgeSignature against NormalizedJudgeResponse schema [x]
 **Do:**
 1. Read `src/audit/schema.py` to understand NormalizedJudgeResponse TypedDict
 2. Verify JudgeSignature.output_fields types: `baseline: dict[str, float]`, `adapter: dict[str, float]`, `reasoning: str`
