@@ -551,7 +551,7 @@ print('Parse OK')
 
 *Bug fixes, dead code removal, formatting, linting, type checking.*
 
-### T4.1: Delete dead code — frontend_taxonomy_prompts.py
+### T4.1: Delete dead code — frontend_taxonomy_prompts.py [x]
 **Do:**
 1. Delete `src/export/frontend_taxonomy_prompts.py` (verified: 0 Python imports in src/ or tests/)
 2. Verify no import chains are broken:
@@ -565,7 +565,7 @@ print('Parse OK')
 
 ---
 
-### T4.2: Confirm bug #5 is false positive — Python vs Jinja protocol
+### T4.2: Confirm bug #5 is false positive — Python vs Jinja protocol [x]
 **Do:**
 1. Verify the "Python vs Jinja output protocol" issue (bug #5) is a false positive
 2. Check `src/factory/prompt_builder.py` and related code to confirm both use identical output format
@@ -578,7 +578,7 @@ print('Parse OK')
 
 ---
 
-### T4.3: Run ruff check on all changed files
+### T4.3: Run ruff check on all changed files [x]
 **Do:**
 1. Run `ruff check src/factory/trajectory_signature.py src/audit/judge_signature.py src/audit/calibration_signature.py src/factory/backtracking_detector.py src/factory/trajectory_generator.py src/audit/judge.py src/factory/hard_query_builder.py src/factory/dspy_utils.py`
 2. Fix any lint errors
@@ -591,7 +591,7 @@ print('Parse OK')
 
 ---
 
-### T4.4: Run ruff format on all changed files
+### T4.4: Run ruff format on all changed files [x]
 **Do:**
 1. Run `ruff format src/factory/trajectory_signature.py src/audit/judge_signature.py src/audit/calibration_signature.py src/factory/backtracking_detector.py src/factory/trajectory_generator.py src/audit/judge.py src/factory/hard_query_builder.py src/factory/dspy_utils.py`
 2. Verify with `ruff format --check`
@@ -603,7 +603,7 @@ print('Parse OK')
 
 ---
 
-### T4.5: Run pyright type checking on new signature files
+### T4.5: Run pyright type checking on new signature files [x]
 **Do:**
 1. Run `pyright src/factory/trajectory_signature.py src/audit/judge_signature.py src/audit/calibration_signature.py src/factory/backtracking_detector.py src/factory/dspy_utils.py`
 2. Fix any type errors
@@ -616,7 +616,7 @@ print('Parse OK')
 
 ---
 
-### T4.6: Run full test suite — no regressions
+### T4.6: Run full test suite — no regressions [x]
 **Do:**
 1. Run `python -m pytest tests/ -v --tb=short` (or the project's standard test invocation)
 2. Fix any regressions introduced by the refactoring
