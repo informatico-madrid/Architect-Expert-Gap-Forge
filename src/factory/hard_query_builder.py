@@ -17,7 +17,10 @@ import random
 from pathlib import Path
 from typing import Any
 
+import dspy
 import yaml
+
+from src.factory.dspy_utils import get_chain_of_thought
 
 logger = logging.getLogger(__name__)
 
@@ -214,6 +217,9 @@ class HardQueryBuilder:
     def _transform_to_abstract(self, category: str, context: str) -> str:
         """Transform category/context into abstract objective description.
 
+        Uses DSPy ChainOfThought when an LM is configured; falls back to
+        hardcoded if/else mapping otherwise.
+
         Args:
             category: The category from seed (e.g., "dual_mode_integration")
             context: The context from seed (abstract description)
@@ -221,11 +227,14 @@ class HardQueryBuilder:
         Returns:
             Abstract objective description
         """
-        # Transform category name into human-readable abstract objective
-        # Replace underscores and convert to Spanish objective
-        category_words = category.replace("_", " ")
+        sig = dspy.Signature("category: str, context: str -> abstract_objective: str")
+        cot = get_chain_of_thought(sig)
+        if cot is not None:
+            result = cot(category=category, context=context)
+            return result.abstract_objective
 
-        # Map common patterns to abstract objectives
+        # Fallback: hardcoded mapping (used when no LM is configured)
+        category_words = category.replace("_", " ")
         if "coordinator" in category.lower():
             abstract = "El sistema debe coordinar actualizaciones de datos automáticamente"
         elif "integration" in category.lower():
@@ -241,7 +250,6 @@ class HardQueryBuilder:
         elif "rest" in category.lower():
             abstract = "El sistema debe consumir servicios externos"
         else:
-            # Generic abstract transformation
             abstract = f"El sistema debe manejar {category_words} de forma autónoma"
 
         return abstract
