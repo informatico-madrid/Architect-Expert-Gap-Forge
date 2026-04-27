@@ -729,7 +729,7 @@ print('Parse OK')
 
 ---
 
-### T5.2: Fix F-08 — Real Spearman correlation test with stubs
+### T5.2: Fix F-08 — Real Spearman correlation test with stubs [x]
 **Do:**
 1. Create `tests/factory/test_spearman_real.py`
 2. Stub both old judge path (PromptManager-based) and new judge path (JudgeSignature-based)
@@ -743,7 +743,7 @@ print('Parse OK')
 
 ---
 
-### T5.3: Fix F-11 — Judge DSPy integration test with predictor stub
+### T5.3: Fix F-11 — Judge DSPy integration test with predictor stub [x]
 **Do:**
 1. Modify `tests/audit/test_judge_dspy_integration.py` to add a real integration test
 2. Mock `get_predict(JudgeSignature)` to return a predictor with JSON shaped as `NormalizedJudgeResponse`
@@ -771,7 +771,7 @@ print('Parse OK')
 
 ---
 
-### T5.5: Fix F-03 — BacktrackingResult dead code removal
+### T5.5: Fix F-03 — BacktrackingResult dead code removal [x]
 **Do:**
 1. In `src/factory/backtracking_detector.py`, remove the `BacktrackingResult` dataclass (lines 15-21)
 2. Update `detect()` and `detect_from_messages()` to return `BacktrackingResult` instead of tuple
@@ -785,7 +785,7 @@ print('Parse OK')
 
 ---
 
-### T5.6: Fix F-01 — Update stale docs: use_case → inferred_use_case
+### T5.6: Fix F-01 — Update stale docs: use_case → inferred_use_case [x]
 **Do:**
 1. Update `specs/dspy-integration/design.md` line ~65: `use_case` → `inferred_use_case`
 2. Update `specs/dspy-integration/tasks.md` line ~24: `use_case` → `inferred_use_case`
@@ -798,7 +798,7 @@ print('Parse OK')
 
 ---
 
-### T5.7: Fix F-04 — Update epic.md Interface Contracts
+### T5.7: Fix F-04 — Update epic.md Interface Contracts [x]
 **Do:**
 1. Update `specs/_epics/aegf-dspy-integration/epic.md` lines ~75-91
 2. Replace incorrect output field lists with actual field names from codebase
@@ -813,7 +813,7 @@ print('Parse OK')
 
 ---
 
-### T5.8: Fix F-05 — Update epic.md status to complete
+### T5.8: Fix F-05 — Update epic.md status to complete [x]
 **Do:**
 1. Update `specs/_epics/aegf-dspy-integration/epic.md` line ~6: `status: not_started` → `status: complete`
 2. Update completion timestamp
@@ -825,7 +825,7 @@ print('Parse OK')
 
 ---
 
-### T5.9: Fix F-06 + F-07 — Correct design.md pattern label and epic MIPROv2 scope
+### T5.9: Fix F-06 + F-07 — Correct design.md pattern label and epic MIPROv2 scope [x]
 **Do:**
 1. In `specs/dspy-integration/design.md` line ~200: change "(C) Parallel then switch" → "(B) Dual path with fallback"
 2. In `specs/_epics/aegf-dspy-integration/epic.md` line ~50: move MIPROv2 from IN Scope to OUT of Scope
