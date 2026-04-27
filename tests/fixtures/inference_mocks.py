@@ -155,7 +155,11 @@ class MockVLLMClient(MockBaseInferenceClient):
     def __init__(
         self,
         api_url: str = "http://localhost:8000/v1",
+<<<<<<< Updated upstream
         model: str = "qwen3-5-35b-a3b-nvfp4",
+=======
+        model: str = "qwen3-30b-a3b-thinking-fp8",
+>>>>>>> Stashed changes
         mock_response: str = "vllm mock response",
     ) -> None:
         super().__init__(mock_response)
@@ -242,7 +246,11 @@ class MockInferenceRouter:
         self,
         backend: str = "auto",
         gemini_model: str = "gemini-2.5-flash",
+<<<<<<< Updated upstream
         vllm_model: str = "qwen3-5-35b-a3b-nvfp4",
+=======
+        vllm_model: str = "qwen3-30b-a3b-thinking-fp8",
+>>>>>>> Stashed changes
         api_url: str = "http://localhost:8000/v1",
         claude_model: str = "MiniMax-M2.5",
     ) -> MockBaseInferenceClient:
@@ -261,7 +269,11 @@ class MockInferenceRouter:
         self,
         backend: str = "vllm",
         gemini_model: str = "gemini-2.5-flash",
+<<<<<<< Updated upstream
         model: str = "qwen3-5-35b-a3b-nvfp4",
+=======
+        model: str = "qwen3-30b-a3b-thinking-fp8",
+>>>>>>> Stashed changes
         api_url: str = "http://localhost:8000/v1",
         claude_model: str = "MiniMax-M2.5",
     ) -> MockBaseInferenceClient:
@@ -297,7 +309,11 @@ def create_gemini_fixture(response: str = "gemini response") -> MockGeminiClient
 def create_vllm_fixture(
     response: str = "vllm response",
     api_url: str = "http://localhost:8000/v1",
+<<<<<<< Updated upstream
     model: str = "qwen3-5-35b-a3b-nvfp4",
+=======
+    model: str = "qwen3-30b-a3b-thinking-fp8",
+>>>>>>> Stashed changes
 ) -> MockVLLMClient:
     """Create a vLLM client mock fixture.
 
