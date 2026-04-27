@@ -207,7 +207,7 @@ print('Parse OK')
 
 *Integrate signatures into trajectory_generator.py, judge.py, and hard_query_builder.py. Dual-path: DSPy when LM configured, template fallback otherwise.*
 
-### T2.1: Add dspy.Predict import utility module
+### T2.1: Add dspy.Predict import utility module [x]
 **Do:**
 1. Create `src/factory/dspy_utils.py` (shared utility for DSPy integration)
 2. Implement `get_predict(signature_class, instructions=None)` that:
