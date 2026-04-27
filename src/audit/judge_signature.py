@@ -82,7 +82,7 @@ class JudgeSignature(dspy.Signature):
 # This inline block runs at import time (after class definition) to catch
 # schema mismatches early.
 try:
-    from src.schemas.common import NormalizedJudgeResponse
+    from src.audit.schema import NormalizedJudgeResponse
 
     # baseline and adapter must accept dict[str, float] matching the TypedDict
     _baseline_data: dict[str, float] = {

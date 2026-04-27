@@ -706,3 +706,143 @@ print('Parse OK')
 | `tests/test_audit_judge_submodule.py` | **Modify** | Add DSPy integration tests |
 | `tests/integration/test_judge_correlation.py` | **Create** | Spearman correlation test |
 | `tests/integration/test_trajectory_invariance.py` | **Create** | Behavioral invariance test |
+
+---
+
+## Phase 5: Review Fix — Address Smart-Ralph Review Findings
+
+*Post-completion quality pass. Addresses 5 confirmed findings from the Smart-Ralph review report (plans/dspy-integration-smart-ralph-review.md).*
+
+### T5.1: Fix F-02 — JudgeSignature validation against correct NormalizedJudgeResponse [x]
+**Do:**
+1. In `src/audit/judge_signature.py`, change line 85 from:
+   `from src.schemas.common import NormalizedJudgeResponse`
+   to:
+   `from src.audit.schema import NormalizedJudgeResponse`
+2. This ensures validation uses the same strict TypedDict that the consumer (`judge.py`) uses
+3. Verify import still works: `python -c "from src.audit.judge_signature import JudgeSignature; print('OK')"`
+
+**Files:** Modified: `src/audit/judge_signature.py`
+**Done when:** Validation block imports from `src.audit.schema` (the strict TypedDict version)
+**Verify:** `python -c "from src.audit.judge_signature import JudgeSignature; print('OK')"`
+**Commit:** `fix(dspy): validate JudgeSignature against strict NormalizedJudgeResponse from audit.schema (F-02)`
+
+---
+
+### T5.2: Fix F-08 — Real Spearman correlation test with stubs
+**Do:**
+1. Create `tests/factory/test_spearman_real.py`
+2. Stub both old judge path (PromptManager-based) and new judge path (JudgeSignature-based)
+3. Use identical inputs and known JSON outputs to verify `spearmanr > 0.8` between outputs
+4. This tests NFR-001 compliance: correlation between old and new judge outputs
+
+**Files:** Created: `tests/factory/test_spearman_real.py`
+**Done when:** Test stubs both judge paths and verifies Spearman correlation on controlled inputs
+**Verify:** `python -m pytest tests/factory/test_spearman_real.py -v --tb=short`
+**Commit:** `test(dspy): real Spearman correlation test with stubbed judge outputs (F-08, NFR-001)`
+
+---
+
+### T5.3: Fix F-11 — Judge DSPy integration test with predictor stub
+**Do:**
+1. Modify `tests/audit/test_judge_dspy_integration.py` to add a real integration test
+2. Mock `get_predict(JudgeSignature)` to return a predictor with JSON shaped as `NormalizedJudgeResponse`
+3. Test that `llm_judge_score()` correctly parses the DSPy output and returns `NormalizedJudgeResponse`
+4. This verifies the DSPy path in `llm_judge_score()` works correctly when LM IS configured
+
+**Files:** Modified: `tests/audit/test_judge_dspy_integration.py`
+**Done when:** Test mocks predictor with shaped JSON and verifies output parsing
+**Verify:** `python -m pytest tests/audit/test_judge_dspy_integration.py -v --tb=short`
+**Commit:** `test(dspy): integration test for Judge DSPy path with predictor stub (F-11)`
+
+---
+
+### T5.4: Fix F-09 — Cache dspy.Signature in HardQueryBuilder
+**Do:**
+1. In `src/factory/hard_query_builder.py`, add module-level constant:
+   `_HARD_QUERY_SIG = dspy.Signature("category: str, context: str -> abstract_objective: str")`
+2. In `_transform_to_abstract()`, replace inline `dspy.Signature(...)` with `_HARD_QUERY_SIG`
+3. This prevents creating a new Python class on every invocation
+
+**Files:** Modified: `src/factory/hard_query_builder.py`
+**Done when:** Signature is a module-level constant; `_transform_to_abstract()` references it
+**Verify:** `python -c "from src.factory.hard_query_builder import _HARD_QUERY_SIG; print('OK')"`
+**Commit:** `fix(dspy): cache HardQueryBuilder dspy.Signature as module constant (F-09)`
+
+---
+
+### T5.5: Fix F-03 — BacktrackingResult dead code removal
+**Do:**
+1. In `src/factory/backtracking_detector.py`, remove the `BacktrackingResult` dataclass (lines 15-21)
+2. Update `detect()` and `detect_from_messages()` to return `BacktrackingResult` instead of tuple
+3. Change return type from `tuple[bool, list[int], str]` to `BacktrackingResult`
+4. Verify all callers work (grep for `detect(` references)
+
+**Files:** Modified: `src/factory/backtracking_detector.py`
+**Done when:** `BacktrackingResult` is the actual return type of `detect()` methods
+**Verify:** `python -c "from src.factory.backtracking_detector import BacktrackingDetector, BacktrackingResult; r = BacktrackingDetector.detect([]); assert isinstance(r, BacktrackingResult); print('OK')"`
+**Commit:** `fix(dspy): use BacktrackingResult as actual return type of detect() (F-03)`
+
+---
+
+### T5.6: Fix F-01 — Update stale docs: use_case → inferred_use_case
+**Do:**
+1. Update `specs/dspy-integration/design.md` line ~65: `use_case` → `inferred_use_case`
+2. Update `specs/dspy-integration/tasks.md` line ~24: `use_case` → `inferred_use_case`
+3. grep for all remaining `use_case` references in doc artifacts
+
+**Files:** Modified: `specs/dspy-integration/design.md`, `specs/dspy-integration/tasks.md`
+**Done when:** All docs reference `inferred_use_case` (not `use_case`) for the output field
+**Verify:** `grep -n 'use_case' specs/dspy-integration/design.md specs/dspy-integration/tasks.md | grep -i output` should show only `inferred_use_case`
+**Commit:** `docs(dspy): update stale docs use_case → inferred_use_case (F-01)`
+
+---
+
+### T5.7: Fix F-04 — Update epic.md Interface Contracts
+**Do:**
+1. Update `specs/_epics/aegf-dspy-integration/epic.md` lines ~75-91
+2. Replace incorrect output field lists with actual field names from codebase
+3. TrajectorySignature: `seed_id, mode, turns, errors, use_case, messages` (not `tool_usage_patterns`)
+4. JudgeSignature: `baseline, adapter, reasoning` (not `coherence/overall`)
+5. CalibrationSignature: match actual `CalibrationResult` schema fields
+
+**Files:** Modified: `specs/_epics/aegf-dspy-integration/epic.md`
+**Done when:** Interface Contracts match actual codebase types
+**Verify:** Cross-reference against `src/factory/schema.py` and `src/audit/calibration_schema.py`
+**Commit:** `docs(dspy): correct epic.md Interface Contracts to match actual types (F-04)`
+
+---
+
+### T5.8: Fix F-05 — Update epic.md status to complete
+**Do:**
+1. Update `specs/_epics/aegf-dspy-integration/epic.md` line ~6: `status: not_started` → `status: complete`
+2. Update completion timestamp
+
+**Files:** Modified: `specs/_epics/aegf-dspy-integration/epic.md`
+**Done when:** epic.md status reflects completion
+**Verify:** `grep 'status:' specs/_epics/aegf-dspy-integration/epic.md` shows `complete`
+**Commit:** `docs(dspy): update epic.md status to complete (F-05)`
+
+---
+
+### T5.9: Fix F-06 + F-07 — Correct design.md pattern label and epic MIPROv2 scope
+**Do:**
+1. In `specs/dspy-integration/design.md` line ~200: change "(C) Parallel then switch" → "(B) Dual path with fallback"
+2. In `specs/_epics/aegf-dspy-integration/epic.md` line ~50: move MIPROv2 from IN Scope to OUT of Scope
+
+**Files:** Modified: `specs/dspy-integration/design.md`, `specs/_epics/aegf-dspy-integration/epic.md`
+**Done when:** design.md correctly labels pattern as "(B)"; MIPROv2 is OUT of Scope in epic
+**Verify:** `grep -n 'Parallel then switch' specs/dspy-integration/design.md` returns nothing
+**Commit:** `docs(dspy): fix design.md pattern label and MIPROv2 scope (F-06, F-07)`
+
+---
+
+[VERIFY] Quality Checkpoint 4: All review fixes applied
+- `python -m pytest tests/factory/test_spearman_real.py tests/audit/test_judge_dspy_integration.py -v --tb=short` — all pass
+- `python -c "from src.audit.judge_signature import JudgeSignature; print('F-02 fix OK')"` — import from audit.schema
+- `python -c "from src.factory.hard_query_builder import _HARD_QUERY_SIG; print('F-09 fix OK')"` — signature cached
+- `python -c "from src.factory.backtracking_detector import BacktrackingResult; print('F-03 fix OK')"` — dataclass used as return type
+- `grep -c 'use_case' specs/dspy-integration/design.md` — only `inferred_use_case` references remain
+- Full suite: `python -m pytest tests/ --ignore=tests/curation --ignore=tests/unit/test_cli.py -q --tb=short` — all pass
+
+---
