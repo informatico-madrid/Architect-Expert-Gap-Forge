@@ -369,7 +369,7 @@ print('Parse OK')
 
 *Unit tests for signatures, integration tests for consumers, Spearman correlation test.*
 
-### T3.1: Unit test — TrajectorySignature field types
+### T3.1: Unit test — TrajectorySignature field types [x]
 **Do:**
 1. Create `tests/factory/test_trajectory_signature.py`
 2. Test that `TrajectorySignature.input_fields` contains all 9 expected input fields
