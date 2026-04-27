@@ -42,6 +42,8 @@ from src.audit.schema import (
     PromptGenerationError,
     SCORING_WEIGHTS,
 )
+from src.audit.judge_signature import JudgeSignature
+from src.factory.dspy_utils import get_predict
 from src.schemas.converters import normalize_judge_response
 
 # ======================================================================
@@ -186,6 +188,23 @@ def llm_judge_score(
         if len(adapter_resp) > JUDGE_RESPONSE_TRUNCATION_LIMIT
         else adapter_resp
     )
+
+    # DSPy dual-path: if LM configured, use JudgeSignature instead of prompt templates
+    _dspy_predictor = get_predict(JudgeSignature)
+    if _dspy_predictor is not None:
+        judge_input = {
+            "exam_question": exam.exam_question or exam.user_prompt,
+            "eval_criteria": criteria_text,
+            "target_patterns": tp_text,
+            "baseline_response": b_resp,
+            "adapter_response": a_resp,
+        }
+        _dspy_result = _dspy_predictor(**judge_input)
+        return NormalizedJudgeResponse(
+            baseline=json.loads(_dspy_result.baseline) if isinstance(_dspy_result.baseline, str) else _dspy_result.baseline,
+            adapter=json.loads(_dspy_result.adapter) if isinstance(_dspy_result.adapter, str) else _dspy_result.adapter,
+            reasoning=_dspy_result.reasoning,
+        )
 
     pm = _get_prompt_manager()
     user_msg = pm.format(
