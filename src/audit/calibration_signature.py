@@ -8,7 +8,58 @@ with effectiveness metrics and reasoning.
 """
 
 import dspy
-from typing import Dict, List
+from typing import Dict
+
+
+# Validation: confirm SamplingProfile and CalibrationResult schemas are
+# consistent with what CalibrationSignature expects.
+# This inline block runs at import time to catch schema mismatches early.
+try:
+    from src.audit.calibration_schema import (
+        CalibrationResult,
+        SamplingProfile,
+        VALID_PARAMETERS,
+    )
+    import json
+
+    # best_profile_json must parse into JSON with SamplingProfile fields
+    _sample_json = (
+        '{"temperature": 0.6, "top_k": 20, "min_p": 0.05, '
+        '"repetition_penalty": 1.1, "presence_penalty": 1.0}'
+    )
+    _profile_dict = json.loads(_sample_json)
+    _profile = SamplingProfile.from_dict(_profile_dict)
+    assert isinstance(_profile.temperature, float)
+    assert isinstance(_profile.top_k, int)
+    assert isinstance(_profile.min_p, float)
+    assert isinstance(_profile.repetition_penalty, float)
+
+    # VALID_PARAMETERS must contain expected names
+    assert VALID_PARAMETERS == {
+        "temperature",
+        "top_k",
+        "min_p",
+        "repetition_penalty",
+        "presence_penalty",
+    }
+
+    # CalibrationResult must accept SamplingProfile + float fields
+    _cr = CalibrationResult(
+        profile=_profile,
+        exam_id="test-1",
+        judge_scores={"ha_modernity": 0.9},
+        composite_score=0.85,
+        adjusted_score=0.85,
+        response_length=500,
+        timestamp="2026-01-01T00:00:00Z",
+    )
+    assert isinstance(_cr.profile, SamplingProfile)
+    assert isinstance(_cr.composite_score, float)
+    del _sample_json, _profile_dict, _profile, _cr
+    del SamplingProfile, CalibrationResult, VALID_PARAMETERS, json
+except ImportError:
+    # Schema not yet available (e.g. during partial setup) — skip validation
+    pass
 
 
 class CalibrationSignature(dspy.Signature):
@@ -38,7 +89,7 @@ class CalibrationSignature(dspy.Signature):
     """
 
     # --- Input fields ---
-    parameter_target: List[str] = dspy.InputField(
+    parameter_target: list[str] = dspy.InputField(
         description="Structured list of parameter targets to optimize"
     )
     evaluation_focus: str = dspy.InputField(
