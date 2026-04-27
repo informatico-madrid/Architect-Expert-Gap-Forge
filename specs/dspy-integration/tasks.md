@@ -81,7 +81,7 @@
 
 ---
 
-### T1.5: Scaffold CalibrationSignature file
+### T1.5: Scaffold CalibrationSignature file [x]
 **Do:**
 1. Create `src/audit/calibration_signature.py`
 2. Add module docstring with SPDX header and brief description
