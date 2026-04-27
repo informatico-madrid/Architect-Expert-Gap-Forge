@@ -262,7 +262,7 @@ print('Parse OK')
 
 ---
 
-### T2.4: Replace _transform_to_abstract with ChainOfThought
+### T2.4: Replace _transform_to_abstract with ChainOfThought [x]
 **Do:**
 1. Modify `src/factory/hard_query_builder.py`:
    - Add imports: `import dspy`, `from src.factory.dspy_utils import get_chain_of_thought`
