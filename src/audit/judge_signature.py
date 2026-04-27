@@ -11,17 +11,44 @@ import dspy
 
 
 class JudgeSignature(dspy.Signature):
-    """Evaluate and score baseline and adapter responses against exam criteria.
+    """Senior Architecture 2026 Auditor — measure the Knowledge Gap closure
+    between baseline and adapter responses.
+
+    The judge evaluates both responses on five dimensions:
+      - ha_modernity   — Architectural Fidelity: whether the implementation
+                           strictly follows the "Laws of Architecture" from
+                           the reference standards; a reasoning change that
+                           does not manifest in code scores 0.0.
+      - reasoning_depth — Critical Analysis: whether the <think> block
+                           identifies the baseline's technical debt; if the
+                           reasoning claims a fix but the code retains the
+                           legacy pattern, score < 0.3 (Logic Incoherence).
+      - functionality   — Engineering Execution: whether the code block
+                           actually applies the 2026 standards; forbidden
+                           patterns (blocking I/O, untyped runtime) are
+                           functional failures.
+      - completeness    — all requested fixes implemented.
+      - style           — zero apologies, structured reasoning, professional
+                           docstrings.
+
+    Scoring Scale (0.0 to 1.0):
+      - 0.0: Total failure or legacy code only.
+      - 0.3: Identified the 2026 requirement but failed to implement it.
+      - 0.6: Correct 2026 logic/API used but with syntax or minor
+             architectural errors.
+      - 0.9+: Production-ready Architecture 2026 code.
+
+    Scoring Guidelines:
+      - BE NUANCED: Do not give a 0.0 if there is partial progress.
+      - IDENTIFICATION vs IMPLEMENTATION: Award 0.4 if the model identifies
+        the error correctly in <think>, even if the code implementation is
+        imperfect.
+      - DELTA FOCUSED: Your primary job is to find the improvement (Delta).
+        If the Adapter identifies 2026 requirements that the Baseline ignores,
+        the score MUST reflect this gap.
 
     Input: exam_question, eval_criteria, target_patterns, baseline_response,
     adapter_response.
-
-    The judge scores both responses on five dimensions:
-      - ha_modernity (weight 0.30): novelty and architectural innovation
-      - reasoning_depth (weight 0.25): depth and coherence of reasoning
-      - functionality (weight 0.25): functional correctness and completeness
-      - completeness (weight 0.12): thoroughness of the response
-      - style (weight 0.08): clarity and professional writing quality
 
     Output: baseline and adapter scored dictionaries keyed by dimension name
     with float scores, plus reasoning explaining the differential.

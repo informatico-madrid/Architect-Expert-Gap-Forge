@@ -1,5 +1,28 @@
 {
-  "awaitingApproval": true,
-  "phase": "tasks",
-  "totalTasks": 36
+  "awaitingApproval": false,
+  "phase": "execution",
+  "totalTasks": 36,
+  "taskIndex": 3,
+  "taskIteration": 1,
+  "repairIteration": 0,
+  "failedStory": null,
+  "originTaskIndex": null,
+  "maxTaskIterations": 5,
+  "recoveryMode": false,
+  "maxFixTasksPerOriginal": 3,
+  "maxFixTaskDepth": 3,
+  "globalIteration": 4,
+  "maxGlobalIterations": 100,
+  "fixTaskMap": {},
+  "modificationMap": {},
+  "maxModificationsPerTask": 3,
+  "maxModificationDepth": 2,
+  "nativeTaskMap": {},
+  "nativeSyncEnabled": true,
+  "nativeSyncFailureCount": 0,
+  "chat": {
+    "executor": {
+      "lastReadLine": 3
+    }
+  }
 }

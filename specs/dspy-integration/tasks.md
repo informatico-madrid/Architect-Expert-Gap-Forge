@@ -65,7 +65,7 @@
 
 ---
 
-### T1.4: Define JudgeSignature docstring with bug #1 fix
+### T1.4: Define JudgeSignature docstring with bug #1 fix [x]
 **Do:**
 1. Read `src/audit/prompts_judge.example.yaml` to extract the `professor_judge` section
 2. Write the signature docstring from the system prompt content
