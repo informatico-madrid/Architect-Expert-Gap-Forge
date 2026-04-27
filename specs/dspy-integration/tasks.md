@@ -180,7 +180,7 @@ print('Parse OK')
 
 ---
 
-### T1.10: Test ChainOfThought signature for Hard Query
+### T1.10: Test ChainOfThought signature for Hard Query [x]
 **Do:**
 1. Write a minimal inline test in a temporary file or as an assertion:
    - Create `dspy.Signature("category: str, context: str -> abstract_objective: str")`
