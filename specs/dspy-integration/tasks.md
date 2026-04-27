@@ -111,7 +111,7 @@
 
 ---
 
-### T1.6: Define CalibrationSignature docstring with bug #2 fix
+### T1.6: Define CalibrationSignature docstring with bug #2 fix [x]
 **Do:**
 1. Read `src/audit/prompts_calibration.example.yaml` to extract prompt patterns
 2. Write the signature docstring that models the grid search -> best params optimization process

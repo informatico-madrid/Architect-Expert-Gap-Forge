@@ -14,10 +14,22 @@ from typing import Dict, List
 class CalibrationSignature(dspy.Signature):
     """Optimize sampling parameters to maximize quality for a target architecture.
 
-    The calibration process takes structured parameter targets, judge scores,
-    and quality metrics to determine the best sampling profile.
+    The calibration process performs a grid search over sampling parameter
+    candidates and identifies the best configuration. It evaluates each
+    candidate against structured parameter targets (a list[str] of parameter
+    names such as temperature, top_k, min_p, repetition_penalty, and
+    presence_penalty) to determine which grid point maximizes quality.
 
-    Input: parameter_target, evaluation_focus, question, temperature,
+    **parameter_target** is a structured InputField of type list[str], not
+    embedded as plain text in the system prompt. Each element identifies a
+    single sampling parameter to tune.
+
+    The process evaluates judge scores across multiple dimensions and computes
+    a weighted composite score. The model selects the best profile from the
+    candidate grid, produces a JSON profile, and explains the reasoning behind
+    the selection.
+
+    Input: parameter_target (list[str]), evaluation_focus, question, temperature,
     top_k, min_p, quality_target, judge_scores, composite_score.
 
     Output: best_profile_json (JSON string with temperature, top_k, min_p,
