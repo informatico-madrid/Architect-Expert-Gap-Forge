@@ -211,3 +211,7 @@ The epic.md lists incorrect output fields for signatures. Here are the actual ty
 - `requirements.txt` (dspy==3.2.0)
 - `specs/_epics/aegf-dspy-integration/README.md` (7 bugs)
 - `specs/_epics/aegf-dspy-integration/epic.md` (spec scope)
+
+## T4.2 Confirmation — Bug #5 (2026-04-27)
+
+Confirmed: Python vs Jinja output protocol is a false positive. Both `build_user_nominal()` (Python path) and `build_user_nominal_jinja()` (Jinja path) use the same `_render()` function with identical substitution dicts (`context`, `virtual_filename`, `name`, `skeleton`). The only difference is the YAML template key. Output format is identical.
