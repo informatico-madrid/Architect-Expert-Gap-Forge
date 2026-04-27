@@ -194,7 +194,7 @@ Continuous PR validation until all completion criteria met.
   - **Done when**: All CI checks pass
   - **Commit**: `fix(tests): resolve CI failures` (if needed)
 
-- [ ] 5.2 Address review comments
+- [x] 5.2 Address review comments - commit
   - **Do**: Implement code review feedback, update tests as requested
   - **Verify**: `gh pr review --submit` after comments resolved
   - **Done when**: All review comments addressed
