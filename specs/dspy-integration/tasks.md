@@ -616,7 +616,7 @@ print('Parse OK')
 
 ---
 
-### T4.6: Run full test suite — no regressions [x]
+### T4.6: Run full test suite — no regressions [x] [x]
 **Do:**
 1. Run `python -m pytest tests/ -v --tb=short` (or the project's standard test invocation)
 2. Fix any regressions introduced by the refactoring
