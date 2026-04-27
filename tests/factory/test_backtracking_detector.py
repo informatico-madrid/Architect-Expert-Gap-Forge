@@ -1,7 +1,6 @@
 """Unit tests for BacktrackingDetector basic detection."""
-import pytest
 from src.factory.schema import Turn, TurnType
-from src.factory.backtracking_detector import BacktrackingDetector, BacktrackingResult
+from src.factory.backtracking_detector import BacktrackingDetector
 
 
 class TestBacktrackingDetector:

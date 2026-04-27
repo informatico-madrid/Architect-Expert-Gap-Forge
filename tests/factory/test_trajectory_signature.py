@@ -1,5 +1,4 @@
 """Unit tests for TrajectorySignature field types and structure."""
-import pytest
 
 
 class TestTrajectorySignature:
@@ -27,23 +26,23 @@ class TestTrajectorySignature:
     def test_output_field_types(self):
         from src.factory.trajectory_signature import TrajectorySignature
         f = TrajectorySignature.output_fields
-        assert f["turns_json"].annotation == str
-        assert f["errors_json"].annotation == str
-        assert f["messages_json"].annotation == str
-        assert f["inferred_use_case"].annotation == str
+        assert f["turns_json"].annotation is str
+        assert f["errors_json"].annotation is str
+        assert f["messages_json"].annotation is str
+        assert f["inferred_use_case"].annotation is str
 
     def test_input_field_types(self):
         from src.factory.trajectory_signature import TrajectorySignature
         f = TrajectorySignature.input_fields
-        assert f["seed_id"].annotation == str
-        assert f["mode"].annotation == str
-        assert f["use_case"].annotation == str
-        assert f["question"].annotation == str
-        assert f["context"].annotation == str
-        assert f["error_probability"].annotation == float
-        assert f["has_error"].annotation == bool
-        assert f["is_cascade"].annotation == bool
-        assert f["tool_format"].annotation == str
+        assert f["seed_id"].annotation is str
+        assert f["mode"].annotation is str
+        assert f["use_case"].annotation is str
+        assert f["question"].annotation is str
+        assert f["context"].annotation is str
+        assert f["error_probability"].annotation is float
+        assert f["has_error"].annotation is bool
+        assert f["is_cascade"].annotation is bool
+        assert f["tool_format"].annotation is str
 
     def test_docstring_present(self):
         from src.factory.trajectory_signature import TrajectorySignature

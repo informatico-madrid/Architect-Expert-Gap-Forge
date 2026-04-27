@@ -111,7 +111,7 @@ try:
     assert _fields["adapter"].annotation == dict[str, float], (
         f"adapter annotation {_fields['adapter'].annotation} != dict[str, float]"
     )
-    assert _fields["reasoning"].annotation == str, (
+    assert _fields["reasoning"].annotation is str, (
         f"reasoning annotation {_fields['reasoning'].annotation} != str"
     )
     # The five dimensions must be a plausible key set for both dicts

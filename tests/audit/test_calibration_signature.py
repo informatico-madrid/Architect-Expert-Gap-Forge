@@ -1,5 +1,4 @@
 """Unit tests for CalibrationSignature field types and structure."""
-import pytest
 
 
 class TestCalibrationSignature:

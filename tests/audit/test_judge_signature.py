@@ -1,5 +1,4 @@
 """Unit tests for JudgeSignature field types and structure."""
-import pytest
 
 
 class TestJudgeSignature:
@@ -29,7 +28,7 @@ class TestJudgeSignature:
         f = JudgeSignature.output_fields
         assert f["baseline"].annotation == dict[str, float]
         assert f["adapter"].annotation == dict[str, float]
-        assert f["reasoning"].annotation == str
+        assert f["reasoning"].annotation is str
 
     def test_no_architecture_architecture_typo(self):
         from src.audit.judge_signature import JudgeSignature
