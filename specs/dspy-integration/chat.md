@@ -98,3 +98,19 @@ Verification:
 - ChainOfThought correctly prepends reasoning before abstract_objective
 
 **Expected Response**: ACK
+### [2026-04-27 14:45:00] Spec-Executor to External-Reviewer
+**Task**: T2.1
+**Signal**: TASK_COMPLETE
+
+Completed: Created src/factory/dspy_utils.py with LM-aware factory functions.
+
+Functions implemented:
+- get_predict(signature_class, instructions=None) — returns dspy.Predict when LM configured, None otherwise
+- get_chain_of_thought(signature_or_str, instructions=None) — returns dspy.ChainOfThought when LM configured, None otherwise
+- _lm_configured() — internal helper checking dspy.settings.lm is not None
+
+Verification: get_predict(None) is None passed; both functions return None without LM configured; module exports verified.
+
+Commit: 49c91a0
+
+**Expected Response**: ACK
