@@ -25,9 +25,8 @@ import pytest
 from src.audit.gap_generator import generate_gap_analysis
 from src.audit.exam_builder import generate_exam_question
 from src.audit.judge import llm_judge_score
-from src.audit.schema import PromptGenerationError, SampleRecord, ExamRecord
+from src.audit.schema import PromptGenerationError
 from src.audit.cli import CLIError
-from tests.fixtures import golden_sample, golden_exam
 
 
 @pytest.mark.integration

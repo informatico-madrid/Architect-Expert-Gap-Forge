@@ -20,7 +20,6 @@ from src.audit.calibration import (
     get_parameter_priority_order,
     generate_adaptive_profiles,
     get_adaptive_parameter_weights,
-    get_focused_adjustment_strategy,
 )
 from src.audit.calibration_schema import (
     CALIBRATION_GRID,
@@ -719,7 +718,7 @@ class TestAdaptiveGridSearch:
 
     def test_generate_adaptive_profiles_with_decrease_focus(self) -> None:
         """Should prioritize lower values for decrease-focused parameters."""
-        prompts = [
+        [
             CalibrationPrompt(
                 id="p1",
                 question="Summarize this text",
@@ -1107,7 +1106,7 @@ class TestValidateParameterTargets:
 
     def test_validate_parameter_targets_detects_invalid_via_from_dict(self) -> None:
         """Should detect invalid parameters via from_dict."""
-        from src.audit.calibration import validate_parameter_targets, CalibrationPrompt
+        from src.audit.calibration import CalibrationPrompt
 
         # Using from_dict which parses string params
         prompt_data = {

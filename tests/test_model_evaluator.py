@@ -26,7 +26,7 @@ import dataclasses
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -50,7 +50,6 @@ from src.audit.schema import (
     ExamRecord,
     InferenceResult,
     SampleRecord,
-    ScoreCard,
 )
 from tests.conftest import make_exam_record, make_sample, make_scorecard
 
@@ -351,7 +350,7 @@ class TestCmdGenerateExamPhase2:
         samples = [
             make_sample(id="incomplete", reference_standards="", gap_analysis="")
         ]
-        _ps(samples, args := _default_args(tmp_path).audit_dir)
+        _ps(samples, _default_args(tmp_path).audit_dir)
         args_ns = _default_args(tmp_path)
 
         with pytest.raises(CLIError, match="Persisted sample validation failed"):

@@ -15,8 +15,6 @@ from src.curation.quality_filter import (
     _ldi,
     _has_meta_speech,
     structural_quality_filter,
-    DEFAULT_MIN_THINK_CHARS,
-    DEFAULT_LDI_MIN_RATIO,
 )
 from src.curation.curator_pipeline import CurationStats
 
@@ -56,7 +54,7 @@ class TestCountNaturalTokens:
 
     def test_json_removed(self):
         text = '{"key": "value"} some words here'
-        result = _count_natural_tokens(text)
+        _count_natural_tokens(text)
         assert "key" not in text or "words" in text
 
     def test_code_block_removed(self):

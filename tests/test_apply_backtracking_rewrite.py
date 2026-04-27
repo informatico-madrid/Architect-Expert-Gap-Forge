@@ -6,7 +6,6 @@
 import asyncio
 import re
 
-import pytest
 
 from src.curation import backtracking_config as br_cfg
 from src.curation import backtracking_helpers as br_helpers

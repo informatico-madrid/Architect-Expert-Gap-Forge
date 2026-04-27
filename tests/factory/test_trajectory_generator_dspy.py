@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 import pytest
 
 from src.factory.dspy_utils import get_predict
-from src.factory.schema import AgenticTrajectory, TrajectoryMode, Turn, TurnType
+from src.factory.schema import AgenticTrajectory, TrajectoryMode
 from src.factory.trajectory_signature import TrajectorySignature
 
 

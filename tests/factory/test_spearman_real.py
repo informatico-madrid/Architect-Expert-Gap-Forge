@@ -92,7 +92,7 @@ class TestSpearmanRealCorrelation:
         # baseline and adapter should be dict[str, float]
         assert output_fields["baseline"].annotation == dict[str, float]
         assert output_fields["adapter"].annotation == dict[str, float]
-        assert output_fields["reasoning"].annotation == str
+        assert output_fields["reasoning"].annotation is str
 
     def test_stubbed_predictor_shaped_json(self):
         """Verify stubbed predictor output shapes match NormalizedJudgeResponse.

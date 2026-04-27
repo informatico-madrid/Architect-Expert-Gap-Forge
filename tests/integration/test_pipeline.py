@@ -13,15 +13,13 @@ Tests:
 from __future__ import annotations
 
 import json
-import datetime
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord, AnchorManifest
 from infrastructure.anchor_dataset.anchor_providers import AnchorProvider
-from infrastructure.anchor_dataset.seed_loader import load_seeds, NormalizedSeed
+from infrastructure.anchor_dataset.seed_loader import load_seeds
 from infrastructure.anchor_dataset.sample_generator import SampleConfigGenerator, PromptBuilder, SampleConfig
 from infrastructure.anchor_dataset.exporter import JSONLExporter
 
@@ -200,7 +198,7 @@ class TestFullPipeline:
         exporter.write_all(records, tmp_path / "out.jsonl")
 
         with open(tmp_path / "out.jsonl") as f:
-            data = [json.loads(l) for l in f]
+            data = [json.loads(line) for line in f]
         assert len(data) == len(records)
 
 

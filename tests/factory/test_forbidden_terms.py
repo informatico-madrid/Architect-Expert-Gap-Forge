@@ -1,5 +1,4 @@
 """End-to-end tests for HardQueryBuilder forbidden terms validation."""
-import pytest
 
 
 class TestForbiddenTerms:

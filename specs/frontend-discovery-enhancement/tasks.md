@@ -200,13 +200,13 @@ Continuous PR validation until all completion criteria met.
   - **Done when**: All review comments addressed
   - **Commit**: `feat(tests): address review comments`
 
-- [ ] 5.3 Final validation: zero regressions
+- [x] 5.3 Final validation: zero regressions
   - **Do**: Confirm all existing tests still pass, no regressions introduced
   - **Verify**: `python -m pytest tests/ -v --tb=short && echo REgression_FREE`
   - **Done when**: Zero test regressions
   - **Commit**: None
 
-- [ ] 5.4 Final validation: modularity
+- [x] 5.4 Final validation: modularity
   - **Do**: Verify test code is modular and reusable (not spec-specific hardcoding)
   - **Verify**: `ruff check tests/ && python -m py_compile tests/**/*.py`
   - **Done when**: Code is clean and follows project patterns

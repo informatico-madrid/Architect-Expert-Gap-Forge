@@ -17,7 +17,6 @@ import asyncio
 from types import SimpleNamespace
 from pathlib import Path
 
-import pytest
 
 from src.factory.checkpoint import make_checkpoint_key
 from src.factory.pipeline_runner import main_async

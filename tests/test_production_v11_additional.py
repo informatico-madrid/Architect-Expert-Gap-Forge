@@ -8,12 +8,11 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import random
 import textwrap
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import pytest
 import yaml
@@ -361,5 +360,5 @@ class TestAssignExampleType:
     def test_forces_contrast_for_legacy(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(random, "random", lambda: 0.1)
         _result = assign_example_type(_make_fragment(), has_legacy=True)
-        t, d = _result.example_type, _result.difficulty
+        t, _d = _result.example_type, _result.difficulty
         assert t in {"contrast", "error_recovery"}

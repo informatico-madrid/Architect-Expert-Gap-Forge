@@ -20,14 +20,13 @@ Covers:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
 
 from src.audit.sampling import stratified_sample
-from src.audit.schema import EXAMPLE_TYPES, SampleRecord
+from src.audit.schema import SampleRecord
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +59,7 @@ def _make_raw(
                         {"role": "user", "content": f"Implement {et} sensor {j}."},
                         {
                             "role": "assistant",
-                            "content": f"<think>OK</think>\n```python\npass\n```",
+                            "content": "<think>OK</think>\n```python\npass\n```",
                         },
                     ],
                 }

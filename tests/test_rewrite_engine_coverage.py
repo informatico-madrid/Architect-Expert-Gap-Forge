@@ -25,7 +25,6 @@ import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from src.curation import rewrite_engine as br_engine
 from src.curation.backtracking_config import BacktrackingConfig

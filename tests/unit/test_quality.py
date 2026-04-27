@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord
-from infrastructure.anchor_dataset.quality import QualityChecker, QualityResult, CircuitBreaker
+from infrastructure.anchor_dataset.quality import QualityChecker, CircuitBreaker
 
 
 # ---------------------------------------------------------------------------

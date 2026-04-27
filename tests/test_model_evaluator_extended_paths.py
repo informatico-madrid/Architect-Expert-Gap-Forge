@@ -10,8 +10,6 @@ Covers error propagation, fallback logic, and all command dispatch paths.
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -66,7 +64,7 @@ class TestCommandErrorPropagation:
         args.api_url = "http://localhost:8000"
         args.validate = False
 
-        with patch("src.audit.cli.logger") as mock_logger:
+        with patch("src.audit.cli.logger"):
             # cmd_score should handle missing baseline.jsonl
             try:
                 cmd_score(args)
@@ -83,7 +81,6 @@ class TestCmdFullIfExists:
 
     def test_cmd_full_exists_and_is_callable(self) -> None:
         """Verify cmd_full exists in the module."""
-        from src.audit.cli import cmd_full
 
         assert callable(cmd_full)
 

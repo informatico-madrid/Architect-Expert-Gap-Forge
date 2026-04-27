@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from src.audit.judge import _extract_code_blocks, _sanitize_for_logging
 

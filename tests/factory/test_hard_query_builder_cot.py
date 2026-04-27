@@ -1,7 +1,6 @@
 """Unit tests for HardQueryBuilder ChainOfThought integration."""
 import inspect
 
-import pytest
 
 
 class TestHardQueryBuilderCoT:
@@ -16,7 +15,7 @@ class TestHardQueryBuilderCoT:
 
     def test_transform_to_abstract_returns_str(self):
         from src.factory.hard_query_builder import HardQueryBuilder
-        sig = inspect.signature(HardQueryBuilder._transform_to_abstract)
+        inspect.signature(HardQueryBuilder._transform_to_abstract)
         # Just verify the method exists and is callable
         assert callable(HardQueryBuilder._transform_to_abstract)
 

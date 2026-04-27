@@ -15,7 +15,6 @@ Author: Claude Opus 4.6
 
 from __future__ import annotations
 
-import pytest
 
 
 class TestCalcCombinations:

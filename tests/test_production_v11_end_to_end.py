@@ -18,7 +18,6 @@ from types import SimpleNamespace
 from pathlib import Path
 import textwrap
 
-import pytest
 
 from src.factory import prompt_builder as pb_module
 from src.factory import pipeline_runner as pr_module

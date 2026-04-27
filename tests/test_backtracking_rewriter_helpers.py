@@ -3,9 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 
-import re
 
-import pytest
 
 from src.curation import backtracking_helpers as br
 from src.curation import backtrack_strategy as br_strategy

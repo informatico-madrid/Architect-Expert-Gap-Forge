@@ -18,10 +18,8 @@ import json
 from types import SimpleNamespace
 from pathlib import Path
 
-import pytest
 
 from src.factory import prompt_builder as pb_module
-from src.factory import pipeline_runner as pr_module
 from src.factory import config as cfg_module
 from src.factory.checkpoint import AsyncFileWriter, ProgressTracker
 from src.factory.pipeline_runner import generate_sample_async, process_fragment

@@ -43,7 +43,6 @@ from src.factory.fragment_extractor import (
     get_v2_fragments,
 )
 import src.factory.prompt_builder as pb
-import src.factory.prompt_builder as pb
 
 
 # ===========================================================================

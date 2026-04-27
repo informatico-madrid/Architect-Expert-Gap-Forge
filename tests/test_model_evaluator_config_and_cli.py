@@ -11,9 +11,6 @@ that AEGF §1.3 requires to be fully covered (no vibe-coding).
 
 from __future__ import annotations
 
-import argparse
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest

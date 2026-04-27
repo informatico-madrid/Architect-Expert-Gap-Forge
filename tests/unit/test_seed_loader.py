@@ -7,16 +7,13 @@
 from __future__ import annotations
 
 import logging
-import textwrap
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 import yaml
 
 from infrastructure.anchor_dataset.seed_loader import (
     NormalizedSeed,
-    _SEED_FILE,
     load_seeds,
 )
 

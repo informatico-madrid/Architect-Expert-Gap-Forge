@@ -14,16 +14,14 @@ the auto detection strategy works correctly across various scenarios.
 Author: Joao Maria Arranz Aparicio
 """
 
-import logging
 import os
-import shutil
 import time
 from pathlib import Path
 import tempfile
 
 import pytest
 
-from src.discovery.file_scanner import discover_modules, _detect_strategy, is_ignored
+from src.discovery.file_scanner import discover_modules, _detect_strategy
 
 
 # =============================================================================
@@ -297,7 +295,7 @@ class TestDetectionPerformance:
             # Create 100 directories with 100 files each
             num_dirs = 100
             files_per_dir = 100
-            total_files = num_dirs * files_per_dir
+            num_dirs * files_per_dir
 
             start_time = time.time()
 
@@ -330,7 +328,7 @@ class TestDetectionPerformance:
             # Create 100 directories with YAML files
             num_dirs = 100
 
-            start_time = time.time()
+            time.time()
 
             for i in range(num_dirs):
                 dir_path = root / f"module_{i}"
@@ -384,13 +382,13 @@ class TestLargeRepositoryPerformance:
             start_time = time.time()
 
             for i in range(num_dirs):
-                dir_path = root / f"src" / f"module_{i}"
+                dir_path = root / "src" / f"module_{i}"
                 dir_path.mkdir(parents=True)
                 (dir_path / "index.ts").write_text("export {}")
                 (dir_path / "types.ts").write_text("export type T = any")
 
             # Measure detection + discovery time
-            detection_start = time.time()
+            time.time()
 
             detected_strategy = _detect_strategy(root)
             assert detected_strategy == "typescript", \

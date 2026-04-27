@@ -10,11 +10,7 @@ Cover LDI, quality score, naive clustering fallback and I/O helpers.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-import json
 
-import pytest
 
 from src.curation.curator_pipeline import (
     CurationStats,
@@ -23,7 +19,6 @@ from src.curation.curator_pipeline import (
     write_jsonl,
 )
 from src.curation.dedup_filter import (
-    _build_clusters_naive,
     _char_shingles,
     _heuristic_quality_score,
     exact_dedup,

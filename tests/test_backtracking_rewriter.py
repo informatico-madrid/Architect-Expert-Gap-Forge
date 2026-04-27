@@ -15,10 +15,8 @@ import json
 import asyncio
 import textwrap
 from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-import pytest
 
 from src.schemas.common import RawRecord
 

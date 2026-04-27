@@ -97,7 +97,7 @@ class TestVLLMClientGenerate:
         client = VLLMClient(api_url="http://localhost:8000/v1", model="test-model")
         with patch(
             "requests.post", return_value=self._mock_response("hello")
-        ) as mock_post:
+        ):
             result = client.generate("say hello")
         assert result == "hello"
 
@@ -181,7 +181,7 @@ class TestVLLMClientRetry:
         resp.raise_for_status.return_value = None
         resp.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
 
-        with patch("requests.post", return_value=resp) as mock_post:
+        with patch("requests.post", return_value=resp):
             with patch("time.sleep") as mock_sleep:
                 result = client.generate_with_retry("p", retries=3)
         assert result == "ok"

@@ -18,20 +18,14 @@ Copyright 2026 AEGF
 
 from __future__ import annotations
 
-import datetime
 import json
-import os
-import signal
-import sys
 from pathlib import Path
 from unittest import mock
 
-import pytest
 import yaml
 
 from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord
 from infrastructure.anchor_dataset.anchor_providers import VLLMProvider
-from infrastructure.anchor_dataset.checkpoint import CheckpointData, CheckpointManager
 from infrastructure.anchor_dataset.seed_loader import load_seeds
 from infrastructure.anchor_dataset.sample_generator import (
     PromptBuilder,
@@ -349,7 +343,7 @@ class TestKeyboardInterruptCheckpoint:
         """When provider raises KeyboardInterrupt mid-loop, checkpoint is saved and main returns 1."""
         from infrastructure.anchor_dataset_builder import main
 
-        output_file = tmp_path / "anchor_dataset.jsonl"
+        tmp_path / "anchor_dataset.jsonl"
         output_dir = str(tmp_path)
 
         # Build a minimal seed fixture so the builder can load seeds

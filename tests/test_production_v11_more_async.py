@@ -14,16 +14,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
 from types import SimpleNamespace
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 
-import pytest
 
 import src.factory.prompt_builder as pb_module
 import src.factory.pipeline_runner as pr_module
-from src.factory import config as cfg_module
 from src.factory import config as cfg_module
 from src.factory.cli import main as cli_main, parse_args as cli_parse_args
 from src.factory.pipeline_runner import generate_sample_async, main_async
@@ -76,7 +73,7 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     )
 
     # Failure: answer too short -> rejected after retries
-    short_content = f"<think>r</think>short"
+    short_content = "<think>r</think>short"
     client2 = FakeClient(short_content)
     res2 = asyncio.run(
         pr_module.generate_theory_sample_async(

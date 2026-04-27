@@ -9,7 +9,6 @@ from collections import Counter
 import pytest
 
 from infrastructure.anchor_dataset.sample_generator import (
-    SampleConfig,
     SampleConfigGenerator,
     _distribute,
     _DIFFICULTY_FRACTIONS,

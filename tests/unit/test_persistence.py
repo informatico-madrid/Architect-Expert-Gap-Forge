@@ -7,11 +7,9 @@ from __future__ import annotations
 
 import datetime
 import json
-import os
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from infrastructure.anchor_dataset.checkpoint import CheckpointData, CheckpointManager
 from infrastructure.anchor_dataset.exporter import JSONLExporter
@@ -161,8 +159,8 @@ class TestJSONLExporterWriteAll:
         existing.write_text('{"id": "anchor_999_01"}\n')
 
         exporter = JSONLExporter()
-        records = [_sample_record()]
-        out = tmp_path / "existing.jsonl"
+        [_sample_record()]
+        tmp_path / "existing.jsonl"
 
         # Simulate a failure during the write (on the tmp file), leaving the
         # original file intact since rename only happens after full write.

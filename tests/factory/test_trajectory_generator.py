@@ -928,7 +928,6 @@ class TestXMLToolCallSerialization:
             pytest.skip("XML serialization function not yet implemented")
 
         # Create XML without wrapper tags
-        inner_xml = "<tool_name>test</tool_name><tool_args><item key='key'>value</item></tool_args>"
         result = serialize_tool_call_xml("test", {"key": "value"})
 
         # Should have wrapper tags

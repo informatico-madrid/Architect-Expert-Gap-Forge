@@ -17,7 +17,6 @@ from src.factory.prompt_builder import (
     build_system_nominal,
     detect_legacy_patterns,
     load_master_docs,
-    load_taxonomy,
 )
 from src.factory import config
 

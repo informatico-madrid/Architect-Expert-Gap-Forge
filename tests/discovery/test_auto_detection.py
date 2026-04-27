@@ -1,4 +1,3 @@
-import pytest
 from pathlib import Path
 import tempfile
 from src.discovery.file_scanner import _detect_strategy

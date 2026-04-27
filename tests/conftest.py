@@ -14,10 +14,9 @@ DO NOT REMOVE - used by pipeline and CI/CD
 
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import pytest
 
@@ -347,7 +346,7 @@ def raw_records(tmp_path: Path) -> list[dict[str, Any]]:
                         {"role": "user", "content": f"Implement {et} component {i} variant {j}."},
                         {
                             "role": "assistant",
-                            "content": f"<think>OK</think>\n```python\npass\n```",
+                            "content": "<think>OK</think>\n```python\npass\n```",
                         },
                     ],
                 }

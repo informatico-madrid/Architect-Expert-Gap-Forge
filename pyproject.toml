@@ -140,7 +140,8 @@ exclude_lines = [
 # ----------------------------------------------------------------
 
 [tool.ruff]
-# Exclude test fixtures with intentional syntax errors
+# Exclude test fixtures with intentional syntax errors and sample repos
 exclude = [
     "tests/fixtures/python_samples/syntax_error.py",
+    "tests/fixtures",
 ]

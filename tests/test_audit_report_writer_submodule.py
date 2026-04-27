@@ -10,11 +10,9 @@
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 from typing import Any
 
-import pytest
 
 from src.audit.report_writer import _get_grade_label, _get_verdict, generate_report
 from src.audit.schema import AuditReport, ScoreCard
