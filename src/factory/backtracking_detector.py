@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Backtracking detector — pure utility module (no external AI framework imports).
 
-Detects ERROR→CORRECT patterns in agentic trajectories to identify
+Detects ERROR->CORRECT patterns in agentic trajectories to identify
 backtracking behavior.
 """
 
@@ -22,39 +22,39 @@ class BacktrackingResult:
 
 
 class BacktrackingDetector:
-    """Detect backtracking (ERROR→CORRECT) patterns in trajectories."""
+    """Detect backtracking (ERROR->CORRECT) patterns in trajectories."""
 
     @staticmethod
-    def detect(turns: list[Turn]) -> tuple[bool, list[int], str]:
-        """Detect ERROR→CORRECT patterns in a list of turns.
+    def detect(turns: list[Turn]) -> BacktrackingResult:
+        """Detect ERROR->CORRECT patterns in a list of turns.
 
         Returns:
-            (detected, [error_idx, correct_idx], reason)
+            BacktrackingResult with detected flag, indices, and reason.
         """
         if not turns:
-            return (False, [], "no_turns")
+            return BacktrackingResult(detected=False, indices=[], reason="no_turns")
 
         for i in range(len(turns) - 1):
             if (
                 turns[i].turn_type == TurnType.ERROR
                 and turns[i + 1].turn_type == TurnType.CORRECT
             ):
-                return (
-                    True,
-                    [turns[i].turn_index, turns[i + 1].turn_index],
-                    "error_recovery",
+                return BacktrackingResult(
+                    detected=True,
+                    indices=[turns[i].turn_index, turns[i + 1].turn_index],
+                    reason="error_recovery",
                 )
 
-        return (False, [], "none")
+        return BacktrackingResult(detected=False, indices=[], reason="none")
 
     @staticmethod
-    def detect_from_messages(messages: list[Message]) -> tuple[bool, list[int], str]:
+    def detect_from_messages(messages: list[Message]) -> BacktrackingResult:
         """Detect backtracking from message content.
 
-        Scans message content for error→correction patterns.
+        Scans message content for error->correction patterns.
         """
         if not messages:
-            return (False, [], "no_turns")
+            return BacktrackingResult(detected=False, indices=[], reason="no_turns")
 
         # Look for error/correction patterns in message content
         for i in range(len(messages) - 1):
@@ -66,6 +66,10 @@ class BacktrackingDetector:
                     or "fix" in next_content_lower
                     or "recovery" in next_content_lower
                 ):
-                    return (True, [i, i + 1], "error_recovery")
+                    return BacktrackingResult(
+                        detected=True,
+                        indices=[i, i + 1],
+                        reason="error_recovery",
+                    )
 
-        return (False, [], "none")
+        return BacktrackingResult(detected=False, indices=[], reason="none")
