@@ -21,7 +21,7 @@
 3. Import `dspy`, `str | None`, `float`, `list` from typing
 4. Define `TrajectorySignature(dspy.Signature)` with clear `__doc__`
 5. Define input fields: `seed_id: str`, `mode: str`, `use_case: str`, `question: str`, `context: str`, `error_probability: float`, `has_error: bool`, `is_cascade: bool`, `tool_format: str`
-6. Define output fields: `turns_json: str`, `errors_json: str`, `messages_json: str`, `use_case: str`
+6. Define output fields: `turns_json: str`, `errors_json: str`, `messages_json: str`, `inferred_use_case: str`
 7. Write a concise docstring in English summarizing the trajectory generation purpose
 8. Verify import succeeds: `python -c "from src.factory.trajectory_signature import TrajectorySignature; print(TrajectorySignature.input_fields); print(TrajectorySignature.output_fields)"`
 
@@ -373,7 +373,7 @@ print('Parse OK')
 **Do:**
 1. Create `tests/factory/test_trajectory_signature.py`
 2. Test that `TrajectorySignature.input_fields` contains all 9 expected input fields
-3. Test that `TrajectorySignature.output_fields` contains exactly `turns_json`, `errors_json`, `messages_json`, `use_case`
+3. Test that `TrajectorySignature.output_fields` contains exactly `turns_json`, `errors_json`, `messages_json`, `inferred_use_case`
 4. Test that output field types are `str` for JSON fields
 5. Test that input field types are correct: `str`, `float`, `bool` as appropriate
 

@@ -62,7 +62,7 @@ graph TB
 - `turns_json: str` — JSON string representing turns array (each turn with turn_index, turn_type, content, tool_name, tool_args, tool_result, reasoning)
 - `errors_json: str` — JSON string representing errors array
 - `messages_json: str` — JSON string representing ChatML messages
-- `use_case: str` — domain string (echoed)
+- `inferred_use_case: str` — inferred use-case label from trajectory
 
 **Rationale**: The output is a single structured trajectory. JSON string outputs let the consumer parse into Pydantic models. This matches how `llm_judge_score` already handles judge output (json.loads + normalize). Using typed `dict[str, float]` for scores is supported in DSPy 3.2.0, but for complex nested structures (turns with enums, nested dicts), a JSON string is more robust and the consumer already handles parsing.
 
@@ -263,7 +263,7 @@ sequenceDiagram
 | Component / Function | Test type | What to assert | Test double |
 |---|---|---|---|
 | TrajectorySignature.input_fields | unit | All required fields present with correct annotations | none |
-| TrajectorySignature.output_fields | unit | `turns_json: str`, `errors_json: str`, `messages_json: str`, `use_case: str` | none |
+| TrajectorySignature.output_fields | unit | `turns_json: str`, `errors_json: str`, `messages_json: str`, `inferred_use_case: str` | none |
 | TrajectorySignature → TrajectoryGenerator.generate() | integration | Returns `AgenticTrajectory` with correct structure | Stub LM (return shaped JSON) |
 | JudgeSignature.input_fields | unit | `exam_question`, `eval_criteria`, `target_patterns`, `baseline_response`, `adapter_response` present | none |
 | JudgeSignature.output_fields | unit | `baseline: dict[str, float]`, `adapter: dict[str, float]`, `reasoning: str` present | none |
