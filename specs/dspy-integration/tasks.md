@@ -757,7 +757,7 @@ print('Parse OK')
 
 ---
 
-### T5.4: Fix F-09 — Cache dspy.Signature in HardQueryBuilder
+### T5.4: Fix F-09 — Cache dspy.Signature in HardQueryBuilder [x]
 **Do:**
 1. In `src/factory/hard_query_builder.py`, add module-level constant:
    `_HARD_QUERY_SIG = dspy.Signature("category: str, context: str -> abstract_objective: str")`

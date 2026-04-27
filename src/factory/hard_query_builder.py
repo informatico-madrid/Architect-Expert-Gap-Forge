@@ -24,6 +24,9 @@ from src.factory.dspy_utils import get_chain_of_thought
 
 logger = logging.getLogger(__name__)
 
+# Cached DSPy Signature — prevents creating a new Python class on every call.
+_HARD_QUERY_SIG = dspy.Signature("category: str, context: str -> abstract_objective: str")
+
 # Default template path
 _DEFAULT_TEMPLATES_PATH: Path = Path(
     "configs/stage_2_factory/prompts/hard_query_templates.yaml"
@@ -230,7 +233,7 @@ class HardQueryBuilder:
         Returns:
             Abstract objective description
         """
-        sig = dspy.Signature("category: str, context: str -> abstract_objective: str")
+        sig = _HARD_QUERY_SIG
         cot = get_chain_of_thought(sig)
         if cot is not None:
             result = cot(category=category, context=context)
