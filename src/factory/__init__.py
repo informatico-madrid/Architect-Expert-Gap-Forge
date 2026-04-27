@@ -10,6 +10,7 @@ Exposes the public modules from `src.factory` used by training pipelines.
 """
 
 # Public API exports - explicit re-exports from submodules
+from src.factory.backtracking_detector import BacktrackingDetector
 from src.factory.checkpoint import AsyncFileWriter, ProgressTracker, load_checkpoint
 from src.factory.config import GeneratedSample, TaxonomyState
 from src.factory.fragment_extractor import get_fragments
@@ -26,6 +27,7 @@ from src.factory.prompt_builder import (
     build_user_nominal,
     load_taxonomy,
 )
+from src.factory.trajectory_signature import TrajectorySignature
 
 __all__ = [
     # Submodules for lazy loading
@@ -49,6 +51,8 @@ __all__ = [
     "GeneratedSample",
     "LDIResult",
     "ExampleTypeAssignment",
+    "BacktrackingDetector",
+    "TrajectorySignature",
 ]
 
 
