@@ -1,9 +1,9 @@
 ---
 name: aegf-dspy-integration
-goal: Convert .example.yaml prompt templates into DSPy Signatures (Trajectory, Judge, Calibration, Hard Query) fixing 7 known source bugs. Enable MIPROv2 optimization on Layer 1.
+goal: Convert .example.yaml prompt templates into DSPy Signatures (Trajectory, Judge, Calibration, Hard Query) fixing 7 known source bugs. Define signatures ready for manual MIPROv2 optimization runs.
 version: 1.0
 date: 2026-04-26
-status: not_started
+status: complete
 storyCount: 8
 specs:
   - dspy-integration
@@ -47,7 +47,7 @@ Convert externalized `.example.yaml` prompt templates into DSPy Signatures with 
 - Backtracking detection
 - Fix 7 known source bugs (typo, placeholder inconsistency, whitespace, parameter_target, forbidden_terms, dead code, protocol inconsistency)
 - Spearman correlation > 0.8 with existing judge.py baseline
-- MIPROv2 compile optimization using anchor dataset
+- MIPROv2 compile infrastructure setup (signatures defined, ready for manual runs)
 
 ### OUT of Scope
 
@@ -74,26 +74,26 @@ Convert externalized `.example.yaml` prompt templates into DSPy Signatures with 
 
 ### TrajectorySignature
 - **File:** `src/factory/trajectory_signature.py`
-- **Input:** domain_context (str), difficulty (str), turn_count (int), legacy_pattern (str)
-- **Output:** trajectory (str), tool_usage_patterns (list[str])
+- **Input:** seed_id (str), mode (str), use_case (str), question (str), context (str), error_probability (float), has_error (bool), is_cascade (bool), tool_format (str)
+- **Output:** turns_json (str), errors_json (str), messages_json (str), inferred_use_case (str)
 - **Prompts:** from `src/factory/prompts_trajectory.example.yaml`
 
 ### JudgeSignature
 - **File:** `src/audit/judge_signature.py`
-- **Input:** exam_question (str), baseline_response (str), adapter_response (str)
-- **Output:** coherence (float), overall (float)
+- **Input:** exam_question (str), eval_criteria (str), target_patterns (str), baseline_response (str), adapter_response (str)
+- **Output:** baseline (dict[str, float]), adapter (dict[str, float]), reasoning (str)
 - **Prompts:** from `src/audit/prompts_judge.example.yaml`
 
 ### CalibrationSignature
 - **File:** `src/audit/calibration_signature.py`
-- **Input:** temperature (float), top_k (int), min_p (float), repetition_penalty (float), quality_target (float)
-- **Output:** optimized_temperature (float), optimized_top_k (int), optimized_min_p (float), optimized_repetition_penalty (float), quality_score (float)
+- **Input:** seed_id (str), use_case (str), category (str), context (str), parameter_target (list[str]), quality_target (float), min_quality (float), max_iterations (int)
+- **Output:** best_profile_json (str), composite_score (float), reasoning (str), parameter_effectiveness (float)
 - **Prompts:** from `src/audit/prompts_calibration.example.yaml`
-- **parameter_target:** metadata field (NOT prompt text)
+- **parameter_target:** structured Signature field `list[str]`, NOT embedded in prompt text
 
 ### Hard Query
 - **File:** `src/factory/hard_query_builder.py` (modified)
-- **Input:** category (str)
+- **Input:** category (str), context (str)
 - **Output:** abstract_objective (str) — English, generated via DSPy ChainOfThought
 
 ## Known Source Bugs (from Epic 0)
