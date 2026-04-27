@@ -8,7 +8,10 @@ import json
 import os
 from pathlib import Path
 
-from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorManifest, AnchorRecord
+from infrastructure.anchor_dataset.anchor_dataset_schema import (
+    AnchorManifest,
+    AnchorRecord,
+)
 
 
 class JSONLExporter:

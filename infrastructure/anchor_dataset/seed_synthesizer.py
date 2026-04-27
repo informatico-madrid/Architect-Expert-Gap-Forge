@@ -53,21 +53,25 @@ class SeedSynthesizer:
                         pass
         return patterns
 
-    def abstract_seeds(self, patterns: list[str], count: int = 10) -> list[NormalizedSeed]:
+    def abstract_seeds(
+        self, patterns: list[str], count: int = 10
+    ) -> list[NormalizedSeed]:
         """Call LLM to abstract patterns into normalized seeds. For POC, return stubs."""
         if not self._llm_client:
             # POC fallback: return stub seeds from patterns
             seeds = []
             for i, pat in enumerate(patterns[:count]):
-                seeds.append(NormalizedSeed(
-                    seed_id=f"synth_{i:03d}",
-                    domain="generic_domain",
-                    category="config",
-                    complexity="nominal_easy",
-                    context=pat[:100] if pat else "General configuration",
-                    question="How to configure properly?",
-                    expected_patterns=[],
-                ))
+                seeds.append(
+                    NormalizedSeed(
+                        seed_id=f"synth_{i:03d}",
+                        domain="generic_domain",
+                        category="config",
+                        complexity="nominal_easy",
+                        context=pat[:100] if pat else "General configuration",
+                        question="How to configure properly?",
+                        expected_patterns=[],
+                    )
+                )
             return seeds
         # LLM path would go here in production
         return []
@@ -107,7 +111,9 @@ class SeedSynthesizer:
         if len(filtered) < count:
             logger.warning(
                 "Synthesis for %s produced %d seeds (expected %d)",
-                domain, len(filtered), count,
+                domain,
+                len(filtered),
+                count,
             )
         fresh = self.validate_freshness(filtered[:count])
         return fresh

@@ -80,7 +80,12 @@ class QualityChecker:
 
 
 class CircuitBreaker:
-    def __init__(self, threshold: float = 0.2, batch_size: int = 10, consecutive_pass_threshold: int = 10):
+    def __init__(
+        self,
+        threshold: float = 0.2,
+        batch_size: int = 10,
+        consecutive_pass_threshold: int = 10,
+    ):
         self.threshold = threshold
         self.batch_size = batch_size
         self.consecutive_pass_threshold = consecutive_pass_threshold
@@ -120,7 +125,7 @@ class CircuitBreaker:
         if len(self._results) < self.batch_size:
             return False
         # Check last batch_size results
-        recent = self._results[-self.batch_size:]
+        recent = self._results[-self.batch_size :]
         failures = sum(1 for r in recent if not r)
         failure_rate = failures / len(recent)
         if failure_rate >= self.threshold:

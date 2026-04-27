@@ -164,7 +164,14 @@ def check_imports(packages: list[str]) -> CheckResult:
             continue
         modules = _resolve_module(package)
         for module_name in modules:
-            spec = find_spec(module_name)
+            try:
+                spec = find_spec(module_name)
+            except ModuleNotFoundError:
+                failures.append(
+                    f"module not installed: '{module_name}' "
+                    f"(package: '{package}')"
+                )
+                continue
             if spec is None:
                 failures.append(
                     f"import not found: module '{module_name}' "

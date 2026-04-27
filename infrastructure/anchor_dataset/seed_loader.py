@@ -24,7 +24,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_SEED_FILE = Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "seed_examples.yaml"
+_SEED_FILE = (
+    Path(__file__).resolve().parent.parent.parent
+    / "tests"
+    / "fixtures"
+    / "seed_examples.yaml"
+)
 
 
 @dataclass

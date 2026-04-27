@@ -25,60 +25,83 @@ def _generate_id(cfg_idx: int) -> str:
     """Generate a deterministic sample ID from config index."""
     return f"sample_{cfg_idx:03d}"
 
+
 def build_parser() -> argparse.ArgumentParser:
     """Build and return the argument parser with 12 CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Anchor dataset builder — generate labeled anchor samples"
     )
     parser.add_argument(
-        "--count", type=int, default=50,
+        "--count",
+        type=int,
+        default=50,
         help="Number of samples to generate (default: 50)",
     )
     parser.add_argument(
-        "--provider", choices=["vllm", "openai", "gemini"],
-        default="vllm", help="LLM provider (default: vllm)",
+        "--provider",
+        choices=["vllm", "openai", "gemini"],
+        default="vllm",
+        help="LLM provider (default: vllm)",
     )
     parser.add_argument(
-        "--output-dir", default="outputs",
-        help="Output directory (default: outputs)",
+        "--output-dir",
+        default="datasets/anchors/v1/",
+        help="Output directory (default: datasets/anchors/v1/)",
     )
     parser.add_argument(
-        "--vllm-url", default="http://localhost:8000",
+        "--vllm-url",
+        default="http://localhost:8000",
         help="vLLM endpoint URL (default: http://localhost:8000)",
     )
     parser.add_argument(
-        "--temperature", type=float, default=0.4,
+        "--temperature",
+        type=float,
+        default=0.4,
         help="Sampling temperature (default: 0.4)",
     )
     parser.add_argument(
-        "--max-tokens", type=int, default=8192,
+        "--max-tokens",
+        type=int,
+        default=8192,
         help="Max output tokens (default: 8192)",
     )
     parser.add_argument(
-        "--domain-distribution", default=None,
-        help='Domain distribution JSON (default: HA=40, PHP=30, GD=20, Other=10)',
+        "--domain-distribution",
+        default=None,
+        help="Domain distribution JSON (default: HA=40, PHP=30, GD=20, Other=10)",
     )
     parser.add_argument(
-        "--difficulty-distribution", default=None,
-        help='Difficulty distribution JSON (default: easy=30, medium=50, hard=20)',
+        "--difficulty-distribution",
+        default=None,
+        help="Difficulty distribution JSON (default: easy=30, medium=50, hard=20)",
     )
     parser.add_argument(
-        "--seed", type=int, default=42, help="Random seed (default: 42)",
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed (default: 42)",
     )
     parser.add_argument(
-        "--resume", action="store_true", default=False,
+        "--resume",
+        action="store_true",
+        default=False,
         help="Resume from checkpoint if available",
     )
     parser.add_argument(
-        "--no-overwrite", action="store_true", default=False,
+        "--no-overwrite",
+        action="store_true",
+        default=False,
         help="Exit 1 if output file already exists",
     )
     parser.add_argument(
-        "--output-file", default="anchor_dataset.jsonl",
+        "--output-file",
+        default="anchor_dataset.jsonl",
         help="Output file name (default: anchor_dataset.jsonl)",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", default=False,
+        "--dry-run",
+        action="store_true",
+        default=False,
         help="Validate and log planned distribution, then exit 0",
     )
     return parser
@@ -161,7 +184,9 @@ def main(argv: list[str] | None = None) -> int:
                 added = synth.synthesize(domain, count=10)
                 extra.extend(added)
                 logger.info(
-                    "Synthesized %d seeds for %s", len(added), domain,
+                    "Synthesized %d seeds for %s",
+                    len(added),
+                    domain,
                 )
             except Exception:
                 logger.warning("Synthesis failed for %s", domain)
@@ -169,7 +194,8 @@ def main(argv: list[str] | None = None) -> int:
             seeds.extend(extra)
             logger.info(
                 "Total seeds after synthesis: %d (added %d)",
-                len(seeds), len(extra),
+                len(seeds),
+                len(extra),
             )
 
     # 4. Config generation
@@ -180,7 +206,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         _domain_dist = json.loads(
-            config.domain_distribution or '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
+            config.domain_distribution
+            or '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
         )
     except json.JSONDecodeError as exc:
         logger.error("Invalid domain_distribution JSON: %s", exc)
@@ -188,7 +215,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         _diff_dist = json.loads(
-            config.difficulty_distribution or '{"easy": 0.3, "medium": 0.5, "hard": 0.2}'
+            config.difficulty_distribution
+            or '{"easy": 0.3, "medium": 0.5, "hard": 0.2}'
         )
     except json.JSONDecodeError as exc:
         logger.error("Invalid difficulty_distribution JSON: %s", exc)
@@ -198,7 +226,8 @@ def main(argv: list[str] | None = None) -> int:
     configs = generator.generate_configs(count=args.count)
 
     logger.info(
-        "Generated %d configs", len(configs),
+        "Generated %d configs",
+        len(configs),
     )
 
     if not configs:
@@ -233,7 +262,9 @@ def main(argv: list[str] | None = None) -> int:
     failed_logger = FailedSampleLogger(log_path=failed_log_path)
 
     # Checkpoint tracking
-    cp_path = Path(config.output_dir) / f".checkpoint_{Path(config.output_file).stem}.json"
+    cp_path = (
+        Path(config.output_dir) / f".checkpoint_{Path(config.output_file).stem}.json"
+    )
     cp_manager = CheckpointManager()
     completed_ids: set[str] = set()
     failed_ids: dict[str, str] = {}
@@ -250,13 +281,13 @@ def main(argv: list[str] | None = None) -> int:
             domain_remaining = loaded.domain_allocation_remaining.copy()
             id_to_config = {_generate_id(i): c for i, c in enumerate(configs)}
             _failed_configs = [
-                id_to_config[fid]
-                for fid in failed_ids
-                if fid in id_to_config
+                id_to_config[fid] for fid in failed_ids if fid in id_to_config
             ]
             logger.info(
                 "Resuming from checkpoint: %d completed, %d failed, %d samples generated",
-                len(completed_ids), len(failed_ids), sample_counter,
+                len(completed_ids),
+                len(failed_ids),
+                sample_counter,
             )
 
             for fid in failed_ids:
@@ -276,14 +307,19 @@ def main(argv: list[str] | None = None) -> int:
                     if record is not None:
                         records.append(record)
                         successful += 1
-                        passed = quality_checker.check(record, cfg.turn_count).passed if quality_enabled else True
+                        passed = (
+                            quality_checker.check(record, cfg.turn_count).passed
+                            if quality_enabled
+                            else True
+                        )
                         circuit_breaker.record_result(passed)
                     else:
                         failed += 1
 
     logger.info(
         "Starting generation: %d samples, provider=%s",
-        len(configs), config.provider,
+        len(configs),
+        config.provider,
     )
 
     checkpoint_data = None
@@ -310,7 +346,9 @@ def main(argv: list[str] | None = None) -> int:
                     if attempt < 2:
                         logger.debug(
                             "Sample %d attempt %d failed (%s), retrying...",
-                            idx, attempt + 1, failure_reason,
+                            idx,
+                            attempt + 1,
+                            failure_reason,
                         )
                         time.sleep(1)
                         continue
@@ -344,7 +382,9 @@ def main(argv: list[str] | None = None) -> int:
                 circuit_breaker.record_result(qpassed)
                 if circuit_breaker.should_switch():
                     logger.warning("Circuit breaker triggered — switching provider")
-                    config.provider = "fallback" if config.provider != "fallback" else config.provider
+                    config.provider = (
+                        "fallback" if config.provider != "fallback" else config.provider
+                    )
 
             # Save checkpoint after each successful generation for crash recovery
             checkpoint_data = CheckpointData(
@@ -362,13 +402,17 @@ def main(argv: list[str] | None = None) -> int:
             if (idx + 1) % 10 == 0:
                 logger.info(
                     "Progress: %d/%d (success=%d, failed=%d)",
-                    idx + 1, len(configs), successful, failed,
+                    idx + 1,
+                    len(configs),
+                    successful,
+                    failed,
                 )
 
             if circuit_breaker.should_switch():
                 logger.warning(
                     "Circuit breaker triggered at batch %d, failure_rate=%.2f",
-                    idx + 1, circuit_breaker.get_failure_rate(),
+                    idx + 1,
+                    circuit_breaker.get_failure_rate(),
                 )
                 circuit_breaker.try_reset()
 
@@ -387,7 +431,10 @@ def main(argv: list[str] | None = None) -> int:
     exporter.write_all(records, output_path)
 
     manifest = exporter.generate_manifest(
-        records, provider.name, circuit_breaker.triggered, failed,
+        records,
+        provider.name,
+        circuit_breaker.triggered,
+        failed,
     )
     manifest_path = Path(str(output_path) + "_manifest.json")
     with manifest_path.open("w") as f:
@@ -400,12 +447,14 @@ def main(argv: list[str] | None = None) -> int:
     print("  CB triggered: {}".format(circuit_breaker.triggered))
 
     dist = Counter(r.domain for r in records)
-    print("  Domain distribution: HA={} PHP={} GD={} Other={}".format(
-        dist.get("home_assistant", 0),
-        dist.get("php_legacy", 0),
-        dist.get("generic_domain", 0),
-        dist.get("other", 0),
-    ))
+    print(
+        "  Domain distribution: HA={} PHP={} GD={} Other={}".format(
+            dist.get("home_assistant", 0),
+            dist.get("php_legacy", 0),
+            dist.get("generic_domain", 0),
+            dist.get("other", 0),
+        )
+    )
 
     return 0
 
@@ -419,13 +468,18 @@ def _print_distribution(count: int, config) -> None:
         _DIFFICULTY_TURNS,
     )
 
-    dist_text = config.domain_distribution or '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
+    dist_text = (
+        config.domain_distribution
+        or '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
+    )
     try:
         domain_pcts = [(d, p) for d, p in json.loads(dist_text).items()]
     except json.JSONDecodeError:
         domain_pcts = _DOMAIN_PCTS
 
-    dist_text2 = config.difficulty_distribution or '{"easy": 0.3, "medium": 0.5, "hard": 0.2}'
+    dist_text2 = (
+        config.difficulty_distribution or '{"easy": 0.3, "medium": 0.5, "hard": 0.2}'
+    )
     try:
         diff_fractions = [(d, p) for d, p in json.loads(dist_text2).items()]
     except json.JSONDecodeError:
@@ -442,7 +496,9 @@ def _print_distribution(count: int, config) -> None:
         parts = []
         for diff, dcount in diff_counts.items():
             parts.append(
-                "{} ({} turns)={}".format(diff, _DIFFICULTY_TURNS.get(diff, "?"), dcount),
+                "{} ({} turns)={}".format(
+                    diff, _DIFFICULTY_TURNS.get(diff, "?"), dcount
+                ),
             )
         print("  {}: {}".format(domain, ", ".join(parts)))
 

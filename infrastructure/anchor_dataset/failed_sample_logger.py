@@ -19,7 +19,9 @@ class FailedSampleEntry:
     provider: str
     attempt: int
     raw_response: str
-    timestamp: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    timestamp: str = field(
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
+    )
 
 
 class FailedSampleLogger:

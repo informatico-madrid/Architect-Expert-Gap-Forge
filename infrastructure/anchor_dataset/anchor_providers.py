@@ -155,7 +155,7 @@ class OpenAIProvider(AnchorProvider):
                     return AnchorRecord.model_validate(json.loads(content))
             except (httpx.HTTPError, json.JSONDecodeError, KeyError, ValueError):
                 if attempt < 2:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                 else:
                     return None
         return None
@@ -206,7 +206,7 @@ class GeminiProvider(AnchorProvider):
                 return AnchorRecord.model_validate(json.loads(response.text))
             except (genai.errors.APIError, json.JSONDecodeError, ValueError):
                 if attempt < 2:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                 else:
                     return None
         return None
@@ -224,7 +224,6 @@ def get_provider(provider_name: str, config=None) -> AnchorProvider:
     cls = PROVIDER_MAP.get(provider_name)
     if cls is None:
         raise ConfigurationError(
-            f"Unknown provider: {provider_name}. "
-            f"Available: {list(PROVIDER_MAP.keys())}"
+            f"Unknown provider: {provider_name}. Available: {list(PROVIDER_MAP.keys())}"
         )
     return cls()

@@ -89,9 +89,7 @@ class StartupValidator:
     def _validate_seeds(self, config: AnchorsConfig) -> None:
         seed_file = Path("tests/fixtures/seed_examples.yaml")
         if not seed_file.exists():
-            self.warnings.append(
-                "Seed file missing: tests/fixtures/seed_examples.yaml"
-            )
+            self.warnings.append("Seed file missing: tests/fixtures/seed_examples.yaml")
             return
         with open(seed_file) as f:
             content = f.read()

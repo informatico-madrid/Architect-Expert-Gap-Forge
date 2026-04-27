@@ -20,9 +20,7 @@ class AnchorsConfig:
     temperature: float = 0.4
     max_tokens: int = 8192
     count: int = 50
-    domain_distribution: str = (
-        '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
-    )
+    domain_distribution: str = '{"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}'
     difficulty_distribution: str = '{"easy": 0.3, "medium": 0.5, "hard": 0.2}'
     seed: int = 42
     resume: bool = False
@@ -32,7 +30,9 @@ class AnchorsConfig:
     def __post_init__(self) -> None:
         """Validate from env var overrides after construction."""
         if os.environ.get("ANCHORS_TOTAL_SAMPLES"):
-            object.__setattr__(self, "total_samples", int(os.environ["ANCHORS_TOTAL_SAMPLES"]))
+            object.__setattr__(
+                self, "total_samples", int(os.environ["ANCHORS_TOTAL_SAMPLES"])
+            )
         if os.environ.get("ANCHORS_OUTPUT_DIR"):
             object.__setattr__(self, "output_dir", os.environ["ANCHORS_OUTPUT_DIR"])
         if os.environ.get("ANCHORS_PROVIDER"):
@@ -40,9 +40,13 @@ class AnchorsConfig:
         if os.environ.get("ANCHORS_VLLM_URL"):
             object.__setattr__(self, "vllm_url", os.environ["ANCHORS_VLLM_URL"])
         if os.environ.get("ANCHORS_TEMPERATURE"):
-            object.__setattr__(self, "temperature", float(os.environ["ANCHORS_TEMPERATURE"]))
+            object.__setattr__(
+                self, "temperature", float(os.environ["ANCHORS_TEMPERATURE"])
+            )
         if os.environ.get("ANCHORS_MAX_TOKENS"):
-            object.__setattr__(self, "max_tokens", int(os.environ["ANCHORS_MAX_TOKENS"]))
+            object.__setattr__(
+                self, "max_tokens", int(os.environ["ANCHORS_MAX_TOKENS"])
+            )
         if os.environ.get("ANCHORS_SEED"):
             object.__setattr__(self, "seed", int(os.environ["ANCHORS_SEED"]))
 
