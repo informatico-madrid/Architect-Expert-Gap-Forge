@@ -164,7 +164,7 @@ print('Parse OK')
 
 ---
 
-### T1.9: Validate CalibrationSignature against CalibrationResult schema
+### T1.9: Validate CalibrationSignature [x] against CalibrationResult schema
 **Do:**
 1. Read `src/audit/calibration_schema.py` to understand SamplingProfile, CalibrationResult
 2. Verify CalibrationSignature.output_fields produce data compatible with CalibrationResult:
@@ -224,7 +224,7 @@ print('Parse OK')
 
 ---
 
-### T2.2: Wire TrajectorySignature into TrajectoryGenerator
+### T2.2: Wire TrajectorySignature [x] into TrajectoryGenerator
 **Do:**
 1. Modify `src/factory/trajectory_generator.py`:
    - Add import: `from src.factory.trajectory_signature import TrajectorySignature`
@@ -243,7 +243,7 @@ print('Parse OK')
 
 ---
 
-### T2.3: Wire JudgeSignature into llm_judge_score
+### T2.3: Wire JudgeSignature [x] into llm_judge_score
 **Do:**
 1. Modify `src/audit/judge.py`:
    - Add import: `from src.audit.judge_signature import JudgeSignature`
@@ -281,7 +281,7 @@ print('Parse OK')
 
 ---
 
-### T2.5: Add bug #6 comment to forbidden_terms
+### T2.5: Add bug #6 [x] comment to forbidden_terms
 **Do:**
 1. In `src/factory/hard_query_builder.py`, find the `forbidden_terms` list (line 76-82)
 2. Add a DSPy comment above the list explaining these are literal match strings, NOT translatable prompt content
@@ -295,7 +295,7 @@ print('Parse OK')
 
 ---
 
-### T2.6: Create BacktrackingDetector class
+### T2.6: Create BacktrackingDetector [x] class
 **Do:**
 1. Create `src/factory/backtracking_detector.py`
 2. **Constraint: MUST NOT import dspy** — pure utility module
@@ -317,7 +317,7 @@ print('Parse OK')
 
 ---
 
-### T2.7: Add __init__.py exports for factory module
+### T2.7: Add __init__.py [x] exports for factory module
 **Do:**
 1. Ensure `src/factory/__init__.py` exports new modules:
    - `BacktrackingDetector` from `backtracking_detector`
@@ -331,7 +331,7 @@ print('Parse OK')
 
 ---
 
-### T2.8: Standardize placeholder syntax (bug #3)
+### T2.8: Standardize placeholder [x] syntax (bug #3)
 **Do:**
 1. Review all 3 signature files for `$var` syntax
 2. Replace any `$var` with `{var}` in docstrings
@@ -345,7 +345,7 @@ print('Parse OK')
 
 ---
 
-### T2.9: Normalize whitespace in docstrings (bug #4)
+### T2.9: Normalize whitespace [x] in docstrings (bug #4)
 **Do:**
 1. Check docstrings in all 3 signature files for trailing whitespace before special tokens like `</s>`, `</think>`, `<|end|>`, `¶`
 2. Strip trailing whitespace before any special tokens in the docstring
@@ -384,7 +384,7 @@ print('Parse OK')
 
 ---
 
-### T3.2: Unit test — JudgeSignature field types
+### T3.2: Unit test — JudgeSignature [x] field types
 **Do:**
 1. Create `tests/audit/test_judge_signature.py`
 2. Test `JudgeSignature.input_fields` contains all 5 expected input fields
@@ -400,7 +400,7 @@ print('Parse OK')
 
 ---
 
-### T3.3: Unit test — CalibrationSignature field types
+### T3.3: Unit test — CalibrationSignature [x] field types
 **Do:**
 1. Create `tests/audit/test_calibration_signature.py`
 2. Test `CalibrationSignature.input_fields` contains `parameter_target` typed as `list[str]`
@@ -415,7 +415,7 @@ print('Parse OK')
 
 ---
 
-### T3.4: Unit test — BacktrackingDetector basic detection
+### T3.4: Unit test — BacktrackingDetector basic [x] detection
 **Do:**
 1. Create `tests/factory/test_backtracking_detector.py`
 2. Test `BacktrackingDetector.detect()` with empty turns: returns `(False, [], "no_turns")`
@@ -431,7 +431,7 @@ print('Parse OK')
 
 ---
 
-### T3.5: Unit test — BacktrackingDetector from_messages
+### T3.5: Unit test — BacktrackingDetector from_messages [x]
 **Do:**
 1. In `tests/factory/test_backtracking_detector.py`, add tests for `detect_from_messages()`
 2. Test with a list of Message objects that encode ERROR->CORRECT pattern
@@ -445,7 +445,7 @@ print('Parse OK')
 
 ---
 
-### T3.6: Unit test — HardQueryBuilder uses ChainOfThought
+### T3.6: Unit test — HardQueryBuilder uses [x] ChainOfThought
 **Do:**
 1. In `tests/factory/test_hard_query_builder.py`, add test for `_transform_to_abstract()`
 2. Mock `dspy.ChainOfThought` and verify it is called with correct signature
@@ -459,7 +459,7 @@ print('Parse OK')
 
 ---
 
-### T3.7: Integration test — TrajectoryGenerator with DSPy stub
+### T3.7: Integration test — TrajectoryGenerator [x] with DSPy stub
 **Do:**
 1. In `tests/factory/test_trajectory_generator.py`, add integration test
 2. Stub the DSPy predictor to return shaped JSON for `turns_json`, `errors_json`, `messages_json`
@@ -475,7 +475,7 @@ print('Parse OK')
 
 ---
 
-### T3.8: Integration test — llm_judge_score with DSPy stub
+### T3.8: Integration test — llm_judge_score [x] with DSPy stub
 **Do:**
 1. In `tests/test_audit_judge_submodule.py`, add integration test
 2. Stub `dspy.Predict(JudgeSignature)` to return shaped JSON matching `NormalizedJudgeResponse`
