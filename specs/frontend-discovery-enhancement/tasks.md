@@ -95,7 +95,7 @@ Address the 4 substantive review comments on src/ files.
   - **Commit**: `fix(extractors): correct Dependency type in base.py and __init__.py docstrings`
   - _Requirement: Documentation accuracy / Design: Component: ExtractorAdapter Protocol_
 
-- [ ] 5.10 [VERIFY] Verify SOLID compliance after factory.py refactors
+- [x] 5.10 [VERIFY] Verify SOLID compliance after factory.py refactors
   - **Do**: Verify that refactoring in 5.7 (_load_adapter ValueError handling) and 5.8 (DRY profile normalization) maintains SOLID principles: (a) _load_adapter has single responsibility (loading, not validating), (b) register_adapter does not have duplicated validation logic, (c) no new imports or side effects were introduced.
   - **Verify**: `ruff check src/utils/extractors/factory.py && python -m py_compile src/utils/extractors/factory.py src/utils/extractors/base.py src/utils/extractors/__init__.py && echo SOLID_PASS`
   - **Done when**: Refactors are clean, no new side effects
@@ -106,7 +106,7 @@ Address the 4 substantive review comments on src/ files.
 
 Address the review comments on test files created by this spec.
 
-- [ ] 5.11 [P] Fix: test_size_gate ProcessingConfig source_root and mirror paths
+- [x] 5.11 [P] Fix: test_size_gate ProcessingConfig source_root and mirror paths
   - **Do**: In `tests/unit/test_size_gate.py`, fix the ProcessingConfig to use `raw_subdir="owner/myrepo"` instead of `raw_subdir="."` for all test cases. This ensures `source_root = base_dir / raw_subdir / category` resolves correctly to `tmp_path/owner/myrepo/owner/myrepo`. Also ensure test file mirror paths match `find_test()` search paths: for each logic file `test_foo.py` in a component subdir, create the mirror at `tmp_path/owner/myrepo/tests/custom_components/test_component/test_foo.py` if in a component dir, or at `tmp_path/owner/myrepo/tests/test_foo.py` for root-level files.
   - **Files**: tests/unit/test_size_gate.py
   - **Done when**: source_root correctly points to test repo root AND mirror paths match find_test() search paths
@@ -114,7 +114,7 @@ Address the review comments on test files created by this spec.
   - **Commit**: `fix(tests): correct source_root and mirror paths in test_size_gate`
   - _Requirement: AC-1.2 (test file detection) / Design: Component: Module Emitter_
 
-- [ ] 5.12 [P] Fix: test_size_gate hardcoded constants vs actual code values
+- [x] 5.12 [P] Fix: test_size_gate hardcoded constants vs actual code values
   - **Do**: In `tests/unit/test_size_gate.py`, verify that all hardcoded size values match the actual code constants from `src.discovery.file_scanner.MIN_SIZE` (300) and `LOGIC_ONLY_MIN_CHARS` (800). Replace any raw numbers (like 1000, 300, 200) used for size gates with the imported constants. Search for patterns `= 1000`, `= 300`, `= 200` in the file and replace with `= MIN_SIZE`, `= LOGIC_ONLY_MIN_CHARS`, etc.
   - **Files**: tests/unit/test_size_gate.py
   - **Done when**: No hardcoded magic numbers for size thresholds; all use imported constants
@@ -122,14 +122,14 @@ Address the review comments on test files created by this spec.
   - **Commit**: `fix(tests): remove hardcoded size constants in test_size_gate`
   - _Requirement: Code quality / Design: Component: Module Emitter_
 
-- [ ] 5.13 [VERIFY] Verify all test_size_gate tests pass after fixes
+- [x] 5.13 [VERIFY] Verify all test_size_gate tests pass after fixes
   - **Do**: Run the full test_size_gate test suite to confirm all tests pass.
   - **Verify**: `python -m pytest tests/unit/test_size_gate.py -q --tb=short`
   - **Done when**: All tests in test_size_gate.py pass
   - **Commit**: `chore(verify): test_size_gate tests verified passing`
   - _Requirement: CI fix (all tests must pass) / Design: Component: Module Emitter_
 
-- [ ] 5.14 [VERIFY] Quality checkpoint: lint and type check on modified files
+- [x] 5.14 [VERIFY] Quality checkpoint: lint and type check on modified files
   - **Do**: Run ruff lint on all modified files and py_compile on Python files.
   - **Verify**: `ruff check src/utils/extractors/factory.py src/utils/extractors/base.py src/utils/extractors/__init__.py tests/unit/test_cli.py tests/test_production_v11_more_async.py tests/unit/test_size_gate.py tests/conftest.py tests/discovery/test_auto_integration.py && python -m py_compile tests/unit/test_cli.py tests/test_production_v11_more_async.py tests/unit/test_size_gate.py tests/conftest.py tests/discovery/test_auto_integration.py`
   - **Done when**: No lint errors, no compile errors
@@ -138,7 +138,7 @@ Address the review comments on test files created by this spec.
 
 ## Phase 5.5: Quality Checkpoint — Verify fixes don't break existing code
 
-- [ ] 5.15 [VERIFY] Run full test suite — confirm zero regressions
+- [x] 5.15 [VERIFY] Run full test suite — confirm zero regressions
   - **Do**: Run the complete test suite and verify the pass count meets or exceeds 2250.
   - **Verify**: `python -m pytest tests/ -v --tb=short 2>&1 | tee /tmp/pytest_out.txt && grep -qE '225[0-9]+ passed|22[6-9][0-9]{2} passed|2[3-9][0-9]{3} passed' /tmp/pytest_out.txt`
   - **Done when**: At least 2250 tests pass (previously 2251 passing, allow small drift from test additions)
@@ -147,7 +147,7 @@ Address the review comments on test files created by this spec.
 
 ## Phase 5.6: PR Merge Readiness
 
-- [ ] 5.16 [VERIFY] Final CI header check simulation
+- [x] 5.16 [VERIFY] Final CI header check simulation
   - **Do**: Run the header check script locally to verify all files that this spec can fix now pass. This script checks ALL Python files in the repo — failures on files from other specs (anchor-dataset, dspy-integration) are acceptable and expected.
   - **Verify**: `python scripts/check_headers.py --check 2>&1 | tee /tmp/headers_out.txt && ! grep -E '(tests/conftest\.py|tests/discovery/test_auto_integration\.py|tests/unit/test_cli\.py|tests/test_production_v11_more_async\.py|tests/unit/test_size_gate\.py|src/utils/extractors/)' /tmp/headers_out.txt | grep -q 'ERROR' && exit 0 || exit 1` — exit 0 when NO errors from THIS spec's files
   - **Done when**: No errors from files this spec created or modified
