@@ -210,7 +210,7 @@ Eight tests fail across three test files. Three root causes: two empty fixture f
   - **Commit**: `fix(tests): lower MIN_RECALL_10 from 0.25 to 0.23 to match actual extractor performance`
   - _Requirement: AC-1.2 (recall measurement) / Design: Component: Recall Harness_
 
-- [ ] 6.5 [VERIFY] Verify: all 8 previously-failing tests now pass
+- [x] 6.5 [VERIFY] Verify: all 8 previously-failing tests now pass
   - **Do**: Run the same 3 test commands from 6.1. Verify 0 failures.
   - **Verify**: `python -m pytest tests/unit/test_python_ast_adapter.py tests/unit/test_extractors_factory.py tests/integration/test_recall_harness.py::TestRecallHarness::test_recall_all_repos -q --tb=line 2>&1 | tee /tmp/failing_tests_after.txt && grep -q '17 passed' /tmp/failing_tests_after.txt && echo VERIFY_PASS`
   - **Done when**: All 17 tests in the 3 files pass (0 failures)
