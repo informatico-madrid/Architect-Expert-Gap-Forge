@@ -1,6 +1,6 @@
 {
   "phase": "execution",
-  "taskIndex": 22,
+  "taskIndex": 27,
   "totalTasks": 27,
   "taskIteration": 1,
   "maxTaskIterations": 5,
@@ -16,5 +16,8 @@
   "awaitingApproval": false,
   "nativeTaskMap": {},
   "nativeSyncEnabled": true,
-  "nativeSyncFailureCount": 0
+  "nativeSyncFailureCount": 0,
+  "repairIteration": 0,
+  "failedStory": null,
+  "originTaskIndex": null
 }

@@ -8,8 +8,7 @@
 Home Assistant sensor component - sample fixture for recall measurement.
 """
 
-from datetime import datetime, timedelta
-from typing import Callable
+from datetime import timedelta
 
 import logging
 
@@ -20,11 +19,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_API_KEY,
-    CONF_HOST,
     CONF_NAME,
-    CONF_UNIT_OF_MEASUREMENT,
-    DEVICE_CLASS_ENERGY,
     ENERGY_KILO_WATT_HOUR,
 )
 from homeassistant.core import HomeAssistant
@@ -36,7 +31,6 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .const import DOMAIN, MANUFACTURER
-import logging
 
 import aiohttp
 import async_timeout

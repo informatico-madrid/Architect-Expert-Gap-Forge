@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import types
-from typing import Any, Dict, List
+from typing import Any, List
 
 
 def raw_write_action(path: str, content: str, reasoning: str = "") -> str:

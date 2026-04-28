@@ -9,12 +9,9 @@ Home Assistant climate component - fixture for recall measurement.
 """
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from homeassistant.components.climate import (
-    ATTR_HVAC_MODE,
-    ATTR_TARGET_TEMP_HIGH,
-    ATTR_TARGET_TEMP_LOW,
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
@@ -24,12 +21,9 @@ from homeassistant.const import (
     ATTR_TEMPERATURE,
     CONF_NAME,
     TEMP_CELSIUS,
-    TEMP_FAHRENHEIT,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.temperature import display_temp
-import requests
 
 
 SUPPORT_FLAGS = (

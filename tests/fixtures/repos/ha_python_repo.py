@@ -17,7 +17,6 @@ Repository structure:
                 test_component.py
 """
 
-from pathlib import Path
 
 # Python component code
 PYTHON_COMPONENT_CODE = """

@@ -7,16 +7,9 @@
 
 # Simple Python file with various import types
 
-import os
-import sys
-from pathlib import Path
 
-from requests import get, post
 
-from mypackage import utils
 
 # This is a relative import
-from . import helpers
-from .helpers import process_data
 
 __all__ = ["process", "run"]

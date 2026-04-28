@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
+
 """End-to-end verification of auto-detection POC flow.
 
 This test verifies the complete auto-detection flow from:

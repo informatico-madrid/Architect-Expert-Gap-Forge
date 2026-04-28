@@ -23,7 +23,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 import requests
 
-from .const import DEFAULT_PORT, DOMAIN
+from .const import DEFAULT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 

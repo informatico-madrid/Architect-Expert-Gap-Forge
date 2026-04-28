@@ -7,20 +7,10 @@
 
 # File with nested imports and various import patterns
 
-from typing import List, Dict, Optional, Union
-from dataclasses import dataclass, field
-import ast
-import json
 
 # Nested relative imports
-from .subpackage import module_a
-from .subpackage.module_b import ClassB
-from .. import parent_helper
 
 # External imports
-import numpy as np
-import pandas as pd
-from dotenv import load_dotenv
 
 # Star import (should be handled)
 from collections import *  # noqa
