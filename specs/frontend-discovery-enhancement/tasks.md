@@ -186,7 +186,7 @@ Eight tests fail across three test files. Three root causes: two empty fixture f
   - **Commit**: None
   - _Requirement: Bug fix verification / Design: Component: ExtractorAdapter_
 
-- [ ] 6.2 [P] Fix fixture: populate simple_imports.py with real import statements
+- [x] 6.2 [P] Fix fixture: populate simple_imports.py with real import statements
   - **Do**: Replace the entire content of `tests/fixtures/python_samples/simple_imports.py` with a file that has real import statements the tests expect. The file must contain: `import os`, `import sys`, `import json`, `import ast`, `import dataclasses`, `from typing import List, Dict, Optional`, `from requests import get, post`, `from .local import module_a`, `from ..utils import helper`, `from ...package import something`. Remove `__all__` since it referenced undefined names `process` and `run`.
   - **Files**: tests/fixtures/python_samples/simple_imports.py
   - **Done when**: File contains all expected import lines and passes `ruff check`
@@ -194,7 +194,7 @@ Eight tests fail across three test files. Three root causes: two empty fixture f
   - **Commit**: `fix(tests): populate simple_imports.py fixture with real import statements`
   - _Requirement: AC-1.1 (dependency extraction) / Design: Component: PythonAstAdapter_
 
-- [ ] 6.3 [P] Fix fixture: populate nested_imports.py with real import statements
+- [x] 6.3 [P] Fix fixture: populate nested_imports.py with real import statements
   - **Do**: Replace the entire content of `tests/fixtures/python_samples/nested_imports.py` with a file that contains `from typing import List, Dict, Optional`, `from dataclasses import dataclass`, `import ast`, `import json`, `from collections import *`. Remove `__version__` since it is unused.
   - **Files**: tests/fixtures/python_samples/nested_imports.py
   - **Done when**: File contains typing, dataclasses, ast, json imports plus the existing star import

@@ -7,12 +7,8 @@
 
 # File with nested imports and various import patterns
 
-
-# Nested relative imports
-
-# External imports
-
-# Star import (should be handled)
-from collections import *  # noqa
-
-__version__ = "1.0.0"
+from typing import List, Dict, Optional  # noqa: F401
+from dataclasses import dataclass  # noqa: F401
+import ast  # noqa: F401
+import json  # noqa: F401
+from collections import *  # noqa: F401,F403

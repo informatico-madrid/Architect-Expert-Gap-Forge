@@ -7,9 +7,13 @@
 
 # Simple Python file with various import types
 
-
-
-
-# This is a relative import
-
-__all__ = ["process", "run"]
+import os  # noqa: F401
+import sys  # noqa: F401
+import json  # noqa: F401
+import ast  # noqa: F401
+import dataclasses  # noqa: F401
+from typing import List, Dict, Optional  # noqa: F401
+from requests import get, post  # noqa: F401
+from .local import module_a  # noqa: F401
+from ..utils import helper  # noqa: F401
+from ...package import something  # noqa: F401
