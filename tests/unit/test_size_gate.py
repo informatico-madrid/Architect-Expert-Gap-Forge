@@ -30,8 +30,8 @@ class TestSizeGates:
 
         AC-2.1: Files smaller than MIN_SIZE should be excluded from processing.
         """
-        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
-        repo_root = tmp_path / "owner" / "myrepo"
+        # Create repo structure: tmp_path/owner/myrepo/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo" / "owner" / "myrepo"
         repo_root.mkdir(parents=True)
 
         component = repo_root / "custom_components" / "test_component"
@@ -49,9 +49,14 @@ class TestSizeGates:
         small_file = component / "tiny.py"
         small_file.write_text("x = 1")  # Only 5 bytes
 
+        # Mirror test file at find_test() search path (namespace mirror)
+        mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
+        mirror_dir.mkdir(parents=True, exist_ok=True)
+        (mirror_dir / "test_tiny.py").write_text("import tiny\ntiny.main()")
+
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="owner/myrepo",
             output_subdir="output",
             category="owner/myrepo",
             profile="homeassistant",
@@ -91,8 +96,8 @@ class TestSizeGates:
 
         AC-2.1: Files at or above MIN_SIZE should be included in processing.
         """
-        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
-        repo_root = tmp_path / "owner" / "myrepo"
+        # Create repo structure: tmp_path/owner/myrepo/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo" / "owner" / "myrepo"
         repo_root.mkdir(parents=True)
 
         component = repo_root / "custom_components" / "test_component"
@@ -132,9 +137,14 @@ def filter_by_criteria(data, criteria):
 
         assert len(medium_file.read_text()) >= MIN_SIZE, "File should be at least MIN_SIZE"
 
+        # Mirror test file at find_test() search path (namespace mirror)
+        mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
+        mirror_dir.mkdir(parents=True, exist_ok=True)
+        (mirror_dir / "test_medium.py").write_text("import medium\nmedium.process_data([])")
+
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="owner/myrepo",
             output_subdir="output",
             category="owner/myrepo",
             profile="homeassistant",
@@ -163,8 +173,8 @@ def filter_by_criteria(data, criteria):
 
         AC-2.2: Files below LOGIC_ONLY_MIN_CHARS should not generate TYPE 3.
         """
-        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
-        repo_root = tmp_path / "owner" / "myrepo"
+        # Create repo structure: tmp_path/owner/myrepo/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo" / "owner" / "myrepo"
         repo_root.mkdir(parents=True)
 
         component = repo_root / "custom_components" / "test_component"
@@ -208,9 +218,14 @@ def filter_by_criteria(data, criteria):
             f"Actual size: {file_size}"
         )
 
+        # Mirror test file at find_test() search path (namespace mirror)
+        mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
+        mirror_dir.mkdir(parents=True, exist_ok=True)
+        (mirror_dir / "test_processor.py").write_text("import processor\nprocessor.process_data([])")
+
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="owner/myrepo",
             output_subdir="output",
             category="owner/myrepo",
             profile="homeassistant",
@@ -249,8 +264,8 @@ def filter_by_criteria(data, criteria):
 
         AC-2.2: Files at or above LOGIC_ONLY_MIN_CHARS should generate TYPE 3.
         """
-        # Create repo structure: tmp_path/owner/myrepo/custom_components/test_component/
-        repo_root = tmp_path / "owner" / "myrepo"
+        # Create repo structure: tmp_path/owner/myrepo/owner/myrepo/custom_components/test_component/
+        repo_root = tmp_path / "owner" / "myrepo" / "owner" / "myrepo"
         repo_root.mkdir(parents=True)
 
         component = repo_root / "custom_components" / "test_component"
@@ -393,6 +408,11 @@ def get_runtime_data(entry):
     return entry.runtime_data
 """)
 
+        # Mirror test file at find_test() search path (namespace mirror)
+        mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
+        mirror_dir.mkdir(parents=True, exist_ok=True)
+        (mirror_dir / "test_processor.py").write_text("import processor\nprocessor.complex_processor({})")
+
         file_size = len(large_file.read_text())
         assert file_size >= LOGIC_ONLY_MIN_CHARS, (
             f"File should be at least LOGIC_ONLY_MIN_CHARS ({LOGIC_ONLY_MIN_CHARS}). "
@@ -401,7 +421,7 @@ def get_runtime_data(entry):
 
         config = ProcessingConfig(
             base_dir=tmp_path,
-            raw_subdir=".",
+            raw_subdir="owner/myrepo",
             output_subdir="output",
             category="owner/myrepo",
             profile="homeassistant",
