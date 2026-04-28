@@ -46,7 +46,7 @@ All failing tests are test code bugs, not production code issues. Fix each one.
   - **Commit**: `fix(tests): populate THEORY_QUESTION_TEMPLATES in theory test`
   - _Requirement: CI fix (test bug) / Design: Component: PromptBuilder_
 
-- [ ] 5.5 [VERIFY] Fix test_generate_sample_async_poison_and_legacy — populate LEGACY_2023_PATTERNS
+- [x] 5.5 [VERIFY] Fix test_generate_sample_async_poison_and_legacy — populate LEGACY_2023_PATTERNS
   - **Do**: In `tests/test_production_v11_more_async.py` at the start of function `test_generate_sample_async_poison_and_legacy` (after line 97), add:
     ```python
     monkeypatch.setattr(pb_module, "LEGACY_2023_PATTERNS", [
