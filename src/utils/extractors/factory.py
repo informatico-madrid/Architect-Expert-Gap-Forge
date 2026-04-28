@@ -150,10 +150,11 @@ def register_adapter(profile: str, adapter_path: str) -> None:
         profile: The profile name to register.
         adapter_path: Fully qualified path to the adapter class.
     """
-    _ADAPTER_REGISTRY[profile.lower().strip()] = adapter_path
+    _profile = profile.lower().strip()
+    _ADAPTER_REGISTRY[_profile] = adapter_path
     # Clear cache for this profile if it exists
-    if profile.lower().strip() in _adapter_cache:
-        del _adapter_cache[profile.lower().strip()]
+    if _profile in _adapter_cache:
+        del _adapter_cache[_profile]
     logger.info("Registered new adapter for profile: %s", profile)
 
 
