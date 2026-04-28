@@ -126,6 +126,9 @@ def _load_adapter(adapter_path: str) -> ExtractorAdapter:
         module = __import__(module_path, fromlist=[class_name])
         adapter_class: Type[ExtractorAdapter] = getattr(module, class_name)
         return adapter_class()
+    except ValueError as e:
+        logger.error("Invalid adapter path (no module separator): %s", adapter_path)
+        raise RuntimeError(f"Invalid adapter path: {adapter_path}") from e
     except ImportError as e:
         logger.error("Failed to import adapter module: %s, error: %s", module_path, e)
         raise RuntimeError(f"Failed to load adapter: {adapter_path}") from e
