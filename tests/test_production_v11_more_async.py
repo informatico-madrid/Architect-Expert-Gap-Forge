@@ -98,6 +98,9 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
 
 def test_generate_sample_async_poison_and_legacy(monkeypatch):
     monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
+    monkeypatch.setattr(pb_module, "LEGACY_2023_PATTERNS", [
+        {"legacy_code": "# old 2023 code pattern"}
+    ])
     # Prepare a clean tool_call with long generated content (passes LDI)
     tool_json = {
         "name": "write_to_file",
