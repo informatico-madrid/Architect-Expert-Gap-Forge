@@ -60,7 +60,7 @@ All failing tests are test code bugs, not production code issues. Fix each one.
   - **Commit**: `fix(tests): populate LEGACY_2023_PATTERNS in poison/legacy test`
   - _Requirement: CI fix (test bug) / Design: Component: PromptBuilder_
 
-- [ ] 5.6 [VERIFY] Verify all 4 tests pass after fixes
+- [x] 5.6 [VERIFY] Verify all 4 tests pass after fixes
   - **Do**: Run pytest on the 4 test functions that were failing. Verify each passes: test_default_output_dir (5.3), test_generate_theory_sample_success_and_failure (5.4), test_generate_sample_async_poison_and_legacy (5.5), and test_main_async_theory_mode (was already passing).
   - **Verify**: `python -m pytest tests/unit/test_cli.py::TestDefaultValues::test_default_output_dir tests/test_production_v11_more_async.py::test_generate_theory_sample_success_and_failure tests/test_production_v11_more_async.py::test_generate_sample_async_poison_and_legacy tests/test_production_v11_more_async.py::test_main_async_theory_mode -q --tb=short`
   - **Done when**: All 4 tests pass
@@ -71,7 +71,7 @@ All failing tests are test code bugs, not production code issues. Fix each one.
 
 Address the 4 substantive review comments on src/ files.
 
-- [ ] 5.7 [P] Fix: add error handling for rsplit in factory.py _load_adapter
+- [x] 5.7 [P] Fix: add error handling for rsplit in factory.py _load_adapter
   - **Do**: In `src/utils/extractors/factory.py` at the `_load_adapter` function (around line 125), wrap `adapter_path.rsplit(".", 1)` in a try/except that catches `ValueError` and raises `RuntimeError(f"Invalid adapter path: {adapter_path}")`. The existing try/except only catches ImportError and AttributeError. This ensures _load_adapter has a single clear responsibility: load the class, validating input first.
   - **Files**: src/utils/extractors/factory.py
   - **Done when**: _load_adapter raises RuntimeError for non-dotted paths
@@ -79,7 +79,7 @@ Address the 4 substantive review comments on src/ files.
   - **Commit**: `fix(extractors): add ValueError handling for non-dotted adapter paths`
   - _Requirement: FR-1 (error handling) / Design: Component: Adapter Factory / SOLID: SRP_
 
-- [ ] 5.8 [P] Fix: DRY profile normalization in register_adapter
+- [x] 5.8 [P] Fix: DRY profile normalization in register_adapter
   - **Do**: In `src/utils/extractors/factory.py` in the `register_adapter` function (lines 150-153), extract `profile.lower().strip()` to a local variable `_profile` at the start of the function body and reuse it 3 times. After refactoring, verify `_profile` is used everywhere and `profile.lower().strip()` appears only twice in the file (once in get_adapter, once in register_adapter as `_profile = profile.lower().strip()`).
   - **Files**: src/utils/extractors/factory.py
   - **Done when**: Profile normalization computed once per function, reused via _profile variable
@@ -87,7 +87,7 @@ Address the 4 substantive review comments on src/ files.
   - **Commit**: `refactor(extractors): DRY profile normalization in register_adapter`
   - _Requirement: Code quality / Design: Component: Adapter Factory / SOLID: DRY_
 
-- [ ] 5.9 [P] Fix: Dependency docstring says TypedDict but is a dataclass (base.py + __init__.py)
+- [x] 5.9 [P] Fix: Dependency docstring says TypedDict but is a dataclass (base.py + __init__.py)
   - **Do**: Correct the docstring from "TypedDict" to "dataclass" in TWO places: (1) `src/utils/extractors/base.py` line 13: change "Dependency: TypedDict representing an extracted dependency" to "Dependency: dataclass representing an extracted dependency" (2) `src/utils/extractors/__init__.py` line 18: change "Dependency: TypedDict for extracted dependency information" to "Dependency: dataclass for extracted dependency information". Verify both files return 0 matches for grep 'TypedDict' in these files.
   - **Files**: src/utils/extractors/base.py, src/utils/extractors/__init__.py
   - **Done when**: Both docstrings accurately describe Dependency as a dataclass
@@ -154,7 +154,7 @@ Address the review comments on test files created by this spec.
   - **Commit**: `chore(fixes): header check passes for PR files`
   - _Requirement: CI fix (header check) / Design: Component: RepoProcessor_
 
-- [ ] 5.17 [VERIFY] Stage and commit all Phase 5 fixes
+- [x] 5.17 [VERIFY] Stage and commit all Phase 5 fixes
   - **Do**:
     1. Verify current branch: `git branch --show-current`
     2. Stage only files modified in this spec: `git add tests/conftest.py tests/discovery/test_auto_integration.py tests/unit/test_cli.py tests/test_production_v11_more_async.py tests/unit/test_size_gate.py src/utils/extractors/factory.py src/utils/extractors/base.py src/utils/extractors/__init__.py`
@@ -166,7 +166,7 @@ Address the review comments on test files created by this spec.
   - **Commit**: `fix(frontend-discovery): resolve all PR blockers`
   - _Requirement: CI fix (PR merge) / Design: Component: All_
 
-- [ ] 5.18 [VERIFY] Push branch and trigger CI
+- [x] 5.18 [VERIFY] Push branch and trigger CI
   - **Do**:
     1. Push to remote, capturing output: `git push -u origin rfactory-factory-frameworks 2>&1 | tee /tmp/push_out.txt`
     2. Wait 60s for CI to start, then check: `gh pr checks 2>/dev/null | grep -qE 'header-check|python-tests'` or if no PR exists: `echo "CI pushed, verify manually"`
