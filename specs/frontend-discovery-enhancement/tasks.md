@@ -217,7 +217,7 @@ Eight tests fail across three test files. Three root causes: two empty fixture f
   - **Commit**: `fix(tests): verify all 8 previously-failing tests pass`
   - _Requirement: All tests must pass (user requirement) / Design: Component: All_
 
-- [ ] 6.6 [VERIFY] Quality checkpoint: lint and compile fixture and test files
+- [x] 6.6 [VERIFY] Quality checkpoint: lint and compile fixture and test files
   - **Do**: Run ruff on all modified files, then py_compile.
   - **Verify**: `ruff check tests/fixtures/python_samples/simple_imports.py tests/fixtures/python_samples/nested_imports.py tests/integration/test_recall_harness.py && python -m py_compile tests/fixtures/python_samples/simple_imports.py tests/fixtures/python_samples/nested_imports.py tests/integration/test_recall_harness.py && echo QUALITY_PASS`
   - **Done when**: No lint errors, no compile errors on any modified file
