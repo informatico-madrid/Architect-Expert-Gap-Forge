@@ -32,7 +32,7 @@ All failing tests are test code bugs, not production code issues. Fix each one.
   - **Commit**: `fix(tests): correct output_dir default assertion in test_cli`
   - _Requirement: CI fix (test bug) / Design: Component: RepoProcessor_
 
-- [ ] 5.4 [VERIFY] Fix test_generate_theory_sample_success_and_failure — populate THEORY_QUESTION_TEMPLATES
+- [x] 5.4 [VERIFY] Fix test_generate_theory_sample_success_and_failure — populate THEORY_QUESTION_TEMPLATES
   - **Do**: In `tests/test_production_v11_more_async.py` at the start of function `test_generate_theory_sample_success_and_failure` (after line 57, after the existing `monkeypatch.setattr`), add:
     ```python
     monkeypatch.setattr(pb_module, "THEORY_QUESTION_TEMPLATES", [

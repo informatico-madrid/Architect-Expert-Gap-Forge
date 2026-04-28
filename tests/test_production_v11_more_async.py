@@ -55,6 +55,9 @@ def make_theory_frag(name: str = "T1") -> dict:
 
 def test_generate_theory_sample_success_and_failure(monkeypatch):
     monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
+    monkeypatch.setattr(pb_module, "THEORY_QUESTION_TEMPLATES", [
+        {"template": "Write theory about $section_title", "type": "doc"}
+    ])
     # Success: assistant returns <think>reason</think> + long answer (>150 chars)
     answer = "A" * 200
     content = f"<think>{'reasoning' * 30}</think>{answer}"
