@@ -10,7 +10,7 @@ Base types and interfaces for language extractors.
 
 This module defines the core abstractions for the extractor adapter pattern:
 - ParseError: Structured exception for parse failures
-- Dependency: TypedDict representing an extracted dependency
+- Dependency: dataclass representing an extracted dependency
 - ParseResult: Result container for parsed file content
 - ExtractorAdapter: Protocol defining the extractor interface
 """

@@ -15,7 +15,7 @@ multiple programming languages while maintaining a consistent interface.
 Main components:
 - ExtractorAdapter: Protocol defining the extractor interface
 - ParseError: Structured exception for parse failures
-- Dependency: TypedDict for extracted dependency information
+- Dependency: dataclass for extracted dependency information
 - get_adapter(): Factory function for lazy-loading language adapters
 """
 
