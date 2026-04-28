@@ -158,7 +158,7 @@ class TestDefaultValues:
     def test_default_output_dir(self):
         parser = build_parser()
         args = parser.parse_args([])
-        assert args.output_dir == "outputs"
+        assert args.output_dir == "datasets/anchors/v1/"
 
     def test_default_vllm_url(self):
         parser = build_parser()

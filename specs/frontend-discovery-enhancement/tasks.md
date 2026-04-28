@@ -24,7 +24,7 @@ Fix copyright headers on Python files created or modified by this spec. These ar
 
 All failing tests are test code bugs, not production code issues. Fix each one.
 
-- [ ] 5.3 [VERIFY] Fix test_default_output_dir assertion
+- [x] 5.3 [VERIFY] Fix test_default_output_dir assertion
   - **Do**: Change line 161 in `tests/unit/test_cli.py` from `assert args.output_dir == "outputs"` to `assert args.output_dir == "datasets/anchors/v1/"`. The CLI default was changed by the anchor-dataset spec (not this spec) but the test assertion was not updated.
   - **Files**: tests/unit/test_cli.py
   - **Done when**: Assertion matches the actual CLI default
