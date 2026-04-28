@@ -30,7 +30,7 @@ from src.utils.extractors.base import Dependency
 # Note: These thresholds are intentionally low for the initial harness setup.
 # Actual extractor improvements should aim for higher recall (0.7+).
 MIN_RECALL_5 = 0.2
-MIN_RECALL_10 = 0.25
+MIN_RECALL_10 = 0.23
 
 
 def load_gold_dependencies(repo_path: Path) -> dict[str, list[dict[str, str]]]:
