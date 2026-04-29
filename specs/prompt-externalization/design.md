@@ -185,7 +185,7 @@ This spec creates static YAML files. No code is written, no functions tested. Ve
 | Aspect | Verification | Method |
 |---|---|---|
 | YAML validity | All 7 files parse | `yaml.safe_load()` |
-| English content | No Spanish text in output | `grep -P '[a-z]{3,}' ` pattern check |
+| English content | No Spanish text in output | `grep -P '[áéíóúÁÉÍÓÚñÑ]' ` pattern check |
 | Schema compliance | All files have `prompts` top-level key | Structural check |
 | Prompt count | Source count = output count | Count comparison |
 

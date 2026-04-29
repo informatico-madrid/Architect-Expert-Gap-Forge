@@ -2,12 +2,12 @@
   "source": "spec",
   "name": "code-review-classification",
   "basePath": "specs/code-review-classification",
-  "phase": "tasks",
-  "taskIndex": 0,
+  "phase": "execution",
+  "taskIndex": 14,
   "totalTasks": 82,
   "taskIteration": 1,
   "maxTaskIterations": 5,
-  "globalIteration": 1,
+  "globalIteration": 15,
   "maxGlobalIterations": 100,
   "repairIteration": 0,
   "failedStory": null,
@@ -19,8 +19,14 @@
   "modificationMap": {},
   "maxModificationsPerTask": 3,
   "maxModificationDepth": 2,
-  "awaitingApproval": true,
+  "awaitingApproval": false,
   "nativeTaskMap": {},
   "nativeSyncEnabled": true,
-  "nativeSyncFailureCount": 0
+  "nativeSyncFailureCount": 0,
+  "chat": {
+    "executor": {
+      "lastReadLine": 11
+    }
+  },
+  "task": 14
 }

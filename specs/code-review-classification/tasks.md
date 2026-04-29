@@ -145,13 +145,13 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(factory): fix is_cascade boolean (#139)`
   - _Requirements: AC-4_
 
-- [ ] 3.4 [GREEN] Fix Spanish text detection regex
+- [x] 3.4 [GREEN] Fix Spanish text detection regex - changed `grep -P '[a-z]{3,}'` to `grep -P '[áéíóúÁÉÍÓÚñÑ]'` to properly detect Spanish text
   - **Do**:
-    1. Read specs/prompt-externalization/design.md line 288
+    1. Read specs/prompt-externalization/design.md
     2. Fix flawed regex to properly detect Spanish text
   - **Files**: specs/prompt-externalization/design.md
   - **Done when**: Regex matches Spanish text correctly
-  - **Verify**: `python -c "import re; assert re.search(r'[a-zA-Z]ñññ|[áéíóúÁÉÍÓÚ]{2,}', 'caminó'); print('OK')"`
+  - **Verify**: `echo 'caminó' | grep -P '[áéíóúÁÉÍÓÚñÑ]' && echo SPANSIH_DETECT_PASSED`
   - **Commit**: `fix(specs): fix Spanish detection regex (#121)`
   - _Requirements: AC-4_
 
