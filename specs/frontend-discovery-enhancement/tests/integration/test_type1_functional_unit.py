@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-# Architect-Expert-Gap-Forge (AEGF)
-# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
-# SPDX-License-Identifier: Apache-2.0
 """Integration test for TYPE 1 FUNCTIONAL_UNIT bundle generation.
 
 Verifies that Type 1 bundles include [ARCH_HEADER] with dependencies
@@ -90,26 +87,56 @@ class TestType1FunctionalUnit:
                 "manifest.json": json.dumps(_MANIFEST),
                 "module.py": """
 def calculate_total(items):
+    '''Calculate the total price from a list of item dictionaries.
+
+    Each item must have a 'price' key. Returns the sum of all prices.
+    Handles edge cases such as empty lists and missing values.
+    '''
     total = 0
     for item in items:
-        total += item['price']
+        total += item.get('price', 0)
     return total
 
 def apply_discount(total, discount_pct):
+    '''Apply a percentage discount to a total amount.
+
+    discount_pct: integer between 0 and 100
+    Returns the discounted total.
+    '''
     return total * (1 - discount_pct / 100)
+
+def format_currency(amount, symbol='$'):
+    '''Format a numeric amount as a currency string.
+
+    Handles integers and floats. Returns a formatted string.
+    '''
+    return f"{symbol}{amount:.2f}"
 """.strip(),
                 "test_module.py": """
 import module
 
 def test_calculate_total():
-    items = [{'price': 10}, {'price': 20}]
+    items = [{'price': 10}, {'price': 20}, {'price': 30}]
     result = module.calculate_total(items)
-    assert result == 30
+    assert result == 60
+
+def test_calculate_total_empty():
+    result = module.calculate_total([])
+    assert result == 0
 
 def test_apply_discount():
     total = 100
     result = module.apply_discount(total, 10)
     assert result == 90
+
+def test_apply_discount_no_discount():
+    total = 100
+    result = module.apply_discount(total, 0)
+    assert result == 100
+
+def test_format_currency():
+    result = module.format_currency(42.5)
+    assert result == '$42.50'
 """,
             },
         )
@@ -148,7 +175,7 @@ def test_apply_discount():
             "tsrepo",
             {
                 "manifest.json": json.dumps(_MANIFEST),
-                "utils/format.ts": """
+                "format.ts": """
 export function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -163,14 +190,52 @@ export function formatDate(date: Date): string {
         day: 'numeric',
     });
 }
+
+export function formatPercentage(value: number, decimals: number = 2): string {
+    return (value * 100).toFixed(decimals) + '%';
+}
+
+export function parseCurrency(input: string): number {
+    return parseFloat(input.replace(/[^0-9.-]/g, ''));
+}
 """.strip(),
                 "test_format.ts": """
-import { formatCurrency } from './utils/format';
+import { formatCurrency, formatDate, formatPercentage, parseCurrency } from './format';
 
 describe('formatCurrency', () => {
     it('formats number correctly', () => {
         const result = formatCurrency(100);
         expect(result).toBe('$100.00');
+    });
+
+    it('handles decimals', () => {
+        const result = formatCurrency(99.99);
+        expect(result).toBe('$99.99');
+    });
+
+    it('handles zero', () => {
+        const result = formatCurrency(0);
+        expect(result).toBe('$0.00');
+    });
+});
+
+describe('formatDate', () => {
+    it('formats a date correctly', () => {
+        const date = new Date(2024, 0, 15);
+        const result = formatDate(date);
+        expect(result).toContain('January');
+    });
+});
+
+describe('formatPercentage', () => {
+    it('formats percentage correctly', () => {
+        expect(formatPercentage(0.5)).toBe('50.00%');
+    });
+});
+
+describe('parseCurrency', () => {
+    it('parses a currency string', () => {
+        expect(parseCurrency('$100.50')).toBe(100.5);
     });
 });
 """,
@@ -210,14 +275,47 @@ describe('formatCurrency', () => {
                 "manifest.json": json.dumps(_MANIFEST),
                 "helper.py": """
 def get_env_variable(name: str, default: str = '') -> str:
+    '''Get an environment variable by name with a default fallback.
+
+    Args:
+        name: The environment variable name to look up.
+        default: The default value if the variable is not set.
+
+    Returns:
+        The value of the environment variable or the default.
+    '''
     import os
     return os.environ.get(name, default)
 
 def parse_int(value: str) -> int:
+    '''Safely parse an integer from a string.
+
+    Returns 0 if the value cannot be parsed.
+
+    Args:
+        value: The string to parse.
+
+    Returns:
+        The parsed integer or 0 on failure.
+    '''
     try:
         return int(value)
     except (ValueError, TypeError):
         return 0
+
+def safe_divide(a: float, b: float) -> float:
+    '''Safely divide two numbers, returning 0 if divisor is zero.
+
+    Args:
+        a: The numerator.
+        b: The denominator.
+
+    Returns:
+        The quotient or 0.
+    '''
+    if b == 0:
+        return 0.0
+    return a / b
 """.strip(),
             },
         )
@@ -239,21 +337,60 @@ def parse_int(value: str) -> int:
             "crosslang",
             {
                 "manifest.json": json.dumps(_MANIFEST),
-                "api/client.py": """
+                "api_client.py": """
 class APIClient:
+    '''A simple HTTP API client for making GET requests.
+
+    This client handles base URL configuration and provides
+    a clean interface for fetching JSON data from REST APIs.
+    '''
     def __init__(self, base_url: str):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip('/')
 
     def get(self, endpoint: str) -> dict:
+        '''Fetch JSON data from the given API endpoint.
+
+        Args:
+            endpoint: The API path to request (without base URL).
+
+        Returns:
+            A parsed JSON dictionary from the response.
+        '''
         import requests
         response = requests.get(f"{self.base_url}/{endpoint}")
         return response.json()
+
+    def health_check(self) -> bool:
+        '''Check if the API server is reachable.
+
+        Returns:
+            True if the server responds with status 200, False otherwise.
+        '''
+        import requests
+        try:
+            response = requests.get(f"{self.base_url}/health", timeout=5)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
 """,
-                "api/types.ts": """
+                "api_types.ts": """
 export interface ApiResponse<T> {
     data: T;
     status: number;
     message: string;
+}
+
+export interface PaginatedResponse<T> {
+    items: T[];
+    total: number;
+    page: number;
+    per_page: number;
+}
+
+export interface ApiError {
+    code: string;
+    message: string;
+    details?: Record<string, unknown>;
 }
 """.strip(),
             },
@@ -283,12 +420,39 @@ export interface ApiResponse<T> {
                 "manifest.json": json.dumps(_MANIFEST),
                 "module.py": """
 def process_data(data: list) -> list:
+    '''Process a list of data items and transform them.
+
+    Each item is expected to have 'id' and 'value' keys.
+    The value is doubled during processing.
+
+    Args:
+        data: List of dictionaries with id and value keys.
+
+    Returns:
+        List of processed dictionaries with updated values.
+    '''
     results = []
     for item in data:
         processed = {'id': item.get('id'), 'value': item.get('value', 0) * 2}
         results.append(processed)
     return results
-""".strip(),
+
+def validate_input(data: list) -> bool:
+    '''Validate that input data has the expected structure.
+
+    Args:
+        data: List of dictionaries to validate.
+
+    Returns:
+        True if all items have required keys, False otherwise.
+    '''
+    for item in data:
+        if not isinstance(item, dict):
+            return False
+        if 'id' not in item:
+            return False
+    return True
+""",
                 "test_module.py": """
 import module
 
@@ -297,11 +461,31 @@ def test_process_data():
     result = module.process_data(data)
     assert len(result) == 1
     assert result[0]['value'] == 10
+
+def test_process_data_empty():
+    result = module.process_data([])
+    assert result == []
+
+def test_process_data_multiple():
+    data = [{'id': 1, 'value': 5}, {'id': 2, 'value': 10}]
+    result = module.process_data(data)
+    assert len(result) == 2
+    assert result[0]['value'] == 10
+    assert result[1]['value'] == 20
+
+def test_validate_input():
+    data = [{'id': 1}, {'id': 2}]
+    assert module.validate_input(data) is True
+
+def test_validate_invalid():
+    data = ['not a dict']
+    assert module.validate_input(data) is False
 """,
                 "README.md": """
 # Full Suite Test
 This repository tests all fragment types.
-""",
+It includes logic files, test files, and documentation.
+""".strip(),
                 ".gitignore": """
 *.pyc
 __pycache__/

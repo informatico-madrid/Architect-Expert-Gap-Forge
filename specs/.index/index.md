@@ -3,15 +3,15 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-04-25T15:38:32Z
+**Last updated:** 2026-04-29T07:02:11Z
 
 ## Directories (1)
 
 | Directory | Specs | Default |
 |-----------|-------|---------|
-| ./specs | 21 | Yes |
+| ./specs | 32 | Yes |
 
-## All Specs (21)
+## All Specs (32)
 
 | Spec | Directory | Phase | Status |
 |------|-----------|-------|--------|
@@ -33,14 +33,29 @@ See [index-state.json](./index-state.json) for machine-readable data.
 | yaml-adapter | ./specs | tasks | 0
 0/0
 0 tasks |
-| frontend-discovery-enhancement | ./specs | execution | 22/27 tasks |
+| frontend-discovery-enhancement | ./specs | completed | done |
 | module-discovery-auto | ./specs | execution | 50/50 tasks |
 | aegf-infrastructure | ./specs | research |  |
 | _epics | ./specs | new |  |
-| baseline-measurement | ./specs | execution | 46/45 tasks |
-| prompt-externalization | ./specs | execution | 10/12 tasks |
-| anchor-dataset | ./specs | new |  |
+| baseline-measurement | ./specs | tasks | 0
+0/0
+0 tasks |
+| prompt-externalization | ./specs | completed | done |
+| anchor-dataset | ./specs | completed | done |
 | dependency-compatibility | ./specs | research | awaiting approval |
+| module-discovery-strategy-auto | ./specs | research | awaiting approval |
+| dspy-integration | ./specs | tasks | 0
+0/0
+0 tasks |
+| 001-dataset-mixing | ./specs | new |  |
+| 002-agentic-preservation | ./specs | new |  |
+| 003-multi-language-training | ./specs | new |  |
+| 004-eic-integration-gate | ./specs | new |  |
+| 005-migration-state | ./specs | new |  |
+| 006-langgraph-graph | ./specs | new |  |
+| 007-langgraph-conditional-edges | ./specs | new |  |
+| 008-langgraph-interrupt | ./specs | new |  |
+| 009-langgraph-checkpointing | ./specs | new |  |
 
 ---
 

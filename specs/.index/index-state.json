@@ -1,10 +1,10 @@
 {
   "version": "1.0",
-  "updated": "2026-04-25T15:38:32Z",
+  "updated": "2026-04-29T07:02:11Z",
   "directories": [
     {
       "path": "./specs",
-      "specsCount": 21,
+      "specsCount": 32,
       "isDefault": true
     }
   ],
@@ -102,9 +102,9 @@
     {
       "name": "frontend-discovery-enhancement",
       "path": "./specs/frontend-discovery-enhancement",
-      "phase": "execution",
-      "taskIndex": 22,
-      "totalTasks": 27
+      "phase": "completed",
+      "taskIndex": 26,
+      "totalTasks": 26
     },
     {
       "name": "module-discovery-auto",
@@ -126,27 +126,83 @@
     {
       "name": "baseline-measurement",
       "path": "./specs/baseline-measurement",
-      "phase": "execution",
-      "taskIndex": 46,
-      "totalTasks": 45
+      "phase": "tasks"
     },
     {
       "name": "prompt-externalization",
       "path": "./specs/prompt-externalization",
-      "phase": "execution",
-      "taskIndex": 10,
+      "phase": "completed",
+      "taskIndex": 12,
       "totalTasks": 12
     },
     {
       "name": "anchor-dataset",
       "path": "./specs/anchor-dataset",
-      "phase": "new"
+      "phase": "completed",
+      "taskIndex": 43,
+      "totalTasks": 43
     },
     {
       "name": "dependency-compatibility",
       "path": "./specs/dependency-compatibility",
       "phase": "research",
       "awaitingApproval": true
+    },
+    {
+      "name": "module-discovery-strategy-auto",
+      "path": "./specs/module-discovery-strategy-auto",
+      "phase": "research",
+      "awaitingApproval": true
+    },
+    {
+      "name": "dspy-integration",
+      "path": "./specs/dspy-integration",
+      "phase": "tasks"
+    },
+    {
+      "name": "001-dataset-mixing",
+      "path": "./specs/001-dataset-mixing",
+      "phase": "new"
+    },
+    {
+      "name": "002-agentic-preservation",
+      "path": "./specs/002-agentic-preservation",
+      "phase": "new"
+    },
+    {
+      "name": "003-multi-language-training",
+      "path": "./specs/003-multi-language-training",
+      "phase": "new"
+    },
+    {
+      "name": "004-eic-integration-gate",
+      "path": "./specs/004-eic-integration-gate",
+      "phase": "new"
+    },
+    {
+      "name": "005-migration-state",
+      "path": "./specs/005-migration-state",
+      "phase": "new"
+    },
+    {
+      "name": "006-langgraph-graph",
+      "path": "./specs/006-langgraph-graph",
+      "phase": "new"
+    },
+    {
+      "name": "007-langgraph-conditional-edges",
+      "path": "./specs/007-langgraph-conditional-edges",
+      "phase": "new"
+    },
+    {
+      "name": "008-langgraph-interrupt",
+      "path": "./specs/008-langgraph-interrupt",
+      "phase": "new"
+    },
+    {
+      "name": "009-langgraph-checkpointing",
+      "path": "./specs/009-langgraph-checkpointing",
+      "phase": "new"
     }
   ]
 }
