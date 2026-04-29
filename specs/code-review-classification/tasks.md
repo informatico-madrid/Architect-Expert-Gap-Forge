@@ -627,7 +627,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix Type 3 LOGIC_ONLY scope (#102)`
   - _Requirements: AC-9_
 
-- [ ] 12.3 [GREEN] Fix overlapping task line ranges
+- [x] 12.3 [GREEN] Fix overlapping task line ranges
   - **Do**:
     1. Read specs/module-discovery-auto/tasks.md lines 285-478, 309-503, 334-528 for overlaps (#108)
     2. Adjust line ranges to eliminate overlap

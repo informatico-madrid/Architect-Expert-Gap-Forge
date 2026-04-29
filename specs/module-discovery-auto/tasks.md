@@ -15,7 +15,7 @@
 **Do:** Create the `_detect_strategy()` function in `src/discovery/file_scanner.py` after `_discover_by_yaml()`.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Line 650 (insert after `_discover_by_yaml()` return)
+- `src/discovery/file_scanner.py` - Line 668 (insert after `_discover_by_yaml()` return)
 
 **Done:**
 - Function signature matches specification
@@ -44,7 +44,7 @@ strategy.
 **Do:** Add YAML file detection to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 652-678 (YAML detection block)
+- `src/discovery/file_scanner.py` - Lines 730-740 (YAML detection block)
 
 **Done:**
 - Scans for .yaml, .yml, .jinja, .jinja2 files
@@ -73,7 +73,7 @@ non-source directories.
 **Do:** Add TypeScript file detection to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 680-695 (TypeScript detection block)
+- `src/discovery/file_scanner.py` - Lines 742-748 (TypeScript detection block)
 
 **Done:**
 - Scans for .ts and .tsx files
@@ -102,7 +102,7 @@ directories.
 **Do:** Add PHP file detection to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 697-710 (PHP detection block)
+- `src/discovery/file_scanner.py` - Lines 750-762 (PHP detection block)
 
 **Done:**
 - Scans for .php files
@@ -130,7 +130,7 @@ Scans for .php files while excluding vendor, cache, and test directories.
 **Do:** Add manifest.json detection to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 712-718 (manifest.json detection block)
+- `src/discovery/file_scanner.py` - Lines 764-771 (manifest.json detection block)
 
 **Done:**
 - Scans for manifest.json files using rglob
@@ -155,7 +155,7 @@ Uses rglob for efficient recursive search.
 **Do:** Add __init__.py detection to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 720-726 (__init__.py detection block)
+- `src/discovery/file_scanner.py` - Lines 773-782 (__init__.py detection block)
 
 **Done:**
 - Scans for __init__.py files using rglob
@@ -180,7 +180,7 @@ Uses rglob for efficient recursive search.
 **Do:** Add directory fallback to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 728-730 (directory fallback)
+- `src/discovery/file_scanner.py` - Lines 784-785 (directory fallback)
 
 **Done:**
 - Returns "directory" if no patterns match
@@ -283,7 +283,7 @@ Verify auto-detection works end-to-end for all repository types.
 **Do:** Add try-except for permission errors in YAML detection.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 762-769 (YAML with exception handling)
+- `src/discovery/file_scanner.py` - Lines 730-740 (YAML with exception handling)
 
 **Done:**
 - Wraps YAML scan in try-except PermissionError
@@ -308,7 +308,7 @@ Handle PermissionError gracefully when scanning YAML files.
 **Do:** Add try-except for permission errors in TypeScript detection.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 773-777 (TypeScript with exception handling)
+- `src/discovery/file_scanner.py` - Lines 742-748 (TypeScript with exception handling)
 
 **Done:**
 - Wraps TS scan in try-except
@@ -333,7 +333,7 @@ Handle PermissionError gracefully when scanning TypeScript files.
 **Do:** Add try-except for permission errors in PHP detection.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 742-750 (PHP with exception handling)
+- `src/discovery/file_scanner.py` - Lines 750-762 (PHP with exception handling)
 
 **Done:**
 - Wraps PHP scan in try-except PermissionError
@@ -358,7 +358,7 @@ Handle PermissionError gracefully when scanning PHP files.
 **Do:** Add try-except for OSError (broken symlinks) in manifest.json scan.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 732-738 (manifest with exception handling)
+- `src/discovery/file_scanner.py` - Lines 764-771 (manifest with exception handling)
 
 **Done:**
 - Wraps manifest scan in try-except OSError
@@ -383,7 +383,7 @@ Handle OSError gracefully when scanning for manifest.json files.
 **Do:** Add try-except for OSError (broken symlinks) in __init__.py scan.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 753-759 (__init__.py with exception handling)
+- `src/discovery/file_scanner.py` - Lines 773-782 (__init__.py with exception handling)
 
 **Done:**
 - Wraps __init__.py scan in try-except OSError
@@ -459,7 +459,7 @@ Add debug-level logging showing counts for each detection type.
 **Do:** Optimize YAML detection for performance.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 762-769 (optimized YAML scan)
+- `src/discovery/file_scanner.py` - Lines 730-740 (optimized YAML scan)
 
 **Done:**
 - Single-pass scan with early exit
@@ -484,7 +484,7 @@ Optimize YAML detection with single-pass scan and early exit.
 **Do:** Optimize TypeScript detection for performance.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 773-777 (optimized TS scan)
+- `src/discovery/file_scanner.py` - Lines 742-748 (optimized TS scan)
 
 **Done:**
 - Single-pass scan with early exit
@@ -509,7 +509,7 @@ Optimize TypeScript detection with single-pass scan and early exit.
 **Do:** Optimize PHP detection for performance.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 742-750 (optimized PHP scan)
+- `src/discovery/file_scanner.py` - Lines 750-762 (optimized PHP scan)
 
 **Done:**
 - Single-pass scan with early exit
@@ -534,7 +534,7 @@ Optimize PHP detection with single-pass scan and early exit.
 **Do:** Add type hints to _detect_strategy() function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 720-725 (type hints)
+- `src/discovery/file_scanner.py` - Lines 668-669 (type hints)
 
 **Done:**
 - Type hint: `root: Path`
@@ -633,7 +633,7 @@ Add auto strategy handling in RepoProcessor for repository processing.
 **Do:** Add comprehensive docstring with examples.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 720-725 (docstring)
+- `src/discovery/file_scanner.py` - Lines 669-718 (docstring)
 
 **Done:**
 - Documents detection priority order
