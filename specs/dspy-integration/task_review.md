@@ -57,18 +57,6 @@
 
 ---
 
-### [T1.5] Scaffold CalibrationSignature file
-- status: PASS
-- severity: none
-- reviewed_at: 2026-04-27T14:10:00Z
-- criterion_failed: none
-- evidence: |
-  `python -c "from src.audit.calibration_signature import CalibrationSignature; print(len(CalibrationSignature.input_fields), len(CalibrationSignature.output_fields))"` → 8 4
-  Input/output field counts match spec.
-- fix_hint: N/A
-
----
-
 ### [T1.6] Define CalibrationSignature docstring with bug #2 fix
 - status: PASS
 - severity: none

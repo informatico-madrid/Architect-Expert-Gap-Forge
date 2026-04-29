@@ -584,7 +584,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix verify commands (#92,#93,#94)`
   - _Requirements: AC-9_
 
-- [ ] 11.5 [GREEN] Fix duplicate task ID and value mismatches
+- [x] 11.5 [GREEN] Fix duplicate task ID and value mismatches
   - **Do**:
     1. Read line 60 of specs/dspy-integration/task_review.md for duplicate T1.5 (#95)
     2. Read specs/frontend-discovery-enhancement/.progress.md lines 116-117, 296-297 for value mismatches (#96, #97)
