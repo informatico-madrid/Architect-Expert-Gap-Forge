@@ -506,7 +506,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 10: Spec Documentation — Contradictions
 
-- [ ] 10.1 [RED] Verify spec contradiction bugs exist
+- [x] 10.1 [RED] Verify spec contradiction bugs exist
   - **Do**:
     1. Read specs/002-agentic-preservation/plan.md for AC contradiction (#46)
     2. Read specs/anchor-dataset/design.md for exception handling contradiction (#67)
