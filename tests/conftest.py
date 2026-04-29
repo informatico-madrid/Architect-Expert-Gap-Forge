@@ -133,12 +133,6 @@ def sample_record():
     )
 
 
-def _load_fixture(filename: str) -> dict[str, Any]:
-    """Load a golden JSON fixture file."""
-    path = Path(__file__).parent / "fixtures" / filename
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 @pytest.fixture
 def golden_sample() -> SampleRecord:
     """Load a golden SampleRecord from fixture.
