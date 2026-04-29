@@ -248,7 +248,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): replace os.chdir() with context manager (#38)`
   - _Requirements: AC-3_
 
-- [ ] 5.4 [GREEN] Fix os.fsync() fd usage in requirements.md
+- [x] 5.4 [GREEN] Fix os.fsync() fd usage in requirements.md
   - **Do**:
     1. Read specs/anchor-dataset/requirements.md for os.fsync() (#75)
     2. Fix: use file descriptor (int) instead of path string

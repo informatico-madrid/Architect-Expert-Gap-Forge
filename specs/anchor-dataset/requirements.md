@@ -158,7 +158,7 @@ As the dataset builder, I want generated samples exported to JSONL format with a
 
 **Acceptance Criteria:**
 - [ ] AC-10.1: Samples written to `datasets/anchors/v1/anchor_dataset.jsonl` (one JSON object per line, no wrapper array)
-- [ ] AC-10.2: Atomic write: write to `<output>.tmp` then `os.rename(tmp, output)`, then `os.fsync()` on the output file
+- [ ] AC-10.2: Atomic write: write to `<output>.tmp` then `os.rename(tmp, output)`, open the output file, call `os.fsync(fd)` on its file descriptor, then close the file
 - [ ] AC-10.3: Each line is a valid JSON object matching the `AnchorRecord` Pydantic schema
 - [ ] AC-10.4: Manifest written to `datasets/anchors/v1/anchor_manifest.json` with: `version` ("v1"), `created` (ISO8601 timestamp), `total_samples`, `domain_distribution` (dict with counts per domain), `difficulty_distribution` (dict with counts per difficulty), `provider_used` (string), `circuit_breaker_triggered` (bool), `failed_sample_count` (int)
 - [ ] AC-10.5: Manifest includes domain_distribution and difficulty_distribution matching the enforced distribution (US-3)
