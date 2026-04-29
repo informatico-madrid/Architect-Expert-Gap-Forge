@@ -46,4 +46,4 @@ def test_load_persisted_sample_with_ha_standards_key_raises_typeerror(tmp_path):
     p.write_text(json.dumps(payload, ensure_ascii=False))
 
     with pytest.raises(TypeError):
-        load_persisted_sample(str(tmp_path / "nonexistent_dir"))
+        load_persisted_sample(str(tmp_path))
