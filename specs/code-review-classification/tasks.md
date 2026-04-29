@@ -734,7 +734,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 14: Remaining Code & Test Fixes
 
-- [ ] 14.1 [RED] Verify remaining code/test bugs exist
+- [x] 14.1 [RED] Verify remaining code/test bugs exist
   - **Do**:
     1. Read infrastructure/dependency_check.py for find_spec() exception handling (#8)
     2. Read infrastructure/anchor_dataset/anchor_providers.py lines 282-283 for judge_scores AttributeError (#32)
