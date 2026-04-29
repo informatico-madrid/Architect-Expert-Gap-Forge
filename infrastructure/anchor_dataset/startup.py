@@ -32,7 +32,7 @@ class StartupValidator:
         self.warnings: list[str] = []
 
     def dry_run(self, config: AnchorsConfig) -> list[str]:
-        """Run all validation steps without side effects. Returns list of warnings."""
+        """Run validation steps without writing or mutating configuration. Returns list of warnings."""
         self.warnings = []
         self._validate_args(config)
         self._validate_api_keys(config)
