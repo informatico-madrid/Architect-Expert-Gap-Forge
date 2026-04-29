@@ -128,7 +128,7 @@ All known CVEs in transitive dependencies are documented and tracked. Known risk
 | Vulnerable package | `litellm==1.82.6` (transitive via `dspy==3.2.0`) |
 | CVE count | 6 (2 Critical, 4 High) |
 | Patched version | `litellm>=1.83.7` |
-| Blocker | `dspy<=3.2.0` pins `litellm<=1.82.6` |
+| Blocker | `dspy==3.2.0` pins `litellm<=1.82.6` |
 | Options | (A) Accept risk + monitor for dspy update; (B) Patch dspy pin manually; (C) Block merge; (D) Accept with automated CVE monitoring (GitHub Dependabot or Snyk) |
 | Sign-off required by | Project security lead or tech lead |
 

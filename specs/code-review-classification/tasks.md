@@ -282,7 +282,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(config): resolve profile config contradiction (#11)`
   - _Requirements: AC-5_
 
-- [ ] 6.3 [GREEN] Fix dspy version notation
+- [x] 6.3 [GREEN] Fix dspy version notation
   - **Do**:
     1. Read line 64 of specs/dependency-compatibility/requirements.md
     2. Change `dspy<=3.2.0` to `dspy==3.2.0` to match exact pin on line 21
