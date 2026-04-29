@@ -711,7 +711,7 @@ dspy==3.2.0
 ├── typeguard==4.4.3
 
 langgraph==0.2.76
-├── langchain-core!=0.3.x,>=0.2.43,<0.4.0
+├── langchain-core>=0.2.43,<0.4.0
 │   ├── jsonpatch
 │   │   └── jsonpointer
 │   ├── langsmith
