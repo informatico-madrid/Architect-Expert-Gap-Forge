@@ -43,7 +43,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): remove hardcoded API key fallback (#17)`
   - _Requirements: AC-2_
 
-- [ ] 1.3 [GREEN] Fix symlink security check in measure_mipro_compile_baseline.py
+- [x] 1.3 [GREEN] Fix symlink security check in measure_mipro_compile_baseline.py
   - **Do**:
     1. Read lines 207-211 of infrastructure/baselines/measure_mipro_compile_baseline.py
     2. Move `os.path.islink()` check BEFORE `resolve()` call

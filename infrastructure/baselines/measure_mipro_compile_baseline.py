@@ -194,20 +194,26 @@ def _impl(args: argparse.Namespace) -> int:
 
     # ── Step 4: Output path validation ───────────────────────────────────
     output_path = Path(args.output)
-    output_parent = output_path.parent.resolve()
+    output_parent = output_path.parent
+
+    # Validate output parent is NOT a symlink BEFORE resolution (security)
+    if output_parent.is_symlink():
+        target = output_parent.resolve()
+        # Verify symlink target is within allowed directories
+        allowed = [Path("/tmp"), Path("/var/tmp")]
+        if not any(str(target).startswith(str(a)) for a in allowed):
+            raise BaselineError(
+                f"Symlink target outside allowed directories: {target}. "
+                "Refusing to write to untrusted symlinked paths for security."
+            )
+
+    output_parent = output_parent.resolve()
 
     # no-overwrite check
     if args.no_overwrite and output_path.exists() and output_path.stat().st_size > 0:
         raise BaselineError(
             f"Output file already exists: {output_path}. "
             "Remove it or drop --no-overwrite."
-        )
-
-    # Validate output parent is NOT a symlink (security)
-    if output_parent.is_symlink():
-        raise BaselineError(
-            f"Output directory is a symlink: {output_parent}. "
-            "Refusing to write to symlinked paths for security."
         )
 
     if not output_parent.is_dir():
