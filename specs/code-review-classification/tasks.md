@@ -63,7 +63,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 2: Runtime Crash Fixes
 
-- [ ] 2.1 [RED] Verify runtime crash bugs exist
+- [x] 2.1 [RED] Verify runtime crash bugs exist
   - **Do**:
     1. Check syntax error: `python -m py_compile infrastructure/anchor_dataset/failed_sample_logger.py 2>&1` (expect SyntaxError if #23 exists)
     2. Check uninitialized variable in measure_spearman_baseline.py line 268 for #31
