@@ -161,7 +161,9 @@ def _prompt(key: str) -> str:
     for cand in candidates:
         try:
             val = _try_traverse(cand)
-            logger.warning("Resolved prompt '%s' via candidate ordering '%s'", key, ".".join(cand))
+            logger.warning(
+                "Resolved prompt '%s' via candidate ordering '%s'", key, ".".join(cand)
+            )
             return val
         except Exception:
             continue

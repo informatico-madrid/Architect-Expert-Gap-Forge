@@ -242,7 +242,9 @@ class TestTrajectoryLength:
         )
         assert len(trajectory.turns) == 10
 
-    def test_trajectory_rejects_less_than_3_turns(self, seed_data: dict[str, Any]) -> None:
+    def test_trajectory_rejects_less_than_3_turns(
+        self, seed_data: dict[str, Any]
+    ) -> None:
         """Test trajectory with less than 3 turns is invalid."""
         turns = [
             Turn(turn_index=0, turn_type=TurnType.OBSERVATION, content="Turn 1"),
@@ -290,8 +292,12 @@ class TestTrajectoryErrorAndCorrectPresence:
             Turn(turn_index=4, turn_type=TurnType.CORRECT, content="Correcting..."),
         ]
         # Find error turn index
-        error_indices = [i for i, t in enumerate(turns) if t.turn_type == TurnType.ERROR]
-        correct_indices = [i for i, t in enumerate(turns) if t.turn_type == TurnType.CORRECT]
+        error_indices = [
+            i for i, t in enumerate(turns) if t.turn_type == TurnType.ERROR
+        ]
+        correct_indices = [
+            i for i, t in enumerate(turns) if t.turn_type == TurnType.CORRECT
+        ]
 
         assert len(error_indices) > 0
         assert len(correct_indices) > 0
@@ -381,9 +387,21 @@ class TestChatMLSerialization:
         from src.utils.schema import Message
 
         turns = [
-            Turn(turn_index=0, turn_type=TurnType.OBSERVATION, content="User asks about integration"),
-            Turn(turn_index=1, turn_type=TurnType.REASONING, content="Analyzing requirements"),
-            Turn(turn_index=2, turn_type=TurnType.ACTION, content="Creating async_setup_entry"),
+            Turn(
+                turn_index=0,
+                turn_type=TurnType.OBSERVATION,
+                content="User asks about integration",
+            ),
+            Turn(
+                turn_index=1,
+                turn_type=TurnType.REASONING,
+                content="Analyzing requirements",
+            ),
+            Turn(
+                turn_index=2,
+                turn_type=TurnType.ACTION,
+                content="Creating async_setup_entry",
+            ),
         ]
         # Serialize to ChatML
         messages = [
@@ -402,6 +420,7 @@ class TestTrajectoryGenerator:
         """Test TrajectoryGenerator class can be imported."""
         try:
             from src.factory.trajectory_generator import TrajectoryGenerator
+
             assert TrajectoryGenerator is not None
         except ImportError:
             pytest.skip("TrajectoryGenerator not yet implemented")
@@ -421,12 +440,27 @@ class TestTrajectoryGenerator:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -454,12 +488,27 @@ class TestTrajectoryGenerator:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -486,12 +535,27 @@ class TestTrajectoryGenerator:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -504,8 +568,12 @@ class TestTrajectoryGenerator:
             trajectory = await generator.generate(seed_data)
 
             turn_types = {turn.turn_type for turn in trajectory.turns}
-            assert TurnType.ERROR in turn_types, "Trajectory must contain at least one error turn"
-            assert TurnType.CORRECT in turn_types, "Trajectory must contain at least one correct turn"
+            assert TurnType.ERROR in turn_types, (
+                "Trajectory must contain at least one error turn"
+            )
+            assert TurnType.CORRECT in turn_types, (
+                "Trajectory must contain at least one correct turn"
+            )
 
     @pytest.mark.asyncio
     async def test_generate_can_produce_cascade_failure(
@@ -521,12 +589,27 @@ class TestTrajectoryGenerator:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -558,12 +641,27 @@ class TestTrajectoryGenerator:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -688,14 +786,14 @@ class TestXMLToolCallSerialization:
             pytest.skip("XML serialization functions not yet implemented")
 
         # Multiline Python code that would need escaping in JSON
-        multiline_code = '''def calculate_metrics(data):
+        multiline_code = """def calculate_metrics(data):
     total = sum(data)
     average = total / len(data)
     return {
         "total": total,
         "average": average,
         "count": len(data)
-    }'''
+    }"""
 
         tool_args = {"code": multiline_code}
 
@@ -704,7 +802,7 @@ class TestXMLToolCallSerialization:
 
         # Verify no escaped quotes in the output
         assert '\\"' not in xml_output
-        assert '\\n' not in xml_output
+        assert "\\n" not in xml_output
 
         # Parse back and verify content is preserved
         _, parsed_args = parse_tool_call_xml(xml_output)
@@ -902,7 +1000,9 @@ class TestXMLToolCallSerialization:
             pytest.skip("XML parsing function not yet implemented")
 
         # XML with tool_args but no tool_name
-        xml_without_name = "<tool_call><tool_args><item key='arg'>value</item></tool_args></tool_call>"
+        xml_without_name = (
+            "<tool_call><tool_args><item key='arg'>value</item></tool_args></tool_call>"
+        )
         with pytest.raises(ValueError, match="Missing <tool_name>"):
             parse_tool_call_xml(xml_without_name)
 
@@ -1127,7 +1227,11 @@ class TestPHPLegacyCompatibility:
                 "complexity": "nominal_hard",
                 "context": "# Legacy: global $db, global $logger\n# Modern: Constructor injection",
                 "question": "Refactoriza esta función PHP con globales a Symfony",
-                "expected_patterns": ["Dependency Injection", "Service", "LoggerInterface"],
+                "expected_patterns": [
+                    "Dependency Injection",
+                    "Service",
+                    "LoggerInterface",
+                ],
             },
         ]
 
@@ -1158,12 +1262,27 @@ class TestPHPLegacyCompatibility:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -1195,12 +1314,27 @@ class TestPHPLegacyCompatibility:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -1233,12 +1367,27 @@ class TestPHPLegacyCompatibility:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -1269,12 +1418,27 @@ class TestPHPLegacyCompatibility:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -1309,12 +1473,27 @@ class TestPHPLegacyCompatibility:
         with patch("src.factory.trajectory_generator.PromptLoader") as mock_loader:
             mock_loader_instance = MagicMock()
             mock_loader_instance.load_templates.return_value = {
-                "observation": {"template": "Obs: {question}", "turn_type": "observation"},
-                "reasoning": {"template": "Reasoning: {reasoning}", "turn_type": "reasoning"},
+                "observation": {
+                    "template": "Obs: {question}",
+                    "turn_type": "observation",
+                },
+                "reasoning": {
+                    "template": "Reasoning: {reasoning}",
+                    "turn_type": "reasoning",
+                },
                 "action": {"template": "Action: {tool_name}", "turn_type": "action"},
-                "error": {"template": "Error: {error_description}", "turn_type": "error"},
-                "correct": {"template": "Correct: {corrective_action}", "turn_type": "correct"},
-                "verify": {"template": "Verify: {verification_result}", "turn_type": "verify"},
+                "error": {
+                    "template": "Error: {error_description}",
+                    "turn_type": "error",
+                },
+                "correct": {
+                    "template": "Correct: {corrective_action}",
+                    "turn_type": "correct",
+                },
+                "verify": {
+                    "template": "Verify: {verification_result}",
+                    "turn_type": "verify",
+                },
             }
             mock_loader.return_value = mock_loader_instance
 
@@ -1330,8 +1509,12 @@ class TestPHPLegacyCompatibility:
 
             # Verify error and correct turns exist
             turn_types = {turn.turn_type for turn in trajectory.turns}
-            assert TurnType.ERROR in turn_types, "PHP Legacy trajectory must contain error turn"
-            assert TurnType.CORRECT in turn_types, "PHP Legacy trajectory must contain correct turn"
+            assert TurnType.ERROR in turn_types, (
+                "PHP Legacy trajectory must contain error turn"
+            )
+            assert TurnType.CORRECT in turn_types, (
+                "PHP Legacy trajectory must contain correct turn"
+            )
 
     def test_php_legacy_seed_structure_matches_taxonomy(
         self,
@@ -1341,7 +1524,11 @@ class TestPHPLegacyCompatibility:
         required_fields = {"seed_id", "category", "complexity", "context", "question"}
 
         for seed in php_legacy_seeds:
-            assert required_fields.issubset(seed.keys()), f"Seed {seed.get('seed_id')} missing fields"
-            assert seed["seed_id"].startswith("php_legacy_"), "Seed ID must start with php_legacy_"
+            assert required_fields.issubset(seed.keys()), (
+                f"Seed {seed.get('seed_id')} missing fields"
+            )
+            assert seed["seed_id"].startswith("php_legacy_"), (
+                "Seed ID must start with php_legacy_"
+            )
             assert isinstance(seed["context"], str), "Context must be string"
             assert isinstance(seed["question"], str), "Question must be string"

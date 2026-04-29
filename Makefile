@@ -2,8 +2,8 @@
 COMPOSE_FILE=deploy/docker/docker-compose.yaml
 ENV_FILE=deploy/.env
 
-# Python interpreter — override at call site: make test PYTHON=/path/to/python
-PYTHON ?= python3
+# Python interpreter — defaults to .venv; override at call site: make test PYTHON=/path/to/python
+PYTHON ?= .venv/bin/python
 
 .PHONY: up down shell logs preprocess train merge test coverage lint fmt check-headers
 

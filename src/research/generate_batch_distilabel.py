@@ -179,6 +179,7 @@ def split_code_logically(
 # 2. LOAD TARGET FILE AND CHUNK
 # ============================================================================
 
+
 def load_target_file(console: Console) -> str:
     """Load target file for processing."""
     print_info(
@@ -203,7 +204,9 @@ def process_seeds(console: Console, seeds: list[dict[str, Any]]) -> None:
     )
 
     for seed in seeds:
-        console.print(f"  [dim]- {seed['id']}: {seed['title']} ({seed['tokens']} tokens)[/]")
+        console.print(
+            f"  [dim]- {seed['id']}: {seed['title']} ({seed['tokens']} tokens)[/]"
+        )
 
 
 # Initialize console

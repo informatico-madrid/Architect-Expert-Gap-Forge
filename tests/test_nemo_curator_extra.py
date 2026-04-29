@@ -11,7 +11,6 @@ Cover LDI, quality score, naive clustering fallback and I/O helpers.
 from __future__ import annotations
 
 
-
 from src.curation.curator_pipeline import (
     CurationStats,
     load_jsonl,

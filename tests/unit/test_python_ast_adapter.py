@@ -178,10 +178,7 @@ class TestPythonAstAdapterRegexFallback:
         """_extract_with_regex should extract regular imports."""
         test_file = tmp_path / "regular_imports.py"
         test_file.write_text(
-            "import os\n"
-            "import sys\n"
-            "import requests\n"
-            "import numpy as np\n"
+            "import os\nimport sys\nimport requests\nimport numpy as np\n"
         )
 
         deps = adapter._extract_with_regex(test_file)
@@ -198,9 +195,7 @@ class TestPythonAstAdapterRegexFallback:
         """_extract_with_regex should handle mixed import styles."""
         test_file = tmp_path / "mixed_imports.py"
         test_file.write_text(
-            "import json\n"
-            "from .local import something\n"
-            "import pandas\n"
+            "import json\nfrom .local import something\nimport pandas\n"
         )
 
         deps = adapter._extract_with_regex(test_file)
@@ -228,11 +223,7 @@ class TestPythonAstAdapterRegexFallback:
     ) -> None:
         """_extract_with_regex should classify stdlib modules correctly."""
         test_file = tmp_path / "stdlib_imports.py"
-        test_file.write_text(
-            "import os\n"
-            "import sys\n"
-            "import json\n"
-        )
+        test_file.write_text("import os\nimport sys\nimport json\n")
 
         deps = adapter._extract_with_regex(test_file)
 
@@ -247,11 +238,7 @@ class TestPythonAstAdapterRegexFallback:
     ) -> None:
         """_extract_with_regex should classify external modules correctly."""
         test_file = tmp_path / "external_imports.py"
-        test_file.write_text(
-            "import requests\n"
-            "import numpy\n"
-            "import torch\n"
-        )
+        test_file.write_text("import requests\nimport numpy\nimport torch\n")
 
         deps = adapter._extract_with_regex(test_file)
 
@@ -267,10 +254,7 @@ class TestPythonAstAdapterRegexFallback:
         """_extract_with_regex should not include duplicate dependencies."""
         test_file = tmp_path / "duplicate_imports.py"
         test_file.write_text(
-            "import os\n"
-            "import os\n"
-            "import sys\n"
-            "import os as operating_system\n"
+            "import os\nimport os\nimport sys\nimport os as operating_system\n"
         )
 
         deps = adapter._extract_with_regex(test_file)

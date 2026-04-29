@@ -155,7 +155,9 @@ class AnchorDatasetDownloader:
             )
             yield from self._download_via_hub(config)
 
-    def _download_via_hub(self, config: AnchorDatasetConfig) -> Iterator[dict[str, Any]]:
+    def _download_via_hub(
+        self, config: AnchorDatasetConfig
+    ) -> Iterator[dict[str, Any]]:
         """Download dataset files using huggingface_hub.
 
         This is a fallback method when the datasets library is not available.
@@ -247,7 +249,9 @@ class AnchorDatasetDownloader:
                 elif format_type == "openai_messages":
                     messages = self._parse_openai_messages(record)
                 else:
-                    logger.warning("Unknown format type: %s, skipping record", format_type)
+                    logger.warning(
+                        "Unknown format type: %s, skipping record", format_type
+                    )
                     continue
 
                 # Calculate token count
@@ -458,9 +462,7 @@ class AnchorDatasetDownloader:
             raw_data = self.download(config)
 
             # Parse
-            parsed_records = list(
-                self.parse(raw_data, config.format, config.hf_id)
-            )
+            parsed_records = list(self.parse(raw_data, config.format, config.hf_id))
 
             logger.info(
                 "Downloaded and parsed %d records from %s",

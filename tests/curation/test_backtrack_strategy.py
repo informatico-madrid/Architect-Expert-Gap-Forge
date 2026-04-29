@@ -7,7 +7,6 @@
 
 """Tests for backtrack_strategy module."""
 
-
 from src.curation import backtrack_strategy as bs_module
 
 

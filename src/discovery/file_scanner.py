@@ -645,9 +645,7 @@ def _discover_by_yaml(
     for mod_dir, files in dir_to_files.items():
         try:
             if build_module_func:
-                module = build_module_func(
-                    mod_dir, anchor_type="yaml", manifest={}
-                )
+                module = build_module_func(mod_dir, anchor_type="yaml", manifest={})
                 modules.append(module)
             else:
                 modules.append(
@@ -735,23 +733,28 @@ def _detect_strategy(root: Path) -> str:
                 continue
             if file_path.suffix in (".yaml", ".yml", ".jinja", ".jinja2"):
                 # Exclude common non-source directories
-                if not any(part in ("node_modules", "tests", "test", "__pycache__")
-                         for part in file_path.parts):
+                if not any(
+                    part in ("node_modules", "tests", "test", "__pycache__")
+                    for part in file_path.parts
+                ):
                     return "yaml"
 
         # Check for TypeScript files (frontend components) - priority 2
         for ts_file in list(root.rglob("*.ts")) + list(root.rglob("*.tsx")):
             # Exclude common non-source directories
-            if not any(part in ("node_modules", "tests", "test")
-                     for part in ts_file.parts):
+            if not any(
+                part in ("node_modules", "tests", "test") for part in ts_file.parts
+            ):
                 return "typescript"
 
         # Check for PHP files (filesystem-based) - priority 3
         try:
             for php_file in root.rglob("*.php"):
                 # Exclude common non-source directories
-                if not any(part in ("vendor", "node_modules", "tests", "cache")
-                         for part in php_file.parts):
+                if not any(
+                    part in ("vendor", "node_modules", "tests", "cache")
+                    for part in php_file.parts
+                ):
                     return "filesystem"
         except PermissionError as e:
             logger.warning("Permission denied scanning PHP files: %s", e)
@@ -772,7 +775,9 @@ def _detect_strategy(root: Path) -> str:
             if any(root.rglob("__init__.py")):
                 return "init"
         except OSError as e:
-            logger.warning("OSError scanning for __init__.py files (broken symlink): %s", e)
+            logger.warning(
+                "OSError scanning for __init__.py files (broken symlink): %s", e
+            )
         except Exception as exc:
             logger.warning("Error scanning for __init__.py files: %s", exc)
 
@@ -790,7 +795,8 @@ def _detect_strategy(root: Path) -> str:
             init_count = 1 if any(root.rglob("__init__.py")) else 0
             logger.debug(
                 "Strategy detection counts: manifest=%d, init=%d",
-                manifest_count, init_count
+                manifest_count,
+                init_count,
             )
 
 
@@ -937,6 +943,7 @@ def find_test(
         Path to best matching test file, or None
     """
     import logging
+
     logger = logging.getLogger(__name__)
 
     # Only support Python, TypeScript, and PHP test files
@@ -948,8 +955,12 @@ def find_test(
     else:
         test_name = f"test_{logic_file.name}"
 
-    logger.debug("find_test: logic_file=%s, repo_root=%s, test_name=%s",
-                 logic_file, repo_root, test_name)
+    logger.debug(
+        "find_test: logic_file=%s, repo_root=%s, test_name=%s",
+        logic_file,
+        repo_root,
+        test_name,
+    )
 
     def _ok(p: Path) -> bool:
         return p.is_file() and min_size <= p.stat().st_size <= size_limit

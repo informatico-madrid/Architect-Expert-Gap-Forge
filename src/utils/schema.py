@@ -39,7 +39,9 @@ class DatasetRecord(BaseModel):
 
     model_config = {"frozen": True}
 
-    messages: list[Message] = Field(default_factory=list, description="Conversation messages")
+    messages: list[Message] = Field(
+        default_factory=list, description="Conversation messages"
+    )
     metadata: RecordMetadata = Field(
         default_factory=dict, description="Record metadata"
     )

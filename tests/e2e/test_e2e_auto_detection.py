@@ -8,6 +8,7 @@
 This test verifies the complete auto-detection flow from:
 _detect_strategy() -> discover_modules() routing -> module discovery results
 """
+
 import pytest
 from pathlib import Path
 import tempfile
@@ -30,7 +31,9 @@ class TestE2EAutoDetectionYAML:
             # Create test YAML structure
             themes_dir = root / "themes" / "dark"
             themes_dir.mkdir(parents=True)
-            (themes_dir / "config.yaml").write_text("name: Dark Theme\nicon: theme-dark\n")
+            (themes_dir / "config.yaml").write_text(
+                "name: Dark Theme\nicon: theme-dark\n"
+            )
 
             templates_dir = root / "templates" / "automations"
             templates_dir.mkdir(parents=True)
@@ -57,8 +60,9 @@ class TestE2EAutoDetectionYAML:
 
             # 4. Verify modules have correct anchor_type
             for mod in modules:
-                assert mod.anchor_type in ("yaml", "jinja"), \
+                assert mod.anchor_type in ("yaml", "jinja"), (
                     f"Expected anchor_type 'yaml' or 'jinja', got '{mod.anchor_type}'"
+                )
 
             print(f"✓ YAML detection: {detected}")
             print(f"  Found {len(modules)} module(s)")
@@ -79,7 +83,9 @@ class TestE2EAutoDetectionYAML:
             detected = _detect_strategy(root)
 
             # YAML should be detected (has priority)
-            assert detected == "yaml", f"Expected 'yaml' (YAML priority), got '{detected}'"
+            assert detected == "yaml", (
+                f"Expected 'yaml' (YAML priority), got '{detected}'"
+            )
             print(f"✓ YAML priority test passed: detected '{detected}'")
 
 
@@ -118,8 +124,9 @@ class TestE2EAutoDetectionManifest:
             for mod in modules:
                 if mod_path := mod.path:
                     if (mod_path / "manifest.json").exists():
-                        assert mod.anchor_type == "manifest", \
+                        assert mod.anchor_type == "manifest", (
                             f"Expected 'manifest' anchor for manifest.json module, got '{mod.anchor_type}'"
+                        )
 
             print(f"✓ Manifest detection: {detected}")
             print(f"  Found {len(modules)} module(s)")
@@ -212,7 +219,9 @@ class TestE2EAutoDetectionDirectory:
 
             # 1. Detect strategy (should fallback to "directory")
             detected = _detect_strategy(root)
-            assert detected == "directory", f"Expected 'directory' fallback, got '{detected}'"
+            assert detected == "directory", (
+                f"Expected 'directory' fallback, got '{detected}'"
+            )
 
             print(f"✓ Directory fallback detection: {detected}")
 
@@ -235,10 +244,13 @@ class TestE2EAutoDetectionExclusions:
 
             # Detect strategy
             detected = _detect_strategy(root)
-            assert detected == "yaml", \
+            assert detected == "yaml", (
                 f"Expected 'yaml' (excluded node_modules), got '{detected}'"
+            )
 
-            print(f"✓ Exclusion test passed: detected '{detected}' (node_modules excluded)")
+            print(
+                f"✓ Exclusion test passed: detected '{detected}' (node_modules excluded)"
+            )
 
 
 if __name__ == "__main__":

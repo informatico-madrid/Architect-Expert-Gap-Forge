@@ -105,7 +105,9 @@ def sample_checkpoint_path() -> Path:
 
 
 @pytest.fixture
-def checkpoint_with_completed_seeds(sample_checkpoint_path: Path) -> GenerationCheckpoint:
+def checkpoint_with_completed_seeds(
+    sample_checkpoint_path: Path,
+) -> GenerationCheckpoint:
     """Create a checkpoint with some completed seeds."""
     checkpoint = GenerationCheckpoint()
     checkpoint._done_seeds = {"ha_seed_001", "ha_seed_002", "ha_seed_003"}
@@ -141,7 +143,9 @@ class TestTeacherClientProviderSelection:
     """Tests for provider selection in TeacherClient."""
 
     @pytest.mark.asyncio
-    async def test_client_selects_openai_provider(self, teacher_config_openai: TeacherModelConfig):
+    async def test_client_selects_openai_provider(
+        self, teacher_config_openai: TeacherModelConfig
+    ):
         """Test that TeacherClient selects OpenAI provider based on config."""
         # Test that config has correct provider
         assert teacher_config_openai.provider == "openai"
@@ -149,12 +153,16 @@ class TestTeacherClientProviderSelection:
         assert provider_type in ("openai", "anthropic", "gemini")
 
     @pytest.mark.asyncio
-    async def test_client_selects_anthropic_provider(self, teacher_config_anthropic: TeacherModelConfig):
+    async def test_client_selects_anthropic_provider(
+        self, teacher_config_anthropic: TeacherModelConfig
+    ):
         """Test that TeacherClient selects Anthropic provider based on config."""
         assert teacher_config_anthropic.provider == "anthropic"
 
     @pytest.mark.asyncio
-    async def test_client_selects_gemini_provider(self, teacher_config_gemini: TeacherModelConfig):
+    async def test_client_selects_gemini_provider(
+        self, teacher_config_gemini: TeacherModelConfig
+    ):
         """Test that TeacherClient selects Gemini provider based on config."""
         assert teacher_config_gemini.provider == "gemini"
 
@@ -175,9 +183,7 @@ class TestTeacherClientOpenAICalls:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [
-                {"message": {"content": "Generated trajectory content"}}
-            ]
+            "choices": [{"message": {"content": "Generated trajectory content"}}]
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -438,11 +444,7 @@ class TestTeacherClientGeminiCalls:
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "candidates": [
-                {
-                    "content": {
-                        "parts": [{"text": "Generated trajectory content"}]
-                    }
-                }
+                {"content": {"parts": [{"text": "Generated trajectory content"}]}}
             ]
         }
         mock_response.raise_for_status = MagicMock()
@@ -477,13 +479,7 @@ class TestTeacherClientGeminiCalls:
         success_response = MagicMock()
         success_response.status_code = 200
         success_response.json.return_value = {
-            "candidates": [
-                {
-                    "content": {
-                        "parts": [{"text": "Success after retry"}]
-                    }
-                }
-            ]
+            "candidates": [{"content": {"parts": [{"text": "Success after retry"}]}}]
         }
         success_response.raise_for_status = MagicMock()
 
@@ -552,7 +548,9 @@ class TestTeacherClientCheckpointIntegration:
 
         # Create mock provider class - must match actual signature
         class MockProvider:
-            async def generate(self, prompt: str, model_config: TeacherModelConfig) -> str:
+            async def generate(
+                self, prompt: str, model_config: TeacherModelConfig
+            ) -> str:
                 return "Generated content"
 
             def _build_request_payload(self, prompt: str) -> dict[str, Any]:
@@ -782,7 +780,9 @@ class TestTeacherClientTimeoutErrors:
         """Test that timeout exceptions are retried with exponential backoff."""
         # Arrange
         mock_client = AsyncMock()
-        mock_client.post = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
+        mock_client.post = AsyncMock(
+            side_effect=httpx.TimeoutException("Request timeout")
+        )
         mock_async_client_cls.return_value.__aenter__.return_value = mock_client
 
         # Use config with small retries for faster test

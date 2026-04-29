@@ -40,20 +40,27 @@ class TestAnchorAggregation:
 
         # Create manifest.json (anchor file)
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test Component",
-            "version": "1.0.0",
-            "dependencies": ["frontend", "http"],
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test Component",
+                    "version": "1.0.0",
+                    "dependencies": ["frontend", "http"],
+                }
+            )
+        )
 
         # Create component file
-        (component / "component.py").write_text("""
+        (component / "component.py").write_text(
+            """
 DOMAIN = 'test_component'
 
 def process_data(data):
     return data
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
@@ -71,17 +78,14 @@ def process_data(data):
 
         # Should have MODULE_BLUEPRINT referencing manifest.json
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should be emitted"
 
         # Verify manifest.json is referenced
         blueprint = blueprint_files[0].read_text()
-        assert 'manifest.json' in blueprint, (
+        assert "manifest.json" in blueprint, (
             "MODULE_BLUEPRINT should reference manifest.json as anchor"
         )
 
@@ -101,28 +105,37 @@ def process_data(data):
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test Component",
-            "version": "1.0.0",
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test Component",
+                    "version": "1.0.0",
+                }
+            )
+        )
 
         # Create const.py (anchor file with vocabulary)
-        (component / "const.py").write_text("""
+        (component / "const.py").write_text(
+            """
 DOMAIN = 'test_component'
 PLATFORMS = ['sensor', 'switch', 'light']
 SERVICE_NAMES = ['refresh', 'update', 'sync']
 CONSTANT_1 = 'value1'
 CONSTANT_2 = 'value2'
-""".strip())
+""".strip()
+        )
 
         # Create component file
-        (component / "component.py").write_text("""
+        (component / "component.py").write_text(
+            """
 from . import const
 
 def process_data(data):
     return data
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
@@ -140,17 +153,14 @@ def process_data(data):
 
         # Should have MODULE_BLUEPRINT referencing const.py
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should be emitted"
 
         # Verify const.py is referenced
         blueprint = blueprint_files[0].read_text()
-        assert 'const.py' in blueprint, (
+        assert "const.py" in blueprint, (
             "MODULE_BLUEPRINT should reference const.py as anchor"
         )
 
@@ -170,14 +180,20 @@ def process_data(data):
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test Component",
-            "version": "1.0.0",
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test Component",
+                    "version": "1.0.0",
+                }
+            )
+        )
 
         # Create services.yaml (anchor file with schema)
-        (component / "services.yaml").write_text("""
+        (component / "services.yaml").write_text(
+            """
 refresh_data:
   name: Refresh Data
   description: Refreshes the data from the source
@@ -205,13 +221,16 @@ update_config:
       config_file:
         name: Config File
         description: The configuration file to use
-""".strip())
+""".strip()
+        )
 
         # Create component file
-        (component / "component.py").write_text("""
+        (component / "component.py").write_text(
+            """
 def process_data(data):
     return data
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
@@ -229,17 +248,14 @@ def process_data(data):
 
         # Should have MODULE_BLUEPRINT referencing services.yaml
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should be emitted"
 
         # Verify services.yaml is referenced
         blueprint = blueprint_files[0].read_text()
-        assert 'services.yaml' in blueprint, (
+        assert "services.yaml" in blueprint, (
             "MODULE_BLUEPRINT should reference services.yaml as anchor"
         )
 
@@ -259,31 +275,42 @@ def process_data(data):
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test Component",
-            "version": "1.0.0",
-            "dependencies": ["frontend"],
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test Component",
+                    "version": "1.0.0",
+                    "dependencies": ["frontend"],
+                }
+            )
+        )
 
         # Create const.py
-        (component / "const.py").write_text("""
+        (component / "const.py").write_text(
+            """
 DOMAIN = 'test_component'
 PLATFORMS = ['sensor', 'switch']
-""".strip())
+""".strip()
+        )
 
         # Create services.yaml
-        (component / "services.yaml").write_text("""
+        (component / "services.yaml").write_text(
+            """
 refresh:
   name: Refresh
   description: Refresh data
-""".strip())
+""".strip()
+        )
 
         # Create component file
-        (component / "component.py").write_text("""
+        (component / "component.py").write_text(
+            """
 def process_data(data):
     return data
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
@@ -301,23 +328,18 @@ def process_data(data):
 
         # Should have MODULE_BLUEPRINT with all anchors
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should be emitted"
 
         blueprint = blueprint_files[0].read_text()
 
         # Verify all anchors are referenced
-        assert 'manifest.json' in blueprint, (
+        assert "manifest.json" in blueprint, (
             "MODULE_BLUEPRINT should reference manifest.json"
         )
-        assert 'const.py' in blueprint, (
-            "MODULE_BLUEPRINT should reference const.py"
-        )
-        assert 'services.yaml' in blueprint, (
+        assert "const.py" in blueprint, "MODULE_BLUEPRINT should reference const.py"
+        assert "services.yaml" in blueprint, (
             "MODULE_BLUEPRINT should reference services.yaml"
         )

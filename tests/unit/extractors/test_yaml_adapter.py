@@ -51,7 +51,9 @@ class TestYamlAdapter:
         assert "blueprint" in result.ast_tree
         blueprint = result.ast_tree["blueprint"]
         assert blueprint["name"] == "Update Climate"
-        assert "description" in blueprint["name"] or "Update Climate" in blueprint["name"]
+        assert (
+            "description" in blueprint["name"] or "Update Climate" in blueprint["name"]
+        )
         assert blueprint.get("domain") == "automation"
 
     def test_extract_trigger_pattern(self, adapter, blueprint_yaml):
@@ -121,7 +123,9 @@ class TestYamlAdapter:
             if "entity_id" in trigger:
                 trigger["entity_id"]
                 # !input should be in the content
-                assert "!input" in result.raw_content or "entity_id" in result.raw_content
+                assert (
+                    "!input" in result.raw_content or "entity_id" in result.raw_content
+                )
 
     def test_extract_dependencies(self, adapter, blueprint_yaml):
         """YamlAdapter extracts service call dependencies."""
@@ -173,4 +177,6 @@ class TestYamlAdapterParsing:
         # Check top-level keys
         expected_keys = ["blueprint", "mode", "trigger", "condition", "action"]
         for key in expected_keys:
-            assert key in result.ast_tree, f"Expected key '{key}' not found in YAML tree"
+            assert key in result.ast_tree, (
+                f"Expected key '{key}' not found in YAML tree"
+            )

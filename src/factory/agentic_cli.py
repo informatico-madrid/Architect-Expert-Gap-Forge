@@ -74,7 +74,9 @@ def display_start_panel(use_case: str, mode: str, config_path: str) -> None:
     )
 
 
-def display_summary_panel(records_generated: int, output_path: str, dry_run: bool) -> None:
+def display_summary_panel(
+    records_generated: int, output_path: str, dry_run: bool
+) -> None:
     """Display a summary panel after generation completion.
 
     Args:
@@ -117,6 +119,7 @@ def display_error_panel(error_message: str) -> None:
         padding=(1, 2),
     )
     console.print(panel)
+
 
 # ══════════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -377,7 +380,9 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
     if args.config:
         config_path = base_dir / args.config
     else:
-        config_path = base_dir / "configs" / "stage_2_factory" / "config.homeassistant.yaml"
+        config_path = (
+            base_dir / "configs" / "stage_2_factory" / "config.homeassistant.yaml"
+        )
 
     if not config_path.exists():
         console = get_console()
@@ -426,7 +431,9 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
     if not seeds_path.exists():
         console = get_console()
         console.print(f"[bold red]Error:[/] Seeds file not found: {seeds_path}")
-        console.print("[dim]Please create tests/fixtures/seed_examples.yaml with seed data.[/]")
+        console.print(
+            "[dim]Please create tests/fixtures/seed_examples.yaml with seed data.[/]"
+        )
         sys.exit(1)
 
     try:
@@ -451,8 +458,16 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
         mode=trajectory_mode,
         error_probability=dataset_config.trajectory.error_probability,
         cascade_failure_probability=dataset_config.trajectory.cascade_probability,
-        templates_path=base_dir / "configs" / "stage_2_factory" / "prompts" / "trajectory_templates.yaml",
-        hard_query_templates_path=base_dir / "configs" / "stage_2_factory" / "prompts" / "hard_query_templates.yaml",
+        templates_path=base_dir
+        / "configs"
+        / "stage_2_factory"
+        / "prompts"
+        / "trajectory_templates.yaml",
+        hard_query_templates_path=base_dir
+        / "configs"
+        / "stage_2_factory"
+        / "prompts"
+        / "hard_query_templates.yaml",
         seed=args.seed,
     )
 
@@ -497,7 +512,10 @@ def main_generate_trajectories(args: argparse.Namespace) -> None:
                         }
                         for e in trajectory.errors
                     ],
-                    "messages": [{"role": m.role, "content": m.content} for m in trajectory.messages],
+                    "messages": [
+                        {"role": m.role, "content": m.content}
+                        for m in trajectory.messages
+                    ],
                 }
                 results.append(record)
                 pbar.update(1)

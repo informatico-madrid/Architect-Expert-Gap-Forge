@@ -147,6 +147,7 @@ class HaForm extends LitElement {
 # Tests
 # =============================================================================
 
+
 class TestLitComponentExtractorBasic:
     """Basic extraction tests for LitComponentExtractor."""
 
@@ -158,8 +159,8 @@ class TestLitComponentExtractorBasic:
     def test_extractor_implements_protocol(self):
         """Extractor should implement TypeScriptExtractorProtocol."""
         extractor = LitComponentExtractor()
-        assert hasattr(extractor, 'extract')
-        assert hasattr(extractor, 'name')
+        assert hasattr(extractor, "extract")
+        assert hasattr(extractor, "name")
 
     def test_returns_list_of_tokens(self):
         """Extract should return a list of FrontendToken objects."""
@@ -178,8 +179,8 @@ class TestCustomElementDecoratorParsing:
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert token.token_type == 'lit_component'
-        assert token.data['tag_name'] == 'ha-dialog'
+        assert token.token_type == "lit_component"
+        assert token.data["tag_name"] == "ha-dialog"
 
     def test_extracts_tag_name_from_double_quotes(self):
         """Should extract tag name from @customElement with double quotes."""
@@ -188,7 +189,7 @@ class TestCustomElementDecoratorParsing:
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert token.data['tag_name'] == 'ha-dialog'
+        assert token.data["tag_name"] == "ha-dialog"
 
     def test_extracts_class_name(self):
         """Should extract class name from class declaration."""
@@ -197,7 +198,7 @@ class TestCustomElementDecoratorParsing:
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert token.data['class_name'] == 'HaDialog'
+        assert token.data["class_name"] == "HaDialog"
 
     def test_extracts_super_class(self):
         """Should extract super class name."""
@@ -206,7 +207,7 @@ class TestCustomElementDecoratorParsing:
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert token.data['super_class'] == 'LitElement'
+        assert token.data["super_class"] == "LitElement"
 
     def test_extracts_multiple_components(self):
         """Should extract multiple @customElement decorated classes.
@@ -221,10 +222,10 @@ class TestCustomElementDecoratorParsing:
         assert len(tokens) == 3
 
         # All three tag names should be extracted
-        tag_names = [t.data['tag_name'] for t in tokens]
-        assert 'ha-button' in tag_names
-        assert 'ha-icon' in tag_names
-        assert 'ha-slider' in tag_names
+        tag_names = [t.data["tag_name"] for t in tokens]
+        assert "ha-button" in tag_names
+        assert "ha-icon" in tag_names
+        assert "ha-slider" in tag_names
 
     def test_ignores_non_decorated_class(self):
         """Should not extract classes without @customElement decorator."""
@@ -258,7 +259,7 @@ class TestCustomElementDecoratorParsing:
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert 'customElement' in token.data['decorators']
+        assert "customElement" in token.data["decorators"]
 
 
 class TestPropertyDecoratorParsing:
@@ -270,32 +271,38 @@ class TestPropertyDecoratorParsing:
     def test_extracts_property_with_name_option(self):
         """Should extract @property decorator when name: option is specified."""
         extractor = LitComponentExtractor()
-        tokens = extractor.extract(None, LIT_COMPONENT_WITH_PROPERTY_NAMES, Path("test.ts"))
+        tokens = extractor.extract(
+            None, LIT_COMPONENT_WITH_PROPERTY_NAMES, Path("test.ts")
+        )
 
         assert len(tokens) == 1
         token = tokens[0]
         # Regex pattern: @property\s*\([^)]*name\s*:\s*['"](\w+)['"]
-        assert 'cardTitle' in token.data['properties']
-        assert 'cardValue' in token.data['properties']
+        assert "cardTitle" in token.data["properties"]
+        assert "cardValue" in token.data["properties"]
 
     def test_derived_observed_attributes_lowercase(self):
         """Should derive observed attributes as lowercase of property names."""
         extractor = LitComponentExtractor()
-        tokens = extractor.extract(None, LIT_COMPONENT_WITH_PROPERTY_NAMES, Path("test.ts"))
+        tokens = extractor.extract(
+            None, LIT_COMPONENT_WITH_PROPERTY_NAMES, Path("test.ts")
+        )
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert 'cardtitle' in token.data['observed_attributes']
-        assert 'cardvalue' in token.data['observed_attributes']
+        assert "cardtitle" in token.data["observed_attributes"]
+        assert "cardvalue" in token.data["observed_attributes"]
 
     def test_property_decorator_flag_in_decorators_list(self):
         """Should include 'property' in decorators list when detected."""
         extractor = LitComponentExtractor()
-        tokens = extractor.extract(None, LIT_COMPONENT_WITH_PROPERTY_NAMES, Path("test.ts"))
+        tokens = extractor.extract(
+            None, LIT_COMPONENT_WITH_PROPERTY_NAMES, Path("test.ts")
+        )
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert 'property' in token.data['decorators']
+        assert "property" in token.data["decorators"]
 
     def test_property_without_name_option_not_extracted_by_regex(self):
         """Properties without explicit name: option won't be captured by regex.
@@ -308,7 +315,7 @@ class TestPropertyDecoratorParsing:
         assert len(tokens) == 1
         token = tokens[0]
         # Properties without name: option are not captured by regex
-        assert 'opened' not in token.data['properties']
+        assert "opened" not in token.data["properties"]
 
 
 class TestStateDecoratorParsing:
@@ -326,7 +333,7 @@ class TestStateDecoratorParsing:
         assert len(tokens) == 1
         token = tokens[0]
         # State is detected via regex pattern matching @state\s*\(
-        assert 'state' in token.data['decorators']
+        assert "state" in token.data["decorators"]
 
     def test_state_decorator_flag_in_decorators_list(self):
         """Should include 'state' in decorators list."""
@@ -335,7 +342,7 @@ class TestStateDecoratorParsing:
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert 'state' in token.data['decorators']
+        assert "state" in token.data["decorators"]
 
 
 class TestTagNameAndClassNameExtraction:
@@ -347,8 +354,8 @@ class TestTagNameAndClassNameExtraction:
         tokens = extractor.extract(None, SIMPLE_LIT_COMPONENT, Path("test.ts"))
 
         assert len(tokens) == 1
-        assert isinstance(tokens[0].data['tag_name'], str)
-        assert tokens[0].data['tag_name'] == 'ha-dialog'
+        assert isinstance(tokens[0].data["tag_name"], str)
+        assert tokens[0].data["tag_name"] == "ha-dialog"
 
     def test_class_name_extraction_format(self):
         """Class name should be extracted as string."""
@@ -356,17 +363,17 @@ class TestTagNameAndClassNameExtraction:
         tokens = extractor.extract(None, SIMPLE_LIT_COMPONENT, Path("test.ts"))
 
         assert len(tokens) == 1
-        assert isinstance(tokens[0].data['class_name'], str)
-        assert tokens[0].data['class_name'] == 'HaDialog'
+        assert isinstance(tokens[0].data["class_name"], str)
+        assert tokens[0].data["class_name"] == "HaDialog"
 
     def test_extracts_extends_clause(self):
         """Should extract class extends clause."""
         extractor = LitComponentExtractor()
         tokens = extractor.extract(None, LIT_COMPONENT_EXTENDS_CLAUSE, Path("test.ts"))
 
-        ha_panel = next(t for t in tokens if t.data['class_name'] == 'HaPanel')
-        assert ha_panel.data['class_name'] == 'HaPanel'
-        assert ha_panel.data['super_class'] == 'HaBasePanel'
+        ha_panel = next(t for t in tokens if t.data["class_name"] == "HaPanel")
+        assert ha_panel.data["class_name"] == "HaPanel"
+        assert ha_panel.data["super_class"] == "HaBasePanel"
 
 
 class TestSampleTypeScriptCode:
@@ -381,12 +388,12 @@ class TestSampleTypeScriptCode:
         token = tokens[0]
 
         # Verify core structure
-        assert token.token_type == 'lit_component'
-        assert token.data['tag_name'] == 'ha-dialog'
-        assert token.data['class_name'] == 'HaDialog'
-        assert token.data['super_class'] == 'LitElement'
-        assert 'customElement' in token.data['decorators']
-        assert 'state' in token.data['decorators']
+        assert token.token_type == "lit_component"
+        assert token.data["tag_name"] == "ha-dialog"
+        assert token.data["class_name"] == "HaDialog"
+        assert token.data["super_class"] == "LitElement"
+        assert "customElement" in token.data["decorators"]
+        assert "state" in token.data["decorators"]
         # properties/states may be empty if name: option not used
 
     def test_component_data_structure_complete(self):
@@ -399,20 +406,20 @@ class TestSampleTypeScriptCode:
         data = token.data
 
         # All required fields per LitComponent schema
-        assert 'tag_name' in data
-        assert 'class_name' in data
-        assert 'properties' in data
-        assert 'states' in data
-        assert 'super_class' in data
-        assert 'observed_attributes' in data
-        assert 'decorators' in data
+        assert "tag_name" in data
+        assert "class_name" in data
+        assert "properties" in data
+        assert "states" in data
+        assert "super_class" in data
+        assert "observed_attributes" in data
+        assert "decorators" in data
 
         # Verify types
-        assert isinstance(data['tag_name'], str)
-        assert isinstance(data['class_name'], str)
-        assert isinstance(data['properties'], list)
-        assert isinstance(data['states'], list)
-        assert isinstance(data['decorators'], list)
+        assert isinstance(data["tag_name"], str)
+        assert isinstance(data["class_name"], str)
+        assert isinstance(data["properties"], list)
+        assert isinstance(data["states"], list)
+        assert isinstance(data["decorators"], list)
 
 
 class TestEdgeCases:

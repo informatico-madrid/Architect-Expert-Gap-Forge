@@ -50,7 +50,12 @@ class TestZeroSeedsGenericDomain:
         # All configs should be valid SampleConfig instances
         for cfg in configs:
             assert isinstance(cfg, SampleConfig)
-            assert cfg.domain in ("home_assistant", "php_legacy", "generic_domain", "other")
+            assert cfg.domain in (
+                "home_assistant",
+                "php_legacy",
+                "generic_domain",
+                "other",
+            )
             assert cfg.difficulty in ("easy", "medium", "hard")
             assert isinstance(cfg.turn_count, int)
             assert cfg.turn_count >= 1
@@ -80,7 +85,10 @@ class TestZeroSeedsGenericDomain:
         assert len(system) > 0
         assert len(user) > 0
         # Template variables are filled with defaults
-        assert "domain: generic_domain" in system.lower() or "DOMAIN: generic_domain" in system
+        assert (
+            "domain: generic_domain" in system.lower()
+            or "DOMAIN: generic_domain" in system
+        )
         assert "turn_count: 3" in user or "Turn count: 3" in user
 
     def test_prompt_builder_default_category_and_complexity(self):
@@ -94,7 +102,9 @@ class TestZeroSeedsGenericDomain:
         )
         system, _ = builder.build(cfg)
         assert "category: general" in system.lower() or "CATEGORY: general" in system
-        assert "complexity: nominal" in system.lower() or "COMPLEXITY: nominal" in system
+        assert (
+            "complexity: nominal" in system.lower() or "COMPLEXITY: nominal" in system
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +209,9 @@ class TestMalformedAPIResponses:
     def test_message_missing_content_key(self):
         """message has no 'content' key returns None."""
         provider = VLLMProvider()
-        mock_resp = _make_mock_response({"choices": [{"message": {"not_content": "x"}}]})
+        mock_resp = _make_mock_response(
+            {"choices": [{"message": {"not_content": "x"}}]}
+        )
         with mock.patch("requests.post", return_value=mock_resp):
             result = provider.generate("sys", "user")
         assert result is None
@@ -208,7 +220,9 @@ class TestMalformedAPIResponses:
         """Message content is plain text, not JSON — returns None."""
         provider = VLLMProvider()
         mock_resp = _make_mock_response(
-            {"choices": [{"message": {"content": "just text, not json at all"}}],}
+            {
+                "choices": [{"message": {"content": "just text, not json at all"}}],
+            }
         )
         with mock.patch("requests.post", return_value=mock_resp):
             result = provider.generate("sys", "user")
@@ -218,7 +232,9 @@ class TestMalformedAPIResponses:
         """Message content is malformed JSON — returns None."""
         provider = VLLMProvider()
         mock_resp = _make_mock_response(
-            {"choices": [{"message": {"content": "{invalid json:::"}}],}
+            {
+                "choices": [{"message": {"content": "{invalid json:::"}}],
+            }
         )
         with mock.patch("requests.post", return_value=mock_resp):
             result = provider.generate("sys", "user")
@@ -349,18 +365,20 @@ class TestKeyboardInterruptCheckpoint:
         # Build a minimal seed fixture so the builder can load seeds
         seed_fixture = tmp_path / "seeds.yaml"
         seed_fixture.write_text(
-            yaml.dump({
-                "seeds": [
-                    {
-                        "seed_id": "test_001",
-                        "category": "test",
-                        "complexity": "nominal_easy",
-                        "context": "test context",
-                        "question": "test question",
-                        "expected_patterns": ["pattern1"],
-                    },
-                ],
-            })
+            yaml.dump(
+                {
+                    "seeds": [
+                        {
+                            "seed_id": "test_001",
+                            "category": "test",
+                            "complexity": "nominal_easy",
+                            "context": "test context",
+                            "question": "test question",
+                            "expected_patterns": ["pattern1"],
+                        },
+                    ],
+                }
+            )
         )
 
         # Create a test provider that raises KeyboardInterrupt after 2 successful calls
@@ -373,7 +391,9 @@ class TestKeyboardInterruptCheckpoint:
             def name(self) -> str:
                 return "test_provider"
 
-            def generate(self, system_prompt: str, user_prompt: str, timeout: float = 30.0):
+            def generate(
+                self, system_prompt: str, user_prompt: str, timeout: float = 30.0
+            ):
                 call_count["n"] += 1
                 if call_count["n"] <= 2:
                     return AnchorRecord(
@@ -394,12 +414,18 @@ class TestKeyboardInterruptCheckpoint:
             "infrastructure.anchor_dataset.anchor_providers.get_provider",
             return_value=TestProvider(),
         ):
-            exit_code = main([
-                "--count", "10",
-                "--output-dir", output_dir,
-                "--output-file", "anchor_dataset.jsonl",
-                "--seed", "42",
-            ])
+            exit_code = main(
+                [
+                    "--count",
+                    "10",
+                    "--output-dir",
+                    output_dir,
+                    "--output-file",
+                    "anchor_dataset.jsonl",
+                    "--seed",
+                    "42",
+                ]
+            )
 
         assert exit_code == 1
 
@@ -419,7 +445,9 @@ class TestKeyboardInterruptCheckpoint:
         # The checkpoint file path should contain expected markers
         assert "checkpoint" in cp_file.name
 
-    def test_keyboard_interrupt_without_checkpoint_data_exits_1(self, tmp_path: Path) -> None:
+    def test_keyboard_interrupt_without_checkpoint_data_exits_1(
+        self, tmp_path: Path
+    ) -> None:
         """Even if no checkpoint data was created (interrupt at idx=0), exit is 1."""
         from infrastructure.anchor_dataset_builder import main
 
@@ -427,18 +455,20 @@ class TestKeyboardInterruptCheckpoint:
 
         seed_fixture = tmp_path / "seeds.yaml"
         seed_fixture.write_text(
-            yaml.dump({
-                "seeds": [
-                    {
-                        "seed_id": "t001",
-                        "category": "test",
-                        "complexity": "nominal_easy",
-                        "context": "ctx",
-                        "question": "q",
-                        "expected_patterns": ["p"],
-                    },
-                ],
-            })
+            yaml.dump(
+                {
+                    "seeds": [
+                        {
+                            "seed_id": "t001",
+                            "category": "test",
+                            "complexity": "nominal_easy",
+                            "context": "ctx",
+                            "question": "q",
+                            "expected_patterns": ["p"],
+                        },
+                    ],
+                }
+            )
         )
 
         class InstantInterruptProvider:
@@ -448,18 +478,26 @@ class TestKeyboardInterruptCheckpoint:
             def name(self) -> str:
                 return "instant"
 
-            def generate(self, system_prompt: str, user_prompt: str, timeout: float = 30.0):
+            def generate(
+                self, system_prompt: str, user_prompt: str, timeout: float = 30.0
+            ):
                 raise KeyboardInterrupt("immediate interrupt")
 
         with mock.patch(
             "infrastructure.anchor_dataset.anchor_providers.get_provider",
             return_value=InstantInterruptProvider(),
         ):
-            exit_code = main([
-                "--count", "5",
-                "--output-dir", output_dir,
-                "--output-file", "anchor_dataset.jsonl",
-                "--seed", "42",
-            ])
+            exit_code = main(
+                [
+                    "--count",
+                    "5",
+                    "--output-dir",
+                    output_dir,
+                    "--output-file",
+                    "anchor_dataset.jsonl",
+                    "--seed",
+                    "42",
+                ]
+            )
 
         assert exit_code == 1

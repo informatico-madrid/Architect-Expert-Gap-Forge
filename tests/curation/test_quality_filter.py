@@ -145,12 +145,16 @@ class TestStructuralQualityFilter:
                 "conversation": [
                     {
                         "role": "assistant",
-                        "content": "<think>" + "x" * 600 + "</think><tool_call><tool name=\"test\">async def main(): pass</tool></tool_call>",
+                        "content": "<think>"
+                        + "x" * 600
+                        + '</think><tool_call><tool name="test">async def main(): pass</tool></tool_call>',
                     }
                 ],
             }
         ]
-        result = structural_quality_filter(records, minimal_stats, min_think_chars=500, ldi_min_ratio=0.01)
+        result = structural_quality_filter(
+            records, minimal_stats, min_think_chars=500, ldi_min_ratio=0.01
+        )
         assert len(result) == 1
 
     def test_invalid_syntax_space_between_tags(self, minimal_stats):
@@ -161,7 +165,7 @@ class TestStructuralQualityFilter:
                 "conversation": [
                     {
                         "role": "assistant",
-                        "content": "<think>thinking</think> <tool_call><tool name=\"test\"/></tool_call>",
+                        "content": '<think>thinking</think> <tool_call><tool name="test"/></tool_call>',
                     }
                 ],
             }
@@ -178,7 +182,7 @@ class TestStructuralQualityFilter:
                 "conversation": [
                     {
                         "role": "assistant",
-                        "content": "<think>Short</think><tool_call><tool name=\"test\"/></tool_call>",
+                        "content": '<think>Short</think><tool_call><tool name="test"/></tool_call>',
                     }
                 ],
             }
@@ -191,8 +195,10 @@ class TestStructuralQualityFilter:
         # Meta-speech content - many lines with meta-speech patterns
         content = "<think>"
         for _ in range(30):
-            content += "Let me think about this.\nI need to solve this.\nThe user is asking.\n"
-        content += "</think><tool_call><tool name=\"test\"/></tool_call>"
+            content += (
+                "Let me think about this.\nI need to solve this.\nThe user is asking.\n"
+            )
+        content += '</think><tool_call><tool name="test"/></tool_call>'
         records = [
             {
                 "id": "test-001",
@@ -216,7 +222,9 @@ class TestStructuralQualityFilter:
                 "conversation": [
                     {
                         "role": "assistant",
-                        "content": "<think>" + "a" * 600 + "</think><tool_call>just some text no code</tool_call>",
+                        "content": "<think>"
+                        + "a" * 600
+                        + "</think><tool_call>just some text no code</tool_call>",
                     }
                 ],
             }
@@ -232,7 +240,9 @@ class TestStructuralQualityFilter:
             "conversation": [
                 {
                     "role": "assistant",
-                    "content": "<think>" + "x" * 600 + "</think><tool_call><tool name=\"test\">async def main(): pass</tool></tool_call>",
+                    "content": "<think>"
+                    + "x" * 600
+                    + '</think><tool_call><tool name="test">async def main(): pass</tool></tool_call>',
                 }
             ],
         }
@@ -253,7 +263,7 @@ class TestStructuralQualityFilter:
                 "conversation": [
                     {
                         "role": "assistant",
-                        "content": "<tool_call><tool name=\"test\"/></tool_call>",
+                        "content": '<tool_call><tool name="test"/></tool_call>',
                     }
                 ],
             }
@@ -269,13 +279,17 @@ class TestStructuralQualityFilter:
                 "conversation": [
                     {
                         "role": "assistant",
-                        "content": "<think>" + "x" * 100 + "</think><tool_call><tool name=\"test\">async def main(): pass</tool></tool_call>",
+                        "content": "<think>"
+                        + "x" * 100
+                        + '</think><tool_call><tool name="test">async def main(): pass</tool></tool_call>',
                     }
                 ],
             }
         ]
         # With low threshold, should pass
-        result = structural_quality_filter(records, minimal_stats, min_think_chars=50, ldi_min_ratio=0.01)
+        result = structural_quality_filter(
+            records, minimal_stats, min_think_chars=50, ldi_min_ratio=0.01
+        )
         assert len(result) == 1
 
 

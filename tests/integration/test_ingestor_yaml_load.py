@@ -32,12 +32,22 @@ class TestYamlLoadFromDisk:
     @pytest.fixture
     def valid_yaml_path(self) -> Path:
         """Path to the valid YAML config fixture."""
-        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "valid_config.yaml"
+        return (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "yaml_configs"
+            / "valid_config.yaml"
+        )
 
     @pytest.fixture
     def invalid_syntax_yaml_path(self) -> Path:
         """Path to the invalid syntax YAML config fixture."""
-        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "invalid_syntax.yaml"
+        return (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "yaml_configs"
+            / "invalid_syntax.yaml"
+        )
 
     def test_load_valid_yaml_from_disk(self, valid_yaml_path: Path) -> None:
         """Test that valid YAML file loads successfully from disk.
@@ -103,7 +113,12 @@ class TestYamlTripleDashBug:
     @pytest.fixture
     def copyright_then_separator_path(self) -> Path:
         """Path to the YAML fixture with copyright then separator."""
-        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "copyright_then_separator.yaml"
+        return (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "yaml_configs"
+            / "copyright_then_separator.yaml"
+        )
 
     @pytest.fixture
     def yaml_with_triple_dash(self, tmp_path: Path) -> Path:
@@ -122,7 +137,9 @@ category: test_category
         file_path.write_text(yaml_content)
         return file_path
 
-    def test_yaml_document_separator_ignores_content_before(self, yaml_with_triple_dash: Path) -> None:
+    def test_yaml_document_separator_ignores_content_before(
+        self, yaml_with_triple_dash: Path
+    ) -> None:
         """Test that --- after copyright causes content before to be ignored.
 
         T014, T028: Integration test for YAML document separator bug detection.
@@ -141,7 +158,9 @@ category: test_category
         assert loaded_data is not None
         assert loaded_data.get("search_query") == "filename:manifest.json"
 
-    def test_yaml_copyright_then_separator_fixture(self, copyright_then_separator_path: Path) -> None:
+    def test_yaml_copyright_then_separator_fixture(
+        self, copyright_then_separator_path: Path
+    ) -> None:
         """Test YAML file with copyright header followed by --- separator.
 
         T026, T027, T028: Integration test for YAML document separator bug.
@@ -161,7 +180,9 @@ category: test_category
         assert loaded_data.get("category") == "test_category"
         assert loaded_data.get("mode") == "static"
 
-    def test_yaml_with_triple_dash_multi_document_raises_error(self, tmp_path: Path) -> None:
+    def test_yaml_with_triple_dash_multi_document_raises_error(
+        self, tmp_path: Path
+    ) -> None:
         """Test that YAML with multiple documents raises ComposerError.
 
         T014: Specific test for the triple-dash bug scenario.
@@ -239,7 +260,12 @@ class TestYamlToDiscoveryConfigValidation:
     @pytest.fixture
     def valid_yaml_path(self) -> Path:
         """Path to the valid YAML config fixture."""
-        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "valid_config.yaml"
+        return (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "yaml_configs"
+            / "valid_config.yaml"
+        )
 
     def test_missing_category_field_fails_validation(self, tmp_path: Path) -> None:
         """Test that missing required field 'category' raises ValidationError.
@@ -313,6 +339,9 @@ mode: invalid_mode
         assert config.profile == "test_profile"
         assert config.profile_extensions == {".py", ".md"}
         assert config.profile_ignored_paths == {".git", "node_modules", "__pycache__"}
-        assert config.static_repos == ["test-owner/test-repo-1", "test-owner/test-repo-2"]
+        assert config.static_repos == [
+            "test-owner/test-repo-1",
+            "test-owner/test-repo-2",
+        ]
         assert config.base_dir == Path(".")
         assert config.raw_subdir == "data/raw"

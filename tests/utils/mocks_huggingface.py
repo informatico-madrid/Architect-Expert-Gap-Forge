@@ -124,7 +124,9 @@ class MockHuggingFaceHub:
 
         # Setup splits
         if train_data is not None:
-            mock_dataset.__getitem__ = lambda key, idx: train_data[idx] if idx < len(train_data) else {}
+            mock_dataset.__getitem__ = lambda key, idx: (
+                train_data[idx] if idx < len(train_data) else {}
+            )
             mock_dataset.keys = lambda: ["train"] if train_data else []
             mock_dataset["train"] = mock_dataset
 

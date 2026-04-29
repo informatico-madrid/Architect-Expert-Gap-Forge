@@ -323,11 +323,10 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch(
-            "src.audit.gap_generator._get_prompt_manager"
-        ) as mock_pm, patch(
-            "src.audit.gap_generator._get_inference_router"
-        ) as mock_router:
+        with (
+            patch("src.audit.gap_generator._get_prompt_manager") as mock_pm,
+            patch("src.audit.gap_generator._get_inference_router") as mock_router,
+        ):
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"
@@ -406,11 +405,10 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with patch(
-            "src.audit.gap_generator._get_prompt_manager"
-        ) as mock_pm, patch(
-            "src.audit.gap_generator._get_inference_router"
-        ) as mock_router:
+        with (
+            patch("src.audit.gap_generator._get_prompt_manager") as mock_pm,
+            patch("src.audit.gap_generator._get_inference_router") as mock_router,
+        ):
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"

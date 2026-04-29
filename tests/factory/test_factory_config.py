@@ -293,7 +293,10 @@ class TestLoadDatasetConfig:
         assert config.target_specialized_records == 5000
         assert config.target_total_records == 20000
         assert config.output_path == "data/stage_2_output/test_trajectories.jsonl"
-        assert config.taxonomy_path == "configs/stage_2_factory/taxonomy/test_taxonomy.yaml"
+        assert (
+            config.taxonomy_path
+            == "configs/stage_2_factory/taxonomy/test_taxonomy.yaml"
+        )
 
         # Check nested trajectory config
         assert isinstance(config.trajectory, TrajectoryConfig)
@@ -386,7 +389,9 @@ class TestLoadFactoryConfig:
         assert config.output.progress_interval == 50
         assert config.output.dry_run is True
 
-    def test_load_factory_config_partial_with_defaults(self, yaml_with_teacher_missing_fields):
+    def test_load_factory_config_partial_with_defaults(
+        self, yaml_with_teacher_missing_fields
+    ):
         """Test loading partial config with missing fields uses defaults."""
         # This file only has teacher_model with some fields
         config = load_factory_config(yaml_with_teacher_missing_fields)
@@ -404,7 +409,9 @@ class TestLoadFactoryConfig:
         assert config.output.progress_interval == 100
         assert config.output.dry_run is False
 
-    def test_load_factory_config_merges_configs(self, valid_teacher_config_yaml, valid_dataset_config_yaml):
+    def test_load_factory_config_merges_configs(
+        self, valid_teacher_config_yaml, valid_dataset_config_yaml
+    ):
         """Test that load_factory_config loads from a single file."""
         # Create a combined config
         combined_path = valid_teacher_config_yaml.parent / "combined.yaml"

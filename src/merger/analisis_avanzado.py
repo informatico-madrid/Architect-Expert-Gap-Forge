@@ -58,7 +58,9 @@ if __name__ == "__main__":
 
     # Display results in a table
     console.print()
-    table = Table(title="[bold]Analysis Results[/]", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="[bold]Analysis Results[/]", show_header=True, header_style="bold magenta"
+    )
     table.add_column("Metric", style="cyan")
     table.add_column("Value", justify="right")
 

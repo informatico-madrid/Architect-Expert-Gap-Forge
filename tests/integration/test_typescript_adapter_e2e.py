@@ -33,7 +33,7 @@ from src.discovery import ProcessingConfig, RepoProcessor
 # - this.localize(...) is NOT matched (has dot before localize from 'this.')
 # - hass.localize(...) is matched
 # - plain localize(...) would be matched (without dot prefix)
-SAMPLE_TYPESCRIPT_CONTENT = '''
+SAMPLE_TYPESCRIPT_CONTENT = """
 // Sample Lit component with i18n and service calls for integration testing
 
 import { LitElement, html, css } from 'lit';
@@ -97,7 +97,7 @@ export class BubbleCard extends HTMLElement {
     });
   }
 }
-'''
+"""
 
 
 class TestTypeScriptAdapterE2E:
@@ -134,8 +134,8 @@ class TestTypeScriptAdapterE2E:
 
         # Should find imports like 'lit', 'lit/decorators.js'
         dep_names = [d.name for d in result.dependencies]
-        assert 'lit' in dep_names
-        assert any('lit/decorators' in d for d in dep_names)
+        assert "lit" in dep_names
+        assert any("lit/decorators" in d for d in dep_names)
 
     def test_lit_component_extractor_finds_components(
         self, sample_ts_file: Path
@@ -147,16 +147,14 @@ class TestTypeScriptAdapterE2E:
         tokens = extractor.extract(None, raw_content, sample_ts_file)
 
         # Should find ha-dialog and bubble-card components
-        lit_tokens = [t for t in tokens if t.token_type == 'lit_component']
+        lit_tokens = [t for t in tokens if t.token_type == "lit_component"]
         assert len(lit_tokens) >= 2
 
-        tag_names = [t.data['tag_name'] for t in lit_tokens]
-        assert 'ha-dialog' in tag_names
-        assert 'bubble-card' in tag_names
+        tag_names = [t.data["tag_name"] for t in lit_tokens]
+        assert "ha-dialog" in tag_names
+        assert "bubble-card" in tag_names
 
-    def test_i18n_key_extractor_finds_keys(
-        self, sample_ts_file: Path
-    ) -> None:
+    def test_i18n_key_extractor_finds_keys(self, sample_ts_file: Path) -> None:
         """Test that I18nKeyExtractor finds localize() calls.
 
         Note: this.localize() is NOT captured by LOCALIZE_CALL_PATTERN due to
@@ -169,18 +167,16 @@ class TestTypeScriptAdapterE2E:
         tokens = extractor.extract(None, raw_content, sample_ts_file)
 
         # Should find i18n keys (hass.localize + template_literal)
-        i18n_tokens = [t for t in tokens if t.token_type == 'i18n_key']
+        i18n_tokens = [t for t in tokens if t.token_type == "i18n_key"]
         assert len(i18n_tokens) >= 2
 
         # Check for specific keys
-        keys = [t.data['key'] for t in i18n_tokens]
-        assert 'ui.dialog.cancel' in keys
+        keys = [t.data["key"] for t in i18n_tokens]
+        assert "ui.dialog.cancel" in keys
         # Template literal prefix should be captured
-        assert any('ui.card.actions' in k for k in keys)
+        assert any("ui.card.actions" in k for k in keys)
 
-    def test_service_call_extractor_finds_calls(
-        self, sample_ts_file: Path
-    ) -> None:
+    def test_service_call_extractor_finds_calls(self, sample_ts_file: Path) -> None:
         """Test that ServiceCallExtractor finds callService() calls."""
         extractor = ServiceCallExtractor()
         raw_content = sample_ts_file.read_text()
@@ -188,21 +184,19 @@ class TestTypeScriptAdapterE2E:
         tokens = extractor.extract(None, raw_content, sample_ts_file)
 
         # Should find service calls
-        service_tokens = [t for t in tokens if t.token_type == 'service_call']
+        service_tokens = [t for t in tokens if t.token_type == "service_call"]
         assert len(service_tokens) >= 3
 
         # Check for specific domains/services
-        domains = [t.data['domain'] for t in service_tokens]
-        services = [t.data['service'] for t in service_tokens]
+        domains = [t.data["domain"] for t in service_tokens]
+        services = [t.data["service"] for t in service_tokens]
 
-        assert 'dialog' in domains
-        assert 'close' in services
-        assert 'homeassistant' in domains
-        assert 'turn_off' in services
+        assert "dialog" in domains
+        assert "close" in services
+        assert "homeassistant" in domains
+        assert "turn_off" in services
 
-    def test_adapter_with_all_extractors(
-        self, sample_ts_file: Path
-    ) -> None:
+    def test_adapter_with_all_extractors(self, sample_ts_file: Path) -> None:
         """Test that the adapter correctly uses all extractors together."""
         adapter = TypeScriptAdapter(
             extractors=[
@@ -222,19 +216,21 @@ class TestTypeScriptAdapterE2E:
 
         # Verify we got tokens from all three types
         token_types = set(t.token_type for t in all_tokens)
-        assert 'lit_component' in token_types
-        assert 'i18n_key' in token_types
-        assert 'service_call' in token_types
+        assert "lit_component" in token_types
+        assert "i18n_key" in token_types
+        assert "service_call" in token_types
 
         # Count tokens
-        lit_count = sum(1 for t in all_tokens if t.token_type == 'lit_component')
-        i18n_count = sum(1 for t in all_tokens if t.token_type == 'i18n_key')
-        service_count = sum(1 for t in all_tokens if t.token_type == 'service_call')
+        lit_count = sum(1 for t in all_tokens if t.token_type == "lit_component")
+        i18n_count = sum(1 for t in all_tokens if t.token_type == "i18n_key")
+        service_count = sum(1 for t in all_tokens if t.token_type == "service_call")
 
         assert lit_count >= 2, f"Expected at least 2 lit components, got {lit_count}"
         # Note: this.localize is NOT captured, only hass.localize and template_literal
         assert i18n_count >= 2, f"Expected at least 2 i18n keys, got {i18n_count}"
-        assert service_count >= 3, f"Expected at least 3 service calls, got {service_count}"
+        assert service_count >= 3, (
+            f"Expected at least 3 service calls, got {service_count}"
+        )
 
     def test_parse_file_does_not_crash_on_valid_typescript(
         self, adapter: TypeScriptAdapter, sample_ts_file: Path
@@ -246,11 +242,9 @@ class TestTypeScriptAdapterE2E:
         assert result is not None
         assert isinstance(result, ParseResult)
 
-    def test_adapter_handles_different_hass_prefixes(
-        self, tmp_path: Path
-    ) -> None:
+    def test_adapter_handles_different_hass_prefixes(self, tmp_path: Path) -> None:
         """Test that the adapter correctly identifies different hass prefixes."""
-        ts_content = '''
+        ts_content = """
         class TestComponent extends HTMLElement {
             test1() {
                 this.hass.callService('light', 'turn_on', { entity_id: 'light.1' });
@@ -262,7 +256,7 @@ class TestTypeScriptAdapterE2E:
                 hass.callService('fan', 'set_speed', { entity_id: 'fan.1' });
             }
         }
-        '''
+        """
 
         ts_file = tmp_path / "hass_prefixes.ts"
         ts_file.write_text(ts_content)
@@ -271,19 +265,19 @@ class TestTypeScriptAdapterE2E:
         raw_content = ts_file.read_text()
 
         tokens = extractor.extract(None, raw_content, ts_file)
-        service_tokens = [t for t in tokens if t.token_type == 'service_call']
+        service_tokens = [t for t in tokens if t.token_type == "service_call"]
 
         # Check we got all three prefixes
-        prefixes = [t.data['hass_prefix'] for t in service_tokens]
-        assert 'this.hass' in prefixes
-        assert 'context._hass' in prefixes
-        assert 'hass' in prefixes
+        prefixes = [t.data["hass_prefix"] for t in service_tokens]
+        assert "this.hass" in prefixes
+        assert "context._hass" in prefixes
+        assert "hass" in prefixes
 
     def test_adapter_extracts_entity_ids_from_service_data(
         self, tmp_path: Path
     ) -> None:
         """Test that entity IDs are correctly extracted from service data."""
-        ts_content = '''
+        ts_content = """
         class TestComponent extends HTMLElement {
             test() {
                 this.hass.callService('light', 'turn_on', {
@@ -296,7 +290,7 @@ class TestTypeScriptAdapterE2E:
                 });
             }
         }
-        '''
+        """
 
         ts_file = tmp_path / "entity_ids.ts"
         ts_file.write_text(ts_content)
@@ -305,33 +299,31 @@ class TestTypeScriptAdapterE2E:
         raw_content = ts_file.read_text()
 
         tokens = extractor.extract(None, raw_content, ts_file)
-        service_tokens = [t for t in tokens if t.token_type == 'service_call']
+        service_tokens = [t for t in tokens if t.token_type == "service_call"]
 
         # Find the single entity_id token
         single_entity = next(
-            (t for t in service_tokens if 'light.living_room' in t.data['entity_ids']),
-            None
+            (t for t in service_tokens if "light.living_room" in t.data["entity_ids"]),
+            None,
         )
         assert single_entity is not None, "Should find single entity_id"
-        assert single_entity.data['entity_ids'] == ['light.living_room']
+        assert single_entity.data["entity_ids"] == ["light.living_room"]
 
-    def test_i18n_context_tracking(
-        self, tmp_path: Path
-    ) -> None:
+    def test_i18n_context_tracking(self, tmp_path: Path) -> None:
         """Test that i18n context (localize vs hass.localize) is tracked correctly.
 
         Note: The LOCALIZE_CALL_PATTERN does NOT match this.localize
         because the lookbehind sees the dot in 'this.'. Only hass.localize is matched
         for prefixed calls. Plain localize() without any prefix would be matched as 'localize'.
         """
-        ts_content = '''
+        ts_content = """
         class TestComponent extends HTMLElement {
             test1() {
                 const a = localize('ui.key.1');
                 const b = this.hass.localize('ui.key.2');
             }
         }
-        '''
+        """
 
         ts_file = tmp_path / "i18n_context.ts"
         ts_file.write_text(ts_content)
@@ -340,23 +332,25 @@ class TestTypeScriptAdapterE2E:
         raw_content = ts_file.read_text()
 
         tokens = extractor.extract(None, raw_content, ts_file)
-        i18n_tokens = [t for t in tokens if t.token_type == 'i18n_key']
+        i18n_tokens = [t for t in tokens if t.token_type == "i18n_key"]
 
         # Find tokens by key
-        key1_token = next((t for t in i18n_tokens if t.data['key'] == 'ui.key.1'), None)
-        key2_token = next((t for t in i18n_tokens if t.data['key'] == 'ui.key.2'), None)
+        key1_token = next((t for t in i18n_tokens if t.data["key"] == "ui.key.1"), None)
+        key2_token = next((t for t in i18n_tokens if t.data["key"] == "ui.key.2"), None)
 
         # Plain localize() call is captured as 'localize' context
         assert key1_token is not None, "Should find ui.key.1"
-        assert key1_token.data['context'] == 'localize', "ui.key.1 should be localize context"
+        assert key1_token.data["context"] == "localize", (
+            "ui.key.1 should be localize context"
+        )
 
         # hass.localize() is captured as 'hass.localize' context
         assert key2_token is not None, "Should find ui.key.2"
-        assert key2_token.data['context'] == 'hass.localize', "ui.key.2 should be hass.localize context"
+        assert key2_token.data["context"] == "hass.localize", (
+            "ui.key.2 should be hass.localize context"
+        )
 
-    def test_parse_file_with_fixture_file(
-        self, tmp_path: Path
-    ) -> None:
+    def test_parse_file_with_fixture_file(self, tmp_path: Path) -> None:
         """Test parsing using the actual fixture file."""
         # Create the fixture file
         fixture_dir = tmp_path / "fixtures"
@@ -368,8 +362,8 @@ class TestTypeScriptAdapterE2E:
         result = adapter.parse_file(fixture_file)
 
         assert result.file_path == fixture_file
-        assert 'HaDialog' in result.raw_content
-        assert 'BubbleCard' in result.raw_content
+        assert "HaDialog" in result.raw_content
+        assert "BubbleCard" in result.raw_content
 
     def test_adapter_returns_valid_parse_result_structure(
         self, adapter: TypeScriptAdapter, sample_ts_file: Path
@@ -378,19 +372,17 @@ class TestTypeScriptAdapterE2E:
         result = adapter.parse_file(sample_ts_file)
 
         # Check ParseResult structure
-        assert hasattr(result, 'file_path')
-        assert hasattr(result, 'ast_tree')
-        assert hasattr(result, 'raw_content')
-        assert hasattr(result, 'dependencies')
+        assert hasattr(result, "file_path")
+        assert hasattr(result, "ast_tree")
+        assert hasattr(result, "raw_content")
+        assert hasattr(result, "dependencies")
 
         # Verify types
         assert isinstance(result.file_path, Path)
         assert isinstance(result.raw_content, str)
         assert isinstance(result.dependencies, tuple)
 
-    def test_lit_component_properties_and_states(
-        self, tmp_path: Path
-    ) -> None:
+    def test_lit_component_properties_and_states(self, tmp_path: Path) -> None:
         """Test that LitComponentExtractor extracts properties and states.
 
         Note: The regex-based extractor requires explicit 'name:' option in property
@@ -398,7 +390,7 @@ class TestTypeScriptAdapterE2E:
         word characters, so hyphens in names are not supported.
         State extraction works via @state() detection.
         """
-        ts_content = '''
+        ts_content = """
         import { customElement, property, state } from 'lit/decorators.js';
 
         @customElement('my-card')
@@ -411,7 +403,7 @@ class TestTypeScriptAdapterE2E:
             return html`<h1>${this.cardTitle}</h1>`;
           }
         }
-        '''
+        """
 
         ts_file = tmp_path / "properties_test.ts"
         ts_file.write_text(ts_content)
@@ -420,26 +412,30 @@ class TestTypeScriptAdapterE2E:
         raw_content = ts_file.read_text()
 
         tokens = extractor.extract(None, raw_content, ts_file)
-        lit_tokens = [t for t in tokens if t.token_type == 'lit_component']
+        lit_tokens = [t for t in tokens if t.token_type == "lit_component"]
 
         assert len(lit_tokens) >= 1
-        my_card = next((t for t in lit_tokens if t.data['tag_name'] == 'my-card'), None)
+        my_card = next((t for t in lit_tokens if t.data["tag_name"] == "my-card"), None)
         assert my_card is not None, "Should find my-card component"
 
         # Check properties - regex extracts from name: 'propertyName' in decorator
         # Note: regex (\w+) does NOT match names with hyphens like 'card-title'
-        properties = my_card.data['properties']
-        assert len(properties) >= 2, f"Expected at least 2 properties, got {len(properties)}"
-        assert 'cardTitle' in properties
-        assert 'loading' in properties
+        properties = my_card.data["properties"]
+        assert len(properties) >= 2, (
+            f"Expected at least 2 properties, got {len(properties)}"
+        )
+        assert "cardTitle" in properties
+        assert "loading" in properties
 
         # Check states - @state() decorator is detected
-        states = my_card.data['states']
+        states = my_card.data["states"]
         assert len(states) >= 1, f"Expected at least 1 state, got {len(states)}"
 
         # Check observed attributes (derived from property names)
-        observed = my_card.data['observed_attributes']
-        assert len(observed) >= 2, f"Expected at least 2 observed attributes, got {len(observed)}"
+        observed = my_card.data["observed_attributes"]
+        assert len(observed) >= 2, (
+            f"Expected at least 2 observed attributes, got {len(observed)}"
+        )
 
 
 # Sample TypeScript content for RepoProcessor integration testing
@@ -566,19 +562,22 @@ class TestRepoProcessorPipeline:
             adapter_calls.append(extension)
             return mock_adapter
 
-        with patch('src.utils.extractors.factory.get_adapter', side_effect=track_adapter):
+        with patch(
+            "src.utils.extractors.factory.get_adapter", side_effect=track_adapter
+        ):
             processor._process_repository("test_owner", repo_dir)
 
         # Verify .ts file triggered adapter selection
-        assert '.ts' in adapter_calls, (
+        assert ".ts" in adapter_calls, (
             f"TypeScript adapter not selected for .ts file. "
             f"Adapter was selected for: {adapter_calls}"
         )
 
         # Verify parse_file was called with the .ts file path
         ts_calls = [
-            call for call in mock_adapter.parse_file.call_args_list
-            if call[0][0].suffix == '.ts'
+            call
+            for call in mock_adapter.parse_file.call_args_list
+            if call[0][0].suffix == ".ts"
         ]
         assert len(ts_calls) > 0, (
             f"TypeScriptAdapter.parse_file() was never called for .ts files. "
@@ -612,12 +611,12 @@ class TestRepoProcessorPipeline:
         extractor = LitComponentExtractor()
         tokens = extractor.extract(None, ts_file.read_text(), ts_file)
 
-        lit_tokens = [t for t in tokens if t.token_type == 'lit_component']
-        tag_names = [t.data['tag_name'] for t in lit_tokens]
+        lit_tokens = [t for t in tokens if t.token_type == "lit_component"]
+        tag_names = [t.data["tag_name"] for t in lit_tokens]
 
         # Should find ha-dialog and ha-card components
-        assert 'ha-dialog' in tag_names, f"ha-dialog not found in {tag_names}"
-        assert 'ha-card' in tag_names, f"ha-card not found in {tag_names}"
+        assert "ha-dialog" in tag_names, f"ha-dialog not found in {tag_names}"
+        assert "ha-card" in tag_names, f"ha-card not found in {tag_names}"
 
     def test_reprocessor_extracts_i18n_keys_from_typescript(
         self, tmp_path: Path
@@ -635,13 +634,13 @@ class TestRepoProcessorPipeline:
         extractor = I18nKeyExtractor()
         tokens = extractor.extract(None, ts_file.read_text(), ts_file)
 
-        i18n_tokens = [t for t in tokens if t.token_type == 'i18n_key']
-        keys = [t.data['key'] for t in i18n_tokens]
+        i18n_tokens = [t for t in tokens if t.token_type == "i18n_key"]
+        keys = [t.data["key"] for t in i18n_tokens]
 
         # Should find ui.dialog.cancel, ui.dialog.confirm, ui.card.temp
         # Note: this.localize is NOT matched by the negative-lookbehind regex
-        assert 'ui.dialog.cancel' in keys, f"ui.dialog.cancel not found in {keys}"
-        assert 'ui.card.temp' in keys, f"ui.card.temp not found in {keys}"
+        assert "ui.dialog.cancel" in keys, f"ui.dialog.cancel not found in {keys}"
+        assert "ui.card.temp" in keys, f"ui.card.temp not found in {keys}"
 
     def test_reprocessor_extracts_service_calls_from_typescript(
         self, tmp_path: Path
@@ -659,7 +658,7 @@ class TestRepoProcessorPipeline:
         extractor = ServiceCallExtractor()
         tokens = extractor.extract(None, ts_file.read_text(), ts_file)
 
-        service_tokens = [t for t in tokens if t.token_type == 'service_call']
+        service_tokens = [t for t in tokens if t.token_type == "service_call"]
 
         # Should find at least 3 service calls:
         # - dialog.close
@@ -669,19 +668,21 @@ class TestRepoProcessorPipeline:
             f"Expected at least 3 service calls, got {len(service_tokens)}"
         )
 
-        domains = [t.data['domain'] for t in service_tokens]
-        services = [t.data['service'] for t in service_tokens]
+        domains = [t.data["domain"] for t in service_tokens]
+        services = [t.data["service"] for t in service_tokens]
 
-        assert 'dialog' in domains, f"dialog domain not found in {domains}"
-        assert 'close' in services, f"close service not found in {services}"
-        assert 'homeassistant' in domains, f"homeassistant domain not found in {domains}"
-        assert 'turn_off' in services, f"turn_off service not found in {services}"
-        assert 'climate' in domains, f"climate domain not found in {domains}"
-        assert 'set_temperature' in services, f"set_temperature service not found in {services}"
+        assert "dialog" in domains, f"dialog domain not found in {domains}"
+        assert "close" in services, f"close service not found in {services}"
+        assert "homeassistant" in domains, (
+            f"homeassistant domain not found in {domains}"
+        )
+        assert "turn_off" in services, f"turn_off service not found in {services}"
+        assert "climate" in domains, f"climate domain not found in {domains}"
+        assert "set_temperature" in services, (
+            f"set_temperature service not found in {services}"
+        )
 
-    def test_full_pipeline_produces_extraction_results(
-        self, tmp_path: Path
-    ) -> None:
+    def test_full_pipeline_produces_extraction_results(self, tmp_path: Path) -> None:
         """Test that the full pipeline produces extraction results with all token types.
 
         This is an integration test that verifies:
@@ -710,7 +711,7 @@ class TestRepoProcessorPipeline:
         real_ts_adapter = TypeScriptAdapter()
 
         def selective_adapter(extension):
-            if extension in ('.ts', '.tsx'):
+            if extension in (".ts", ".tsx"):
                 return real_ts_adapter
             return real_factory_get_adapter(extension)
 
@@ -722,29 +723,31 @@ class TestRepoProcessorPipeline:
             result = original_parse_file(file_path)
             # Track what was extracted
             extraction_results[file_path.name] = {
-                'dependencies': result.dependencies,
-                'content_length': len(result.raw_content) if result.raw_content else 0,
+                "dependencies": result.dependencies,
+                "content_length": len(result.raw_content) if result.raw_content else 0,
             }
             return result
 
-        with patch('src.utils.extractors.factory.get_adapter', side_effect=selective_adapter):
-            with patch.object(real_ts_adapter, 'parse_file', side_effect=tracking_parse_file):
+        with patch(
+            "src.utils.extractors.factory.get_adapter", side_effect=selective_adapter
+        ):
+            with patch.object(
+                real_ts_adapter, "parse_file", side_effect=tracking_parse_file
+            ):
                 processor._process_repository("test_owner", repo_dir)
 
         # Verify the TypeScript file was processed
-        assert 'ha_dialog.ts' in extraction_results, (
+        assert "ha_dialog.ts" in extraction_results, (
             f"ha_dialog.ts was not processed. "
             f"Processed files: {list(extraction_results.keys())}"
         )
 
         # Verify content was read
-        assert extraction_results['ha_dialog.ts']['content_length'] > 0, (
+        assert extraction_results["ha_dialog.ts"]["content_length"] > 0, (
             "No content was extracted from the TypeScript file"
         )
 
-    def test_typescript_adapter_handles_tsx_files(
-        self, tmp_path: Path
-    ) -> None:
+    def test_typescript_adapter_handles_tsx_files(self, tmp_path: Path) -> None:
         """Test that TSX files are also processed through the pipeline.
 
         This verifies that .tsx files trigger the TypeScriptAdapter as well.
@@ -785,15 +788,17 @@ export class MyTsxElement extends LitElement {
 
         def selective_adapter(extension):
             adapter_calls.append(extension)
-            if extension in ('.ts', '.tsx'):
+            if extension in (".ts", ".tsx"):
                 return real_ts_adapter
             return real_factory_get_adapter(extension)
 
-        with patch('src.utils.extractors.factory.get_adapter', side_effect=selective_adapter):
+        with patch(
+            "src.utils.extractors.factory.get_adapter", side_effect=selective_adapter
+        ):
             processor._process_repository("test_owner", repo_dir)
 
         # Verify .tsx triggered adapter selection
-        assert '.tsx' in adapter_calls, (
+        assert ".tsx" in adapter_calls, (
             f"TypeScript adapter not selected for .tsx file. "
             f"Adapter was selected for: {adapter_calls}"
         )

@@ -16,7 +16,6 @@ Author: Claude Opus 4.6
 from __future__ import annotations
 
 
-
 class TestCalcCombinations:
     """Tests for _calc_combinations function."""
 
@@ -189,5 +188,3 @@ class TestSortValuesByPriority:
         values = [0.5, 1.0, 0.7]
         result = _sort_values_by_priority(values, "temperature")
         assert len(result) == 3
-
-

@@ -99,7 +99,9 @@ def _compute_message_hash(messages: list[dict[str, Any]]) -> str:
             normalized_messages.append({"role": role, "content": normalized_content})
 
         # Sort keys for deterministic serialization
-        content_str = json.dumps(normalized_messages, sort_keys=True, ensure_ascii=False)
+        content_str = json.dumps(
+            normalized_messages, sort_keys=True, ensure_ascii=False
+        )
         hash_obj = hashlib.sha256(content_str.encode("utf-8"))
         return hash_obj.hexdigest()
     except Exception as e:
@@ -268,7 +270,9 @@ class DedupAndValidate:
         """
         try:
             # Extract message dicts for hashing
-            messages_data = [{"role": m.role, "content": m.content} for m in record.messages]
+            messages_data = [
+                {"role": m.role, "content": m.content} for m in record.messages
+            ]
             hash_value = _compute_message_hash(messages_data)
 
             if hash_value in self._seen_hashes:
@@ -294,9 +298,13 @@ class DedupAndValidate:
             None if it was discarded.
         """
         # Track format distribution for all processed records
-        messages_data = [{"role": m.role, "content": m.content} for m in record.messages]
+        messages_data = [
+            {"role": m.role, "content": m.content} for m in record.messages
+        ]
         tool_format = detect_tool_format(messages_data)
-        self._format_distribution[tool_format] = self._format_distribution.get(tool_format, 0) + 1
+        self._format_distribution[tool_format] = (
+            self._format_distribution.get(tool_format, 0) + 1
+        )
 
         # First validate (check for tool calls)
         if not self.validate_record(record):

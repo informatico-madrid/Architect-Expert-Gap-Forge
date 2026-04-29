@@ -18,6 +18,7 @@ from infrastructure.anchor_dataset.startup import StartupValidator
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_config(**overrides: object) -> AnchorsConfig:
     """Build an AnchorsConfig with optional overrides."""
     kwargs: dict[str, object] = {
@@ -28,9 +29,16 @@ def _make_config(**overrides: object) -> AnchorsConfig:
         "temperature": 0.4,
         "max_tokens": 8192,
         "domain_distribution": json.dumps(
-            {"home_assistant": 0.4, "php_legacy": 0.3, "generic_domain": 0.2, "other": 0.1}
+            {
+                "home_assistant": 0.4,
+                "php_legacy": 0.3,
+                "generic_domain": 0.2,
+                "other": 0.1,
+            }
         ),
-        "difficulty_distribution": json.dumps({"easy": 0.3, "medium": 0.5, "hard": 0.2}),
+        "difficulty_distribution": json.dumps(
+            {"easy": 0.3, "medium": 0.5, "hard": 0.2}
+        ),
         "seed": 42,
     }
     kwargs.update(overrides)
@@ -41,6 +49,7 @@ def _make_config(**overrides: object) -> AnchorsConfig:
 # 1. Valid CLI args pass all 4 steps
 # ---------------------------------------------------------------------------
 
+
 class TestValidCLIArgs:
     def test_passes_all_steps(self):
         """Valid args — no warnings from step 1 (args)."""
@@ -49,7 +58,8 @@ class TestValidCLIArgs:
         warnings = sv.dry_run(config)
         # Step 1 (args) should produce no warnings for valid input
         arg_warnings = [
-            w for w in warnings
+            w
+            for w in warnings
             if "Count" in w or "Unknown provider" in w or "domain_distribution" in w
         ]
         assert len(arg_warnings) == 0
@@ -82,6 +92,7 @@ class TestValidCLIArgs:
 # ---------------------------------------------------------------------------
 # 2. Missing API key fails at step 2
 # ---------------------------------------------------------------------------
+
 
 class TestMissingAPIKey:
     def test_openai_no_key_warning(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -116,6 +127,7 @@ class TestMissingAPIKey:
 # ---------------------------------------------------------------------------
 # 3. Invalid count fails at step 1
 # ---------------------------------------------------------------------------
+
 
 class TestInvalidCount:
     def test_count_zero(self):
@@ -158,6 +170,7 @@ class TestInvalidCount:
 # 4. dry_run returns warnings (not exceptions)
 # ---------------------------------------------------------------------------
 
+
 class TestDryRunReturnsWarnings:
     def test_dry_run_returns_list(self):
         """dry_run returns a list of warning strings."""
@@ -175,7 +188,9 @@ class TestDryRunReturnsWarnings:
         sv.dry_run(config)
         assert len(sv.warnings) > 0
 
-    def test_seed_warning_when_file_missing(self, tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_seed_warning_when_file_missing(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """If seed file is missing, _validate_seeds adds a warning."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)

@@ -184,7 +184,9 @@ def _parse_xml_to_list(element: ET.Element) -> list:
 
     # Find all items and sort by index
     items = element.findall("item")
-    sorted_items = sorted(items, key=lambda x: int(x.get("key", 0)) if x.get("key", "").isdigit() else 0)
+    sorted_items = sorted(
+        items, key=lambda x: int(x.get("key", 0)) if x.get("key", "").isdigit() else 0
+    )
 
     for item in sorted_items:
         value_type = item.get("type", "str")
@@ -260,12 +262,18 @@ class Turn(BaseModel):
     model_config = {"frozen": True}
 
     turn_index: int = Field(description="Index of this turn in the trajectory")
-    turn_type: TurnType = Field(description="Type of turn: observation/reasoning/action/error/correct/verify")
+    turn_type: TurnType = Field(
+        description="Type of turn: observation/reasoning/action/error/correct/verify"
+    )
     content: str = Field(description="Turn content or tool output")
     tool_name: str | None = Field(default=None, description="Tool name if action turn")
-    tool_args: dict | None = Field(default=None, description="Tool arguments if action turn")
+    tool_args: dict | None = Field(
+        default=None, description="Tool arguments if action turn"
+    )
     tool_result: str | None = Field(default=None, description="Tool execution result")
-    reasoning: str | None = Field(default=None, description="Model reasoning if available")
+    reasoning: str | None = Field(
+        default=None, description="Model reasoning if available"
+    )
 
 
 class SimulatedError(BaseModel):

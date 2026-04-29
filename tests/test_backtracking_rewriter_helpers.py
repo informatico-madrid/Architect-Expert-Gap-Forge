@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-
 from src.curation import backtracking_helpers as br
 from src.curation import backtrack_strategy as br_strategy
 

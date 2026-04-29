@@ -46,7 +46,9 @@ def run_cli_with_config(config_content: str) -> subprocess.CompletedProcess:
         os.makedirs(output_dir, exist_ok=True)
 
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"/mnt/bunker_data/ai/data_factory:{env.get('PYTHONPATH', '')}"
+        env["PYTHONPATH"] = (
+            f"/mnt/bunker_data/ai/data_factory:{env.get('PYTHONPATH', '')}"
+        )
 
         return subprocess.run(
             [PY, "-m", "src.discovery.processor_cli", "--config", config_path],
@@ -63,7 +65,9 @@ def test_processor_cli_homeassistant_should_succeed_but_fails():
     Usamos un config minimal para evitar dependencias de archivos externos.
     """
     res = run_cli_with_config(MINIMAL_CONFIG)
-    assert res.returncode == 0, f"CLI exited {res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    assert res.returncode == 0, (
+        f"CLI exited {res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    )
 
 
 def test_processor_cli_php_hexagonal_should_succeed_but_fails():
@@ -71,4 +75,6 @@ def test_processor_cli_php_hexagonal_should_succeed_but_fails():
     Usamos un config minimal para evitar dependencias de archivos externos.
     """
     res = run_cli_with_config(MINIMAL_CONFIG)
-    assert res.returncode == 0, f"CLI exited {res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    assert res.returncode == 0, (
+        f"CLI exited {res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    )

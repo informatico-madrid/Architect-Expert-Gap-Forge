@@ -166,7 +166,10 @@ class ChatMLExporter:
   "hass_prefix": "string - How hass was referenced ('this.hass', 'context._hass', 'hass')"
 }""",
         }
-        return schemas.get(token_type, f"Schema for {token_type} tokens:\n{json.dumps(token_type, indent=2)}")
+        return schemas.get(
+            token_type,
+            f"Schema for {token_type} tokens:\n{json.dumps(token_type, indent=2)}",
+        )
 
     def _build_user_message(self, token: FrontendToken) -> str:
         """Build user message with source code snippet.

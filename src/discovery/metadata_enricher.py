@@ -93,7 +93,14 @@ class ProcessingConfig(BaseModel):
     # Accept both 'extensions' and 'profile_extensions' for flexibility
     extensions: Set[str] = Field(default_factory=lambda: {".py", ".md"})
     ignore_patterns: Set[str] = Field(
-        default_factory=lambda: {".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
+        default_factory=lambda: {
+            ".git",
+            "__pycache__",
+            "venv",
+            "node_modules",
+            ".tox",
+            "eggs",
+        }
     )
     # Support profile_extensions alias for DiscoveryConfig compatibility
     profile_extensions: Optional[Set[str]] = Field(
@@ -275,6 +282,7 @@ class RepoProcessor:
         """Discover modules using the configured strategy."""
         if self.cfg.module_discovery_strategy == "auto":
             from src.discovery.file_scanner import _detect_strategy
+
             detected_strategy = _detect_strategy(root)
             logger.info("Auto-detected strategy: %s for %s", detected_strategy, root)
             self.cfg.module_discovery_strategy = detected_strategy
@@ -376,8 +384,17 @@ class RepoProcessor:
 
         mod = self._build_module(mod_dir, anchor_type=anchor, manifest=manifest_data)
         # Extract owner_dir from repo_root (repo_root is owner_dir/owner_name)
-        owner_dir = repo_root.parent if repo_root.parent.name != "homeassistant" else None
-        self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix, owner_dir=owner_dir)
+        owner_dir = (
+            repo_root.parent if repo_root.parent.name != "homeassistant" else None
+        )
+        self._emit_module(
+            mod,
+            repo_root,
+            prefix,
+            size_limit,
+            repo_prefix=repo_prefix,
+            owner_dir=owner_dir,
+        )
 
     # ------------------------------------------------------------------
     # Module emission: generates TIPO 1-4 bundles
@@ -468,9 +485,7 @@ class RepoProcessor:
             except ParseError as e:
                 self._stats["parse_errors"] += 1
                 # T030c: Emit metrics for parse error
-                self._metrics.increment_parse_error(
-                    repo_root.name, self.cfg.profile
-                )
+                self._metrics.increment_parse_error(repo_root.name, self.cfg.profile)
                 if self._on_parse_error == "abort":
                     # T009d: Abort the entire repository, not just the file
                     logger.warning(
@@ -483,9 +498,7 @@ class RepoProcessor:
                         repo_name=repo_root.name, file_path=mf.path, parse_error=e
                     )
                 elif self._on_parse_error == "skip":
-                    logger.warning(
-                        "Parse error in %s, skipping file: %s", mf.path, e
-                    )
+                    logger.warning("Parse error in %s, skipping file: %s", mf.path, e)
                     continue
                 elif self._on_parse_error == "mark_and_continue":
                     # T009f: Mark file as needs_manual_review but continue processing

@@ -117,16 +117,12 @@ class FormatNormalizer:
             NormalizationError: If conversations array is missing or invalid.
         """
         if "conversations" not in record:
-            raise NormalizationError(
-                "ShareGPT format requires 'conversations' array"
-            )
+            raise NormalizationError("ShareGPT format requires 'conversations' array")
 
         conversations = record["conversations"]
 
         if not isinstance(conversations, list):
-            raise NormalizationError(
-                "ShareGPT 'conversations' must be a list"
-            )
+            raise NormalizationError("ShareGPT 'conversations' must be a list")
 
         messages = []
         for conv in conversations:
@@ -144,9 +140,7 @@ class FormatNormalizer:
 
         return messages
 
-    def _convert_openai_messages(
-        self, record: dict[str, Any]
-    ) -> list[Message]:
+    def _convert_openai_messages(self, record: dict[str, Any]) -> list[Message]:
         """Convert OpenAI Messages format to ChatML messages.
 
         This is essentially a passthrough since OpenAI Messages
@@ -162,16 +156,12 @@ class FormatNormalizer:
             NormalizationError: If messages array is missing or invalid.
         """
         if "messages" not in record:
-            raise NormalizationError(
-                "OpenAI Messages format requires 'messages' array"
-            )
+            raise NormalizationError("OpenAI Messages format requires 'messages' array")
 
         messages_data = record["messages"]
 
         if not isinstance(messages_data, list):
-            raise NormalizationError(
-                "'messages' must be a list"
-            )
+            raise NormalizationError("'messages' must be a list")
 
         messages = []
         for msg in messages_data:
@@ -180,9 +170,7 @@ class FormatNormalizer:
                     "Each message must have 'role' and 'content' fields"
                 )
 
-            messages.append(
-                Message(role=msg["role"], content=msg["content"])
-            )
+            messages.append(Message(role=msg["role"], content=msg["content"]))
 
         return messages
 

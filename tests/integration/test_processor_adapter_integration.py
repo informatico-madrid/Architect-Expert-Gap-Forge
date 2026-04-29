@@ -336,6 +336,7 @@ def broken(
 
         # Verify adapter selection works per-file (the behavior, not implementation)
         from src.utils.extractors.factory import get_adapter
+
         adapter = get_adapter(".py")
         assert adapter is not None
 

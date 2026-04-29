@@ -18,26 +18,126 @@ class TestSpearmanRealCorrelation:
 
     # Known test data: 10 samples with deterministic, high-correlation scores
     SAMPLE_SCENARIOS = [
-        {"baseline": {"ha_modernity": 0.7, "reasoning_depth": 0.8, "functionality": 0.9},
-         "adapter": {"ha_modernity": 0.75, "reasoning_depth": 0.78, "functionality": 0.92}},
-        {"baseline": {"ha_modernity": 0.5, "reasoning_depth": 0.6, "functionality": 0.7},
-         "adapter": {"ha_modernity": 0.55, "reasoning_depth": 0.62, "functionality": 0.73}},
-        {"baseline": {"ha_modernity": 0.9, "reasoning_depth": 0.85, "functionality": 0.95},
-         "adapter": {"ha_modernity": 0.88, "reasoning_depth": 0.87, "functionality": 0.93}},
-        {"baseline": {"ha_modernity": 0.3, "reasoning_depth": 0.4, "functionality": 0.5},
-         "adapter": {"ha_modernity": 0.35, "reasoning_depth": 0.42, "functionality": 0.53}},
-        {"baseline": {"ha_modernity": 0.6, "reasoning_depth": 0.7, "functionality": 0.65},
-         "adapter": {"ha_modernity": 0.62, "reasoning_depth": 0.72, "functionality": 0.68}},
-        {"baseline": {"ha_modernity": 0.8, "reasoning_depth": 0.75, "functionality": 0.85},
-         "adapter": {"ha_modernity": 0.78, "reasoning_depth": 0.77, "functionality": 0.83}},
-        {"baseline": {"ha_modernity": 0.4, "reasoning_depth": 0.5, "functionality": 0.45},
-         "adapter": {"ha_modernity": 0.42, "reasoning_depth": 0.52, "functionality": 0.48}},
-        {"baseline": {"ha_modernity": 0.7, "reasoning_depth": 0.8, "functionality": 0.75},
-         "adapter": {"ha_modernity": 0.72, "reasoning_depth": 0.82, "functionality": 0.78}},
-        {"baseline": {"ha_modernity": 0.55, "reasoning_depth": 0.65, "functionality": 0.6},
-         "adapter": {"ha_modernity": 0.58, "reasoning_depth": 0.63, "functionality": 0.62}},
-        {"baseline": {"ha_modernity": 0.85, "reasoning_depth": 0.9, "functionality": 0.88},
-         "adapter": {"ha_modernity": 0.83, "reasoning_depth": 0.92, "functionality": 0.86}},
+        {
+            "baseline": {
+                "ha_modernity": 0.7,
+                "reasoning_depth": 0.8,
+                "functionality": 0.9,
+            },
+            "adapter": {
+                "ha_modernity": 0.75,
+                "reasoning_depth": 0.78,
+                "functionality": 0.92,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.5,
+                "reasoning_depth": 0.6,
+                "functionality": 0.7,
+            },
+            "adapter": {
+                "ha_modernity": 0.55,
+                "reasoning_depth": 0.62,
+                "functionality": 0.73,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.9,
+                "reasoning_depth": 0.85,
+                "functionality": 0.95,
+            },
+            "adapter": {
+                "ha_modernity": 0.88,
+                "reasoning_depth": 0.87,
+                "functionality": 0.93,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.3,
+                "reasoning_depth": 0.4,
+                "functionality": 0.5,
+            },
+            "adapter": {
+                "ha_modernity": 0.35,
+                "reasoning_depth": 0.42,
+                "functionality": 0.53,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.6,
+                "reasoning_depth": 0.7,
+                "functionality": 0.65,
+            },
+            "adapter": {
+                "ha_modernity": 0.62,
+                "reasoning_depth": 0.72,
+                "functionality": 0.68,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.8,
+                "reasoning_depth": 0.75,
+                "functionality": 0.85,
+            },
+            "adapter": {
+                "ha_modernity": 0.78,
+                "reasoning_depth": 0.77,
+                "functionality": 0.83,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.4,
+                "reasoning_depth": 0.5,
+                "functionality": 0.45,
+            },
+            "adapter": {
+                "ha_modernity": 0.42,
+                "reasoning_depth": 0.52,
+                "functionality": 0.48,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.7,
+                "reasoning_depth": 0.8,
+                "functionality": 0.75,
+            },
+            "adapter": {
+                "ha_modernity": 0.72,
+                "reasoning_depth": 0.82,
+                "functionality": 0.78,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.55,
+                "reasoning_depth": 0.65,
+                "functionality": 0.6,
+            },
+            "adapter": {
+                "ha_modernity": 0.58,
+                "reasoning_depth": 0.63,
+                "functionality": 0.62,
+            },
+        },
+        {
+            "baseline": {
+                "ha_modernity": 0.85,
+                "reasoning_depth": 0.9,
+                "functionality": 0.88,
+            },
+            "adapter": {
+                "ha_modernity": 0.83,
+                "reasoning_depth": 0.92,
+                "functionality": 0.86,
+            },
+        },
     ]
 
     def _compute_adapter_score(self, adapter_dict: dict) -> float:

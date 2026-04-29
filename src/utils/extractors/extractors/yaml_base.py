@@ -70,13 +70,16 @@ class BlueprintPattern:
     pattern_type: YamlPatternType = YamlPatternType.BLUEPRINT
 
     def __post_init__(self):
-        object.__setattr__("data", {
-            "name": self.name,
-            "description": self.description,
-            "domain": self.domain,
-            "input": self.input,
-            "source_url": self.source_url,
-        })
+        object.__setattr__(
+            "data",
+            {
+                "name": self.name,
+                "description": self.description,
+                "domain": self.domain,
+                "input": self.input,
+                "source_url": self.source_url,
+            },
+        )
 
 
 @dataclass(frozen=True)
@@ -109,15 +112,18 @@ class TriggerPattern:
     pattern_type: YamlPatternType = YamlPatternType.TRIGGER
 
     def __post_init__(self):
-        object.__setattr__("data", {
-            "platform": self.platform,
-            "conditions": self.conditions,
-            "for": self.for_duration,
-            "entity_id": self.entity_id,
-            "attribute": self.attribute,
-            "from": self.from_value,
-            "to": self.to_value,
-        })
+        object.__setattr__(
+            "data",
+            {
+                "platform": self.platform,
+                "conditions": self.conditions,
+                "for": self.for_duration,
+                "entity_id": self.entity_id,
+                "attribute": self.attribute,
+                "from": self.from_value,
+                "to": self.to_value,
+            },
+        )
 
 
 @dataclass(frozen=True)
@@ -154,17 +160,20 @@ class ConditionPattern:
     pattern_type: YamlPatternType = YamlPatternType.CONDITION
 
     def __post_init__(self):
-        object.__setattr__("data", {
-            "condition": self.condition,
-            "entity_id": self.entity_id,
-            "state": self.state,
-            "attribute": self.attribute,
-            "value": self.value,
-            "before": self.before,
-            "after": self.after,
-            "before_state": self.before_state,
-            "after_state": self.after_state,
-        })
+        object.__setattr__(
+            "data",
+            {
+                "condition": self.condition,
+                "entity_id": self.entity_id,
+                "state": self.state,
+                "attribute": self.attribute,
+                "value": self.value,
+                "before": self.before,
+                "after": self.after,
+                "before_state": self.before_state,
+                "after_state": self.after_state,
+            },
+        )
 
 
 @dataclass(frozen=True)
@@ -192,13 +201,16 @@ class ActionPattern:
     pattern_type: YamlPatternType = YamlPatternType.ACTION
 
     def __post_init__(self):
-        object.__setattr__("data", {
-            "service": self.service,
-            "data": self.data,
-            "entity_id": self.entity_id,
-            "target": self.target,
-            "alias": self.alias,
-        })
+        object.__setattr__(
+            "data",
+            {
+                "service": self.service,
+                "data": self.data,
+                "entity_id": self.entity_id,
+                "target": self.target,
+                "alias": self.alias,
+            },
+        )
 
 
 @dataclass(frozen=True)
@@ -225,12 +237,15 @@ class JinjaExpressionPattern:
     pattern_type: YamlPatternType = YamlPatternType.JINJA_EXPRESSION
 
     def __post_init__(self):
-        object.__setattr__("data", {
-            "expression": self.expression,
-            "type": self.expression_type,
-            "variable": self.variable_name,
-            "filter": self.filter_name,
-        })
+        object.__setattr__(
+            "data",
+            {
+                "expression": self.expression,
+                "type": self.expression_type,
+                "variable": self.variable_name,
+                "filter": self.filter_name,
+            },
+        )
 
 
 @dataclass(frozen=True)
@@ -390,7 +405,9 @@ class JinjaStatementToken:
     data: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        object.__setattr__("data", {"type": self.statement_type, "content": self.content})
+        object.__setattr__(
+            "data", {"type": self.statement_type, "content": self.content}
+        )
 
 
 # Regex patterns for extraction
@@ -406,9 +423,7 @@ JINJA_SAFE_VAR_PATTERN = re.compile(
 )
 
 # Jinja filter patterns
-JINJA_FILTER_PATTERN = re.compile(
-    r"\{\{([^{}]+?)\s*\|([^{}]+?)\}\}", re.MULTILINE
-)
+JINJA_FILTER_PATTERN = re.compile(r"\{\{([^{}]+?)\s*\|([^{}]+?)\}\}", re.MULTILINE)
 
 # Jinja test patterns
 JINJA_TEST_PATTERN = re.compile(
@@ -421,9 +436,7 @@ JINJA_LOOP_PATTERN = re.compile(
 )
 
 # Jinja conditional patterns
-JINJA_IF_PATTERN = re.compile(
-    r"\{%\s*if\s+([^{}]+?)\s*%\}", re.MULTILINE
-)
+JINJA_IF_PATTERN = re.compile(r"\{%\s*if\s+([^{}]+?)\s*%\}", re.MULTILINE)
 JINJA_ELSE_PATTERN = re.compile(r"\{%\s*else\s*%\}", re.MULTILINE)
 JINJA_ELIF_PATTERN = re.compile(r"\{%\s*elif\s+([^{}]+?)\s*%\}", re.MULTILINE)
 
@@ -447,7 +460,11 @@ def extract_jinja_variables(content: str, file_path: str) -> List[JinjaVariableT
     tokens: List[JinjaVariableToken] = []
     for match in JINJA_VAR_PATTERN.finditer(content):
         var_name = match.group(1).strip()
-        if var_name and not var_name.startswith("if") and not var_name.startswith("for"):
+        if (
+            var_name
+            and not var_name.startswith("if")
+            and not var_name.startswith("for")
+        ):
             line_number = content[: match.start()].count("\n") + 1
             tokens.append(
                 JinjaVariableToken(
@@ -538,7 +555,9 @@ def extract_jinja_loops(content: str, file_path: str) -> List[JinjaLoopToken]:
     return tokens
 
 
-def extract_jinja_conditionals(content: str, file_path: str) -> List[JinjaConditionalToken]:
+def extract_jinja_conditionals(
+    content: str, file_path: str
+) -> List[JinjaConditionalToken]:
     """Extract Jinja conditionals from template content.
 
     Args:

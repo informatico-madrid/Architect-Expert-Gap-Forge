@@ -178,7 +178,9 @@ def validate_gemini_api_key() -> bool:
     Raises:
         EnvironmentError: If Gemini backend is requested but GOOGLE_API_KEY is missing.
     """
-    if not _GEMINI_AVAILABLE:  # pragma: no cover - only true in environments without google.genai
+    if (
+        not _GEMINI_AVAILABLE
+    ):  # pragma: no cover - only true in environments without google.genai
         return True  # pragma: no cover
 
     api_key = os.getenv("GOOGLE_API_KEY")

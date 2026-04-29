@@ -7,8 +7,6 @@
 
 """Tests for backtracking_config module."""
 
-
-
 from src.curation.backtracking_config import (
     BacktrackingConfig,
     PipelineReport,

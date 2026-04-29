@@ -37,14 +37,14 @@ def _is_leaf_node(value: Any) -> bool:
 def _has_icu_placeholders(text: str) -> bool:
     """Check if text contains ICU message format placeholders."""
     # Match {name}, {count, plural, ...}, {name, plural, ...}, etc.
-    icu_pattern = r'\{[^}]+\}'
+    icu_pattern = r"\{[^}]+\}"
     return bool(re.search(icu_pattern, text))
 
 
 def _flatten_dict(
     data: Any,
-    parent_key: str = '',
-    file_path: str = '',
+    parent_key: str = "",
+    file_path: str = "",
 ) -> list[TranslationEntry]:
     """Recursively flatten nested JSON to dot-path keys.
 
@@ -64,12 +64,14 @@ def _flatten_dict(
             if _is_leaf_node(value):
                 # Leaf node: either a string or a dict with only string values
                 if isinstance(value, str):
-                    entries.append(TranslationEntry(
-                        key=dot_key,
-                        value=value,
-                        file_path=file_path,
-                        is_leaf=True,
-                    ))
+                    entries.append(
+                        TranslationEntry(
+                            key=dot_key,
+                            value=value,
+                            file_path=file_path,
+                            is_leaf=True,
+                        )
+                    )
                 else:
                     # Dict with string values - recurse to flatten it
                     entries.extend(_flatten_dict(value, dot_key, file_path))
@@ -110,11 +112,11 @@ class TranslationJsonParser:
             >>> for entry in entries:
             ...     print(f"{entry.key}: {entry.value[:50]}...")
         """
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         file_path_str = str(file_path)
-        return _flatten_dict(data, '', file_path_str)
+        return _flatten_dict(data, "", file_path_str)
 
 
 def parse_translation_json(file_path: Path) -> list[TranslationEntry]:

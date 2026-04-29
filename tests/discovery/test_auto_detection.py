@@ -55,9 +55,11 @@ class TestDetectStrategy:
             strategy = _detect_strategy(root)
             assert strategy == "typescript"
 
+
 # =============================================================================
 # TASK 26: TypeScript Detection Unit Tests
 # =============================================================================
+
 
 class TestTypeScriptDetection:
     """Test cases for TypeScript file detection."""
@@ -77,7 +79,9 @@ class TestTypeScriptDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             (root / "components").mkdir()
-            (root / "components" / "Button.tsx").write_text("export const Button = () => {};")
+            (root / "components" / "Button.tsx").write_text(
+                "export const Button = () => {};"
+            )
 
             strategy = _detect_strategy(root)
             assert strategy == "typescript"
@@ -135,6 +139,7 @@ class TestTypeScriptDetection:
 # TASK 27: PHP Detection Unit Tests
 # =============================================================================
 
+
 class TestPHPDetection:
     """Test cases for PHP file detection."""
 
@@ -153,7 +158,9 @@ class TestPHPDetection:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             (root / "controllers").mkdir()
-            (root / "controllers" / "UserController.php").write_text("<?php class UserController {}")
+            (root / "controllers" / "UserController.php").write_text(
+                "<?php class UserController {}"
+            )
 
             strategy = _detect_strategy(root)
             assert strategy == "filesystem"
@@ -213,6 +220,7 @@ class TestPHPDetection:
 # =============================================================================
 # TASK 28: Manifest Detection Unit Tests
 # =============================================================================
+
 
 class TestManifestDetection:
     """Test cases for manifest.json detection."""
@@ -279,6 +287,7 @@ class TestManifestDetection:
 # =============================================================================
 # TASK 29: Init Detection Unit Tests
 # =============================================================================
+
 
 class TestInitDetection:
     """Test cases for __init__.py detection."""
@@ -354,6 +363,7 @@ class TestInitDetection:
 # =============================================================================
 # TASK 30: Priority Order Verification Tests
 # =============================================================================
+
 
 class TestPriorityOrderVerification:
     """Test cases to verify the priority order of strategy detection."""
@@ -450,6 +460,7 @@ class TestPriorityOrderVerification:
 # =============================================================================
 # TASK 31: Fallback Detection Unit Tests
 # =============================================================================
+
 
 class TestFallbackDetection:
     """Test cases for fallback detection to 'directory' strategy."""

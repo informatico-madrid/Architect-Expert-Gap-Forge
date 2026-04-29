@@ -206,9 +206,7 @@ JINJA_SAFE_VAR_PATTERN = re.compile(
 )
 
 # Jinja filter patterns
-JINJA_FILTER_PATTERN = re.compile(
-    r"\{\{([^{}]+?)\s*\|([^{}]+?)\}\}", re.MULTILINE
-)
+JINJA_FILTER_PATTERN = re.compile(r"\{\{([^{}]+?)\s*\|([^{}]+?)\}\}", re.MULTILINE)
 
 # Jinja test patterns
 JINJA_TEST_PATTERN = re.compile(
@@ -221,9 +219,7 @@ JINJA_LOOP_PATTERN = re.compile(
 )
 
 # Jinja conditional patterns
-JINJA_IF_PATTERN = re.compile(
-    r"\{%\s*if\s+([^{}]+?)\s*%\}", re.MULTILINE
-)
+JINJA_IF_PATTERN = re.compile(r"\{%\s*if\s+([^{}]+?)\s*%\}", re.MULTILINE)
 JINJA_ELSE_PATTERN = re.compile(r"\{%\s*else\s*%\}", re.MULTILINE)
 JINJA_ELIF_PATTERN = re.compile(r"\{%\s*elif\s+([^{}]+?)\s*%\}", re.MULTILINE)
 
@@ -247,7 +243,11 @@ def extract_jinja_variables(content: str, file_path: str) -> List[JinjaVariableT
     tokens: List[JinjaVariableToken] = []
     for match in JINJA_VAR_PATTERN.finditer(content):
         var_name = match.group(1).strip()
-        if var_name and not var_name.startswith("if") and not var_name.startswith("for"):
+        if (
+            var_name
+            and not var_name.startswith("if")
+            and not var_name.startswith("for")
+        ):
             line_number = content[: match.start()].count("\n") + 1
             tokens.append(
                 JinjaVariableToken(
@@ -338,7 +338,9 @@ def extract_jinja_loops(content: str, file_path: str) -> List[JinjaLoopToken]:
     return tokens
 
 
-def extract_jinja_conditionals(content: str, file_path: str) -> List[JinjaConditionalToken]:
+def extract_jinja_conditionals(
+    content: str, file_path: str
+) -> List[JinjaConditionalToken]:
     """Extract Jinja conditionals from template content.
 
     Args:

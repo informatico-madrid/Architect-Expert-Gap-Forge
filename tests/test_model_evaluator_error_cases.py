@@ -35,11 +35,10 @@ class TestGapAnalysisErrorCases:
 
     def test_empty_gap_analysis_response_raises_error(self, golden_sample: Any) -> None:
         """generate_gap_analysis must raise PromptGenerationError when response is empty."""
-        with patch(
-            "src.audit.gap_generator._get_prompt_manager"
-        ) as mock_pm, patch(
-            "src.audit.gap_generator._get_inference_router"
-        ) as mock_router:
+        with (
+            patch("src.audit.gap_generator._get_prompt_manager") as mock_pm,
+            patch("src.audit.gap_generator._get_inference_router") as mock_router,
+        ):
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"
@@ -61,9 +60,10 @@ class TestExamGenerationErrorCases:
 
     def test_invalid_json_response_raises_error(self, golden_sample: Any) -> None:
         """generate_exam_question must raise PromptGenerationError on invalid JSON."""
-        with patch("src.audit.exam_builder._get_prompt_manager") as mock_pm, patch(
-            "src.audit.exam_builder._get_inference_router"
-        ) as mock_router:
+        with (
+            patch("src.audit.exam_builder._get_prompt_manager") as mock_pm,
+            patch("src.audit.exam_builder._get_inference_router") as mock_router,
+        ):
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"
@@ -86,9 +86,10 @@ class TestExamGenerationErrorCases:
             "target_patterns": ["pattern 1"],
         }
 
-        with patch("src.audit.exam_builder._get_prompt_manager") as mock_pm, patch(
-            "src.audit.exam_builder._get_inference_router"
-        ) as mock_router:
+        with (
+            patch("src.audit.exam_builder._get_prompt_manager") as mock_pm,
+            patch("src.audit.exam_builder._get_inference_router") as mock_router,
+        ):
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"
@@ -111,9 +112,10 @@ class TestExamGenerationErrorCases:
             "target_patterns": ["pattern 1"],
         }
 
-        with patch("src.audit.exam_builder._get_prompt_manager") as mock_pm, patch(
-            "src.audit.exam_builder._get_inference_router"
-        ) as mock_router:
+        with (
+            patch("src.audit.exam_builder._get_prompt_manager") as mock_pm,
+            patch("src.audit.exam_builder._get_inference_router") as mock_router,
+        ):
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"

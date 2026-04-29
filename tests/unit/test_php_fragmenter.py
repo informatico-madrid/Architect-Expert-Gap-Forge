@@ -895,7 +895,9 @@ class TestPhpFragmentValidation:
         """Should raise ValueError when preamble_ref is not 64 chars."""
         from src.discovery.php_fragmenter import PhpFragment, FragmentType
 
-        with pytest.raises(ValueError, match="preamble_ref must be 64-char SHA-256 hex"):
+        with pytest.raises(
+            ValueError, match="preamble_ref must be 64-char SHA-256 hex"
+        ):
             PhpFragment(
                 name="test",
                 fragment_type=FragmentType.FUNCTION.value,
@@ -947,7 +949,12 @@ class TestPhpFragmentValidation:
 
     def test_php_fragment_has_implicit_deps_property(self) -> None:
         """Should return True when has implicit dependencies."""
-        from src.discovery.php_fragmenter import PhpFragment, FragmentType, ImplicitDependency, DependencyType
+        from src.discovery.php_fragmenter import (
+            PhpFragment,
+            FragmentType,
+            ImplicitDependency,
+            DependencyType,
+        )
 
         dep = ImplicitDependency(
             target_symbol="$db",
@@ -972,7 +979,12 @@ class TestPhpFragmentValidation:
 
     def test_php_fragment_get_implicit_dep_symbols(self) -> None:
         """Should return tuple of dependency symbols."""
-        from src.discovery.php_fragmenter import PhpFragment, FragmentType, ImplicitDependency, DependencyType
+        from src.discovery.php_fragmenter import (
+            PhpFragment,
+            FragmentType,
+            ImplicitDependency,
+            DependencyType,
+        )
 
         dep = ImplicitDependency(
             target_symbol="$db",
@@ -1301,5 +1313,3 @@ class TestPhpFragmentSignatureCategories:
         assert len(categories) == 2
         assert SignatureCategory.PERSISTENCE_SMELL.value in categories
         assert SignatureCategory.STATE_POLLUTION.value in categories
-
-

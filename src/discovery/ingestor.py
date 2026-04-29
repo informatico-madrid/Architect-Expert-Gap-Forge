@@ -29,7 +29,13 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 from src.utils.metrics import get_metrics
 from src.utils.rich_helpers import (
     get_console,
@@ -614,7 +620,11 @@ if __name__ == "__main__":
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    config_path = PROJECT_ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
+    config_path = (
+        PROJECT_ROOT / args.config
+        if not Path(args.config).is_absolute()
+        else Path(args.config)
+    )
     with open(config_path, "r") as f:
         config_data = yaml.safe_load(f)
 
@@ -632,7 +642,9 @@ if __name__ == "__main__":
     console.print(f"[cyan]Mode:[/cyan] {config.mode}")
     console.print(f"[cyan]Config:[/cyan] {config_path}")
     console.print(f"[cyan]Limit:[/cyan] {config.limit} repos")
-    console.print(f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}")
+    console.print(
+        f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}"
+    )
     console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if args.dry_run else 'WRITE'}\n")
 
     engine = RepoIngestor(config)
@@ -661,7 +673,11 @@ def main():
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    config_path = PROJECT_ROOT / args.config if not Path(args.config).is_absolute() else Path(args.config)
+    config_path = (
+        PROJECT_ROOT / args.config
+        if not Path(args.config).is_absolute()
+        else Path(args.config)
+    )
     with open(config_path, "r") as f:
         config_data = yaml.safe_load(f)
 
@@ -679,7 +695,9 @@ def main():
     console.print(f"[cyan]Mode:[/cyan] {config.mode}")
     console.print(f"[cyan]Config:[/cyan] {config_path}")
     console.print(f"[cyan]Limit:[/cyan] {config.limit} repos")
-    console.print(f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}")
+    console.print(
+        f"[cyan]Output:[/cyan] {config.base_dir / config.raw_subdir / config.category}"
+    )
     console.print(f"[cyan]Mode:[/cyan] {'DRY-RUN' if args.dry_run else 'WRITE'}\n")
 
     engine = RepoIngestor(config)

@@ -19,7 +19,9 @@ if TYPE_CHECKING:
     from typing import Final
 
 # Default logging format for all AEGF loggers
-_DEFAULT_FORMAT: Final[str] = "%(asctime)s | %(name)-30s | %(levelname)-8s | %(message)s"
+_DEFAULT_FORMAT: Final[str] = (
+    "%(asctime)s | %(name)-30s | %(levelname)-8s | %(message)s"
+)
 _DATE_FORMAT: Final[str] = "%Y-%m-%d %H:%M:%S"
 
 
@@ -54,7 +56,9 @@ def get_logger(name: str) -> logging.Logger:
             show_path=False,
             console=None,  # Auto-detect from sys.stderr
         )
-        handler.setFormatter(logging.Formatter(fmt=_DEFAULT_FORMAT, datefmt=_DATE_FORMAT))
+        handler.setFormatter(
+            logging.Formatter(fmt=_DEFAULT_FORMAT, datefmt=_DATE_FORMAT)
+        )
         logger.addHandler(handler)
         logger.propagate = False
 

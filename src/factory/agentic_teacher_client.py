@@ -106,7 +106,9 @@ class OpenAIProvider(TeacherProvider):
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=model_config.request_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=model_config.request_timeout_seconds
+        ) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 json=payload,
@@ -147,7 +149,9 @@ class AnthropicProvider(TeacherProvider):
             "Content-Type": "application/json",
         }
 
-        async with httpx.AsyncClient(timeout=model_config.request_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=model_config.request_timeout_seconds
+        ) as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 json=payload,
@@ -184,7 +188,9 @@ class GeminiProvider(TeacherProvider):
         payload = self._build_request_payload(prompt)
         api_key = os.getenv(model_config.api_key_env, "dummy-key")
 
-        async with httpx.AsyncClient(timeout=model_config.request_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=model_config.request_timeout_seconds
+        ) as client:
             response = await client.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{model_config.model_name}:generateContent?key={api_key}",
                 json=payload,
@@ -232,7 +238,9 @@ class TeacherModelClient:
             checkpoint: Optional checkpoint for tracking completed seeds.
         """
         self.config = config
-        self.checkpoint = checkpoint if checkpoint is not None else GenerationCheckpoint()
+        self.checkpoint = (
+            checkpoint if checkpoint is not None else GenerationCheckpoint()
+        )
         self._provider = self._select_provider()
 
     def _select_provider(self) -> TeacherProvider:
@@ -290,7 +298,10 @@ class TeacherModelClient:
 
             except httpx.HTTPStatusError as e:
                 status_code = e.response.status_code
-                if status_code in RETRYABLE_STATUS_CODES and attempt <= self.config.max_retries:
+                if (
+                    status_code in RETRYABLE_STATUS_CODES
+                    and attempt <= self.config.max_retries
+                ):
                     # Calculate exponential backoff
                     delay = (self.config.request_delay_ms / 1000.0) * (
                         self.config.backoff_factor ** (attempt - 1)
@@ -320,7 +331,9 @@ class TeacherModelClient:
                     )
                     await asyncio.sleep(delay)
                 else:
-                    raise TeacherAPIError(f"Request timeout after {attempt} attempts") from e
+                    raise TeacherAPIError(
+                        f"Request timeout after {attempt} attempts"
+                    ) from e
 
             except Exception as e:
                 last_exception = e
@@ -340,9 +353,7 @@ class TeacherModelClient:
                     break
 
         # All retries exhausted
-        error_msg = (
-            f"Generation failed after {self.config.max_retries + 1} attempts"
-        )
+        error_msg = f"Generation failed after {self.config.max_retries + 1} attempts"
         if last_exception:
             error_msg = f"{error_msg}: {last_exception}"
         raise TeacherAPIError(error_msg)

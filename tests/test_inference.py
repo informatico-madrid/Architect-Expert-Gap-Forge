@@ -95,9 +95,7 @@ class TestVLLMClientGenerate:
 
     def test_returns_content_from_response(self) -> None:
         client = VLLMClient(api_url="http://localhost:8000/v1", model="test-model")
-        with patch(
-            "requests.post", return_value=self._mock_response("hello")
-        ):
+        with patch("requests.post", return_value=self._mock_response("hello")):
             result = client.generate("say hello")
         assert result == "hello"
 
@@ -349,7 +347,9 @@ class TestInferenceRouterGeminiPaths:
                 with patch(
                     "src.audit.inference.GeminiClient", return_value=mock_instance
                 ) as MockGemini:
-                    client = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
+                    client = router.professor(
+                        backend="gemini", gemini_model="gemini-2.5-flash"
+                    )
         MockGemini.assert_called_once_with(model="gemini-2.5-flash")
         assert client is mock_instance
 
@@ -361,7 +361,9 @@ class TestInferenceRouterGeminiPaths:
                 with patch(
                     "src.audit.inference.GeminiClient", return_value=mock_instance
                 ) as MockGemini:
-                    client = router.student(backend="gemini", gemini_model="gemini-2.5-flash")
+                    client = router.student(
+                        backend="gemini", gemini_model="gemini-2.5-flash"
+                    )
         MockGemini.assert_called_once_with(model="gemini-2.5-flash")
         assert client is mock_instance
 
@@ -373,8 +375,12 @@ class TestInferenceRouterGeminiPaths:
                 with patch(
                     "src.audit.inference.GeminiClient", return_value=mock_instance
                 ) as MockGemini:
-                    c1 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
-                    c2 = router.professor(backend="gemini", gemini_model="gemini-2.5-flash")
+                    c1 = router.professor(
+                        backend="gemini", gemini_model="gemini-2.5-flash"
+                    )
+                    c2 = router.professor(
+                        backend="gemini", gemini_model="gemini-2.5-flash"
+                    )
         MockGemini.assert_called_once()
         assert c1 is c2
 
@@ -725,9 +731,7 @@ class TestCalibrationWithClaudeJudge:
         mock_pm.system.return_value = "You are a helpful judge."
 
         # Run calibration with mocked clients and mocked prompt manager
-        with patch(
-            "src.audit.config._get_prompt_manager", return_value=mock_pm
-        ):
+        with patch("src.audit.config._get_prompt_manager", return_value=mock_pm):
             # Run calibration with mocked clients
             engine = CalibrationEngine(
                 prompts=test_prompts,

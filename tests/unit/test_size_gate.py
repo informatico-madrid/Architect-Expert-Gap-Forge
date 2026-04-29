@@ -39,11 +39,16 @@ class TestSizeGates:
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test",
-            "version": "1.0.0",
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test",
+                    "version": "1.0.0",
+                }
+            )
+        )
 
         # Create very small file (below MIN_SIZE=300)
         small_file = component / "tiny.py"
@@ -72,19 +77,13 @@ class TestSizeGates:
 
         # Should have MODULE_BLUEPRINT but no LOGIC_ONLY for tiny file
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         # Small file should not generate LOGIC_ONLY
-        logic_only_files = [
-            f for f in bundle_files
-            if 'LOGIC_ONLY' in f.read_text()
-        ]
+        logic_only_files = [f for f in bundle_files if "LOGIC_ONLY" in f.read_text()]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should still be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should still be emitted"
 
         # Tiny file should not generate LOGIC_ONLY
         assert len(logic_only_files) == 0, (
@@ -105,15 +104,21 @@ class TestSizeGates:
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test",
-            "version": "1.0.0",
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test",
+                    "version": "1.0.0",
+                }
+            )
+        )
 
         # Create file at exactly MIN_SIZE (300 bytes)
         medium_file = component / "medium.py"
-        medium_file.write_text("""
+        medium_file.write_text(
+            """
 def process_data(data):
     '''Process incoming data and transform it.'''
     result = []
@@ -133,14 +138,19 @@ def transform_output(result):
 def filter_by_criteria(data, criteria):
     '''Filter data by criteria.'''
     return [item for item in data if item.get('active', True)]
-""".strip())
+""".strip()
+        )
 
-        assert len(medium_file.read_text()) >= MIN_SIZE, "File should be at least MIN_SIZE"
+        assert len(medium_file.read_text()) >= MIN_SIZE, (
+            "File should be at least MIN_SIZE"
+        )
 
         # Mirror test file at find_test() search path (namespace mirror)
         mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
         mirror_dir.mkdir(parents=True, exist_ok=True)
-        (mirror_dir / "test_medium.py").write_text("import medium\nmedium.process_data([])")
+        (mirror_dir / "test_medium.py").write_text(
+            "import medium\nmedium.process_data([])"
+        )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
@@ -160,8 +170,7 @@ def filter_by_criteria(data, criteria):
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -182,15 +191,21 @@ def filter_by_criteria(data, criteria):
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test",
-            "version": "1.0.0",
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test",
+                    "version": "1.0.0",
+                }
+            )
+        )
 
         # Create file between MIN_SIZE and LOGIC_ONLY_MIN_CHARS
         medium_file = component / "processor.py"
-        medium_file.write_text("""
+        medium_file.write_text(
+            """
 def process_data(data):
     '''Process incoming data and transform it.'''
     result = []
@@ -210,7 +225,8 @@ def transform_output(result):
 def filter_by_criteria(data, criteria):
     '''Filter data by criteria.'''
     return [item for item in data if item.get('active', True)]
-""".strip())
+""".strip()
+        )
 
         file_size = len(medium_file.read_text())
         assert MIN_SIZE <= file_size < LOGIC_ONLY_MIN_CHARS, (
@@ -221,7 +237,9 @@ def filter_by_criteria(data, criteria):
         # Mirror test file at find_test() search path (namespace mirror)
         mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
         mirror_dir.mkdir(parents=True, exist_ok=True)
-        (mirror_dir / "test_processor.py").write_text("import processor\nprocessor.process_data([])")
+        (mirror_dir / "test_processor.py").write_text(
+            "import processor\nprocessor.process_data([])"
+        )
 
         config = ProcessingConfig(
             base_dir=tmp_path,
@@ -241,19 +259,13 @@ def filter_by_criteria(data, criteria):
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         # Should NOT have LOGIC_ONLY (TYPE 3)
-        logic_only_files = [
-            f for f in bundle_files
-            if 'LOGIC_ONLY' in f.read_text()
-        ]
+        logic_only_files = [f for f in bundle_files if "LOGIC_ONLY" in f.read_text()]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should be emitted"
 
         assert len(logic_only_files) == 0, (
             f"File below LOGIC_ONLY_MIN_CHARS ({file_size} < {LOGIC_ONLY_MIN_CHARS}) should not generate TYPE 3"
@@ -273,15 +285,21 @@ def filter_by_criteria(data, criteria):
 
         # Create manifest.json
         import json
-        (component / "manifest.json").write_text(json.dumps({
-            "domain": "test_component",
-            "name": "Test",
-            "version": "1.0.0",
-        }))
+
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "domain": "test_component",
+                    "name": "Test",
+                    "version": "1.0.0",
+                }
+            )
+        )
 
         # Create large file (>= 800 chars)
         large_file = component / "processor.py"
-        large_file.write_text("""
+        large_file.write_text(
+            """
 def complex_processor(data: dict) -> dict:
     '''Process complex data transformations with multiple steps.'''
     result = {}
@@ -396,22 +414,28 @@ def normalize_values(data: list) -> list:
         return [0.0 for _ in data]
 
     return [(v - min_val) / range_val for v in data]
-""".strip())
+""".strip()
+        )
 
         # Add GOLD_PATTERN to pass gold filter (DOMAIN)
-        large_file.write_text(large_file.read_text() + """
+        large_file.write_text(
+            large_file.read_text()
+            + """
 
 DOMAIN = "test_processor"
 
 def get_runtime_data(entry):
     '''Get runtime data from entry.'''
     return entry.runtime_data
-""")
+"""
+        )
 
         # Mirror test file at find_test() search path (namespace mirror)
         mirror_dir = repo_root / "tests" / "custom_components" / "test_component"
         mirror_dir.mkdir(parents=True, exist_ok=True)
-        (mirror_dir / "test_processor.py").write_text("import processor\nprocessor.complex_processor({})")
+        (mirror_dir / "test_processor.py").write_text(
+            "import processor\nprocessor.complex_processor({})"
+        )
 
         file_size = len(large_file.read_text())
         assert file_size >= LOGIC_ONLY_MIN_CHARS, (
@@ -437,19 +461,13 @@ def get_runtime_data(entry):
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         # Should have LOGIC_ONLY (TYPE 3)
-        logic_only_files = [
-            f for f in bundle_files
-            if 'LOGIC_ONLY' in f.read_text()
-        ]
+        logic_only_files = [f for f in bundle_files if "LOGIC_ONLY" in f.read_text()]
 
-        assert len(blueprint_files) > 0, (
-            "MODULE_BLUEPRINT should be emitted"
-        )
+        assert len(blueprint_files) > 0, "MODULE_BLUEPRINT should be emitted"
 
         assert len(logic_only_files) > 0, (
             f"File at or above LOGIC_ONLY_MIN_CHARS ({file_size} >= {LOGIC_ONLY_MIN_CHARS}) should generate TYPE 3"

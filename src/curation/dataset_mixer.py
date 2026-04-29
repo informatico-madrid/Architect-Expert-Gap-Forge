@@ -186,7 +186,9 @@ class DatasetMixer:
         # anchor_tokens_adjusted = specialized_tokens * anchor_pct / specialized_pct
         if specialized_tokens > 0 and self._config.specialized_pct > 0:
             target_anchor_tokens = int(
-                specialized_tokens * self._config.anchor_pct / self._config.specialized_pct
+                specialized_tokens
+                * self._config.anchor_pct
+                / self._config.specialized_pct
             )
 
             # Subsample anchor if needed
@@ -295,7 +297,9 @@ class DatasetMixer:
                     {"role": m.role, "content": m.content} for m in record.messages
                 ]
                 tool_format = detect_tool_format(messages_data)
-                format_distribution[tool_format] = format_distribution.get(tool_format, 0) + 1
+                format_distribution[tool_format] = (
+                    format_distribution.get(tool_format, 0) + 1
+                )
 
         for record in records:
             origin = record.metadata.get("origin", "unknown")

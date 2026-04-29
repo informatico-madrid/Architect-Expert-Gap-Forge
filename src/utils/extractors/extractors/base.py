@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Literal, Protocol, runtime_checkable
 
-logger = logger = __import__('logging').getLogger(__name__)
+logger = logger = __import__("logging").getLogger(__name__)
 
 
 @runtime_checkable

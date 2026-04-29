@@ -374,9 +374,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Phase 0 -- Exact dedup (in-memory)
     # -----------------------------------------------------------------------
     if args.do_exact_dedup:
-        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
-        console.print("[bold yellow]│ PHASE 0: Exact Deduplication                              │[/bold yellow]")
-        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print(
+            "\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]│ PHASE 0: Exact Deduplication                              │[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]"
+        )
         console.print("[dim]SHA-256 exact deduplication...[/dim]")
 
         logger.info("Phase 0 -- Exact deduplication")
@@ -388,7 +394,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             tmp = _next_temp()
             write_jsonl(tmp, records)
             current_path = tmp
-            console.print(f"[green]✓[/green] Completed: {len(records)} records after deduplication")
+            console.print(
+                f"[green]✓[/green] Completed: {len(records)} records after deduplication"
+            )
         else:
             logger.info(
                 "[DRY-RUN] Would continue with %d records after exact dedup",
@@ -400,9 +408,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Phase 1 -- NeMo Curator filter (requires container)
     # -----------------------------------------------------------------------
     if args.do_filter:
-        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
-        console.print("[bold yellow]│ PHASE 1: NeMo Curator Filtering                           │[/bold yellow]")
-        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print(
+            "\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]│ PHASE 1: NeMo Curator Filtering                           │[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]"
+        )
 
         if not _NEMO_AVAILABLE:
             logger.error(
@@ -448,7 +462,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             removed_by_nemo = pre_nemo_count - post_nemo_count
             stats.nemo_filtered += removed_by_nemo
 
-            console.print(f"[green]✓[/green] Completed: {pre_nemo_count} → {post_nemo_count} records ({removed_by_nemo} removed)")
+            console.print(
+                f"[green]✓[/green] Completed: {pre_nemo_count} → {post_nemo_count} records ({removed_by_nemo} removed)"
+            )
             logger.info(
                 "Phase 1 complete: %d --> %d records (%d removed by NeMo filters)",
                 pre_nemo_count,
@@ -461,9 +477,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Phase 2 -- Structural quality gate (in-memory)
     # -----------------------------------------------------------------------
     if args.do_structural:
-        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
-        console.print("[bold yellow]│ PHASE 2: Structural Quality Gate                          │[/bold yellow]")
-        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print(
+            "\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]│ PHASE 2: Structural Quality Gate                          │[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]"
+        )
         console.print("[dim]Syntax, think-depth, LDI filters...[/dim]")
 
         logger.info("Phase 2 -- Structural quality filter")
@@ -488,7 +510,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             tmp = _next_temp()
             write_jsonl(tmp, records)
             current_path = tmp
-            console.print(f"[green]✓[/green] Completed: {len(records)} records after structural filter")
+            console.print(
+                f"[green]✓[/green] Completed: {len(records)} records after structural filter"
+            )
         else:
             logger.info(
                 "[DRY-RUN] Would continue with %d records after structural filter",
@@ -500,9 +524,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Phase 3 -- Semantic dedup (in-memory)
     # -----------------------------------------------------------------------
     if args.do_dedup:
-        console.print("\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]")
-        console.print("[bold yellow]│ PHASE 3: Semantic Deduplication                           │[/bold yellow]")
-        console.print("[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]")
+        console.print(
+            "\n[bold yellow]┌─────────────────────────────────────────────────────────────┐[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]│ PHASE 3: Semantic Deduplication                           │[/bold yellow]"
+        )
+        console.print(
+            "[bold yellow]└─────────────────────────────────────────────────────────────┘[/bold yellow]"
+        )
         console.print("[dim]MinHash-LSH deduplication...[/dim]")
 
         logger.info("Phase 3 -- Semantic deduplication")
@@ -528,7 +558,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             tmp = _next_temp()
             write_jsonl(tmp, records)
             current_path = tmp
-            console.print(f"[green]✓[/green] Completed: {len(records)} records after semantic dedup")
+            console.print(
+                f"[green]✓[/green] Completed: {len(records)} records after semantic dedup"
+            )
         else:
             logger.info(
                 "[DRY-RUN] Would continue with %d records after semantic dedup",
@@ -553,7 +585,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         logger.info(
             "Final output written: %s (%d records)", args.output, stats.total_output
         )
-        console.print(f"[green]✓[/green] Output written: {args.output} ({stats.total_output} records)")
+        console.print(
+            f"[green]✓[/green] Output written: {args.output} ({stats.total_output} records)"
+        )
 
     # Cleanup temp files
     for f in temp_files:
@@ -580,7 +614,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     summary_table.add_row("Input records", f"{input_records:,}")
     summary_table.add_row("Output records", f"{output_records:,}")
     summary_table.add_row("Records removed", f"{removed:,}")
-    summary_table.add_row("Filter rate", f"{(1 - output_records / input_records * 100):.1f}%" if input_records > 0 else "N/A")
+    summary_table.add_row(
+        "Filter rate",
+        f"{(1 - output_records / input_records * 100):.1f}%"
+        if input_records > 0
+        else "N/A",
+    )
     if stats.nemo_filtered > 0:
         summary_table.add_row("NeMo filtered", f"{stats.nemo_filtered:,}")
 
@@ -669,7 +708,9 @@ def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser)
         # Load specialized records
         specialized_records = load_specialized_records(specialized_path)
         logger.info("Loaded %d specialized records", len(specialized_records))
-        console.print(f"[green]✓[/green] Loaded {len(specialized_records)} specialized records")
+        console.print(
+            f"[green]✓[/green] Loaded {len(specialized_records)} specialized records"
+        )
 
         # Load anchor configs and download
         from src.curation.anchor_dataset_downloader import (
@@ -686,12 +727,16 @@ def _run_mix_datasets(args: argparse.Namespace, parser: argparse.ArgumentParser)
             anchor_records = downloader.download_all()
 
         logger.info("Downloaded %d anchor records", len(anchor_records))
-        console.print(f"[green]✓[/green] Downloaded {len(anchor_records)} anchor records")
+        console.print(
+            f"[green]✓[/green] Downloaded {len(anchor_records)} anchor records"
+        )
 
         # Mix datasets
-        console.print("[dim]Mixing datasets ({:.0f}% specialized, {:.0f}% anchor)...[/dim]".format(
-            args.specialized_pct, args.anchor_pct
-        ))
+        console.print(
+            "[dim]Mixing datasets ({:.0f}% specialized, {:.0f}% anchor)...[/dim]".format(
+                args.specialized_pct, args.anchor_pct
+            )
+        )
         mixed_records = mixer.mix(specialized_records, anchor_records)
         logger.info("Mixed dataset has %d records", len(mixed_records))
         console.print(f"[green]✓[/green] Mixed dataset: {len(mixed_records)} records")

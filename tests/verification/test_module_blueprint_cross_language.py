@@ -258,10 +258,8 @@ sensor:
 # Test Setup Functions
 # =============================================================================
 
-def setup_python_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
+
+def setup_python_test_repo(tmp_path: Path, files: Dict[str, str]) -> Path:
     """Set up a Python test repository with manifest.json.
 
     Args:
@@ -281,12 +279,16 @@ def setup_python_test_repo(
 
     # Create manifest.json (anchor)
     manifest = component / "manifest.json"
-    manifest.write_text(json.dumps({
-        "domain": "test_component",
-        "name": "Test Component",
-        "version": "1.0.0",
-        "dependencies": [],
-    }))
+    manifest.write_text(
+        json.dumps(
+            {
+                "domain": "test_component",
+                "name": "Test Component",
+                "version": "1.0.0",
+                "dependencies": [],
+            }
+        )
+    )
 
     # Create module files
     for filename, content in files.items():
@@ -295,10 +297,7 @@ def setup_python_test_repo(
     return owner_dir
 
 
-def setup_python_test_repo_for_e2e(
-    repo_root: Path,
-    files: Dict[str, str]
-) -> None:
+def setup_python_test_repo_for_e2e(repo_root: Path, files: Dict[str, str]) -> None:
     """Set up a Python test repository for E2E tests.
 
     Args:
@@ -315,12 +314,16 @@ def setup_python_test_repo_for_e2e(
 
     # Create manifest.json (anchor)
     manifest = component / "manifest.json"
-    manifest.write_text(json.dumps({
-        "domain": "test_component",
-        "name": "Test Component",
-        "version": "1.0.0",
-        "dependencies": [],
-    }))
+    manifest.write_text(
+        json.dumps(
+            {
+                "domain": "test_component",
+                "name": "Test Component",
+                "version": "1.0.0",
+                "dependencies": [],
+            }
+        )
+    )
 
     # Create module files
     for filename, content in files.items():
@@ -328,8 +331,7 @@ def setup_python_test_repo_for_e2e(
 
 
 def setup_typescript_test_repo(
-    tmp_path: Path,
-    files: Optional[Dict[str, str]] = None
+    tmp_path: Path, files: Optional[Dict[str, str]] = None
 ) -> Path:
     """Set up a TypeScript test repository.
 
@@ -352,10 +354,7 @@ def setup_typescript_test_repo(
     return owner_dir
 
 
-def setup_php_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
+def setup_php_test_repo(tmp_path: Path, files: Dict[str, str]) -> Path:
     """Set up a PHP test repository.
 
     Args:
@@ -380,10 +379,7 @@ def setup_php_test_repo(
     return owner_dir
 
 
-def setup_yaml_test_repo(
-    tmp_path: Path,
-    files: Dict[str, str]
-) -> Path:
+def setup_yaml_test_repo(tmp_path: Path, files: Dict[str, str]) -> Path:
     """Set up a YAML test repository.
 
     Args:
@@ -412,6 +408,7 @@ def setup_yaml_test_repo(
 # MODULE_BLUEPRINT Content Verification
 # =============================================================================
 
+
 def verify_blueprint_content(blueprint_text: str, lang: str) -> None:
     """Verify that MODULE_BLUEPRINT contains expected metadata sections.
 
@@ -424,30 +421,28 @@ def verify_blueprint_content(blueprint_text: str, lang: str) -> None:
     """
     # Check for TYPE header (either [MODULE_BLUEPRINT] or Type: MODULE_BLUEPRINT)
     has_module_blueprint = (
-        '[MODULE_BLUEPRINT]' in blueprint_text or
-        'Type: MODULE_BLUEPRINT' in blueprint_text
+        "[MODULE_BLUEPRINT]" in blueprint_text
+        or "Type: MODULE_BLUEPRINT" in blueprint_text
     )
-    assert has_module_blueprint, (
-        f"{lang}: MODULE_BLUEPRINT should be present in output"
-    )
+    assert has_module_blueprint, f"{lang}: MODULE_BLUEPRINT should be present in output"
 
     # AC-3.1: Verify [MODULE_MAP] exists
-    assert '[MODULE_MAP]' in blueprint_text, (
+    assert "[MODULE_MAP]" in blueprint_text, (
         f"{lang}: MODULE_BLUEPRINT should contain [MODULE_MAP]"
     )
 
     # AC-3.2: Verify [DEPENDENCIES] exists (from manifest or extraction)
-    assert '[DEPENDENCIES]' in blueprint_text, (
+    assert "[DEPENDENCIES]" in blueprint_text, (
         f"{lang}: MODULE_BLUEPRINT should contain [DEPENDENCIES]"
     )
 
     # AC-3.3: Verify MODULE metadata is present
-    assert 'MODULE:' in blueprint_text, (
+    assert "MODULE:" in blueprint_text, (
         f"{lang}: MODULE_BLUEPRINT should contain MODULE metadata"
     )
 
     # AC-3.4: Verify ANCHOR metadata is present
-    assert 'ANCHOR:' in blueprint_text, (
+    assert "ANCHOR:" in blueprint_text, (
         f"{lang}: MODULE_BLUEPRINT should contain ANCHOR metadata"
     )
 
@@ -455,6 +450,7 @@ def verify_blueprint_content(blueprint_text: str, lang: str) -> None:
 # =============================================================================
 # Cross-Language MODULE_BLUEPRINT Verification Tests
 # =============================================================================
+
 
 class TestModuleBlueprintPython:
     """Verification tests for Python MODULE_BLUEPRINT."""
@@ -473,19 +469,21 @@ class TestModuleBlueprintPython:
         setup_python_test_repo(
             tmp_path,
             {
-                'manifest.json': json.dumps({
-                    "domain": "test_component",
-                    "name": "Test Component",
-                    "version": "1.0.0",
-                    "dependencies": ["helper_lib"],
-                }),
-                'component.py': PYTHON_MODULE_CODE,
-                'const.py': """
+                "manifest.json": json.dumps(
+                    {
+                        "domain": "test_component",
+                        "name": "Test Component",
+                        "version": "1.0.0",
+                        "dependencies": ["helper_lib"],
+                    }
+                ),
+                "component.py": PYTHON_MODULE_CODE,
+                "const.py": """
 CONSTANT_1 = "value1"
 CONSTANT_2 = "value2"
 SERVICE_NAMES = ['service1', 'service2']
 """,
-            }
+            },
         )
 
         config = ProcessingConfig(
@@ -505,13 +503,10 @@ SERVICE_NAMES = ['service1', 'service2']
 
         # Find MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "Python files should emit MODULE_BLUEPRINT"
-        )
+        assert len(blueprint_files) > 0, "Python files should emit MODULE_BLUEPRINT"
 
         # Verify blueprint content
         verify_blueprint_content(blueprint_files[0].read_text(), "Python")
@@ -524,14 +519,16 @@ SERVICE_NAMES = ['service1', 'service2']
         setup_python_test_repo(
             tmp_path,
             {
-                'manifest.json': json.dumps({
-                    "domain": "test_component",
-                    "name": "Test Component",
-                    "version": "1.0.0",
-                    "dependencies": ["frontend", "http"],
-                }),
-                'component.py': PYTHON_MODULE_CODE,
-            }
+                "manifest.json": json.dumps(
+                    {
+                        "domain": "test_component",
+                        "name": "Test Component",
+                        "version": "1.0.0",
+                        "dependencies": ["frontend", "http"],
+                    }
+                ),
+                "component.py": PYTHON_MODULE_CODE,
+            },
         )
 
         config = ProcessingConfig(
@@ -549,41 +546,49 @@ SERVICE_NAMES = ['service1', 'service2']
         bundle_files = list(output_dir.rglob("*.txt"))
 
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0
         blueprint = blueprint_files[0].read_text()
 
         # Verify dependencies are extracted
-        assert 'frontend' in blueprint, (
+        assert "frontend" in blueprint, (
             "DEPENDENCIES should include 'frontend' from manifest.json"
         )
-        assert 'http' in blueprint, (
+        assert "http" in blueprint, (
             "DEPENDENCIES should include 'http' from manifest.json"
         )
 
 
 class TestModuleBlueprintTypeScript:
     """Verification tests for TypeScript MODULE_BLUEPRINT."""
+
     pass
+
 
 class TestModuleBlueprintPHP:
     """Verification tests for PHP MODULE_BLUEPRINT."""
+
     pass
+
 
 class TestModuleBlueprintYAML:
     """Verification tests for YAML MODULE_BLUEPRINT."""
+
     pass
+
 
 class TestCrossLanguageBlueprintConsistency:
     """Verification tests for consistent MODULE_BLUEPRINT across languages."""
+
     pass
+
 
 # =============================================================================
 # Module Detection Verification
 # =============================================================================
+
 
 class TestModuleDetectionAcrossLanguages:
     """Verification tests for module detection patterns across languages."""
@@ -596,14 +601,16 @@ class TestModuleDetectionAcrossLanguages:
         setup_python_test_repo(
             tmp_path,
             {
-                'manifest.json': json.dumps({
-                    "domain": "test",
-                    "name": "Test Component",
-                    "version": "1.0.0",
-                    "dependencies": [],
-                }),
-                'component.py': PYTHON_MODULE_CODE,
-            }
+                "manifest.json": json.dumps(
+                    {
+                        "domain": "test",
+                        "name": "Test Component",
+                        "version": "1.0.0",
+                        "dependencies": [],
+                    }
+                ),
+                "component.py": PYTHON_MODULE_CODE,
+            },
         )
 
         config = ProcessingConfig(
@@ -621,14 +628,13 @@ class TestModuleDetectionAcrossLanguages:
         bundle_files = list(output_dir.rglob("*.txt"))
 
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0
         blueprint = blueprint_files[0].read_text()
 
         # Should reference manifest.json as anchor
-        assert 'manifest.json' in blueprint, (
+        assert "manifest.json" in blueprint, (
             "MODULE_BLUEPRINT should reference manifest.json as anchor"
         )

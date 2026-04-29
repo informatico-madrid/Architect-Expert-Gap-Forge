@@ -18,6 +18,7 @@ from infrastructure.anchor_dataset_builder import build_parser, main
 # 1. --count 50 (default)
 # ---------------------------------------------------------------------------
 
+
 class TestCountDefault:
     def test_default_count_is_50(self):
         parser = build_parser()
@@ -38,6 +39,7 @@ class TestCountDefault:
 # ---------------------------------------------------------------------------
 # 2. --provider
 # ---------------------------------------------------------------------------
+
 
 class TestProvider:
     def test_default_provider(self):
@@ -70,22 +72,29 @@ class TestProvider:
 # 3. --dry-run writes nothing (to disk)
 # ---------------------------------------------------------------------------
 
+
 class TestDryRunWritesNothing:
-    def test_dry_run_exits_0(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_dry_run_exits_0(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """dry-run should exit 0."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         output = main(["--dry-run", "--count", "1", "--output-dir", str(tmp_path)])
         assert output == 0
 
-    def test_dry_run_produces_output(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_dry_run_produces_output(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """dry-run should print planned distribution."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         output = main(["--dry-run", "--count", "50", "--output-dir", str(tmp_path)])
         assert output == 0
 
-    def test_dry_run_no_file_written(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_dry_run_no_file_written(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """dry-run must not create any output files."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
@@ -98,32 +107,42 @@ class TestDryRunWritesNothing:
 # 4. --no-overwrite exits 1 when file exists
 # ---------------------------------------------------------------------------
 
+
 class TestNoOverwrite:
     def test_no_overwrite_exits_1(self, tmp_path: Path) -> None:
         """If output file exists and --no-overwrite is set, exit code is 1."""
         output_path = tmp_path / "anchor_dataset.jsonl"
         output_path.write_text("existing\n")
-        exit_code = main([
-            "--count", "1",
-            "--output-dir", str(tmp_path),
-            "--no-overwrite",
-        ])
+        exit_code = main(
+            [
+                "--count",
+                "1",
+                "--output-dir",
+                str(tmp_path),
+                "--no-overwrite",
+            ]
+        )
         assert exit_code == 1
 
     def test_no_overwrite_exits_0_when_missing(self, tmp_path: Path) -> None:
         """If output file does not exist, --no-overwrite does not block."""
-        exit_code = main([
-            "--count", "1",
-            "--output-dir", str(tmp_path),
-            "--dry-run",
-            "--no-overwrite",
-        ])
+        exit_code = main(
+            [
+                "--count",
+                "1",
+                "--output-dir",
+                str(tmp_path),
+                "--dry-run",
+                "--no-overwrite",
+            ]
+        )
         assert exit_code == 0
 
 
 # ---------------------------------------------------------------------------
 # 5. --domain-distribution override
 # ---------------------------------------------------------------------------
+
 
 class TestDomainDistribution:
     def test_custom_domain_distribution(self):
@@ -132,16 +151,29 @@ class TestDomainDistribution:
         args = parser.parse_args(["--domain-distribution", custom])
         assert args.domain_distribution == custom
 
-    def test_custom_distribution_passed_to_config(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    def test_custom_distribution_passed_to_config(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         custom = json.dumps({"foo": 0.5, "bar": 0.5})
-        main(["--dry-run", "--count", "10", "--domain-distribution", custom, "--output-dir", str(tmp_path)])
+        main(
+            [
+                "--dry-run",
+                "--count",
+                "10",
+                "--domain-distribution",
+                custom,
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
 
 
 # ---------------------------------------------------------------------------
 # 6. --difficulty-distribution override
 # ---------------------------------------------------------------------------
+
 
 class TestDifficultyDistribution:
     def test_custom_difficulty_distribution(self):
@@ -154,6 +186,7 @@ class TestDifficultyDistribution:
 # ---------------------------------------------------------------------------
 # 7. Default values correct
 # ---------------------------------------------------------------------------
+
 
 class TestDefaultValues:
     def test_default_output_dir(self):
@@ -203,13 +236,20 @@ class TestDefaultValues:
 
     def test_custom_values_override_defaults(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "--count", "100",
-            "--output-dir", "/tmp/out",
-            "--temperature", "0.7",
-            "--seed", "99",
-            "--output-file", "custom.jsonl",
-        ])
+        args = parser.parse_args(
+            [
+                "--count",
+                "100",
+                "--output-dir",
+                "/tmp/out",
+                "--temperature",
+                "0.7",
+                "--seed",
+                "99",
+                "--output-file",
+                "custom.jsonl",
+            ]
+        )
         assert args.count == 100
         assert args.output_dir == "/tmp/out"
         assert args.temperature == 0.7

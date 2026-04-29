@@ -3,6 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 """Tests for QualityChecker and CircuitBreaker."""
+
 from __future__ import annotations
 
 import pytest
@@ -13,6 +14,7 @@ from infrastructure.anchor_dataset.quality import QualityChecker, CircuitBreaker
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_record(**overrides: object) -> AnchorRecord:
     """Build a minimal valid AnchorRecord, merging any overrides."""
@@ -39,6 +41,7 @@ def _make_record(**overrides: object) -> AnchorRecord:
 # ---------------------------------------------------------------------------
 # 1. QualityChecker — passed / failure reasons
 # ---------------------------------------------------------------------------
+
 
 class TestQualityCheckerRecord:
     def test_valid_record_passes(self):
@@ -152,6 +155,7 @@ class TestQualityCheckerRecord:
 # 2. QualityChecker — custom threshold
 # ---------------------------------------------------------------------------
 
+
 class TestQualityCheckerThreshold:
     def test_higher_threshold_rejects(self):
         checker = QualityChecker(threshold=0.95)
@@ -187,6 +191,7 @@ class TestQualityCheckerThreshold:
 # ---------------------------------------------------------------------------
 # 3. CircuitBreaker — phase transitions and switch logic
 # ---------------------------------------------------------------------------
+
 
 class TestCircuitBreakerPhases:
     def test_starts_in_warmup(self):
@@ -255,6 +260,7 @@ class TestCircuitBreakerPhases:
 # 4. CircuitBreaker — try_reset
 # ---------------------------------------------------------------------------
 
+
 class TestCircuitBreakerTryReset:
     def test_reset_before_triggered(self):
         cb = CircuitBreaker()
@@ -306,6 +312,7 @@ class TestCircuitBreakerTryReset:
 # 5. CircuitBreaker — get_failure_rate
 # ---------------------------------------------------------------------------
 
+
 class TestCircuitBreakerFailureRate:
     def test_empty_returns_zero(self):
         cb = CircuitBreaker()
@@ -342,6 +349,7 @@ class TestCircuitBreakerFailureRate:
 # ---------------------------------------------------------------------------
 # 6. CircuitBreaker — _evaluate_batch
 # ---------------------------------------------------------------------------
+
 
 class TestCircuitBreakerEvaluateBatch:
     def test_empty_batch(self):

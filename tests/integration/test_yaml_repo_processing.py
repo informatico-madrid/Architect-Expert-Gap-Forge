@@ -40,7 +40,8 @@ class TestYamlRepoProcessing:
         (owner_dir / "__init__.py").write_text("")
 
         # Create YAML automation file directly in repo root
-        (owner_dir / "automation.yaml").write_text("""
+        (owner_dir / "automation.yaml").write_text(
+            """
 # Home Assistant automation configurations
 automation:
   - alias: "Turn off lights"
@@ -83,7 +84,8 @@ automation:
       - service: notification.notify
         data:
           message: "Good morning!"
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=repo_root.parent,
@@ -101,26 +103,21 @@ automation:
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "YAML files should emit MODULE_BLUEPRINT"
-        )
+        assert len(blueprint_files) > 0, "YAML files should emit MODULE_BLUEPRINT"
 
         # Verify automation patterns are captured
         blueprint = blueprint_files[0].read_text()
-        assert 'automation' in blueprint, (
+        assert "automation" in blueprint, (
             "MODULE_BLUEPRINT should capture 'automation' pattern"
         )
-        assert 'trigger' in blueprint, (
+        assert "trigger" in blueprint, (
             "MODULE_BLUEPRINT should capture 'trigger' pattern"
         )
-        assert 'action' in blueprint, (
-            "MODULE_BLUEPRINT should capture 'action' pattern"
-        )
-        assert 'condition' in blueprint, (
+        assert "action" in blueprint, "MODULE_BLUEPRINT should capture 'action' pattern"
+        assert "condition" in blueprint, (
             "MODULE_BLUEPRINT should capture 'condition' pattern"
         )
 
@@ -140,7 +137,8 @@ automation:
         (owner_dir / "__init__.py").write_text("")
 
         # Create YAML script file directly in repo root
-        (owner_dir / "scripts.yaml").write_text("""
+        (owner_dir / "scripts.yaml").write_text(
+            """
 # Home Assistant script configurations
 script:
   hello_world:
@@ -185,7 +183,8 @@ script:
         target:
           area_id: kitchen
       - service: homeassistant.turn_off
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=repo_root.parent,
@@ -203,23 +202,18 @@ script:
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "YAML files should emit MODULE_BLUEPRINT"
-        )
+        assert len(blueprint_files) > 0, "YAML files should emit MODULE_BLUEPRINT"
 
         # Verify script patterns are captured
         blueprint = blueprint_files[0].read_text()
-        assert 'script' in blueprint, (
-            "MODULE_BLUEPRINT should capture 'script' pattern"
-        )
-        assert 'sequence' in blueprint, (
+        assert "script" in blueprint, "MODULE_BLUEPRINT should capture 'script' pattern"
+        assert "sequence" in blueprint, (
             "MODULE_BLUEPRINT should capture 'sequence' pattern"
         )
-        assert 'service' in blueprint, (
+        assert "service" in blueprint, (
             "MODULE_BLUEPRINT should capture 'service' pattern"
         )
 
@@ -239,7 +233,8 @@ script:
         (owner_dir / "__init__.py").write_text("")
 
         # Create YAML sensor file directly in repo root
-        (owner_dir / "sensors.yaml").write_text("""
+        (owner_dir / "sensors.yaml").write_text(
+            """
 # Home Assistant sensor configurations
 sensor:
   - platform: template
@@ -272,7 +267,8 @@ sensor:
       - name: "Response Time"
         value_template: "{{ value_json.response_time }}"
         unit_of_measurement: "ms"
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=repo_root.parent,
@@ -290,26 +286,21 @@ sensor:
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "YAML files should emit MODULE_BLUEPRINT"
-        )
+        assert len(blueprint_files) > 0, "YAML files should emit MODULE_BLUEPRINT"
 
         # Verify sensor patterns are captured
         blueprint = blueprint_files[0].read_text()
-        assert 'sensor' in blueprint, (
-            "MODULE_BLUEPRINT should capture 'sensor' pattern"
-        )
-        assert 'template' in blueprint, (
+        assert "sensor" in blueprint, "MODULE_BLUEPRINT should capture 'sensor' pattern"
+        assert "template" in blueprint, (
             "MODULE_BLUEPRINT should capture 'template' pattern"
         )
-        assert 'command' in blueprint, (
+        assert "command" in blueprint, (
             "MODULE_BLUEPRINT should capture 'command' pattern"
         )
-        assert 'value_template' in blueprint, (
+        assert "value_template" in blueprint, (
             "MODULE_BLUEPRINT should capture 'value_template' pattern"
         )
 
@@ -329,7 +320,8 @@ sensor:
         (owner_dir / "__init__.py").write_text("")
 
         # Create YAML file with Jinja templates directly in repo root
-        (owner_dir / "templates.yaml").write_text("""
+        (owner_dir / "templates.yaml").write_text(
+            """
 # Home Assistant templates with Jinja
 automation:
   - alias: "Dynamic notification"
@@ -374,7 +366,8 @@ sensor:
           {% else %}
             mdi:close-circle
           {% endif %}
-""".strip())
+""".strip()
+        )
 
         config = ProcessingConfig(
             base_dir=repo_root.parent,
@@ -392,19 +385,16 @@ sensor:
 
         # Should have MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
-        assert len(blueprint_files) > 0, (
-            "YAML files should emit MODULE_BLUEPRINT"
-        )
+        assert len(blueprint_files) > 0, "YAML files should emit MODULE_BLUEPRINT"
 
         # Verify Jinja templates are captured
         blueprint = blueprint_files[0].read_text()
-        assert 'jinja' in blueprint or 'template' in blueprint, (
+        assert "jinja" in blueprint or "template" in blueprint, (
             "MODULE_BLUEPRINT should capture Jinja template patterns"
         )
-        assert '{{' in blueprint or '{%' in blueprint, (
+        assert "{{" in blueprint or "{%" in blueprint, (
             "MODULE_BLUEPRINT should capture Jinja syntax"
         )

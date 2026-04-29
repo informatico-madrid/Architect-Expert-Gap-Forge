@@ -34,6 +34,7 @@ from tests.fixtures.repos.python_minimal import (
 # Test Setup Functions
 # =============================================================================
 
+
 def setup_python_test_repo(tmp_path: Path) -> Path:
     """Set up a Python test repository."""
     repo_root = tmp_path / "test_repo"
@@ -60,6 +61,7 @@ def setup_mixed_repo(tmp_path: Path) -> Path:
 # Per-File Adapter Selection Tests
 # =============================================================================
 
+
 class TestPerFileAdapterSelection:
     """Tests verifying per-file adapter selection based on file extension."""
 
@@ -69,7 +71,9 @@ class TestPerFileAdapterSelection:
         AC-8.1: Python files should be processed with Python adapter.
         """
         repo_root = setup_python_test_repo(tmp_path)
-        component = repo_root / "owner" / "myrepo" / "custom_components" / "test_component"
+        component = (
+            repo_root / "owner" / "myrepo" / "custom_components" / "test_component"
+        )
         component.mkdir(parents=True, exist_ok=True)
 
         # Add manifest.json to make it a proper HA integration
@@ -92,8 +96,7 @@ class TestPerFileAdapterSelection:
 
         # Python files should generate MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -105,6 +108,7 @@ class TestPerFileAdapterSelection:
 
         # Cleanup output to prevent interference with other tests
         import shutil
+
         if output_dir.exists():
             shutil.rmtree(output_dir)
 
@@ -137,8 +141,7 @@ class TestPerFileAdapterSelection:
 
         # TypeScript files should generate MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -150,6 +153,7 @@ class TestPerFileAdapterSelection:
 
         # Cleanup output to prevent interference with other tests
         import shutil
+
         if output_dir.exists():
             shutil.rmtree(output_dir)
 
@@ -182,8 +186,7 @@ class TestPerFileAdapterSelection:
 
         # PHP files should generate MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -195,6 +198,7 @@ class TestPerFileAdapterSelection:
 
         # Cleanup output to prevent interference with other tests
         import shutil
+
         if output_dir.exists():
             shutil.rmtree(output_dir)
 
@@ -227,8 +231,7 @@ class TestPerFileAdapterSelection:
 
         # YAML files should generate MODULE_BLUEPRINT
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -240,10 +243,13 @@ class TestPerFileAdapterSelection:
 
         # Cleanup output to prevent interference with other tests
         import shutil
+
         if output_dir.exists():
             shutil.rmtree(output_dir)
 
-    def test_adapter_selection_uses_file_extension_not_profile(self, tmp_path: Path) -> None:
+    def test_adapter_selection_uses_file_extension_not_profile(
+        self, tmp_path: Path
+    ) -> None:
         """Test that adapter selection is based on file extension, not repo profile.
 
         AC-8.5: Per-file selection must use mf.path.suffix, not cfg.profile.
@@ -278,8 +284,7 @@ class TestPerFileAdapterSelection:
         bundle_files = list(output_dir.rglob("*.txt"))
 
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -289,6 +294,7 @@ class TestPerFileAdapterSelection:
 
         # Cleanup output to prevent interference with other tests
         import shutil
+
         if output_dir.exists():
             shutil.rmtree(output_dir)
 
@@ -331,8 +337,7 @@ class TestCrossLanguageRepository:
 
         # Should have MODULE_BLUEPRINT from processed files
         blueprint_files = [
-            f for f in bundle_files
-            if 'MODULE_BLUEPRINT' in f.read_text()
+            f for f in bundle_files if "MODULE_BLUEPRINT" in f.read_text()
         ]
 
         assert len(blueprint_files) > 0, (
@@ -342,5 +347,6 @@ class TestCrossLanguageRepository:
 
         # Cleanup output to prevent interference with other tests
         import shutil
+
         if output_dir.exists():
             shutil.rmtree(output_dir)

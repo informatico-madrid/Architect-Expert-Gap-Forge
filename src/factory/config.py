@@ -294,7 +294,9 @@ class DatasetConfig:
     target_specialized_records: int = 12000
     target_total_records: int = 40000
     output_path: str = "data/stage_2_output/trajectories.jsonl"
-    taxonomy_path: str = "configs/stage_2_factory/taxonomy/home_assistant/agentic_taxonomy.yaml"
+    taxonomy_path: str = (
+        "configs/stage_2_factory/taxonomy/home_assistant/agentic_taxonomy.yaml"
+    )
     trajectory: TrajectoryConfig = field(default_factory=TrajectoryConfig)
     hard_query: HardQueryConfig = field(default_factory=HardQueryConfig)
 
@@ -387,7 +389,9 @@ def load_dataset_config(path: Path) -> DatasetConfig:
 
     return DatasetConfig(
         use_case=dataset_data.get("use_case", "home_assistant"),
-        target_specialized_records=dataset_data.get("target_specialized_records", 12000),
+        target_specialized_records=dataset_data.get(
+            "target_specialized_records", 12000
+        ),
         target_total_records=dataset_data.get("target_total_records", 40000),
         output_path=dataset_data.get(
             "output_path", "data/stage_2_output/trajectories.jsonl"
@@ -431,7 +435,9 @@ def load_factory_config(path: Path) -> FactoryConfig:
             data = yaml.safe_load(f)
         if data:
             output_data = data.get("output", {})
-    except yaml.YAMLError:  # pragma: no cover - unlikely in practice with controlled configs
+    except (
+        yaml.YAMLError
+    ):  # pragma: no cover - unlikely in practice with controlled configs
         pass  # Use defaults if output section is missing
 
     output_config = OutputConfig(
@@ -445,4 +451,3 @@ def load_factory_config(path: Path) -> FactoryConfig:
         dataset=dataset_config,
         output=output_config,
     )
-

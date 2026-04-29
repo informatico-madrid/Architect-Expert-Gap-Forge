@@ -109,7 +109,9 @@ def print_startup_header(description: str) -> None:
 def print_section(title: str) -> None:
     """Print a section divider with styled text."""
     console = get_console()
-    console.print(f"\n[bold cyan]{'=' * 60}[/]\n[bold cyan]  {title}  [/]\n[bold cyan]{'=' * 60}[/]\n")
+    console.print(
+        f"\n[bold cyan]{'=' * 60}[/]\n[bold cyan]  {title}  [/]\n[bold cyan]{'=' * 60}[/]\n"
+    )
 
 
 def print_progress_message(message: str) -> None:
@@ -134,7 +136,11 @@ def print_summary_table(report: CalibrationReport) -> None:
     """Print a formatted summary table with calibration results."""
     console = get_console()
 
-    table = Table(title="[bold]Calibration Summary[/bold]", show_header=True, header_style="bold cyan")
+    table = Table(
+        title="[bold]Calibration Summary[/bold]",
+        show_header=True,
+        header_style="bold cyan",
+    )
     table.add_column("Metric", style="cyan", width=20)
     table.add_column("Value", justify="right", style="white")
 
@@ -171,7 +177,11 @@ def print_profile_summary(profile: SamplingProfile) -> None:
     """Print a styled summary of the best profile."""
     console = get_console()
 
-    profile_table = Table(title="[bold]Best Profile Configuration[/bold]", show_header=True, header_style="bold cyan")
+    profile_table = Table(
+        title="[bold]Best Profile Configuration[/bold]",
+        show_header=True,
+        header_style="bold cyan",
+    )
     profile_table.add_column("Parameter", style="cyan", width=15)
     profile_table.add_column("Value", justify="right", style="white")
 

@@ -22,6 +22,7 @@ from infrastructure.anchor_dataset.failed_sample_logger import FailedSampleLogge
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _sample_checkpoint() -> CheckpointData:
     return CheckpointData(
         completed_ids={"a", "b", "c"},
@@ -53,6 +54,7 @@ def _sample_record() -> AnchorRecord:
 # ---------------------------------------------------------------------------
 # 1. CheckpointManager save / load / resume
 # ---------------------------------------------------------------------------
+
 
 class TestCheckpointManagerSaveLoad:
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
@@ -121,6 +123,7 @@ class TestCheckpointManagerSaveLoad:
 # 2. JSONLExporter atomic write
 # ---------------------------------------------------------------------------
 
+
 class TestJSONLExporterWriteAll:
     def test_atomic_write(self, tmp_path: Path) -> None:
         exporter = JSONLExporter()
@@ -175,6 +178,7 @@ class TestJSONLExporterWriteAll:
 # ---------------------------------------------------------------------------
 # 3. Manifest generation with correct counts
 # ---------------------------------------------------------------------------
+
 
 class TestManifestGeneration:
     def test_manifest_correct_counts(self) -> None:
@@ -241,6 +245,7 @@ class TestManifestGeneration:
 # ---------------------------------------------------------------------------
 # 4. FailedSampleLogger appends correct JSONL entries
 # ---------------------------------------------------------------------------
+
 
 class TestFailedSampleLogger:
     def test_append_single_entry(self, tmp_path: Path) -> None:

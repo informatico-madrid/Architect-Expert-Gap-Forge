@@ -18,14 +18,22 @@ from pathlib import Path
 
 import pytest
 
-from infrastructure.anchor_dataset.anchor_dataset_schema import AnchorRecord, AnchorManifest
+from infrastructure.anchor_dataset.anchor_dataset_schema import (
+    AnchorRecord,
+    AnchorManifest,
+)
 from infrastructure.anchor_dataset.anchor_providers import AnchorProvider
 from infrastructure.anchor_dataset.seed_loader import load_seeds
-from infrastructure.anchor_dataset.sample_generator import SampleConfigGenerator, PromptBuilder, SampleConfig
+from infrastructure.anchor_dataset.sample_generator import (
+    SampleConfigGenerator,
+    PromptBuilder,
+    SampleConfig,
+)
 from infrastructure.anchor_dataset.exporter import JSONLExporter
 
 
 # ── Stub provider ──────────────────────────────────────────────────────────────
+
 
 class StubProvider(AnchorProvider):
     """A provider that returns deterministic AnchorRecord objects without calling any LLM."""
@@ -97,6 +105,7 @@ def _make_stub_record(system_prompt: str, user_prompt: str) -> AnchorRecord:
 
 # ── Test 1: Full pipeline ─────────────────────────────────────────────────────
 
+
 @pytest.mark.integration
 class TestFullPipeline:
     """Test the full anchor-dataset pipeline end-to-end with stubbed providers."""
@@ -149,7 +158,12 @@ class TestFullPipeline:
             # Each line should be a valid AnchorRecord
             rec = AnchorRecord.model_validate(data)
             assert rec.id.startswith("anchor_")
-            assert rec.domain in ("home_assistant", "php_legacy", "generic_domain", "other")
+            assert rec.domain in (
+                "home_assistant",
+                "php_legacy",
+                "generic_domain",
+                "other",
+            )
             assert rec.difficulty in ("easy", "medium", "hard")
 
         # 7. Generate and verify manifest
@@ -192,7 +206,12 @@ class TestFullPipeline:
 
         # Verify all generated records have valid domains
         for rec in records:
-            assert rec.domain in ("home_assistant", "php_legacy", "generic_domain", "other")
+            assert rec.domain in (
+                "home_assistant",
+                "php_legacy",
+                "generic_domain",
+                "other",
+            )
 
         # Export and verify
         exporter = JSONLExporter()
@@ -204,6 +223,7 @@ class TestFullPipeline:
 
 
 # ── Test 2: Idempotency ───────────────────────────────────────────────────────
+
 
 @pytest.mark.integration
 class TestIdempotency:
@@ -229,12 +249,8 @@ class TestIdempotency:
         run1 = run_pipeline()
         run2 = run_pipeline()
 
-        assert len(run1) == len(run2), (
-            f"Run lengths differ: {len(run1)} vs {len(run2)}"
-        )
-        assert run1 == run2, (
-            f"Idempotency failed: {run1} != {run2}"
-        )
+        assert len(run1) == len(run2), f"Run lengths differ: {len(run1)} vs {len(run2)}"
+        assert run1 == run2, f"Idempotency failed: {run1} != {run2}"
 
     def test_idempotent_with_different_seeds_produce_different_results(self) -> None:
         """Different seeds should produce different sample ordering."""
@@ -256,6 +272,11 @@ class TestIdempotency:
         # The shuffled order should differ (probability is very high with different seeds)
         # We just verify both produce valid configs
         for cfg in configs1 + configs2:
-            assert cfg.domain in ("home_assistant", "php_legacy", "generic_domain", "other")
+            assert cfg.domain in (
+                "home_assistant",
+                "php_legacy",
+                "generic_domain",
+                "other",
+            )
             assert cfg.difficulty in ("easy", "medium", "hard")
             assert cfg.turn_count in (3, 4, 5)

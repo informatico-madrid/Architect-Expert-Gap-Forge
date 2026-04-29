@@ -96,10 +96,8 @@ class JinjaAdapter(ExtractorAdapter):
         conditionals = extract_jinja_conditionals(raw_content, str(file_path))
         statements = extract_jinja_statements(raw_content, str(file_path))
 
-        # Combine all tokens
-        (
-            variables + filters + tests + loops + conditionals + statements
-        )
+        # Combine all tokens (extracted separately for analysis)
+        _ = variables + filters + tests + loops + conditionals + statements
 
         # Extract dependencies
         dependencies = self._extract_dependencies(raw_content)
@@ -175,7 +173,7 @@ class JinjaAdapter(ExtractorAdapter):
                 )
 
         # Extract now() and date/time functions
-        now_pattern = re.compile(r'now\s*\(\s*\)')
+        now_pattern = re.compile(r"now\s*\(\s*\)")
         if now_pattern.search(raw_content):
             dep_name = "now()"
             if dep_name not in seen:

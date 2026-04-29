@@ -17,7 +17,7 @@ simply reads and returns the raw content.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 from src.utils.extractors.base import (
     Dependency,

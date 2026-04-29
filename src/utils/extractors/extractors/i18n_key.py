@@ -43,14 +43,10 @@ HASS_LOCALIZE_PATTERN = re.compile(
 )
 
 # Matches template literal with i18n key: `ui.card.${action}`
-TEMPLATE_LITERAL_PATTERN = re.compile(
-    r"`([^`]*\$\{[^}]+\}[^`]*)`", re.MULTILINE
-)
+TEMPLATE_LITERAL_PATTERN = re.compile(r"`([^`]*\$\{[^}]+\}[^`]*)`", re.MULTILINE)
 
 # Matches setupLocalize() or setupCustomlocalize() wrapper pattern
-SETUP_LOCALIZE_PATTERN = re.compile(
-    r"setup(?:Custom)?Localize\s*\(\s*\)", re.MULTILINE
-)
+SETUP_LOCALIZE_PATTERN = re.compile(r"setup(?:Custom)?Localize\s*\(\s*\)", re.MULTILINE)
 
 # Context markers for template literal prefix extraction
 TEMPLATE_PREFIX_CONTEXT = re.compile(
@@ -90,7 +86,7 @@ class I18nKeyExtractor:
         tokens: List[FrontendToken] = []
 
         # Try tree-sitter parsing first if node has type attribute
-        if hasattr(node, 'type') and node is not None:
+        if hasattr(node, "type") and node is not None:
             tokens = self._extract_from_ast(node, raw, file_path)
             if tokens:
                 return tokens
@@ -123,9 +119,7 @@ class I18nKeyExtractor:
 
         return tokens
 
-    def _walk_ast(
-        self, node: Any, raw: str, file_path: Path
-    ) -> List[FrontendToken]:
+    def _walk_ast(self, node: Any, raw: str, file_path: Path) -> List[FrontendToken]:
         """Recursively walk AST to find i18n key calls.
 
         Args:
@@ -139,19 +133,19 @@ class I18nKeyExtractor:
         tokens: List[FrontendToken] = []
 
         # Node type check - tree-sitter nodes have 'type' attribute
-        if not hasattr(node, 'type'):
+        if not hasattr(node, "type"):
             return tokens
 
-        node_type = getattr(node, 'type', None)
+        node_type = getattr(node, "type", None)
 
         # Handle call expressions that might be localize() calls
-        if node_type == 'call_expression':
+        if node_type == "call_expression":
             token = self._extract_call(node, raw, file_path)
             if token:
                 tokens.append(token)
 
         # Recurse into children
-        children = getattr(node, 'children', [])
+        children = getattr(node, "children", [])
         for child in children:
             tokens.extend(self._walk_ast(child, raw, file_path))
 
@@ -171,15 +165,15 @@ class I18nKeyExtractor:
             FrontendToken if i18n key found, None otherwise.
         """
         # Get function being called
-        func = getattr(node, 'function', None)
+        func = getattr(node, "function", None)
         if not func:
             return None
 
-        func_text = getattr(func, 'text', '') or ''
+        func_text = getattr(func, "text", "") or ""
 
         # Check for localize() or hass.localize()
         context: Literal["localize", "hass.localize", "template_literal"] = "localize"
-        if func_text.startswith('hass.'):
+        if func_text.startswith("hass."):
             context = "hass.localize"
 
         # Extract the key argument
@@ -190,16 +184,16 @@ class I18nKeyExtractor:
 
         # Build I18nKey data
         data: I18nKey = {
-            'key': key,
-            'context': context,
-            'prefix': None,
+            "key": key,
+            "context": context,
+            "prefix": None,
         }
 
         # Get line number
-        line_number = getattr(node, 'start_point', (0, 0))[0] + 1
+        line_number = getattr(node, "start_point", (0, 0))[0] + 1
 
         return FrontendToken(
-            token_type='i18n_key',
+            token_type="i18n_key",
             data=data,
             file_path=file_path,
             line_number=line_number,
@@ -219,14 +213,14 @@ class I18nKeyExtractor:
             The extracted key string or None.
         """
         # Get arguments
-        args = getattr(node, 'arguments', []) or []
+        args = getattr(node, "arguments", []) or []
 
         for arg in args:
-            arg_type = getattr(arg, 'type', '')
-            arg_text = getattr(arg, 'text', '') or ''
+            arg_type = getattr(arg, "type", "")
+            arg_text = getattr(arg, "text", "") or ""
 
             # String literal argument - direct key
-            if arg_type == 'string':
+            if arg_type == "string":
                 # Extract string content
                 text = arg_text.strip()
                 if text.startswith(("'", '"')):
@@ -234,7 +228,7 @@ class I18nKeyExtractor:
                 return text
 
             # Template literal - dynamic key
-            if arg_type == 'template_literal' or '`' in arg_text:
+            if arg_type == "template_literal" or "`" in arg_text:
                 # Extract prefix from template literal
                 prefix = self._extract_template_prefix(arg, raw)
                 if prefix:
@@ -242,9 +236,7 @@ class I18nKeyExtractor:
 
         return None
 
-    def _extract_template_prefix(
-        self, node: Any, raw: str
-    ) -> Optional[str]:
+    def _extract_template_prefix(self, node: Any, raw: str) -> Optional[str]:
         """Extract prefix from template literal for dynamic keys.
 
         For `ui.card.${action}`, extracts 'ui.card.' as prefix.
@@ -257,14 +249,14 @@ class I18nKeyExtractor:
             The extracted prefix or None.
         """
         # Get template literal text
-        if hasattr(node, 'text'):
+        if hasattr(node, "text"):
             template_text = node.text
         else:
             # Try to get from source
             template_text = raw
 
         # Use regex to extract prefix before ${...}
-        match = re.search(r'`([^`]*?)\$\{[^}]+\}', template_text)
+        match = re.search(r"`([^`]*?)\$\{[^}]+\}", template_text)
         if match:
             prefix = match.group(1)
             # Remove trailing characters that are part of the pattern
@@ -292,74 +284,80 @@ class I18nKeyExtractor:
         # Extract setupLocalize() / setupCustomlocalize() wrapper markers
         # These indicate i18n is being configured but we track actual usage
         for match in SETUP_LOCALIZE_PATTERN.finditer(raw):
-            line_number = raw[:match.start()].count('\n') + 1
+            line_number = raw[: match.start()].count("\n") + 1
             # Note: We don't emit tokens for setup calls, just track that
             # the file uses i18n. Actual keys come from localize() calls.
 
         # Find all localize('key') occurrences
         for match in LOCALIZE_CALL_PATTERN.finditer(raw):
             key = match.group(1)
-            line_number = raw[:match.start()].count('\n') + 1
+            line_number = raw[: match.start()].count("\n") + 1
 
             data: I18nKey = {
-                'key': key,
-                'context': 'localize',
-                'prefix': None,
+                "key": key,
+                "context": "localize",
+                "prefix": None,
             }
 
-            tokens.append(FrontendToken(
-                token_type='i18n_key',
-                data=data,
-                file_path=fp,
-                line_number=line_number,
-            ))
+            tokens.append(
+                FrontendToken(
+                    token_type="i18n_key",
+                    data=data,
+                    file_path=fp,
+                    line_number=line_number,
+                )
+            )
 
         # Find all hass.localize('key') occurrences
         for match in HASS_LOCALIZE_PATTERN.finditer(raw):
             key = match.group(1)
-            line_number = raw[:match.start()].count('\n') + 1
+            line_number = raw[: match.start()].count("\n") + 1
 
             data: I18nKey = {
-                'key': key,
-                'context': 'hass.localize',
-                'prefix': None,
+                "key": key,
+                "context": "hass.localize",
+                "prefix": None,
             }
 
-            tokens.append(FrontendToken(
-                token_type='i18n_key',
-                data=data,
-                file_path=fp,
-                line_number=line_number,
-            ))
+            tokens.append(
+                FrontendToken(
+                    token_type="i18n_key",
+                    data=data,
+                    file_path=fp,
+                    line_number=line_number,
+                )
+            )
 
         # Find template literals used with localize calls
         # Pattern: localize(`prefix${dynamic}`)
         for match in TEMPLATE_PREFIX_CONTEXT.finditer(raw):
             template_content = match.group(1)
-            line_number = raw[:match.start()].count('\n') + 1
+            line_number = raw[: match.start()].count("\n") + 1
 
             # Extract prefix before ${...}
-            prefix_match = re.match(r'^([^$\{]+)', template_content)
+            prefix_match = re.match(r"^([^$\{]+)", template_content)
             if prefix_match:
                 prefix = prefix_match.group(1)
 
                 data: I18nKey = {
-                    'key': prefix,  # Prefix only for template literals
-                    'context': 'template_literal',
-                    'prefix': prefix,
+                    "key": prefix,  # Prefix only for template literals
+                    "context": "template_literal",
+                    "prefix": prefix,
                 }
 
-                tokens.append(FrontendToken(
-                    token_type='i18n_key',
-                    data=data,
-                    file_path=fp,
-                    line_number=line_number,
-                ))
+                tokens.append(
+                    FrontendToken(
+                        token_type="i18n_key",
+                        data=data,
+                        file_path=fp,
+                        line_number=line_number,
+                    )
+                )
 
         return tokens
 
 
 # Protocol conformance check
 # I18nKeyExtractor implements TypeScriptExtractorProtocol
-assert hasattr(I18nKeyExtractor, 'extract')
-assert hasattr(I18nKeyExtractor, 'name')
+assert hasattr(I18nKeyExtractor, "extract")
+assert hasattr(I18nKeyExtractor, "name")

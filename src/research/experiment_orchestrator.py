@@ -517,7 +517,9 @@ class ResultsRegistry:
             "status": status,
             "start_time": start_time.isoformat() if start_time else "",
             "end_time": end_time.isoformat() if end_time else "",
-            "duration_seconds": duration_seconds if duration_seconds is not None else "",
+            "duration_seconds": duration_seconds
+            if duration_seconds is not None
+            else "",
             "val_bpb": val_bpb if val_bpb is not None else "",
             "peak_vram_mb": peak_vram_mb if peak_vram_mb is not None else "",
             "mfu_percent": mfu_percent if mfu_percent is not None else "",
@@ -563,7 +565,9 @@ class ResultsRegistry:
             end_time=report.end_time,
             metrics=metrics,
             config=config,
-            checkpoint_path=report.artifacts.get("checkpoint") if report.artifacts else None,
+            checkpoint_path=report.artifacts.get("checkpoint")
+            if report.artifacts
+            else None,
             error=report.error,
         )
 

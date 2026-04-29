@@ -946,7 +946,9 @@ samples:
         assert prompts[0].id == "list_prompt_1"
         assert prompts[1].id == "list_prompt_2"
 
-    def test_load_prompts_from_yaml_skips_invalid_prompts(self, tmp_path, caplog) -> None:
+    def test_load_prompts_from_yaml_skips_invalid_prompts(
+        self, tmp_path, caplog
+    ) -> None:
         """Should skip invalid prompts with invalid parameter names and log warning."""
         from src.audit.calibration import load_calibration_prompts_from_yaml
 
@@ -1191,6 +1193,3 @@ class TestAnalyzeEvaluationFocus:
 
         assert "p1" in result
         assert result["p1"]["focus_area"] is not None
-
-
-

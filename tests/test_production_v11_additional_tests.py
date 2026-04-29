@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-
 from src.factory import config as cfg_module
 from src.factory.prompt_builder import detect_legacy_patterns, load_master_docs
 

@@ -29,6 +29,7 @@ from src.discovery.file_scanner import discover_modules, _detect_strategy
 # TASK 32: YAML Discovery Integration Test
 # =============================================================================
 
+
 class TestYAMLDiscoveryIntegration:
     """Task 32: Integration tests for YAML discovery with auto strategy."""
 
@@ -62,15 +63,20 @@ class TestYAMLDiscoveryIntegration:
 
             # Detect strategy automatically
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "yaml", \
+            assert detected_strategy == "yaml", (
                 f"Expected 'yaml' strategy, got '{detected_strategy}'"
+            )
 
             # Discover modules using auto strategy
             ignore_patterns = {"node_modules", "tests", "test", "__pycache__"}
             extensions = {".yaml", ".yml", ".jinja", ".jinja2"}
             anchor_filenames = {
-                "manifest.json", "const.py", "services.yaml",
-                "strings.json", "icons.json", "hacs.json"
+                "manifest.json",
+                "const.py",
+                "services.yaml",
+                "strings.json",
+                "icons.json",
+                "hacs.json",
             }
 
             modules = discover_modules(
@@ -83,18 +89,21 @@ class TestYAMLDiscoveryIntegration:
 
             # Verify YAML modules are discovered
             yaml_modules = [m for m in modules if m.anchor_type == "yaml"]
-            assert len(yaml_modules) >= 2, \
+            assert len(yaml_modules) >= 2, (
                 f"Expected at least 2 YAML modules, found {len(yaml_modules)}"
+            )
 
             # Verify modules have correct anchor_type
             for mod in yaml_modules:
-                assert mod.anchor_type == "yaml", \
+                assert mod.anchor_type == "yaml", (
                     f"Expected anchor_type 'yaml', got '{mod.anchor_type}'"
+                )
 
 
 # =============================================================================
 # TASK 33: TypeScript Discovery Integration Test
 # =============================================================================
+
 
 class TestTypeScriptDiscoveryIntegration:
     """Task 33: Integration tests for TypeScript discovery with auto strategy."""
@@ -117,9 +126,7 @@ class TestTypeScriptDiscoveryIntegration:
             (src_dir / "app.ts").write_text(
                 "export const appVersion: string = '1.0.0';\n"
             )
-            (src_dir / "utils.ts").write_text(
-                "export function helper(): void {}\n"
-            )
+            (src_dir / "utils.ts").write_text("export function helper(): void {}\n")
 
             components_dir = root / "components"
             components_dir.mkdir()
@@ -132,8 +139,9 @@ class TestTypeScriptDiscoveryIntegration:
 
             # Detect strategy automatically
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "typescript", \
+            assert detected_strategy == "typescript", (
                 f"Expected 'typescript' strategy, got '{detected_strategy}'"
+            )
 
             # Discover modules using auto strategy
             ignore_patterns = {"node_modules", "tests", "test", "__pycache__"}
@@ -150,13 +158,15 @@ class TestTypeScriptDiscoveryIntegration:
 
             # Verify TypeScript modules are discovered
             ts_modules = [m for m in modules if m.anchor_type == "typescript"]
-            assert len(ts_modules) >= 2, \
+            assert len(ts_modules) >= 2, (
                 f"Expected at least 2 TypeScript modules, found {len(ts_modules)}"
+            )
 
             # Verify modules have correct anchor_type
             for mod in ts_modules:
-                assert mod.anchor_type == "typescript", \
+                assert mod.anchor_type == "typescript", (
                     f"Expected anchor_type 'typescript', got '{mod.anchor_type}'"
+                )
 
     def test_auto_typescript_excludes_node_modules(self):
         """
@@ -174,13 +184,15 @@ class TestTypeScriptDiscoveryIntegration:
             # Should fall back to directory strategy
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "directory", \
+            assert detected_strategy == "directory", (
                 f"Expected 'directory' strategy when only node_modules has TS, got '{detected_strategy}'"
+            )
 
 
 # =============================================================================
 # TASK 34: Mixed Repository Integration Test
 # =============================================================================
+
 
 class TestMixedRepositoryIntegration:
     """Task 34: Integration tests for mixed repositories (Python + TypeScript)."""
@@ -215,8 +227,9 @@ class TestMixedRepositoryIntegration:
             (src_dir / "app.ts").write_text("export {}")
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "typescript", \
+            assert detected_strategy == "typescript", (
                 f"Expected 'typescript' (higher priority), got '{detected_strategy}'"
+            )
 
     def test_typescript_priority_over_init(self):
         """
@@ -246,8 +259,9 @@ class TestMixedRepositoryIntegration:
             (src_dir / "app.ts").write_text("export {}")
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "typescript", \
+            assert detected_strategy == "typescript", (
                 f"Expected 'typescript' (higher priority), got '{detected_strategy}'"
+            )
 
     def test_yaml_priority_over_typescript(self):
         """
@@ -270,13 +284,15 @@ class TestMixedRepositoryIntegration:
             (src_dir / "app.ts").write_text("export {}")
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "yaml", \
+            assert detected_strategy == "yaml", (
                 f"Expected 'yaml' strategy, got '{detected_strategy}'"
+            )
 
 
 # =============================================================================
 # TASK 35: Performance Test for Detection Time
 # =============================================================================
+
 
 class TestDetectionPerformance:
     """Task 35: Performance tests for module detection time."""
@@ -311,13 +327,15 @@ class TestDetectionPerformance:
             detection_time = time.time() - start_time
 
             # Detection time should be < 1 second
-            assert detection_time < 1.0, \
+            assert detection_time < 1.0, (
                 f"Detection took {detection_time:.3f}s, expected < 1.0s"
+            )
 
             # Also verify detection works correctly
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "yaml", \
+            assert detected_strategy == "yaml", (
                 f"Expected 'yaml' strategy for 10,000 YAML files, got '{detected_strategy}'"
+            )
 
     def test_module_discovery_performance(self):
         """
@@ -352,16 +370,19 @@ class TestDetectionPerformance:
             discovery_time = time.time() - discovery_start
 
             # Discovery should complete quickly
-            assert discovery_time < 2.0, \
+            assert discovery_time < 2.0, (
                 f"Discovery took {discovery_time:.3f}s, expected < 2.0s"
+            )
 
-            assert len(modules) == num_dirs, \
+            assert len(modules) == num_dirs, (
                 f"Expected {num_dirs} modules, found {len(modules)}"
+            )
 
 
 # =============================================================================
 # TASK 36: Large Repository Processing Performance Test
 # =============================================================================
+
 
 class TestLargeRepositoryPerformance:
     """Task 36: Performance tests for large repository processing."""
@@ -392,8 +413,9 @@ class TestLargeRepositoryPerformance:
             time.time()
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "typescript", \
+            assert detected_strategy == "typescript", (
                 f"Expected 'typescript' strategy, got '{detected_strategy}'"
+            )
 
             ignore_patterns = {"node_modules", "tests", "test", "__pycache__"}
             extensions = {".ts", ".tsx"}
@@ -410,16 +432,19 @@ class TestLargeRepositoryPerformance:
             total_time = time.time() - start_time
 
             # Total processing should be < 2 seconds
-            assert total_time < 2.0, \
+            assert total_time < 2.0, (
                 f"Total processing took {total_time:.3f}s, expected < 2.0s"
+            )
 
-            assert len(modules) == num_dirs, \
+            assert len(modules) == num_dirs, (
                 f"Expected {num_dirs} modules, found {len(modules)}"
+            )
 
 
 # =============================================================================
 # TASK 37: Permission Error Test
 # =============================================================================
+
 
 class TestPermissionErrors:
     """Task 37: Tests for handling permission errors gracefully."""
@@ -459,8 +484,9 @@ class TestPermissionErrors:
             # Detection should not crash
             try:
                 detected_strategy = _detect_strategy(root)
-                assert detected_strategy in ("yaml", "directory"), \
+                assert detected_strategy in ("yaml", "directory"), (
                     f"Expected 'yaml' or 'directory', got '{detected_strategy}'"
+                )
             finally:
                 # Restore permissions for cleanup
                 if not restricted_permitted:
@@ -484,13 +510,15 @@ class TestPermissionErrors:
 
             # Should never crash even with empty or unusual directories
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "yaml", \
+            assert detected_strategy == "yaml", (
                 f"Expected 'yaml', got '{detected_strategy}'"
+            )
 
 
 # =============================================================================
 # TASK 38: Broken Symlink Test
 # =============================================================================
+
 
 class TestBrokenSymlinks:
     """Task 38: Tests for handling broken symlinks gracefully."""
@@ -524,8 +552,9 @@ class TestBrokenSymlinks:
 
                 # Verify detection still works
                 detected_strategy = _detect_strategy(root)
-                assert detected_strategy == "yaml", \
+                assert detected_strategy == "yaml", (
                     f"Expected 'yaml', got '{detected_strategy}'"
+                )
                 return
 
             # Create another broken symlink (directory)
@@ -539,8 +568,9 @@ class TestBrokenSymlinks:
             try:
                 detected_strategy = _detect_strategy(root)
                 # Should still detect YAML from valid files
-                assert detected_strategy in ("yaml", "directory"), \
+                assert detected_strategy in ("yaml", "directory"), (
                     f"Expected 'yaml' or 'directory', got '{detected_strategy}'"
+                )
 
                 # Verify modules are discovered
                 ignore_patterns = {"node_modules", "tests", "test", "__pycache__"}
@@ -556,8 +586,9 @@ class TestBrokenSymlinks:
                 )
 
                 # Should have at least the valid module
-                assert len(modules) >= 1, \
+                assert len(modules) >= 1, (
                     f"Expected at least 1 module, found {len(modules)}"
+                )
 
             except Exception as e:
                 pytest.fail(f"Detection crashed with broken symlinks: {e}")
@@ -596,13 +627,15 @@ class TestBrokenSymlinks:
             )
 
             # Should discover at least one module
-            assert len(modules) >= 1, \
+            assert len(modules) >= 1, (
                 f"Expected at least 1 module, found {len(modules)}"
+            )
 
 
 # =============================================================================
 # Additional Integration Test Scenarios
 # =============================================================================
+
 
 class TestIntegrationScenarios:
     """Additional integration test scenarios covering various combinations."""
@@ -618,8 +651,9 @@ class TestIntegrationScenarios:
             (root / ".git").mkdir()
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "directory", \
+            assert detected_strategy == "directory", (
                 f"Expected 'directory' for empty repo, got '{detected_strategy}'"
+            )
 
     def test_mixed_file_types_priority(self):
         """
@@ -656,13 +690,15 @@ class TestIntegrationScenarios:
             (themes_dir / "colors.yaml").write_text("primary: blue\n")
 
             detected_strategy = _detect_strategy(root)
-            assert detected_strategy == "yaml", \
+            assert detected_strategy == "yaml", (
                 f"Expected 'yaml' (highest priority), got '{detected_strategy}'"
+            )
 
     def test_auto_strategy_coverage(self):
         """
         Test that all detection strategies can be discovered.
         """
+
         # Test each strategy separately
         def setup_manifest(r: Path):
             (r / "config").mkdir()
@@ -695,8 +731,9 @@ class TestIntegrationScenarios:
                 setup_func(root)
 
                 detected_strategy = _detect_strategy(root)
-                assert detected_strategy == expected_strategy, \
+                assert detected_strategy == expected_strategy, (
                     f"For {expected_strategy}, expected '{expected_strategy}', got '{detected_strategy}'"
+                )
 
 
 if __name__ == "__main__":

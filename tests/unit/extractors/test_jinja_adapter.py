@@ -123,4 +123,6 @@ class TestJinjaAdapterParsing:
 
         # Check that content is preserved
         assert "climate_temp" in result.raw_content
-        assert "sensor_temperature" in result.raw_content or "sensor" in result.raw_content
+        assert (
+            "sensor_temperature" in result.raw_content or "sensor" in result.raw_content
+        )

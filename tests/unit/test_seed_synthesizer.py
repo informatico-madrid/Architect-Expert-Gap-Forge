@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 
-
 from infrastructure.anchor_dataset.seed_loader import NormalizedSeed
 from infrastructure.anchor_dataset.seed_synthesizer import SeedSynthesizer
 
@@ -75,9 +74,13 @@ class TestValidateNoLeakage:
         """Multiple clean seeds all pass."""
         seeds = [
             NormalizedSeed(
-                seed_id=f"clean_{i}", domain="generic", category="c",
-                complexity="easy", context=f"Topic {i}",
-                question=f"Question {i}", expected_patterns=[],
+                seed_id=f"clean_{i}",
+                domain="generic",
+                category="c",
+                complexity="easy",
+                context=f"Topic {i}",
+                question=f"Question {i}",
+                expected_patterns=[],
             )
             for i in range(5)
         ]
@@ -87,14 +90,22 @@ class TestValidateNoLeakage:
     def test_one_leaking_seed_returns_false(self):
         """One leaking seed among clean ones returns False."""
         clean = NormalizedSeed(
-            seed_id="clean_001", domain="generic", category="c",
-            complexity="easy", context="Clean context",
-            question="Clean question", expected_patterns=[],
+            seed_id="clean_001",
+            domain="generic",
+            category="c",
+            complexity="easy",
+            context="Clean context",
+            question="Clean question",
+            expected_patterns=[],
         )
         leaky = NormalizedSeed(
-            seed_id="leaky_001", domain="generic", category="c",
-            complexity="easy", context="Zigbee2MQTT sensor",
-            question="Clean question", expected_patterns=[],
+            seed_id="leaky_001",
+            domain="generic",
+            category="c",
+            complexity="easy",
+            context="Zigbee2MQTT sensor",
+            question="Clean question",
+            expected_patterns=[],
         )
         synth = SeedSynthesizer()
         assert synth.validate_no_leakage([clean, leaky]) is False

@@ -252,7 +252,7 @@ class PhpLegacyAdapter(ExtractorAdapter):
 
         # Extract class instantiation patterns (new ClassName())
         # Pattern: new ClassName(...), $this->ClassName(), or ClassName::
-        new_pattern = re.compile(r'\bnew\s+(\w+)')
+        new_pattern = re.compile(r"\bnew\s+(\w+)")
         for match in new_pattern.finditer(content):
             class_name = match.group(1)
             if class_name not in seen and class_name[0].isupper():
@@ -267,7 +267,9 @@ class PhpLegacyAdapter(ExtractorAdapter):
 
         # Extract constructor injection patterns
         # Pattern: function __construct(ClassName $var) or private ClassName $var;
-        constructor_injection = re.compile(r'(?:private|protected|public)\s+(\w+)\s+\$([a-zA-Z_][a-zA-Z0-9_]*)')
+        constructor_injection = re.compile(
+            r"(?:private|protected|public)\s+(\w+)\s+\$([a-zA-Z_][a-zA-Z0-9_]*)"
+        )
         for match in constructor_injection.finditer(content):
             class_name = match.group(1)
             if class_name not in seen and class_name[0].isupper():

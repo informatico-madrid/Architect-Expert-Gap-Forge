@@ -992,7 +992,9 @@ async def main_async(args):
                                 exc,
                             )
             else:
-                logger.warning("Provided taxonomy path not found: %s", taxonomy_candidate)
+                logger.warning(
+                    "Provided taxonomy path not found: %s", taxonomy_candidate
+                )
 
         # If not loaded via CLI-provided path, try the default configs location
         if not taxonomy_loaded:

@@ -30,7 +30,13 @@ from src.utils.rich_helpers import (
     create_table,
     get_console,
 )
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+)
 from rich.panel import Panel
 
 # --- Project Root ---
@@ -126,16 +132,18 @@ def main(args: Optional[list] = None) -> int:
         config = ProcessingConfig(**config_data)
 
         # Rich startup header with Panel
-        console.print(Panel(
-            "\n[bold]AEGF Module-Aware Processor V2[/bold]\n\n"
-            f"[cyan]Base Directory:[/] {config.base_dir}\n"
-            f"[cyan]Category:[/] {config.category}\n"
-            f"[cyan]Raw Subdir:[/] {config.raw_subdir}\n"
-            f"[cyan]Output Subdir:[/] {config.output_subdir}\n"
-            f"[cyan]Profile:[/] {config.profile}",
-            title="[bold blue]Configuration[/bold blue]",
-            border_style="blue",
-        ))
+        console.print(
+            Panel(
+                "\n[bold]AEGF Module-Aware Processor V2[/bold]\n\n"
+                f"[cyan]Base Directory:[/] {config.base_dir}\n"
+                f"[cyan]Category:[/] {config.category}\n"
+                f"[cyan]Raw Subdir:[/] {config.raw_subdir}\n"
+                f"[cyan]Output Subdir:[/] {config.output_subdir}\n"
+                f"[cyan]Profile:[/] {config.profile}",
+                title="[bold blue]Configuration[/bold blue]",
+                border_style="blue",
+            )
+        )
 
         # Run processor with progress tracking
         processor = RepoProcessor(config)
@@ -165,12 +173,24 @@ def main(args: Optional[list] = None) -> int:
         summary_table = create_table(title="[bold cyan]Processor Results[/bold cyan]")
         summary_table.add_column("Metric", style="cyan bold")
         summary_table.add_column("Value", justify="right", style="green")
-        summary_table.add_row("Modules Found", str(processor._stats.get("modules_found", 0)))
-        summary_table.add_row("Type 1 Units", str(processor._stats.get("TYPE1_FUNCTIONAL_UNIT", 0)))
-        summary_table.add_row("Type 3 Logic Only", str(processor._stats.get("TYPE3_LOGIC_ONLY", 0)))
-        summary_table.add_row("Type 4 Blueprints", str(processor._stats.get("TYPE4_MODULE_BLUEPRINT", 0)))
-        summary_table.add_row("Type 5 Governance", str(processor._stats.get("TYPE5_GOVERNANCE_RULES", 0)))
-        summary_table.add_row("Parse Errors", str(processor._stats.get("parse_errors", 0)))
+        summary_table.add_row(
+            "Modules Found", str(processor._stats.get("modules_found", 0))
+        )
+        summary_table.add_row(
+            "Type 1 Units", str(processor._stats.get("TYPE1_FUNCTIONAL_UNIT", 0))
+        )
+        summary_table.add_row(
+            "Type 3 Logic Only", str(processor._stats.get("TYPE3_LOGIC_ONLY", 0))
+        )
+        summary_table.add_row(
+            "Type 4 Blueprints", str(processor._stats.get("TYPE4_MODULE_BLUEPRINT", 0))
+        )
+        summary_table.add_row(
+            "Type 5 Governance", str(processor._stats.get("TYPE5_GOVERNANCE_RULES", 0))
+        )
+        summary_table.add_row(
+            "Parse Errors", str(processor._stats.get("parse_errors", 0))
+        )
         console.print(summary_table)
 
         # Success panel
@@ -193,8 +213,7 @@ def main(args: Optional[list] = None) -> int:
         # Error panel
         console.print(
             Panel(
-                f"[red]Exception:[/red] {type(e).__name__}\n\n"
-                f"[red]{str(e)}[/]",
+                f"[red]Exception:[/red] {type(e).__name__}\n\n[red]{str(e)}[/]",
                 title="[bold red]Error[/bold red]",
                 border_style="red",
             )

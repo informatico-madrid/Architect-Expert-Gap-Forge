@@ -23,6 +23,7 @@ Correct structure:
                         climate.py
                         config.py
 """
+
 import json
 import shutil
 import tempfile
@@ -80,13 +81,18 @@ deploy:
 """)
 
         # manifest.json (module anchor)
-        (component / "manifest.json").write_text(json.dumps({
-            "name": "Smart Thermostat",
-            "version": "2.1.0",
-            "domain": "smart_thermostat",
-            "dependencies": [],
-            "requirements": [],
-        }, indent=2))
+        (component / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "name": "Smart Thermostat",
+                    "version": "2.1.0",
+                    "domain": "smart_thermostat",
+                    "dependencies": [],
+                    "requirements": [],
+                },
+                indent=2,
+            )
+        )
 
         # __init__.py (module anchor)
         (component / "__init__.py").write_text("""
@@ -357,20 +363,25 @@ def calculate_rate_of_change(current: float, previous: float, dt: float) -> floa
 """)
 
         # strings.json (module anchor)
-        (component / "strings.json").write_text(json.dumps({
-            "climate": {
-                "mode_heat": "Heat",
-                "mode_cool": "Cool",
-                "mode_auto": "Auto",
-                "mode_off": "Off",
-            },
-            "services": {
-                "set_schedule": {
-                    "name": "Set Schedule",
-                    "description": "Set thermostat schedule",
-                }
-            }
-        }, indent=2))
+        (component / "strings.json").write_text(
+            json.dumps(
+                {
+                    "climate": {
+                        "mode_heat": "Heat",
+                        "mode_cool": "Cool",
+                        "mode_auto": "Auto",
+                        "mode_off": "Off",
+                    },
+                    "services": {
+                        "set_schedule": {
+                            "name": "Set Schedule",
+                            "description": "Set thermostat schedule",
+                        }
+                    },
+                },
+                indent=2,
+            )
+        )
 
         # Test files - find_test uses: repo_root/tests/<relative_parent>/test_<name>
         # The repo_root for this fixture is custom_components/ (processor iterates subdirs).
@@ -530,9 +541,7 @@ def test_e2e_fragment_types(e2e_config):
     print(f"  Bundle files: {results['bundle_files']}")
 
     # Verify
-    assert results["modules_found"] > 0, (
-        f"No modules found. Stats: {processor._stats}"
-    )
+    assert results["modules_found"] > 0, f"No modules found. Stats: {processor._stats}"
     assert results["type4_module_blueprint"] > 0, (
         f"No MODULE_BLUEPRINT bundles. Files: {results['bundle_files']}"
     )
@@ -546,8 +555,12 @@ def test_e2e_fragment_types(e2e_config):
         f"No LOGIC_ONLY bundles. Files: {results['bundle_files']}"
     )
 
-    total = (results["type1_functional_unit"] + results["type3_logic_only"] +
-             results["type4_module_blueprint"] + results["type5_governance"])
+    total = (
+        results["type1_functional_unit"]
+        + results["type3_logic_only"]
+        + results["type4_module_blueprint"]
+        + results["type5_governance"]
+    )
     assert total > 0, "No bundle types emitted"
 
 

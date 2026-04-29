@@ -24,6 +24,14 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from src.factory.config import (
+    DEFAULT_API_KEY,
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL,
+    DEFAULT_WORKERS,
+)
+from src.factory.pipeline_runner import main_async
+
 
 # Custom logging helpers -------------------------------------------------
 
@@ -73,15 +81,6 @@ class _LivePanelHandler(logging.Handler):
             # If Live is unavailable, fallback to stdout
             print(msg, file=sys.stderr)
 
-
-
-from src.factory.config import (
-    DEFAULT_API_KEY,
-    DEFAULT_BASE_URL,
-    DEFAULT_MODEL,
-    DEFAULT_WORKERS,
-)
-from src.factory.pipeline_runner import main_async
 
 logger = logging.getLogger(__name__)
 
@@ -458,7 +457,9 @@ def main() -> None:
         try:
             from rich.live import Live
 
-            initial_panel = Panel("Iniciando...", title="[bold cyan]AEGF Pipeline - V11[/]")
+            initial_panel = Panel(
+                "Iniciando...", title="[bold cyan]AEGF Pipeline - V11[/]"
+            )
             live = Live(initial_panel, console=console, refresh_per_second=4)
             live.start()
         except Exception:

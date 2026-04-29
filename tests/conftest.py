@@ -15,6 +15,7 @@ DO NOT REMOVE - used by pipeline and CI/CD
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,16 @@ from typing import Any
 import pytest
 
 from src.audit.schema import ExamRecord, SampleRecord, ScoreCard
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+def _load_fixture(filename: str) -> dict[str, Any]:
+    """Load a JSON fixture file."""
+    path = FIXTURES_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(f"Fixture not found: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @pytest.fixture
@@ -108,6 +119,7 @@ automation:
 def sample_record():
     """Create a sample SampleRecord for testing."""
     from src.audit.schema import SampleRecord
+
     return SampleRecord(
         id="test-sample-1",
         example_type="nominal",
@@ -117,7 +129,48 @@ def sample_record():
         user_prompt="test",
         reference_response="test",
         gold_injected=False,
-        ldi=0.85
+        ldi=0.85,
+    )
+
+
+def _load_fixture(filename: str) -> dict[str, Any]:
+    """Load a golden JSON fixture file."""
+    path = Path(__file__).parent / "fixtures" / filename
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture
+def golden_sample() -> SampleRecord:
+    """Load a golden SampleRecord from fixture.
+
+    Used by tests/test_model_evaluator_error_cases.py and
+    tests/test_model_evaluator_integration_paths.py.
+    """
+    data = _load_fixture("sample_record.json")
+    return SampleRecord(
+        id=data["id"],
+        example_type=data["example_type"],
+        evol_difficulty=data["evol_difficulty"],
+        fragment_name=data["fragment_name"],
+        source_file=data["source_file"],
+        user_prompt=data["user_prompt"],
+        reference_response=data["reference_response"],
+        gold_injected=data["gold_injected"],
+        ldi=data["ldi"],
+        reference_standards=data["reference_standards"],
+        gap_analysis=data["gap_analysis"],
+    )
+
+
+@pytest.fixture
+def golden_exam(golden_sample: SampleRecord) -> ExamRecord:
+    """Load a golden ExamRecord from fixture."""
+    data = _load_fixture("exam_record.json")
+    return ExamRecord.from_sample(
+        golden_sample,
+        exam_question=data["exam_question"],
+        eval_criteria=data["eval_criteria"],
+        target_patterns=data["target_patterns"],
     )
 
 
@@ -313,6 +366,7 @@ def scorecard() -> ScoreCard:
 def audit_report() -> ScoreCard:
     """Create a sample ScoreCard for testing (named audit_report for schema tests)."""
     from src.audit.schema import AuditReport
+
     return AuditReport()
 
 
@@ -344,7 +398,10 @@ def raw_records(tmp_path: Path) -> list[dict[str, Any]]:
                         "gap_analysis": "Legacy pattern detected.",
                     },
                     "conversation": [
-                        {"role": "user", "content": f"Implement {et} component {i} variant {j}."},
+                        {
+                            "role": "user",
+                            "content": f"Implement {et} component {i} variant {j}.",
+                        },
                         {
                             "role": "assistant",
                             "content": "<think>OK</think>\n```python\npass\n```",

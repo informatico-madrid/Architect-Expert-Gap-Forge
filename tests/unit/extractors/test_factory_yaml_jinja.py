@@ -49,6 +49,7 @@ class TestFactoryYamlJinjaRegistration:
     def test_get_adapter_ts_returns_typescript_adapter(self):
         """get_adapter(".ts") returns TypeScriptAdapter."""
         from src.utils.extractors.typescript_adapter import TypeScriptAdapter
+
         adapter = get_adapter(".ts")
         assert isinstance(adapter, TypeScriptAdapter)
 

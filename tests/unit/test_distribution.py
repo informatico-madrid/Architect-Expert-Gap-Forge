@@ -3,6 +3,7 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 """Tests for SampleConfigGenerator distribution math and determinism."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -22,6 +23,7 @@ from infrastructure.anchor_dataset.seed_loader import NormalizedSeed
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _sample_seed(seed_id: str, domain: str) -> NormalizedSeed:
     return NormalizedSeed(
@@ -46,9 +48,33 @@ class TestDomainDistribution:
     @pytest.mark.parametrize(
         "count, expected",
         [
-            (50, {"home_assistant": 20, "php_legacy": 15, "generic_domain": 10, "other": 5}),
-            (110, {"home_assistant": 44, "php_legacy": 33, "generic_domain": 22, "other": 11}),
-            (200, {"home_assistant": 80, "php_legacy": 60, "generic_domain": 40, "other": 20}),
+            (
+                50,
+                {
+                    "home_assistant": 20,
+                    "php_legacy": 15,
+                    "generic_domain": 10,
+                    "other": 5,
+                },
+            ),
+            (
+                110,
+                {
+                    "home_assistant": 44,
+                    "php_legacy": 33,
+                    "generic_domain": 22,
+                    "other": 11,
+                },
+            ),
+            (
+                200,
+                {
+                    "home_assistant": 80,
+                    "php_legacy": 60,
+                    "generic_domain": 40,
+                    "other": 20,
+                },
+            ),
         ],
     )
     def test_domain_counts(self, count: int, expected: dict[str, int]) -> None:
@@ -71,7 +97,9 @@ class TestDomainDistribution:
         # Verify percentages match spec
         for domain, pct in _DOMAIN_PCTS:
             frac = domain_counts[domain] / count
-            assert abs(frac - pct) < 0.02, f"{domain} fraction {frac} differs from {pct}"
+            assert abs(frac - pct) < 0.02, (
+                f"{domain} fraction {frac} differs from {pct}"
+            )
 
 
 class TestDistributionRounding:
@@ -79,7 +107,12 @@ class TestDistributionRounding:
 
     def test_floor_rounding_exact(self) -> None:
         result = _distribute(100, _DOMAIN_PCTS)
-        assert result == {"home_assistant": 40, "php_legacy": 30, "generic_domain": 20, "other": 10}
+        assert result == {
+            "home_assistant": 40,
+            "php_legacy": 30,
+            "generic_domain": 20,
+            "other": 10,
+        }
 
     def test_floor_rounding_partial(self) -> None:
         result = _distribute(10, _DOMAIN_PCTS)
@@ -97,12 +130,15 @@ class TestDistributionRounding:
 
     def test_largest_remainder(self) -> None:
         """Remainder goes to largest fractional parts first."""
-        result = _distribute(7, [
-            ("a", 0.4),
-            ("b", 0.3),
-            ("c", 0.2),
-            ("d", 0.1),
-        ])
+        result = _distribute(
+            7,
+            [
+                ("a", 0.4),
+                ("b", 0.3),
+                ("c", 0.2),
+                ("d", 0.1),
+            ],
+        )
         # floor: a=2,b=2,c=1,d=0 sum=5 remainder=2
         # frac: a=0.8,d=0.7,c=0.4,b=0.1 → a(+1),d(+1)
         assert result["a"] == 3
@@ -146,7 +182,9 @@ class TestDifficultyDistribution:
 
             # Verify fractions are within tolerance
             assert abs(easy / domain_total - 0.30) < 0.02, f"{domain} easy fraction off"
-            assert abs(medium / domain_total - 0.50) < 0.02, f"{domain} medium fraction off"
+            assert abs(medium / domain_total - 0.50) < 0.02, (
+                f"{domain} medium fraction off"
+            )
             assert abs(hard / domain_total - 0.20) < 0.02, f"{domain} hard fraction off"
 
     def test_difficulty_sum_per_domain(self) -> None:

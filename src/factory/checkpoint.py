@@ -330,9 +330,7 @@ class GenerationCheckpoint:
             done_seeds = set(data.get("done_seeds", []))
             return cls(done_seeds)
         except json.JSONDecodeError as e:
-            raise CheckpointError(
-                f"Corrupted checkpoint file at {path}: {e}"
-            ) from e
+            raise CheckpointError(f"Corrupted checkpoint file at {path}: {e}") from e
         except OSError as e:
             raise CheckpointError(
                 f"Failed to read checkpoint file at {path}: {e}"
@@ -364,7 +362,9 @@ class GenerationCheckpoint:
 
             # Atomic rename (on POSIX systems)
             os.replace(tmp_path, path)
-            logger.debug("Checkpoint saved to %s with %d done seeds", path, len(self._done_seeds))
+            logger.debug(
+                "Checkpoint saved to %s with %d done seeds", path, len(self._done_seeds)
+            )
         except OSError as e:
             if tmp_path and os.path.exists(tmp_path):
                 try:

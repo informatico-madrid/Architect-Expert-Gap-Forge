@@ -47,13 +47,15 @@ logger = logging.getLogger(__name__)
 # Try to import yaml (PyYAML)
 try:
     import yaml
+
     YAML_AVAILABLE = True
+
     # Register custom constructor for !input tags
     def input_constructor(loader, node):
         """Custom constructor for !input tags."""
         return loader.construct_scalar(node)
 
-    yaml.SafeLoader.add_constructor('!input', input_constructor)
+    yaml.SafeLoader.add_constructor("!input", input_constructor)
 except ImportError:
     YAML_AVAILABLE = False
     yaml = None
@@ -110,7 +112,7 @@ class YamlAdapter(ExtractorAdapter):
                 yaml_tree = yaml.safe_load(raw_content)
             except yaml.YAMLError as e:
                 # Handle custom tags like !input by falling back to regex parsing
-                if 'could not determine a constructor for the tag' in str(e):
+                if "could not determine a constructor for the tag" in str(e):
                     jinja_vars = extract_jinja_variables(raw_content, str(file_path))
                     jinja_filters = extract_jinja_filters(raw_content, str(file_path))
                     jinja_tests = extract_jinja_tests(raw_content, str(file_path))
@@ -129,7 +131,11 @@ class YamlAdapter(ExtractorAdapter):
                     for filter_item in jinja_filters:
                         jinja_patterns.append(
                             JinjaExpressionPattern(
-                                expression="{{ " + filter_item.source + " | " + filter_item.filter + " }}",
+                                expression="{{ "
+                                + filter_item.source
+                                + " | "
+                                + filter_item.filter
+                                + " }}",
                                 expression_type="filter",
                                 file_path=str(file_path),
                                 line_number=filter_item.line_number,
@@ -140,7 +146,11 @@ class YamlAdapter(ExtractorAdapter):
                     for test in jinja_tests:
                         jinja_patterns.append(
                             JinjaExpressionPattern(
-                                expression="{{ " + test.source + " is " + test.test + " }}",
+                                expression="{{ "
+                                + test.source
+                                + " is "
+                                + test.test
+                                + " }}",
                                 expression_type="test",
                                 file_path=str(file_path),
                                 line_number=test.line_number,
@@ -159,7 +169,9 @@ class YamlAdapter(ExtractorAdapter):
                     )
                 raise ParseError(
                     file_path=file_path,
-                    line=getattr(e, 'problem_mark', None) and e.problem_mark.line + 1 or 1,
+                    line=getattr(e, "problem_mark", None)
+                    and e.problem_mark.line + 1
+                    or 1,
                     message=f"YAML syntax error: {str(e)}",
                 )
         elif self.use_regex_fallback:
@@ -213,7 +225,7 @@ class YamlAdapter(ExtractorAdapter):
             )
 
         # Combine all patterns
-        patterns + jinja_patterns
+        _ = patterns + jinja_patterns
 
         # Extract dependencies
         dependencies = self._extract_dependencies(raw_content)
@@ -263,7 +275,7 @@ class YamlAdapter(ExtractorAdapter):
         blueprint_match = re.search(
             r'blueprint:\s*\n\s*name:\s*["\']([^"\']+)["\']\s*\n\s*description:\s*["\']([^"\']+)["\']',
             content,
-            re.MULTILINE
+            re.MULTILINE,
         )
         if blueprint_match:
             line_number = content[: blueprint_match.start()].count("\n") + 1
@@ -281,11 +293,13 @@ class YamlAdapter(ExtractorAdapter):
         # Extract trigger patterns
         trigger_pattern = re.compile(
             r'trigger:\s*\n((?:[ \t]+[-]\s+platform:\s*["\']([^"\']+)["\'](?:\s*\n[ \t]+[^:]+)*|.*?)(?=\n(?:trigger:|condition:|action:|input:|$)))',
-            re.MULTILINE | re.DOTALL
+            re.MULTILINE | re.DOTALL,
         )
         for match in trigger_pattern.finditer(content):
             line_number = content[: match.start()].count("\n") + 1
-            platform_match = re.search(r'platform:\s*["\']([^"\']+)["\']', match.group(1))
+            platform_match = re.search(
+                r'platform:\s*["\']([^"\']+)["\']', match.group(1)
+            )
             if platform_match:
                 patterns.append(
                     TriggerPattern(
@@ -298,11 +312,13 @@ class YamlAdapter(ExtractorAdapter):
         # Extract condition patterns
         condition_pattern = re.compile(
             r'condition:\s*\n((?:[ \t]+condition:\s*["\']([^"\']+)["\'](?:\s*\n[ \t]+[^:]+)*|.*?)(?=\n(?:trigger:|condition:|action:|input:|$)))',
-            re.MULTILINE | re.DOTALL
+            re.MULTILINE | re.DOTALL,
         )
         for match in condition_pattern.finditer(content):
             line_number = content[: match.start()].count("\n") + 1
-            condition_match = re.search(r'condition:\s*["\']([^"\']+)["\']', match.group(1))
+            condition_match = re.search(
+                r'condition:\s*["\']([^"\']+)["\']', match.group(1)
+            )
             if condition_match:
                 patterns.append(
                     ConditionPattern(
@@ -315,7 +331,7 @@ class YamlAdapter(ExtractorAdapter):
         # Extract action patterns
         action_pattern = re.compile(
             r'action:\s*\n((?:[ \t]+service:\s*["\']([^"\']+)["\'](?:\s*\n[ \t]+[^:]+)*|.*?)(?=\n(?:trigger:|condition:|action:|input:|$)))',
-            re.MULTILINE | re.DOTALL
+            re.MULTILINE | re.DOTALL,
         )
         for match in action_pattern.finditer(content):
             line_number = content[: match.start()].count("\n") + 1
@@ -419,15 +435,57 @@ class YamlAdapter(ExtractorAdapter):
             domain = name.split(".")[0]
             # Common Home Assistant domains
             ha_domains = {
-                "automation", "binary_sensor", "camera", "climate", "configurator",
-                "counter", "date", "datetime", "device_tracker", "geo_location",
-                "group", "homeassistant", "history_states", "homekit", "input_boolean",
-                "input_button", "input_datetime", "input_number", "input_select",
-                "input_text", "light", "lock", "mailbox", "notify", "persistent_notification",
-                "person", "phone_device", "proximity", "recorder", "remote", "scene",
-                "script", "sensor", "simple_alarm", "sun", "switch", "timer", "tts",
-                "uptime", "updater", "vacuum", "valve", "verisure", "weather", "zone",
-                "media_player", "fan", "cover", "alarm_control_panel", "stt", "vacuum",
+                "automation",
+                "binary_sensor",
+                "camera",
+                "climate",
+                "configurator",
+                "counter",
+                "date",
+                "datetime",
+                "device_tracker",
+                "geo_location",
+                "group",
+                "homeassistant",
+                "history_states",
+                "homekit",
+                "input_boolean",
+                "input_button",
+                "input_datetime",
+                "input_number",
+                "input_select",
+                "input_text",
+                "light",
+                "lock",
+                "mailbox",
+                "notify",
+                "persistent_notification",
+                "person",
+                "phone_device",
+                "proximity",
+                "recorder",
+                "remote",
+                "scene",
+                "script",
+                "sensor",
+                "simple_alarm",
+                "sun",
+                "switch",
+                "timer",
+                "tts",
+                "uptime",
+                "updater",
+                "vacuum",
+                "valve",
+                "verisure",
+                "weather",
+                "zone",
+                "media_player",
+                "fan",
+                "cover",
+                "alarm_control_panel",
+                "stt",
+                "vacuum",
             }
             if domain in ha_domains:
                 return "entity"

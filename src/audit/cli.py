@@ -122,10 +122,14 @@ def print_section(title: str, style: str = "bold blue") -> None:
     console.print(f"[{style}]{'=' * 60}[/]\n")
 
 
-def print_summary_table(metrics: dict[str, str | int | float], title: str = "Summary") -> None:
+def print_summary_table(
+    metrics: dict[str, str | int | float], title: str = "Summary"
+) -> None:
     """Print a formatted summary table with metrics."""
     console = get_console()
-    table = Table(title=f"[bold]{title}[/bold]", show_header=True, header_style="bold cyan")
+    table = Table(
+        title=f"[bold]{title}[/bold]", show_header=True, header_style="bold cyan"
+    )
     table.add_column("Metric", style="cyan", width=20)
     table.add_column("Value", justify="right", style="white")
 
@@ -283,7 +287,9 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
 
     judge_model = args.judge_model
     total_samples = len(samples)
-    console.print(f"[cyan]Generating {total_samples} exam questions with professor model:[/cyan] {judge_model}")
+    console.print(
+        f"[cyan]Generating {total_samples} exam questions with professor model:[/cyan] {judge_model}"
+    )
 
     exam_records: list[ExamRecord] = []
     with Progress(
@@ -309,7 +315,9 @@ def cmd_generate_exam(args: argparse.Namespace) -> None:
             except PromptGenerationError as exc:
                 # Propagated from generate_exam_question; tested via mock failure
                 logger.error("Exam generation failed for %s: %s", sample.id, exc)
-                raise CLIError(f"Exam generation failed for {sample.id}: {exc}") from exc
+                raise CLIError(
+                    f"Exam generation failed for {sample.id}: {exc}"
+                ) from exc
             exam_records.append(record)
             progress.update(task, advance=1)
 
@@ -402,7 +410,9 @@ def cmd_score(args: argparse.Namespace) -> None:
     judge_model = args.judge_model
 
     total = len(exam_records)
-    console.print(f"[cyan]Scoring {total} records with judge model:[/cyan] {judge_model}")
+    console.print(
+        f"[cyan]Scoring {total} records with judge model:[/cyan] {judge_model}"
+    )
 
     scorecards: list[ScoreCard] = []
     with Progress(
@@ -524,7 +534,11 @@ def cmd_full(args: argparse.Namespace) -> None:
         for idx, (stage_name, handler) in enumerate(stages, 1):
             progress.update(stage_task, description=f"[cyan]{stage_name}[/]")
             try:
-                if handler == cmd_sample or handler == cmd_generate_exam or handler == cmd_score:
+                if (
+                    handler == cmd_sample
+                    or handler == cmd_generate_exam
+                    or handler == cmd_score
+                ):
                     handler(args)
                 else:
                     # For baseline/adapter, we need to reset model

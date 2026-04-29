@@ -27,12 +27,16 @@ class TestSamplingProfileValidation:
     def test_temperature_below_range(self) -> None:
         """Test temperature below valid range raises ValueError."""
         with pytest.raises(ValueError, match="temperature must be in range"):
-            SamplingProfile(temperature=-0.1, top_k=50, min_p=0.1, repetition_penalty=1.1)
+            SamplingProfile(
+                temperature=-0.1, top_k=50, min_p=0.1, repetition_penalty=1.1
+            )
 
     def test_temperature_above_range(self) -> None:
         """Test temperature above valid range raises ValueError."""
         with pytest.raises(ValueError, match="temperature must be in range"):
-            SamplingProfile(temperature=2.5, top_k=50, min_p=0.1, repetition_penalty=1.1)
+            SamplingProfile(
+                temperature=2.5, top_k=50, min_p=0.1, repetition_penalty=1.1
+            )
 
     def test_top_k_below_range(self) -> None:
         """Test top_k below valid range raises ValueError."""
@@ -42,42 +46,58 @@ class TestSamplingProfileValidation:
     def test_top_k_above_range(self) -> None:
         """Test top_k above valid range raises ValueError."""
         with pytest.raises(ValueError, match="top_k must be in range"):
-            SamplingProfile(temperature=1.0, top_k=300, min_p=0.1, repetition_penalty=1.1)
+            SamplingProfile(
+                temperature=1.0, top_k=300, min_p=0.1, repetition_penalty=1.1
+            )
 
     def test_min_p_below_range(self) -> None:
         """Test min_p below valid range raises ValueError."""
         with pytest.raises(ValueError, match="min_p must be in range"):
-            SamplingProfile(temperature=1.0, top_k=50, min_p=-0.1, repetition_penalty=1.1)
+            SamplingProfile(
+                temperature=1.0, top_k=50, min_p=-0.1, repetition_penalty=1.1
+            )
 
     def test_min_p_above_range(self) -> None:
         """Test min_p above valid range raises ValueError."""
         with pytest.raises(ValueError, match="min_p must be in range"):
-            SamplingProfile(temperature=1.0, top_k=50, min_p=1.5, repetition_penalty=1.1)
+            SamplingProfile(
+                temperature=1.0, top_k=50, min_p=1.5, repetition_penalty=1.1
+            )
 
     def test_repetition_penalty_below_range(self) -> None:
         """Test repetition_penalty below valid range raises ValueError."""
         with pytest.raises(ValueError, match="repetition_penalty must be in range"):
-            SamplingProfile(temperature=1.0, top_k=50, min_p=0.1, repetition_penalty=0.9)
+            SamplingProfile(
+                temperature=1.0, top_k=50, min_p=0.1, repetition_penalty=0.9
+            )
 
     def test_repetition_penalty_above_range(self) -> None:
         """Test repetition_penalty above valid range raises ValueError."""
         with pytest.raises(ValueError, match="repetition_penalty must be in range"):
-            SamplingProfile(temperature=1.0, top_k=50, min_p=0.1, repetition_penalty=2.5)
+            SamplingProfile(
+                temperature=1.0, top_k=50, min_p=0.1, repetition_penalty=2.5
+            )
 
     def test_presence_penalty_below_range(self) -> None:
         """Test presence_penalty below valid range raises ValueError."""
         with pytest.raises(ValueError, match="presence_penalty must be in range"):
             SamplingProfile(
-                temperature=1.0, top_k=50, min_p=0.1, repetition_penalty=1.1,
-                presence_penalty=-3.0
+                temperature=1.0,
+                top_k=50,
+                min_p=0.1,
+                repetition_penalty=1.1,
+                presence_penalty=-3.0,
             )
 
     def test_presence_penalty_above_range(self) -> None:
         """Test presence_penalty above valid range raises ValueError."""
         with pytest.raises(ValueError, match="presence_penalty must be in range"):
             SamplingProfile(
-                temperature=1.0, top_k=50, min_p=0.1, repetition_penalty=1.1,
-                presence_penalty=3.0
+                temperature=1.0,
+                top_k=50,
+                min_p=0.1,
+                repetition_penalty=1.1,
+                presence_penalty=3.0,
             )
 
     def test_valid_profile(self) -> None:
