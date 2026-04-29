@@ -188,7 +188,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(curation): fix logic inversion in count_tokens (#134)`
   - _Requirements: AC-6_
 
-- [ ] 4.3 [GREEN] Fix operator precedence in filter rate
+- [x] 4.3 [GREEN] Fix operator precedence in filter rate
   - **Do**:
     1. Read lines 617-622 of src/curation/curator_cli.py
     2. Add parentheses to fix operator precedence in filter rate calculation
