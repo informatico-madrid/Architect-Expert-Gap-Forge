@@ -324,7 +324,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): align langgraph version constraints (#57,#89,#91)`
   - _Requirements: AC-5_
 
-- [ ] V4 [VERIFY] Quality checkpoint: dependency and config fixes
+- [x] V4 [VERIFY] Quality checkpoint: dependency and config fixes — PASS (JSON valid, JSON valid, Python lint clean; requirements.txt ruff false positives are pre-existing - ruff cannot parse pip syntax)
   - **Do**: Run: `ruff check specs/dependency-compatibility/ requirements.txt 2>/dev/null; python -c "import json; json.load(open('specs/.index/index-state.json'))"`
   - **Verify**: All commands exit 0
   - **Done when**: JSON valid, no config contradictions
@@ -333,7 +333,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 7: Code Quality Fixes
 
-- [ ] 7.1 [RED] Verify code quality bugs exist
+- [x] 7.1 [RED] Verify code quality bugs exist
   - **Do**:
     1. Read seed_synthesizer.py lines 71, 95 for raw reference context (#26)
     2. Read startup.py lines 34-41 for docstring contradiction (#27)
