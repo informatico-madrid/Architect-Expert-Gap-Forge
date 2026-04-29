@@ -1,0 +1,12 @@
+{
+  "source": "spec",
+  "name": "code-review-classification",
+  "basePath": "specs/code-review-classification",
+  "phase": "tasks",
+  "taskIndex": 0,
+  "totalTasks": 45,
+  "taskIteration": 1,
+  "maxTaskIterations": 5,
+  "globalIteration": 1,
+  "maxGlobalIterations": 100
+}
