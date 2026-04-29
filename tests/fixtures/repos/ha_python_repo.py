@@ -42,7 +42,7 @@ def test_calculate_total():
         {'cost': 200.0, 'price': 150.0}
     ]
     total = module.calculate_total(mixed_items)
-    assert total == 500.0, f"Expected 500.0 but got {total}"
+    assert total == 250.0, f"Expected 250.0 but got {total}"
 
 def test_apply_discount():
     '''Test apply_discount function with edge cases.'''
