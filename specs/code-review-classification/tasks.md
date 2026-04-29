@@ -647,7 +647,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix contradictory detection priority (#109)`
   - _Requirements: AC-9_
 
-- [ ] 12.5 [GREEN] Fix missing method definition
+- [x] 12.5 [GREEN] Fix missing method definition
   - **Do**:
     1. Read specs/anchor-dataset/design.md line 947 for missing _transition_phase method (#69)
     2. Add missing method definition
