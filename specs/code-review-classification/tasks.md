@@ -33,7 +33,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify security issues exist`
   - _Requirements: AC-2_
 
-- [ ] 1.2 [GREEN] Remove hardcoded API key fallback in anchor_providers.py
+- [x] 1.2 [GREEN] Remove hardcoded API key fallback in anchor_providers.py
   - **Do**:
     1. Read line 68 of infrastructure/anchor_dataset/anchor_providers.py
     2. Remove `or "sk-master-bunker-2026"` fallback — require valid key or raise error

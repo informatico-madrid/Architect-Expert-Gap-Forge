@@ -65,7 +65,9 @@ class VLLMProvider(AnchorProvider):
         user_prompt: str,
         timeout: float = 30.0,
     ) -> AnchorRecord | None:
-        api_key = os.environ.get("VLLM_API_KEY") or "sk-master-bunker-2026"
+        api_key = os.environ.get("VLLM_API_KEY")
+        if api_key is None:
+            raise ValueError("VLLM_API_KEY environment variable is required")
 
         payload = {
             "model": self.model,
