@@ -60,7 +60,7 @@ As an ML Engineer, I want baseline metrics captured before implementing DSPy fea
 
 ## Implementation Notes
 
-- `infrastructure/` directory does NOT exist -- must be created
+- `infrastructure/` and `infrastructure/baselines/` directories do NOT exist -- must be created
 - `scripts/benchmark/baselines/` subdirectory exists but is EMPTY
 - `scripts/benchmark/compare_baseline.py` (224 lines) provides reusable pattern for result storage
 - Spearman correlation must use `scipy.stats.spearmanr`

@@ -563,7 +563,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix invalid JSON Schema syntax (#70)`
   - _Requirements: AC-9_
 
-- [ ] 11.3 [GREEN] Fix contradictory directory paths
+- [x] 11.3 [GREEN] Fix contradictory directory paths
   - **Do**:
     1. Read lines 32-63 of specs/baseline-measurement/plan.md for path contradictions (#77)
     2. Align directory paths across spec
