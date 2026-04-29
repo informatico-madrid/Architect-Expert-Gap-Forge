@@ -594,7 +594,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix duplicate IDs and value mismatches (#95,#96,#97)`
   - _Requirements: AC-9_
 
-- [ ] 11.6 [GREEN] Fix operator precedence in validation spec
+- [x] 11.6 [GREEN] Fix operator precedence in validation spec
   - **Do**:
     1. Read lines 219-225 of specs/baseline-measurement/tasks.md for operator precedence bug (#82)
     2. Fix precedence in spec verification commands
