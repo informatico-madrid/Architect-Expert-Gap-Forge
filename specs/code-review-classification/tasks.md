@@ -492,7 +492,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix weak assertions (#154,#158,#160,#162)`
   - _Requirements: AC-8_
 
-- [ ] 9.5 [GREEN] Fix wrong exception types and NameErrors in tests
+- [x] 9.5 [GREEN] Fix wrong exception types and NameErrors in tests
   - **Do**:
     1. Read line 138 of tests/fixtures/reference_corpus/homeassistant/repo2/sensor.py for wrong exception type (#164)
     2. Read line 95 of tests/fixtures/reference_corpus/homeassistant/repo5/climate.py for NameError typo (#165)

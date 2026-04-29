@@ -177,7 +177,7 @@ class TestIngestorCliSubprocess:
         # the processor which requires GitHub token, but it should at least
         # pass YAML loading and validation stages
         # We check that it doesn't fail on YAML parsing
-        assert "YAML" not in result.stderr or "error" not in result.stderr.lower()
+        assert "YAML" not in result.stderr and "error" not in result.stderr.lower()
 
     def test_cli_subprocess_with_missing_file(self, tmp_path: Path) -> None:
         """Test CLI subprocess with missing config file.

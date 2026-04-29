@@ -92,7 +92,7 @@ class MyClimate(ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
-        self._hvac_mode = hvm_mode
+        self._hvac_mode = hvac_mode
         await self._send_command("set_hvac_mode", hvac_mode.value)
 
     async def _send_command(self, command: str, value: Any) -> None:
