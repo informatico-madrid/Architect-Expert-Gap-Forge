@@ -23,7 +23,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 1: Security Fixes
 
-- [ ] 1.1 [RED] Verify hardcoded API key (#17) and symlink vulnerability (#30) exist
+- [x] 1.1 [RED] Verify hardcoded API key (#17) and symlink vulnerability (#30) exist
   - **Do**:
     1. Grep for `sk-master-bunker-2026` in anchor_providers.py — expect match
     2. Read lines 207-211 of measure_mipro_compile_baseline.py — confirm resolve() called before symlink check
