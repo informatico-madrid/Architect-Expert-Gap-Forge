@@ -409,7 +409,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify test infrastructure bugs exist`
   - _Requirements: AC-7_
 
-- [ ] 8.2 [GREEN] Fix test fixture key typos and mismatches
+- [x] 8.2 [GREEN] Fix test fixture key typos and mismatches
   - **Do**:
     1. Read specs/frontend-discovery-enhancement/tests/verification/fixtures/blueprint_typescript_module.json for module dependency key typos (#103)
     2. Read blueprint_yaml_module.json for i18n_keys vs cover mismatch (#104)

@@ -88,11 +88,7 @@
   "vocabulary": {
     "i18n_keys": [
       "cover.opening",
-      "cover.closing",
-      "cover.opened",
-      "cover.closed",
-      "light.on",
-      "light.off"
+      "cover.closing"
     ],
     "lit_components": [],
     "service_calls": []

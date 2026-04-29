@@ -12,7 +12,7 @@
       "dependencies": {
         "lit": "LitElement",
         "lodash-es": "debounce, get",
-        "ha hui-common-entity-states": "computeStateDisplay"
+        "ha-hui-common-entity-states": "computeStateDisplay"
       }
     },
     "custom-cards/mini-graph-card/src/mini-graph-card.ts": {
@@ -32,7 +32,7 @@
   "dependencies": {
     "lit": "LitElement, css, html, property, state",
     "lodash-es": "debounce, get, set",
-    "ha hui-common-entity-states": "computeStateDisplay",
+    "ha-hui-common-entity-states": "computeStateDisplay",
     "home-assistant-js-websocket": "HASSWebsocketConnection"
   },
   "schema": {
