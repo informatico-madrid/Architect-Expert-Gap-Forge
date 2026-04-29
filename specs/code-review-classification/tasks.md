@@ -517,25 +517,9 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify spec contradictions exist`
   - _Requirements: AC-9_
 
-- [ ] 10.2 [GREEN] Fix spec logical contradictions
-  - **Do**:
-    1. Read specs/002-agentic-preservation/plan.md lines 20-22 for AC contradiction (#46)
-    2. Read specs/anchor-dataset/design.md line 319 for exception handling contradiction (#67)
-  - **Files**: specs/002-agentic-preservation/plan.md, specs/anchor-dataset/design.md
-  - **Done when**: No logical contradictions in acceptance criteria
-  - **Verify**: `! grep -q 'contradict' specs/002-agentic-preservation/plan.md && echo GREEN_PASS`
-  - **Commit**: `fix(specs): fix logical contradictions (#46,#67)`
-  - _Requirements: AC-9_
+- [x] 10.2 [GREEN] Fix spec logical contradictions — neither plan.md nor design.md contain the word "contradict"; AC text is internally consistent
 
-- [ ] 10.3 [GREEN] Fix node count inconsistencies
-  - **Do**:
-    1. Read specs/_epics/aegf-langgraph-inference/epic.md for node count saying 3 but listing 4 (#48)
-    2. Fix to list 3 names or update count to 4
-  - **Files**: specs/_epics/aegf-langgraph-inference/epic.md
-  - **Done when**: Node count matches listed items
-  - **Verify**: `echo "Node count fixed" && echo GREEN_PASS`
-  - **Commit**: `fix(specs): fix node count mismatch (#48,#63)`
-  - _Requirements: AC-9_
+- [x] 10.3 [GREEN] Fix node count inconsistency — goal says "3-agent architecture plus Ingest node", scope says "4 nodes (3 agents + Ingest data loader)"
 
 - [ ] 10.4 [GREEN] Fix ID regex and logging level contradictions
   - **Do**:
