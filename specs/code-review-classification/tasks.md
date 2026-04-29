@@ -198,7 +198,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(curation): fix operator precedence in filter rate (#133)`
   - _Requirements: AC-6_
 
-- [ ] 4.4 [GREEN] Fix unused delta variable in e2e_verification.py
+- [x] 4.4 [GREEN] Fix unused delta variable in e2e_verification.py
   - **Do**:
     1. Read lines 330-333 of tests/e2e_verification.py
     2. Assign/return delta variable so it is used in setpoint logic

@@ -330,7 +330,7 @@ def compute_thermostat_setpoint(target: float, offset: float, outdoor_temp: floa
     delta = outdoor_temp - 20.0
     if abs(delta) > 10:
         _LOGGER.warning('Extreme outdoor temp: %s', outdoor_temp)
-    return target + (offset * 0.1)
+    return target + delta * 0.01 + (offset * 0.1)
 
 def validate_sensor_reading(value: float, sensor_type: str) -> Tuple[bool, Optional[str]]:
     '''Validate a sensor reading for type-specific constraints.
