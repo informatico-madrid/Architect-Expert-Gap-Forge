@@ -13,7 +13,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - _Requirements: AC-1_
   - _Design: Phase 0_
 
-- [ ] 0.2 [VERIFY] Confirm repro is consistent: run existing tests
+- [x] 0.2 [VERIFY] Confirm repro is consistent: run existing tests
   - **Do**: Run full test suite to capture baseline state: `python -m pytest tests/ -x --tb=short --ignore=tests/test_agentic_gen.py 2>&1 | tail -30`. Document any pre-existing failures.
   - **Files**: tests/
   - **Done when**: Test suite output captured (may include pre-existing failures)
