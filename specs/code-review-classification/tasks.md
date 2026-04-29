@@ -480,7 +480,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix tautological assertions (#179,#180)`
   - _Requirements: AC-8_
 
-- [ ] 9.4 [GREEN] Fix weak and wrong test assertions
+- [x] 9.4 [GREEN] Fix weak and wrong test assertions
   - **Do**:
     1. Read tests/factory/test_backtracking_detector_messages.py for missing case-insensitivity check (#154)
     2. Read tests/factory/test_trajectory_generator_dspy.py for misleading coverage claim (#158)

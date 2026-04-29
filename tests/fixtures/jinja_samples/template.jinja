@@ -1,4 +1,4 @@
-{% set climate_temp = states('climate.living_room') %}
+{% set climate_temp = state_attr('climate.living_room', 'current_temperature') %}
 {% if is_state('switch.lights', 'on') %}
   Lights are on, temperature is {{ climate_temp | float | round(1) }}
 {% elif is_state('switch.lights', 'off') %}

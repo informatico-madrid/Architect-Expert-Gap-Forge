@@ -46,3 +46,5 @@ class TestBacktrackingDetectorMessages:
         assert isinstance(result, BacktrackingResult)
         assert result.detected is True
         assert result.reason == "error_recovery"
+        assert 0 in result.indices
+        assert 1 in result.indices

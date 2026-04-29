@@ -116,10 +116,11 @@ class TestPythonAstAdapter:
         deps = adapter.extract_dependencies(test_file)
 
         dep_names = [d.name for d in deps]
-        # Should find typing, dataclasses, ast, json
-        assert "typing" in dep_names or "List" in str(deps)
+        # Should find all imports including nested: os.path -> os, json, typing, dataclasses
+        assert "os" in dep_names
+        assert "json" in dep_names
+        assert "typing" in dep_names
         assert "dataclasses" in dep_names
-        assert "ast" in dep_names
 
     def test_parse_file_raises_on_syntax_error(
         self, adapter: PythonAstAdapter, fixtures_dir: Path

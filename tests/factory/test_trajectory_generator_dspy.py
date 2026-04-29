@@ -34,6 +34,8 @@ async def test_generator_creates_trajectory_without_dspy():
     assert isinstance(result, AgenticTrajectory)
     assert result.seed_id == "test-001"
     assert len(result.turns) >= 3
+    for turn in result.turns:
+        assert turn.content is not None and len(turn.content) > 0
 
 
 def test_dual_path_fallback():
