@@ -260,7 +260,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 6: Dependency & Config Fixes
 
-- [ ] 6.1 [RED] Verify dependency/config bugs exist
+- [x] 6.1 [RED] Verify dependency/config bugs exist
   - **Do**:
     1. Check configs/stage_1_discovery/examples/homeassistant_frontend.yaml for profile contradiction (#11)
     2. Check specs/dependency-compatibility/requirements.md for dspy version (#15)
