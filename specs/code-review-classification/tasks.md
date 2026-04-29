@@ -573,7 +573,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix contradictory directory paths (#77)`
   - _Requirements: AC-9_
 
-- [ ] 11.4 [GREEN] Fix verify commands
+- [x] 11.4 [GREEN] Fix verify commands
   - **Do**:
     1. Read line 376 of specs/dependency-compatibility/tasks.md for fragile T-09 verify (#92)
     2. Read line 305 of specs/dependency-compatibility/tasks.md for incomplete T-07 verify (#93)

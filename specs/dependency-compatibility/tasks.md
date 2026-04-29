@@ -302,7 +302,7 @@ grep -q 'SPDX-License-Identifier: Apache-2.0' infrastructure/dependency_check.py
 
 **Done when:** All structural checks pass, copyright present, no bare except.
 
-**Verify:** `grep -c 'if __name__' infrastructure/dependency_check.py && grep -c 'SPDX' infrastructure/dependency_check.py && ! grep -q '^except:' infrastructure/dependency_check.py && echo T-07_PASS`
+**Verify:** `grep -q 'if __name__ == "__main__":' infrastructure/dependency_check.py && grep -q 'SPDX-License-Identifier: Apache-2.0' infrastructure/dependency_check.py && ! grep -q '^except:' infrastructure/dependency_check.py && echo T-07_PASS`
 
 **Commit:** `spec(dependency-compatibility): verify script structure`
 
@@ -373,7 +373,7 @@ grep -q '## 8. Optional: Torch' docs/dependency-compatibility.md
 
 **Done when:** All 7 required sections present.
 
-**Verify:** `grep -c '## [2-8]' docs/dependency-compatibility.md | grep -q '[5-7]' && echo T-09_PASS`
+**Verify:** `grep -q '## 2. CVE and Security' docs/dependency-compatibility.md && grep -q '## 3. Version Pinning Rationale' docs/dependency-compatibility.md && grep -q '## 8. Optional: Torch' docs/dependency-compatibility.md && echo T-09_PASS`
 
 **Commit:** `spec(dependency-compatibility): verify documentation sections`
 
