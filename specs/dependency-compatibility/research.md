@@ -225,7 +225,7 @@ pip install numpy>=1.26.0 openai>=2.0
 ### Phase 2: Install new dependencies
 
 ```bash
-pip install dspy>=3.0 langgraph>=0.2.76
+pip install dspy==3.2.0 langgraph==0.2.76
 ```
 
 ### Phase 3: Verify

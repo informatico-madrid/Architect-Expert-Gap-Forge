@@ -292,7 +292,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix dspy version notation (#15)`
   - _Requirements: AC-5_
 
-- [ ] 6.4 [GREEN] Fix malformed JSON in index-state.json
+- [x] 6.4 [GREEN] Fix malformed JSON in index-state.json — executor failed, fixed directly: removed duplicate `0` on lines 57, 65, 94
   - **Do**:
     1. Read specs/.index/index-state.json
     2. Fix malformed JSON on lines 56-58, 64-66, 93-95
@@ -312,7 +312,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix invalid constraint syntax (#86)`
   - _Requirements: AC-5_
 
-- [ ] 6.6 [GREEN] Fix langgraph version contradictions
+- [x] 6.6 [GREEN] Fix langgraph version contradictions
   - **Do**:
     1. Read line 304 of specs/_epics/aegf-infrastructure/epic.md for #57
     2. Read line 38 of specs/dependency-compatibility/requirements.md for #89
