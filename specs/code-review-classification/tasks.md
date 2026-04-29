@@ -776,7 +776,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **commit**: `fix(extractors): fix unreliable fallback (#140)`
   - _Requirements: AC-1_
 
-- [ ] 14.5 [GREEN] Fix tests asserting raw input not transformation
+- [x] 14.5 [GREEN] Fix tests asserting raw input not transformation
   - **Do**:
     1. Read tests/unit/extractors/ for tests asserting raw input instead of transformation output (#189)
     2. Change assertions to verify actual transformation output
@@ -786,7 +786,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix raw input assertions (#189)`
   - _Requirements: AC-8_
 
-- [ ] 14.6 [GREEN] Fix dead code and vacuous assertions in tests
+- [x] 14.6 [GREEN] Fix dead code and vacuous assertions in tests
   - **Do**:
     1. Read tests/unit/extractors/test_yaml_adapter.py for wrong assertion logic (#190) + vacuous assertion + dead code (#191)
     2. Read tests/unit/test_persistence.py for ineffective test + dead code (#193) + misaligned assertion (#194)
@@ -797,7 +797,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix dead code and vacuous assertions (#190,#191,#193,#194,#195)`
   - _Requirements: AC-8_
 
-- [ ] 14.7 [GREEN] Fix test name contradicting assertion
+- [x] 14.7 [GREEN] Fix test name contradicting assertion
   - **Do**:
     1. Read tests/unit/test_processor_config_validation.py for test name vs assertion mismatch (#198)
     2. Align test name with actual assertion or fix assertion
