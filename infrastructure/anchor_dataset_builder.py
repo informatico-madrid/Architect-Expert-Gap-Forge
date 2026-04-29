@@ -329,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
         for idx, cfg in enumerate(configs):
             # Skip completed IDs from previous run
             cfg_id = _generate_id(idx)
-            if cfg_id in completed_ids:
+            if cfg_id in completed_ids or cfg_id in failed_ids:
                 logger.info("Skipping completed: %s", cfg_id)
                 continue
             system, user = prompt_builder.build(cfg)
