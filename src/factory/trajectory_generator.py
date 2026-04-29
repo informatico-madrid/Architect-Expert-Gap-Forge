@@ -205,7 +205,7 @@ class TrajectoryGenerator:
                 "context": context,
                 "error_probability": self.error_probability,
                 "has_error": getattr(self, "has_error", False),
-                "is_cascade": self.cascade_failure_probability > 0.5,
+                "is_cascade": bool(self.cascade_failure_probability > 0.5),
                 "tool_format": self.tool_format,
             }
             result = predictor(**seed_data_payload)

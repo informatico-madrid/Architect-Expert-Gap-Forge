@@ -135,7 +135,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix Gemini API message roles (#19)`
   - _Requirements: AC-4_
 
-- [ ] 3.3 [GREEN] Fix is_cascade boolean in trajectory_generator.py
+- [x] 3.3 [GREEN] Fix is_cascade boolean in trajectory_generator.py
   - **Do**:
     1. Read line 208 of src/factory/trajectory_generator.py
     2. Fix incorrect derivation — ensure boolean type for DSPy payload
