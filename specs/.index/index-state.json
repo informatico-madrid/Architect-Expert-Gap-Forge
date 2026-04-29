@@ -53,16 +53,14 @@
       "name": "006-project-maintenance",
       "path": "./specs/006-project-maintenance",
       "phase": "tasks",
-      "taskIndex": 0
-0,
+      "taskIndex": 0,
       "totalTasks": 48
     },
     {
       "name": "008-fix-ingestor-cli-execution",
       "path": "./specs/008-fix-ingestor-cli-execution",
       "phase": "tasks",
-      "taskIndex": 0
-0,
+      "taskIndex": 0,
       "totalTasks": 9
     },
     {
@@ -90,8 +88,7 @@
       "name": "014-rich-cli-output",
       "path": "./specs/014-rich-cli-output",
       "phase": "tasks",
-      "taskIndex": 0
-0,
+      "taskIndex": 0,
       "totalTasks": 34
     },
     {
