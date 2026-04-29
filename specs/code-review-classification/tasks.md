@@ -419,7 +419,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix fixture key typos (#103,#104)`
   - _Requirements: AC-7_
 
-- [ ] 8.3 [GREEN] Fix hardcoded paths in tests
+- [x] 8.3 [GREEN] Fix hardcoded paths in tests — replaced absolute paths with Path(__file__).resolve().parents[N]
   - **Do**:
     1. Read line 47 of specs/frontend-discovery-enhancement/tests/verification/test_module_blueprint_cross_language.py for absolute path (#106)
     2. Read lines 49-51 of tests/unit/test_processor_config_validation.py for hardcoded PYTHONPATH (#196)
@@ -429,7 +429,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix hardcoded paths (#106,#196)`
   - _Requirements: AC-7_
 
-- [ ] 8.4 [GREEN] Fix duplicate fixture function in conftest.py
+- [x] 8.4 [GREEN] Fix duplicate fixture function in conftest.py — removed second duplicate _load_fixture at line 136
   - **Do**:
     1. Read tests/conftest.py for duplicate _load_fixture (#149)
     2. Remove duplicate — keep correct implementation
@@ -439,7 +439,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): remove duplicate fixture function (#149)`
   - _Requirements: AC-7_
 
-- [ ] V5 [VERIFY] Quality checkpoint: test infrastructure fixes
+- [x] V5 [VERIFY] Quality checkpoint: test infrastructure fixes — ruff PASS, imports PASS
   - **Do**: Run: `ruff check tests/conftest.py tests/unit/test_processor_config_validation.py && python -c "from tests.conftest import *; print('OK')"`
   - **Verify**: All commands exit 0
   - **Done when**: No duplicate fixtures, paths resolved
@@ -448,7 +448,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 9: Test Quality Fixes
 
-- [ ] 9.1 [RED] Verify test quality bugs exist
+- [x] 9.1 [RED] Verify test quality bugs exist
   - **Do**:
     1. Read tests/curation/test_dedup_validate.py line 376 for wrong substring (#151)
     2. Read tests/test_generate_sample_async.py for tautological assertion (#179)
