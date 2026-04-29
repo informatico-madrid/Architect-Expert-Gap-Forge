@@ -74,7 +74,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify runtime crash bugs exist`
   - _Requirements: AC-3_
 
-- [ ] 2.2 [GREEN] Fix SyntaxError in failed_sample_logger.py
+- [x] 2.2 [GREEN] Fix SyntaxError in failed_sample_logger.py
   - **Do**:
     1. Read line 51 of infrastructure/anchor_dataset/failed_sample_logger.py
     2. Fix indentation mismatch causing SyntaxError
