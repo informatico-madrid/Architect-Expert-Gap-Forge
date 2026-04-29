@@ -459,7 +459,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify test quality bugs exist`
   - _Requirements: AC-8_
 
-- [ ] 9.2 [GREEN] Fix wrong assertions in test files
+- [x] 9.2 [GREEN] Fix wrong assertions in test files — a57222d
   - **Do**:
     1. Read line 376 of tests/curation/test_dedup_validate.py for wrong substring check (#151)
     2. Read line 49 of tests/test_persisted_sample_ha_standards.py for wrong path (#185)
@@ -470,7 +470,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix wrong assertions (#151,#185,#168)`
   - _Requirements: AC-8_
 
-- [ ] 9.3 [GREEN] Fix tautological and trivially true assertions
+- [x] 9.3 [GREEN] Fix tautological and trivially true assertions
   - **Do**:
     1. Read tests/test_generate_sample_async.py for tautology (#179)
     2. Read line 178 of tests/test_model_evaluator_config_and_cli.py for trivially true (#180)
