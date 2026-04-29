@@ -659,7 +659,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 13: Template & Prompt Fixes
 
-- [ ] 13.1 [RED] Verify template bugs exist
+- [x] 13.1 [RED] Verify template bugs exist
   - **Do**:
     1. Read specs/prompt-externalization/adversarial-review-findings.md for .system key (#114)
     2. Read same file for placeholder syntax (#115)
@@ -671,7 +671,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify template bugs exist`
   - _Requirements: AC-10_
 
-- [ ] 13.2 [GREEN] Fix template key access pattern
+- [x] 13.2 [GREEN] Fix template key access pattern
   - **Do**:
     1. Read specs/prompt-externalization/adversarial-review-findings.md lines 20-22
     2. Replace `.system` key access with `.get(template)` for safety
@@ -681,7 +681,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix template key access pattern (#114)`
   - _Requirements: AC-10_
 
-- [ ] 13.3 [GREEN] Fix placeholder syntax inconsistency
+- [x] 13.3 [GREEN] Fix placeholder syntax inconsistency
   - **Do**:
     1. Read specs/prompt-externalization/adversarial-review-findings.md for mixed $var and {var} (#115)
     2. Standardize to Python str.format `{var}` style
@@ -691,7 +691,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): standardize placeholder syntax (#115)`
   - _Requirements: AC-10_
 
-- [ ] 13.4 [GREEN] Fix undefined $tools_json variable
+- [x] 13.4 [GREEN] Fix undefined $tools_json variable
   - **Do**:
     1. Read specs/prompt-externalization/adversarial-review-findings.md for $tools_json (#116)
     2. Define variable or remove reference
@@ -701,7 +701,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix undefined tools_json (#116)`
   - _Requirements: AC-10_
 
-- [ ] 13.5 [GREEN] Fix Spanish in forbidden_terms
+- [x] 13.5 [GREEN] Fix Spanish in forbidden_terms
   - **Do**:
     1. Read specs/prompt-externalization/adversarial-review-findings.md lines 9-10 for Spanish in forbidden_terms (#117)
     2. Remove Spanish words from forbidden_terms
@@ -711,7 +711,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): remove Spanish from forbidden_terms (#117)`
   - _Requirements: AC-10_
 
-- [ ] 13.6 [GREEN] Fix module reference syntax and placeholder replacement
+- [x] 13.6 [GREEN] Fix module reference syntax and placeholder replacement
   - **Do**:
     1. Read line 17 of specs/prompt-externalization/requirements.md for invalid module reference (#123)
     2. Read line 148 of specs/prompt-externalization/research.md for dollar sign corruption (#125)

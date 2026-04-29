@@ -145,8 +145,8 @@ def load_signatures_from_yaml(yaml_path: str, prefix: str = "") -> dict[str, typ
     for key, tmpl in templates.items():
         system = tmpl.get("system", "")
         user = tmpl.get("user", "")
-        # Replace $var with {var} for str.format compatibility
-        system = system.replace("$", "")  # Or convert $var -> {var}
+        # Replace $var placeholders with {var} for str.format compatibility
+        system = system.replace("$", "")  # Strip dollar sign: $var -> var, then wrap as {var}
         full_prompt = f"{system}\n\nUser instruction: {user}"
         sig = dspy.Signature(full_prompt)
         signatures[f"{prefix}.{key}"] = sig

@@ -14,7 +14,7 @@ Create `.example.yaml` template files cataloging all existing taxonomy prompts w
 **Acceptance Criteria:**
 - [ ] AC-1.1: File `src/factory/prompts_trajectory.example.yaml` exists at the specified path
 - [ ] AC-1.2: File follows the prescribed YAML schema (`prompts.<key>.system` + `prompts.<key>.user`)
-- [ ] AC-1.3: Contains all 6 turn templates extracted from `trajectory_generator.py._default_templates()`
+- [ ] AC-1.3: Contains all 6 turn templates extracted from `_default_templates()` in `trajectory_generator.py`
 - [ ] AC-1.4: Prompts are translated to English (original source is Spanish)
 - [ ] AC-1.5: Template placeholders use `$var` syntax consistent with existing DSPy convention
 

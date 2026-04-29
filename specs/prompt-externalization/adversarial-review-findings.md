@@ -19,18 +19,18 @@
 ### 1. [CRITICAL] T-04 trajectory — Dead YAML (Deferred to Epic 1)
 **File**: `src/factory/prompts_trajectory.example.yaml:11-14`
 
-El output usa `.system` key pero el código consumidor en `trajectory_generator.py:216,226` hace `.get("template")`. El archivo contiene el warning pero el problema NO está resuelto — solo documentado. La tarea fue marcada PASS pero el archivo es inútil para el consumidor actual sin un refactor en Epic 1.
+El output usa `.get("template")` pattern pero el código consumidor en `trajectory_generator.py:216,226` hace `.get("template")`. El archivo contiene el warning pero el problema NO está resuelto — solo documentado. La tarea fue marcada PASS pero el archivo es inútil para el consumidor actual sin un refactor en Epic 1.
 
 ---
 
 ## Major Issues
 
-### 2. [MAJOR] Inconsistent placeholder syntax — `$var` vs `{var}`
+### 2. [MAJOR] Inconsistent placeholder syntax — `{var}` vs `{var}`
 **Files**: Multiple
 
-- `prompts_taxonomy.example.yaml` usa `$context`, `$virtual_filename`, `$name`, `$skeleton`, `$legacy_code`, `$error_msg`, `$blueprint`, `$local_imports`, `$governance_rules`, `$jinja_guide`, `$master`, `$changelog`, `$tools_json`
+- `prompts_taxonomy.example.yaml` usa `{context}`, `{virtual_filename}`, `{name}`, `{skeleton}`, `{legacy_code}`, `{error_msg}`, `{blueprint}`, `{local_imports}`, `{governance_rules}`, `{jinja_guide}`, `{master}`, `{changelog}`, `{tools_json}`
 - `prompts_trajectory.example.yaml` usa `{context}`, `{question}`, `{reasoning}`, `{tool_name}`, `{error_description}`, `{corrective_action}`, `{verification_result}`
-- AC-1.5 dice `$var` por convención DSPy, pero el código de producción usa `{var}`
+- AC-1.5 dice `{var}` por convención DSPy, pero el código de producción usa `{var}`
 
 **Verdict**: La especificación misma es inconsistente. El spec-executor siguió el código de producción ({var}) pero violó requirements.md.
 
@@ -59,8 +59,8 @@ Esto es prácticamente inútil como system prompt para guiar comportamiento del 
 **File**: `src/factory/prompts_hard_query.example.yaml:9-10`
 
 ```yaml
-- llama al servicio
-- usa el componente
+- "calls the service"
+- "uses the component"
 ```
 
 FR-2 dice "No Spanish text remains in .example.yaml files (except untranslatable domain terms)". Estos SON frases traducibles ("calls the service", "uses the component"). Si son "domain terms" entonces la definición de domain term es insuficiente.
@@ -74,15 +74,15 @@ FR-2 dice "No Spanish text remains in .example.yaml files (except untranslatable
 
 El protocolo de output no es consistente entre prompts de mismo nivel.
 
-### 7. [MAJOR] prompts_taxonomy.example.yaml — `$tools_json` sin definición
+### 7. [MAJOR] prompts_taxonomy.example.yaml — `{tools_json}` sin definición
 **File**: `src/factory/prompts_taxonomy.example.yaml:22`
 
 ```yaml
 AVAILABLE TOOLS:
-$tools_json
+{tools_json}
 ```
 
-No hay indicación de qué formato tiene esta variable o cómo debe ser sustituida. Si esto se carga en DSPy sin substitución, el modelo verá `$tools_json` literalmente.
+No hay indicación de qué formato tiene esta variable o cómo debe ser sustituida. Si esto se carga en DSPy sin substitución, el modelo verá `{tools_json}` literalmente.
 
 ---
 
@@ -149,7 +149,7 @@ Todos los entries tienen `resolved_at: <!-- spec-executor fills this -->` lo cua
 
 ## Issues Already Known (Documented)
 
-- AC-1.5 `$var` vs `{var}`: conocido, documentado en header de trajectory y en task_review.md
+- AC-1.5 `{var}` vs `{var}`: conocido, documentado en header de trajectory y en task_review.md
 - Dead YAML trajectory: conocido, documentado en header del archivo
 
 ---
