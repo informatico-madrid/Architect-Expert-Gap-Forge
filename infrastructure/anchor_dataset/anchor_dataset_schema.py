@@ -84,7 +84,7 @@ def jsonl_to_dspy_examples(path: str) -> list[Any]:
         ) from exc
 
     file_path = Path(path)
-    if not file_path.exists() or file_path.stat().st_size == 0:
+    if not file_path.is_file() or file_path.stat().st_size == 0:
         return []
 
     examples: list[dspy.Example] = []

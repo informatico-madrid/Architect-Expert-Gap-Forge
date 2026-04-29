@@ -228,7 +228,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify file system bugs exist`
   - _Requirements: AC-3_
 
-- [ ] 5.2 [GREEN] Fix exists() → is_file() in anchor_dataset_schema.py
+- [x] 5.2 [GREEN] Fix exists() → is_file() in anchor_dataset_schema.py
   - **Do**:
     1. Read line 87 of infrastructure/anchor_dataset/anchor_dataset_schema.py
     2. Change `file_path.exists()` to `file_path.is_file()`
