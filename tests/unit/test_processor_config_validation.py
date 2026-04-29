@@ -62,20 +62,8 @@ def run_cli_with_config(config_content: str) -> subprocess.CompletedProcess:
         )
 
 
-def test_processor_cli_homeassistant_should_succeed_but_fails():
-    """Test TDD: CLI procesa repositorios vacíos correctamente.
-    Usamos un config minimal para evitar dependencias de archivos externos.
-    """
-    res = run_cli_with_config(MINIMAL_CONFIG)
-    assert res.returncode == 0, (
-        f"CLI exited {res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
-    )
-
-
-def test_processor_cli_php_hexagonal_should_succeed_but_fails():
-    """Test TDD: CLI procesa repositorios vacíos correctamente.
-    Usamos un config minimal para evitar dependencias de archivos externos.
-    """
+def test_processor_cli_minimal_config_validates():
+    """Test CLI validates minimal config without errors."""
     res = run_cli_with_config(MINIMAL_CONFIG)
     assert res.returncode == 0, (
         f"CLI exited {res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
