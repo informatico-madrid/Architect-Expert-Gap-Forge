@@ -167,7 +167,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 4: Logic & Calculation Fixes
 
-- [ ] 4.1 [RED] Verify logic/precedence bugs exist
+- [x] 4.1 [RED] Verify logic/precedence bugs exist
   - **Do**:
     1. Read lines 112-118 of src/curation/dataset_mixer.py for logic inversion (#134)
     2. Read lines 617-622 of src/curation/curator_cli.py for precedence bug (#133)
