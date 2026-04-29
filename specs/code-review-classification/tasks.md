@@ -606,7 +606,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 12: Spec Documentation — Remaining
 
-- [ ] 12.1 [RED] Verify remaining spec bugs exist
+- [x] 12.1 [RED] Verify remaining spec bugs exist
   - **Do**:
     1. Read specs/frontend-discovery-enhancement/requirements.md for Type 3 LOGIC_ONLY scope (#102)
     2. Read specs/module-discovery-auto/tasks.md for overlapping line ranges (#108)
