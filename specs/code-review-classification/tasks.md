@@ -617,7 +617,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify remaining spec bugs exist`
   - _Requirements: AC-9_
 
-- [ ] 12.2 [GREEN] Fix Type 3 LOGIC_ONLY scope contradiction
+- [x] 12.2 [GREEN] Fix Type 3 LOGIC_ONLY scope contradiction
   - **Do**:
     1. Read specs/frontend-discovery-enhancement/requirements.md for LOGIC_ONLY scope contradiction (#102)
     2. Fix: language scope includes all languages, not Python-only
