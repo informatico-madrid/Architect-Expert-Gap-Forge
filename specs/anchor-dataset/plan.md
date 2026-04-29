@@ -53,8 +53,8 @@ As an ML Engineer, I want a domain-specific anchor dataset of 100-200 samples wi
 ```json
 {
   "id": "anchor_001",
-  "domain": "home_assistant|php_legacy|generic_domain|other",
-  "difficulty": "easy|medium|hard",
+  "domain": "home_assistant",
+  "difficulty": "easy",
   "turn_count": 4,
   "legacy_pattern": "string",
   "domain_context": "string",

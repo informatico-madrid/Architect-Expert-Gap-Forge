@@ -553,7 +553,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify spec validation bugs exist`
   - _Requirements: AC-9_
 
-- [ ] 11.2 [GREEN] Fix invalid JSON Schema syntax
+- [x] 11.2 [GREEN] Fix invalid JSON Schema syntax
   - **Do**:
     1. Read line 56 of specs/anchor-dataset/plan.md for domain enum (#70)
     2. Fix invalid JSON Schema syntax
