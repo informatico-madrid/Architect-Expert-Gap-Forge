@@ -61,14 +61,14 @@ class SeedSynthesizer:
         if not self._llm_client:
             # POC fallback: return stub seeds from patterns
             seeds = []
-            for i, pat in enumerate(patterns[:count]):
+            for i in range(min(count, len(patterns))):
                 seeds.append(
                     NormalizedSeed(
                         seed_id=f"synth_{i:03d}",
                         domain="generic_domain",
                         category="config",
                         complexity="nominal_easy",
-                        context=pat[:100] if pat else "General configuration",
+                        context="General configuration",
                         question="How to configure properly?",
                         expected_patterns=[],
                     )
