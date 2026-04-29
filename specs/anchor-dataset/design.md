@@ -419,7 +419,7 @@ class SerializationError(AnchorDatasetError):
     """JSON parse failure or atomic write failure."""
     pass
 
-class ConfigurationError(AnchorDatasetError):
+class ConfigValidationError(AnchorDatasetError):
     """Missing API key, invalid CLI args, config validation failure."""
     pass
 
@@ -1337,7 +1337,7 @@ AnchorDatasetError (RuntimeError)
   ├── ValidationError (Pydantic validation, schema mismatch)
   ├── ProviderError (API network/rate-limit/timeout)
   ├── SerializationError (JSON parse, atomic write, fsync failure)
-  ├── ConfigurationError (Missing API key, invalid CLI args)
+  ├── ConfigValidationError (Missing API key, invalid CLI args)
   ├── SeedError (Seed loading, synthesis, reference corpus)
   └── CheckpointError (Checkpoint read/write/corruption)
 ```
@@ -1346,8 +1346,8 @@ AnchorDatasetError (RuntimeError)
 
 | Error Scenario | Exception Type | Handling Strategy | User Impact |
 |----------------|---------------|-------------------|-------------|
-| vLLM server unreachable | ConfigurationError | Pre-flight health check, exit 1 with message suggesting `--provider openai` | Clear guidance on next step |
-| Missing API key | ConfigurationError | Pre-flight env var check, exit 1 with specific env var name | No confusion about what's missing |
+| vLLM server unreachable | ConfigValidationError | Pre-flight health check, exit 1 with message suggesting `--provider openai` | Clear guidance on next step |
+| Missing API key | ConfigValidationError | Pre-flight env var check, exit 1 with specific env var name | No confusion about what's missing |
 | API rate limit (429) | — | Provider does NOT retry 429 (per design: "no retry on 429 rate limit (handled by external rate limiter)"). Orchestration calls CB.record_result(False). | Rate limit handled externally |
 | Non-JSON API response | — | Provider catches JSON decode error, returns None. Orchestration logs to failed_samples.jsonl with reason `json_parse_error`, calls CB.record_result(False). | Automatic recovery (fallback provider retry at provider level), manual review at orchestration level |
 | Pydantic validation failure | — | Provider catches ValidationError, returns None. Orchestration logs to failed_samples.jsonl with reason, calls CB.record_result(False). | Sample lost from output, quality monitored |
@@ -1356,7 +1356,7 @@ AnchorDatasetError (RuntimeError)
 | KeyboardInterrupt | — | Save checkpoint, log clean shutdown message, exit 1 with resume instruction | Progress saved, can resume |
 | Corrupted checkpoint | CheckpointError | Log warning, start from scratch | May regenerate some samples (idempotent by ID) |
 | Empty seed file | SeedError | Log warning, continue with empty seed list for that domain | Template-based generation kicks in |
-| Output file exists + --no-overwrite | ConfigurationError | Exit 1 immediately | Protects against accidental overwrite |
+| Output file exists + --no-overwrite | ConfigValidationError | Exit 1 immediately | Protects against accidental overwrite |
 | Rename/fsync failure | CheckpointError / SerializationError | Clean up .tmp file, raise domain exception with clear message | No corrupt files left on disk |
 | Disk full during write | SerializationError | Catch OSError, clean up .tmp, log with disk space info | No corrupt files, user knows why |
 | Model hot-swap during calibration | — | Orchestration detects model change, logs warning, continues generation. Samples with failed QC get re-attempted. | Brief pause, then continue |

@@ -155,7 +155,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix Spanish detection regex (#121)`
   - _Requirements: AC-4_
 
-- [ ] 3.5 [GREEN] Fix exception class name inconsistency
+- [x] 3.5 [GREEN] Fix exception class name inconsistency
   - **Do**:
     1. Read specs/anchor-dataset/design.md for ConfigValidationError vs ConfigurationError mismatch (#66)
     2. Align exception class names consistently
