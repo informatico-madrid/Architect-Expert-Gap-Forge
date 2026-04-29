@@ -113,7 +113,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 3: API & External Integration Fixes
 
-- [ ] 3.1 [RED] Verify API bugs exist
+- [x] 3.1 [RED] Verify API bugs exist
   - **Do**:
     1. Read lines 194-197 of anchor_providers.py for Gemini role swap (#19)
     2. Read line 208 of trajectory_generator.py for is_cascade (#139)
