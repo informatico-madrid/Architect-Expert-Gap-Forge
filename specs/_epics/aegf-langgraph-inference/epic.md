@@ -1,6 +1,6 @@
 ---
 name: aegf-langgraph-inference
-goal: Implement LangGraph-based migration state machine with 3-agent architecture (Winston the Architect, Amelia the Coder, Murat the Auditor), conditional edges, interrupt mechanism, and checkpointing for fault recovery.
+goal: Implement LangGraph-based migration state machine with 3-agent architecture (Winston the Architect, Amelia the Coder, Murat the Auditor) plus an Ingest node for data loading, conditional edges, interrupt mechanism, and checkpointing for fault recovery.
 version: 1.0
 date: 2026-04-29
 status: planning
@@ -45,7 +45,7 @@ All 5 stories (including Story 3.2 split into 3.2a/3.2b/3.2c), acceptance criter
 ### IN Scope
 
 - MigrationState TypedDict with all required fields (legacy_code, target_architecture, migration_plan, proposed_code, audit_score, audit_feedback, consensus, debate_rounds, max_rounds)
-- LangGraph state machine skeleton with 3 agent nodes (Ingest, Architect/Winston, Coder/Amelia, Auditor/Murat)
+- LangGraph state machine skeleton with 4 nodes (3 agents + Ingest data loader): Architect/Winston, Coder/Amelia, Auditor/Murat, and Ingest
 - Conditional edges: audit_score >= threshold → export, else → recode
 - Configurable threshold via `configs/inference/graph_thresholds.yaml`
 - Interrupt mechanism: `interrupt()` triggered when max_rounds reached without consensus
