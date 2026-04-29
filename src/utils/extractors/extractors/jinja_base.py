@@ -225,7 +225,7 @@ JINJA_ELIF_PATTERN = re.compile(r"\{%\s*elif\s+([^{}]+?)\s*%\}", re.MULTILINE)
 
 # Jinja statement patterns
 JINJA_STATEMENT_PATTERN = re.compile(
-    r"\{%\s*(set|for|if|block|macro|extends|include|import|from)\s+([^{}]+?)\s*%\}",
+    r"\{%\s*(set|block|macro|extends|include|import|from)\s+([^{}]+?)\s*%\}",
     re.MULTILINE,
 )
 
