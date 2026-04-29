@@ -238,7 +238,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): use is_file() instead of exists() (#16)`
   - _Requirements: AC-3_
 
-- [ ] 5.3 [GREEN] Fix os.chdir() side-effect in rollback_check.py
+- [x] 5.3 [GREEN] Fix os.chdir() side-effect in rollback_check.py
   - **Do**:
     1. Read line 243 of infrastructure/rollback_check.py
     2. Replace os.chdir() with pathlib.Path.glob() or explicit path concatenation

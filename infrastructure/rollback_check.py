@@ -33,6 +33,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -204,6 +205,17 @@ def _register_cleanup() -> None:
     signal.signal(signal.SIGTERM, _handle_sigterm)
 
 
+@contextmanager
+def _changedir(path: str):
+    """Context manager that changes directory and restores the original on exit."""
+    orig_cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(orig_cwd)
+
+
 def _impl(argv: argparse.Namespace) -> int:
     """Actual implementation logic.
 
@@ -239,123 +251,123 @@ def _impl(argv: argparse.Namespace) -> int:
         # 1. Create isolated environment (sets _isolated_path/_isolated_kind internally)
         isolated_path, isolated_kind = create_isolated_env()
 
-        # 2. cd into isolated environment
-        os.chdir(isolated_path)
+        # 2. cd into isolated environment (with safe restore of cwd)
+        with _changedir(isolated_path):
 
-        # Create a branch (worktrees have detached HEAD, git revert needs one)
-        subprocess.run(
-            ["git", "branch", "-f", "baseline-test-branch", "HEAD"],
-            capture_output=True,
-            check=True,
-            timeout=10,
-        )
-        subprocess.run(
-            ["git", "checkout", "baseline-test-branch"],
-            capture_output=True,
-            check=True,
-            timeout=10,
-        )
-
-        # 3. Create test commit with a real file change
-        # Empty commits fail to revert in sparse-checkout environments
-        test_file = os.path.join(isolated_path, ".baseline-test-marker")
-        with open(test_file, "w") as f:
-            f.write("baseline-test-marker\n")
-        subprocess.run(
-            ["git", "add", test_file],
-            capture_output=True,
-            check=True,
-            timeout=10,
-        )
-        result = subprocess.run(
-            ["git", "commit", "-m", "baseline-test-commit"],
-            capture_output=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            err = result.stderr.decode().strip()
-            print(f"Error creating test commit: {err}", file=sys.stderr)
-            _write_error_output(output, "commit_failed", err, isolated_kind)
-            return 1
-
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            check=True,
-            timeout=10,
-        )
-        test_commit = result.stdout.decode().strip()
-        print(f"Test commit created: {test_commit}")
-
-        # 4. Time the revert
-        start = time.perf_counter()
-        result = subprocess.run(
-            ["git", "revert", "HEAD", "--no-edit"],
-            capture_output=True,
-            timeout=60.0,
-        )
-        duration = time.perf_counter() - start
-
-        if result.returncode != 0:
-            err = result.stderr.decode().strip()
-            print(f"Revert failed: {err}", file=sys.stderr)
-            _write_error_output(output, "revert_failed", err, isolated_kind)
-            return 1
-
-        # 5. Determine status based on duration
-        timing_ok = duration < target
-        if timing_ok:
-            status = "ok"
-            print(f"git revert HEAD completed in {duration:.2f}s ({target:.0f}s)")
-        else:
-            status = "exceeded_threshold"
-            print(
-                f"git revert HEAD exceeded threshold: {duration:.2f}s > {target:.0f}s"
+            # Create a branch (worktrees have detached HEAD, git revert needs one)
+            subprocess.run(
+                ["git", "branch", "-f", "baseline-test-branch", "HEAD"],
+                capture_output=True,
+                check=True,
+                timeout=10,
             )
-
-        # 6. Verify git status is clean
-        result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            check=True,
-            timeout=10,
-        )
-        clean_status = result.stdout.decode().strip() == ""
-
-        if not clean_status:
-            status = "dirty_working_tree"
-            print("Warning: git status is not clean after revert", file=sys.stderr)
-
-        # 6. Build and write output JSON
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        rounded_duration = round(duration, 4)
-        output_dict = {
-            "schema_version": "1",
-            "type": "rollback_check",
-            "timestamp": timestamp,
-            "score": rounded_duration,
-            "status": status,
-            "score_description": "duration_seconds: wall-clock git revert time in seconds",
-            "details": {
-                "duration_seconds": rounded_duration,
-                "threshold_seconds": target,
-                "within_target": status == "ok",
-                "clean_status": clean_status,
-                "isolation_method": isolated_kind,
-            },
-        }
-
-        # 7. Atomic write with lock
-        lock_path = check_output_lock(output)
-        try:
-            sanitized = _sanitize_output_dict(output_dict)
-            write_output_atomic(output, sanitized)
-        finally:
-            release_lock(lock_path)
-
-        print(f"Wrote output to {output}")
-        print("Isolated environment cleaned up.")
-        return 0
+            subprocess.run(
+                ["git", "checkout", "baseline-test-branch"],
+                capture_output=True,
+                check=True,
+                timeout=10,
+            )
+    
+            # 3. Create test commit with a real file change
+            # Empty commits fail to revert in sparse-checkout environments
+            test_file = os.path.join(isolated_path, ".baseline-test-marker")
+            with open(test_file, "w") as f:
+                f.write("baseline-test-marker\n")
+            subprocess.run(
+                ["git", "add", test_file],
+                capture_output=True,
+                check=True,
+                timeout=10,
+            )
+            result = subprocess.run(
+                ["git", "commit", "-m", "baseline-test-commit"],
+                capture_output=True,
+                timeout=30,
+            )
+            if result.returncode != 0:
+                err = result.stderr.decode().strip()
+                print(f"Error creating test commit: {err}", file=sys.stderr)
+                _write_error_output(output, "commit_failed", err, isolated_kind)
+                return 1
+    
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                check=True,
+                timeout=10,
+            )
+            test_commit = result.stdout.decode().strip()
+            print(f"Test commit created: {test_commit}")
+    
+            # 4. Time the revert
+            start = time.perf_counter()
+            result = subprocess.run(
+                ["git", "revert", "HEAD", "--no-edit"],
+                capture_output=True,
+                timeout=60.0,
+            )
+            duration = time.perf_counter() - start
+    
+            if result.returncode != 0:
+                err = result.stderr.decode().strip()
+                print(f"Revert failed: {err}", file=sys.stderr)
+                _write_error_output(output, "revert_failed", err, isolated_kind)
+                return 1
+    
+            # 5. Determine status based on duration
+            timing_ok = duration < target
+            if timing_ok:
+                status = "ok"
+                print(f"git revert HEAD completed in {duration:.2f}s ({target:.0f}s)")
+            else:
+                status = "exceeded_threshold"
+                print(
+                    f"git revert HEAD exceeded threshold: {duration:.2f}s > {target:.0f}s"
+                )
+    
+            # 6. Verify git status is clean
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                check=True,
+                timeout=10,
+            )
+            clean_status = result.stdout.decode().strip() == ""
+    
+            if not clean_status:
+                status = "dirty_working_tree"
+                print("Warning: git status is not clean after revert", file=sys.stderr)
+    
+            # 6. Build and write output JSON
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            rounded_duration = round(duration, 4)
+            output_dict = {
+                "schema_version": "1",
+                "type": "rollback_check",
+                "timestamp": timestamp,
+                "score": rounded_duration,
+                "status": status,
+                "score_description": "duration_seconds: wall-clock git revert time in seconds",
+                "details": {
+                    "duration_seconds": rounded_duration,
+                    "threshold_seconds": target,
+                    "within_target": status == "ok",
+                    "clean_status": clean_status,
+                    "isolation_method": isolated_kind,
+                },
+            }
+    
+            # 7. Atomic write with lock
+            lock_path = check_output_lock(output)
+            try:
+                sanitized = _sanitize_output_dict(output_dict)
+                write_output_atomic(output, sanitized)
+            finally:
+                release_lock(lock_path)
+    
+            print(f"Wrote output to {output}")
+            print("Isolated environment cleaned up.")
+            return 0
 
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
