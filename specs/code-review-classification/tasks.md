@@ -272,7 +272,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify dependency bugs exist`
   - _Requirements: AC-5_
 
-- [ ] 6.2 [GREEN] Fix profile config contradiction
+- [x] 6.2 [GREEN] Fix profile config contradiction
   - **Do**:
     1. Read lines 21-24 and 80-81 of configs/stage_1_discovery/examples/homeassistant_frontend.yaml
     2. Comment out or remove `profile: typescript` to match docs

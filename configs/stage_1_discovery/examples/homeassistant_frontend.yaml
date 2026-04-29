@@ -19,7 +19,7 @@
 # - .json files → TranslationJsonParser (JSON/i18n)
 #
 # IMPORTANT: DO NOT set 'profile' if you want automatic adapter selection.
-# Setting 'profile: typescript' forces TypeScriptAdapter for ALL files.
+# Setting a fixed 'profile' forces a single adapter for ALL files.
 # Leave 'profile' commented out to allow the system to detect the adapter
 # automatically based on file extension.
 #
@@ -78,7 +78,7 @@ min_stars: 0
 per_page: 100
 
 # Target profile for adapter selection (enables TypeScriptAdapter for .ts/.tsx)
-profile: typescript
+# profile commented out to allow automatic adapter selection per extension
 
 # Base directory for output
 base_dir: .
