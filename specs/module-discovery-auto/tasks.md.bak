@@ -130,7 +130,7 @@ while excluding vendor, cache, and test directories.
 **Do:** Add manifest.json detection to `_detect_strategy()` function.
 
 **Files:**
-- `src/discovery/file_scanner.py` - Lines 715-723 (manifest detection block)
+- `src/discovery/file_scanner.py` - Lines 764-771 (manifest detection block)
 
 **Done:**
 - Scans for manifest.json files
@@ -145,7 +145,7 @@ while excluding vendor, cache, and test directories.
 feat: implement manifest detection in _detect_strategy()
 
 Add detection for Python integrations with manifest.json (HA core style).
-This has higher priority than TypeScript for mixed repositories.
+Manifest detection has lower priority than TypeScript and PHP (checks after them).
 ```
 
 ---
@@ -762,7 +762,7 @@ node_modules directory exclusions.
 
 **Done:**
 - Test manifest.json detection
-- Verify manifest has higher priority than TypeScript
+- Verify TypeScript has higher priority than manifest
 - Verify manifest has higher priority than init
 
 **Verify:**
@@ -774,8 +774,8 @@ node_modules directory exclusions.
 ```
 test: add manifest.json detection unit tests
 
-Add unit tests for manifest.json detection and verify it has higher
-priority than TypeScript and init strategies.
+Add unit tests for manifest.json detection and verify priority order:
+TypeScript > PHP > manifest > init.
 ```
 
 ---

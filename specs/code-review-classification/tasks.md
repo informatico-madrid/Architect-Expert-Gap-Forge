@@ -637,7 +637,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix overlapping task line ranges (#108)`
   - _Requirements: AC-9_
 
-- [ ] 12.4 [GREEN] Fix contradictory detection priority
+- [x] 12.4 [GREEN] Fix contradictory detection priority
   - **Do**:
     1. Read specs/module-discovery-auto/tasks.md.bak for detection priority contradiction (#109)
     2. Align priority with actual code behavior
