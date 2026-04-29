@@ -208,7 +208,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(tests): fix unused delta variable (#152)`
   - _Requirements: AC-6_
 
-- [ ] V3 [VERIFY] Quality checkpoint: logic and API fixes
+- [x] V3 [VERIFY] Quality checkpoint: logic and API fixes
   - **Do**: Run: `ruff check src/curation/dataset_mixer.py src/curation/curator_cli.py src/factory/trajectory_generator.py && python -c "from src.curation.dataset_mixer import *; print('OK')"`
   - **Verify**: All commands exit 0
   - **Done when**: No lint errors, imports succeed
