@@ -217,7 +217,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 5: File System & IO Fixes
 
-- [ ] 5.1 [RED] Verify file system bugs exist
+- [x] 5.1 [RED] Verify file system bugs exist
   - **Do**:
     1. Read line 87 of anchor_dataset_schema.py for exists() usage (#16)
     2. Read line 243 of rollback_check.py for os.chdir() (#38)
