@@ -9,6 +9,7 @@ import sys
 import subprocess
 import tempfile
 import os
+from pathlib import Path
 
 PY = sys.executable
 
@@ -46,8 +47,9 @@ def run_cli_with_config(config_content: str) -> subprocess.CompletedProcess:
         os.makedirs(output_dir, exist_ok=True)
 
         env = os.environ.copy()
+        project_root = Path(__file__).resolve().parents[2]
         env["PYTHONPATH"] = (
-            f"/mnt/bunker_data/ai/data_factory:{env.get('PYTHONPATH', '')}"
+            f"{project_root}:{env.get('PYTHONPATH', '')}"
         )
 
         return subprocess.run(

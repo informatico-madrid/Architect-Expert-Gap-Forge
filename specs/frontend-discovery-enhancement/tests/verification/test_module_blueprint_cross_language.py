@@ -44,7 +44,7 @@ class TestModuleBlueprintCrossLanguage:
 
     def setup_method(self):
         """Setup test fixtures."""
-        self.base_path = Path("/mnt/bunker_data/ai/data_factory")
+        self.base_path = Path(__file__).resolve().parents[3]
         self.spec_path = self.base_path / "specs" / "frontend-discovery-enhancement"
         self.tests_path = self.spec_path / "tests" / "verification"
 
