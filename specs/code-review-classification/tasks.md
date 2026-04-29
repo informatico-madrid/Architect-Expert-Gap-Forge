@@ -4,7 +4,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 0: Bug Verification
 
-- [ ] 0.1 [VERIFY] Verify bugs exist: environment setup
+- [x] 0.1 [VERIFY] Verify bugs exist: environment setup
   - **Do**: Verify project tools and numpy dependency. Run: `python -m py_compile infrastructure/anchor_dataset/failed_sample_logger.py 2>&1` (expect SyntaxError if #23 is real), `grep -q 'numpy==2.4.4' requirements.txt` (expect pass if #59 is fixed), `grep -c 'sk-master-bunker-2026' infrastructure/anchor_dataset/anchor_providers.py 2>/dev/null` (expect >0 for #17)
   - **Files**: requirements.txt, infrastructure/anchor_dataset/failed_sample_logger.py, infrastructure/anchor_dataset/anchor_providers.py
   - **Done when**: Tools confirmed: ruff, pytest, python available; bug evidence documented
