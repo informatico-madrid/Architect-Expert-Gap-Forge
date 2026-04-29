@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Integration tests for TrajectoryGenerator DSPy dual-path.
-
-Verifies that when no LM is configured, get_predict returns None and
-the template fallback path works correctly.
-
-SPDX-License-Identifier: Apache-2.0
-"""
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
 
 import pytest
 

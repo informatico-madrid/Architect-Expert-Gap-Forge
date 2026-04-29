@@ -41,6 +41,18 @@ _ADAPTER_REGISTRY: Dict[str, str] = {
 # Cache for instantiated adapters
 _adapter_cache: Dict[str, ExtractorAdapter] = {}
 
+# Extension to profile mapping — shared across both extension handling branches
+_EXTENSION_MAP = {
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".py": "python",
+    ".php": "php_legacy",
+    ".yaml": "yaml",
+    ".yml": "yaml",
+    ".jinja": "jinja",
+    ".jinja2": "jinja",
+}
+
 
 def get_adapter(profile: str) -> ExtractorAdapter:
     """Get an extractor adapter for the given profile or file extension.
@@ -67,32 +79,11 @@ def get_adapter(profile: str) -> ExtractorAdapter:
 
     # Handle file extensions (e.g., ".ts", ".tsx", "test.ts")
     if normalized.startswith("."):
-        # Bare extension like ".ts"
-        ext_mapping = {
-            ".ts": "typescript",
-            ".tsx": "typescript",
-            ".py": "python",
-            ".php": "php_legacy",
-            ".yaml": "yaml",
-            ".yml": "yaml",
-            ".jinja": "jinja",
-            ".jinja2": "jinja",
-        }
-        normalized = ext_mapping.get(normalized, "default")
+        normalized = _EXTENSION_MAP.get(normalized, "default")
     elif "." in normalized:
         # File name with extension like "test.ts"
         ext = "." + normalized.split(".")[-1]
-        ext_mapping = {
-            ".ts": "typescript",
-            ".tsx": "typescript",
-            ".py": "python",
-            ".php": "php_legacy",
-            ".yaml": "yaml",
-            ".yml": "yaml",
-            ".jinja": "jinja",
-            ".jinja2": "jinja",
-        }
-        normalized = ext_mapping.get(ext, "default")
+        normalized = _EXTENSION_MAP.get(ext, "default")
 
     # Check cache first (using normalized profile name)
     if normalized in _adapter_cache:

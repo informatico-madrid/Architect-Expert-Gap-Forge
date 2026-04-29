@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Copyright 2026 Bunker AI
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
-# -*- coding: utf-8 -*-
 """Tests for seed_loader — load_seeds function."""
 
 from __future__ import annotations
