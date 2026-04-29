@@ -294,6 +294,7 @@ def _impl(args: argparse.Namespace) -> int:
             reason = "One or both arrays contain constant values"
             score_description = "rho: Spearman rank correlation, range [-1, 1]"
         else:
+            reason = None
             # 2. Determine method: n<10 → "exact", n>=10 → "asymptotic"
             method = "exact" if n < 10 else "asymptotic"
             logger.info("Computing Spearman rho (n=%d, method=%s)", n, method)
