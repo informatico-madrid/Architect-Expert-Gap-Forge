@@ -94,7 +94,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): initialize reason variable (#31)`
   - _Requirements: AC-3_
 
-- [ ] 2.4 [GREEN] Fix unreachable exception block in dependency_check.py
+- [x] 2.4 [GREEN] Fix unreachable exception block in dependency_check.py
   - **Do**:
     1. Read lines 167-174 of infrastructure/dependency_check.py
     2. Move exception handling to where the actual error can occur
