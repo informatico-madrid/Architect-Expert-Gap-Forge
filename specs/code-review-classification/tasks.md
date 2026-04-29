@@ -746,7 +746,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify remaining bugs exist`
   - _Requirements: AC-1_
 
-- [ ] 14.2 [GREEN] Fix find_spec() exception handling
+- [x] 14.2 [GREEN] Fix find_spec() exception handling
   - **Do**:
     1. Read infrastructure/dependency_check.py for find_spec() returning None (#8)
     2. Handle None return value correctly instead of expecting exception
@@ -756,7 +756,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix find_spec() exception handling (#8)`
   - _Requirements: AC-1_
 
-- [ ] 14.3 [GREEN] Fix judge_scores AttributeError
+- [x] 14.3 [GREEN] Fix judge_scores AttributeError
   - **Do**:
     1. Read lines 282-283 of infrastructure/anchor_dataset/anchor_providers.py for non-dict judge_scores (#32)
     2. Add isinstance() check before dict access
@@ -766,7 +766,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix judge_scores AttributeError (#32)`
   - _Requirements: AC-1_
 
-- [ ] 14.4 [GREEN] Fix unreliable fallback in i18n_key.py
+- [x] 14.4 [GREEN] Fix unreliable fallback in i18n_key.py
   - **Do**:
     1. Read lines 251-256 of src/utils/extractors/extractors/i18n_key.py for wrong prefix (#140)
     2. Fix fallback to return correct prefix
