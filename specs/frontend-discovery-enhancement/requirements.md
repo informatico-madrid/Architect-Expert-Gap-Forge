@@ -16,7 +16,7 @@ Verify that the data factory processes all fragment types (1-5) correctly across
 - [ ] AC-1.3: Output bundle includes `[ARCH_HEADER]` with dependencies from Python AST parser
 - [ ] AC-1.4: Bundle format: `=== LOGICAL ENTITY: {id} ===`, `Type: FUNCTIONAL_UNIT`, logic file, test file
 
-### US-2: Generate Type 3 (LOGIC_ONLY) for Python code without tests
+### US-2: Generate Type 3 (LOGIC_ONLY) for code without tests
 **As a** dataset builder
 **I want to** emit long standalone logic files as training samples
 **So that** substantial code modules are available even without explicit tests
@@ -24,7 +24,7 @@ Verify that the data factory processes all fragment types (1-5) correctly across
 **Acceptance Criteria:**
 - [ ] AC-2.1: Files ≥ `LOGIC_ONLY_MIN_CHARS` (1000) chars are emitted
 - [ ] AC-2.2: Files < `MIN_SIZE` (200 chars) are skipped
-- [ ] AC-2.3: Python-only files pass `GOLD_PATTERNS` filter if no test exists
+- [ ] AC-2.3: Code files pass `GOLD_PATTERNS` filter if no test exists
 - [ ] AC-2.4: Output bundle: `Type: LOGIC_ONLY`, single file content
 
 ### US-3: Generate Type 4 (MODULE_BLUEPRINT) for all repository types
@@ -103,7 +103,7 @@ Verify that the data factory processes all fragment types (1-5) correctly across
 | ID | Requirement | Priority | Acceptance Criteria |
 |----|-------------|----------|---------------------|
 | FR-1 | Type 1 FUNCTIONAL_UNIT generation | High | Logic + test pair emitted, size gate bypass, `[ARCH_HEADER]` with dependencies |
-| FR-2 | Type 3 LOGIC_ONLY generation | High | Size-gated standalone files, GOLD_PATTERNS filter for Python, `[ARCH_HEADER]` |
+| FR-2 | Type 3 LOGIC_ONLY generation | High | Size-gated standalone files, `GOLD_PATTERNS` filter, `[ARCH_HEADER]` |
 | FR-3 | Type 4 MODULE_BLUEPRINT generation | High | Always emitted per module, `[MODULE_MAP]`, `[DEPENDENCIES]`, `[SCHEMA]`, `[VOCABULARY]`, `[README]` |
 | FR-4 | Type 5 GOVERNANCE_RULES generation | Medium | Repo-level files extracted, `[GOVERNANCE_HEADER]`, `[RULES]` section |
 | FR-5 | Per-file adapter selection | High | Adapter selected from file suffix: `.ts` → TypeScriptAdapter, `.py` → PythonAstAdapter, `.php` → PhpLegacyAdapter, `.yaml` → YamlAdapter |
