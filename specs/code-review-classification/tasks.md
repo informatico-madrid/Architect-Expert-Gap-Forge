@@ -54,7 +54,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix symlink security check (#30)`
   - _Requirements: AC-2_
 
-- [ ] V1 [VERIFY] Quality checkpoint: security fixes
+- [x] V1 [VERIFY] Quality checkpoint: security fixes
   - **Do**: Run: `ruff check infrastructure/anchor_dataset/anchor_providers.py infrastructure/baselines/measure_mipro_compile_baseline.py && python -c "import infrastructure.anchor_dataset.anchor_providers" && python -c "import infrastructure.baselines.measure_mipro_compile_baseline"`
   - **Verify**: All commands exit 0
   - **Done when**: No lint errors, imports succeed
