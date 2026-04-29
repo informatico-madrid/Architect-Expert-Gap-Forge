@@ -346,7 +346,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify code quality bugs exist`
   - _Requirements: AC-1_
 
-- [ ] 7.2 [GREEN] Fix raw reference context in seed_synthesizer.py
+- [x] 7.2 [GREEN] Fix raw reference context in seed_synthesizer.py — removed `pat[:100]` raw reference leakage, replaced with `"General configuration"`
   - **Do**:
     1. Read lines 71, 95 of infrastructure/anchor_dataset/seed_synthesizer.py
     2. Fix raw reference content to prevent premature filtering
@@ -356,7 +356,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix raw reference context (#26)`
   - _Requirements: AC-1_
 
-- [ ] 7.3 [GREEN] Fix docstring contradiction in startup.py
+- [x] 7.3 [GREEN] Fix docstring contradiction in startup.py — "without side effects" → "without writing or mutating configuration"
   - **Do**:
     1. Read lines 34-41 of infrastructure/anchor_dataset/startup.py
     2. Align docstring with actual dry_run implementation
@@ -366,7 +366,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix docstring contradiction (#27)`
   - _Requirements: AC-1_
 
-- [ ] 7.4 [GREEN] Fix resume logic duplicate prevention
+- [x] 7.4 [GREEN] Fix resume logic duplicate prevention — skip failed_ids in main loop to prevent re-attempting
   - **Do**:
     1. Read line 332 of infrastructure/anchor_dataset_builder.py
     2. Add tracking for previously failed samples to prevent regeneration
@@ -376,7 +376,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(infra): fix resume logic duplicates (#29)`
   - _Requirements: AC-1_
 
-- [ ] 7.5 [GREEN] Fix KeyError from missing taxonomy key
+- [x] 7.5 [GREEN] Fix KeyError from missing taxonomy key — research.md updated, try/except already handles fallback
   - **Do**:
     1. Read lines 227-228 of specs/_epics/aegf-infrastructure/research.md
     2. Add .get() or default handling for missing taxonomy key
@@ -386,7 +386,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix KeyError from missing taxonomy key (#60)`
   - _Requirements: AC-1_
 
-- [ ] 7.6 [GREEN] Fix overlapping regex in jinja_base.py
+- [x] 7.6 [GREEN] Fix overlapping regex in jinja_base.py — already fixed in current code (for/if not in JINJA_STATEMENT_PATTERN)
   - **Do**:
     1. Read lines 227-230 of src/utils/extractors/extractors/jinja_base.py
     2. Fix overlapping regex patterns to prevent duplicate token extraction
@@ -398,7 +398,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 8: Test Infrastructure Fixes
 
-- [ ] 8.1 [RED] Verify test infrastructure bugs exist
+- [x] 8.1 [RED] Verify test infrastructure bugs exist
   - **Do**:
     1. Read test fixture JSON files for key typos (#103, #104)
     2. Read test setup files for hardcoded paths (#106, #196)
