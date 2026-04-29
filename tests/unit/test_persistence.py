@@ -163,8 +163,6 @@ class TestJSONLExporterWriteAll:
         existing.write_text('{"id": "anchor_999_01"}\n')
 
         exporter = JSONLExporter()
-        [_sample_record()]
-        tmp_path / "existing.jsonl"
 
         # Simulate a failure during the write (on the tmp file), leaving the
         # original file intact since rename only happens after full write.

@@ -50,10 +50,9 @@ class TestYamlAdapter:
         # Check blueprint structure
         assert "blueprint" in result.ast_tree
         blueprint = result.ast_tree["blueprint"]
+        assert isinstance(blueprint, dict)
         assert blueprint["name"] == "Update Climate"
-        assert (
-            "description" in blueprint["name"] or "Update Climate" in blueprint["name"]
-        )
+        assert "description" in blueprint
         assert blueprint.get("domain") == "automation"
 
     def test_extract_trigger_pattern(self, adapter, blueprint_yaml):
@@ -117,15 +116,11 @@ class TestYamlAdapter:
         """YamlAdapter detects Jinja expressions in YAML values."""
         result = adapter.parse_file(blueprint_yaml)
 
-        # Check for !input references
+        # Check for !input references in parsed structure
         assert "trigger" in result.ast_tree
         for trigger in result.ast_tree["trigger"]:
             if "entity_id" in trigger:
-                trigger["entity_id"]
-                # !input should be in the content
-                assert (
-                    "!input" in result.raw_content or "entity_id" in result.raw_content
-                )
+                assert trigger["entity_id"] is not None
 
     def test_extract_dependencies(self, adapter, blueprint_yaml):
         """YamlAdapter extracts service call dependencies."""

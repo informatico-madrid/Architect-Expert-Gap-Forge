@@ -520,16 +520,10 @@ class TestFragmentBySize:
         # Fragment with overlap of 5 lines
         fragments = _fragment_by_size(source, max_lines=30, overlap=5)
 
-        # With overlap, fragments should overlap
-        # Check that content is repeated between fragments
-        if len(fragments) > 1:
-            # First fragment ends around line 30
-            # Second fragment should start with some overlap content
-            fragments[0][2]
-            fragments[1][2]
-
-            # The overlap should contain content from the end of first fragment
-            # (exact behavior depends on implementation)
+        # Verify fragments are created with overlap
+        assert len(fragments) > 1
+        # First fragment end line should be >= second fragment start line minus overlap
+        assert fragments[0][1] >= fragments[1][0] - 5
 
     def test_fragment_by_size_single_fragment(self) -> None:
         """Test when source fits in max_lines - returns single fragment."""
