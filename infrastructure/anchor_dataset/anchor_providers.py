@@ -195,7 +195,7 @@ class GeminiProvider(AnchorProvider):
 
         payload = [
             {"role": "user", "parts": system_prompt},
-            {"role": "model", "parts": user_prompt},
+            {"role": "user", "parts": user_prompt},
         ]
 
         for attempt in range(3):

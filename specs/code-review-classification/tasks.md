@@ -124,7 +124,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify API bugs exist`
   - _Requirements: AC-4_
 
-- [ ] 3.2 [GREEN] Fix Gemini API message roles
+- [x] 3.2 [GREEN] Fix Gemini API message roles
   - **Do**:
     1. Read lines 194-197 of infrastructure/anchor_dataset/anchor_providers.py
     2. Fix `role: "model"` to `role: "user"` for user input
