@@ -178,7 +178,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `test(scope): red - verify logic bugs exist`
   - _Requirements: AC-6_
 
-- [ ] 4.2 [GREEN] Fix logic inversion in count_tokens
+- [x] 4.2 [GREEN] Fix logic inversion in count_tokens
   - **Do**:
     1. Read lines 112-118 of src/curation/dataset_mixer.py
     2. Fix logic inversion causing TypeError — ensure correct return type
