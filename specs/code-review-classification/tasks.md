@@ -542,7 +542,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 11: Spec Documentation — Validation Fixes
 
-- [ ] 11.1 [RED] Verify spec validation bugs exist
+- [x] 11.1 [RED] Verify spec validation bugs exist
   - **Do**:
     1. Read specs/anchor-dataset/plan.md for invalid JSON Schema (#70)
     2. Read specs/baseline-measurement/plan.md for contradictory directory paths (#77)
