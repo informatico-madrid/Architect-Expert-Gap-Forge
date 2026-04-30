@@ -186,21 +186,21 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
 
 Focus: Run full test suite, fix any remaining issues.
 
-- [ ] 3.1 [VERIFY] Full test suite pass: pytest -x --ignore=tests/test_agentic_gen.py
+- [x] 3.1 [VERIFY] Full test suite pass: pytest -x --ignore=tests/test_agentic_gen.py
   - **Do**: Run the full test suite with -x (stop on first failure). If it stops, diagnose and fix the failing test, then run again.
   - **Verify**: `pytest -x --ignore=tests/test_agentic_gen.py` — must exit 0
   - **Done when**: All tests pass with zero failures
   - **Commit**: `chore(scope): fix remaining test failure` (if fixes needed)
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. Must report PASS on all 3 layers.
 
-- [ ] 3.2 [VERIFY] Count failures: pytest --continue-on-collection-errors --ignore=tests/test_agentic_gen.py
+- [x] 3.2 [VERIFY] Count failures: pytest --continue-on-collection-errors --ignore=tests/test_agentic_gen.py
   - **Do**: Run full suite without -x to see all results. Verify only pre-existing failures remain (test_discovery_processor_cli.py, test_audit_scorecard_submodule.py, test_model_evaluator_golden.py).
   - **Verify**: `pytest --continue-on-collection-errors --ignore=tests/test_agentic_gen.py 2>&1 | grep -E "passed|failed|error"` — should show many passed, and the 5 pre-existing failures only
   - **Done when**: Zero new failures, only pre-existing failures present
   - **Commit**: `chore(scope): verify no new failures`
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. Must report PASS on all 3 layers.
 
-- [ ] 3.3 [VERIFY] Scan for weak assertions
+- [x] 3.3 [VERIFY] Scan for weak assertions
   - **Do**: Scan all modified test files for weak assertions:
   1. `grep -rn "assert True" tests/` — should return nothing relevant to modified files
   2. `grep -rn "assert item is not None" tests/` — verify all usages are legitimate
@@ -210,7 +210,7 @@ Focus: Run full test suite, fix any remaining issues.
   - **Done when**: No weak assertions or test tricks found
   - **Commit**: None (informational check)
 
-- [ ] 3.4 Verify pre-existing failures untouched
+- [x] 3.4 Verify pre-existing failures untouched
   - **Do**: Verify git shows no changes to pre-existing failure test files:
   1. Check `git diff` does not include test_discovery_processor_cli.py, test_audit_scorecard_submodule.py, test_model_evaluator_golden.py
   2. `git diff --name-only` should NOT contain any of those file paths
@@ -219,7 +219,7 @@ Focus: Run full test suite, fix any remaining issues.
   - **Commit**: None
   - _Requirements: FR-13, NFR-4_
 
-- [ ] 3.5 Verify source code untouched
+- [x] 3.5 Verify source code untouched
   - **Do**: Verify no changes to src/ directory:
   1. `git diff --name-only | grep "^src/" && echo FAIL || echo SOURCE_OK`
   - **Verify**: `git diff --name-only | grep -c "^src/"` returns 0
@@ -231,7 +231,7 @@ Focus: Run full test suite, fix any remaining issues.
 
 Focus: Final verification, ensure zero new failures, commit and PR.
 
-- [ ] 4.1 [VERIFY] Final full suite: pytest --ignore=tests/test_agentic_gen.py
+- [x] 4.1 [VERIFY] Final full suite: pytest --ignore=tests/test_agentic_gen.py
   - **Do**: Run full test suite one final time to confirm all results
   - **Verify**: `pytest --ignore=tests/test_agentic_gen.py 2>&1 | tail -5` — should show all non-pre-existing tests passing
   - **Done when**: Full suite runs cleanly
