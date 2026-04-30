@@ -178,9 +178,17 @@ def test_io_helpers(tmp_path):
     assert out.endswith("r.json")
 
 
-def test_run_nemo_filter_pipeline_not_installed(tmp_path):
-    # When Nemo is not available the function should raise a RuntimeError
-    if _NEMO_AVAILABLE:
+def test_run_nemo_filter_pipeline_not_installed(tmp_path, monkeypatch):
+    # When Nemo is not available the function should raise a RuntimeError.
+    # Clear nemo from sys.modules to ensure _NEMO_AVAILABLE is False even
+    # when other tests imported nemo_curator before this test runs.
+    import sys
+    for key in list(sys.modules.keys()):
+        if "nemo" in key.lower():
+            del sys.modules[key]
+    from src.curation import curator_pipeline as ncs
+    monkeypatch.setattr(ncs, "_NEMO_AVAILABLE", False)
+    if ncs._NEMO_AVAILABLE:
         # Skip this assertion if environment actually has nemo installed
         return
     with pytest.raises(RuntimeError):
