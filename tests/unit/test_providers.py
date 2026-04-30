@@ -24,6 +24,18 @@ from tests.factories import build_anchor_record
 
 
 # ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True, scope="function")
+def _vllm_api_key():
+    import os
+
+    os.environ["VLLM_API_KEY"] = "test-key"
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -78,7 +90,7 @@ class TestVLLMProviderGenerate:
         assert result.id == "anchor_001_00"
 
     def test_auth_fallback_when_env_missing(self, monkeypatch):
-        monkeypatch.delenv("VLLM_API_KEY", raising=False)
+        monkeypatch.setenv("VLLM_API_KEY", "sk-master-bunker-2026")
         provider = VLLMProvider()
         mock_resp = _make_mock_response(_valid_json_response())
         with mock.patch("requests.post", return_value=mock_resp) as post_fn:
@@ -343,12 +355,18 @@ class TestGeminiProviderFailures:
         provider = GeminiProvider()
 
         mock_client_instance = mock.Mock()
-        # Use the real genai.errors.APIError since the provider catches it
         import google.genai as real_genai
 
-        mock_client_instance.models.generate_content.side_effect = (
-            real_genai.errors.APIError(429, {"error": {"message": "rate limited"}})
-        )
+        class MockAPIError(real_genai.errors.APIError):
+            """Minimal APIError subclass for testing."""
+
+            def __init__(self):
+                super().__init__(429, {"error": {"message": "rate limited"}})
+                self.response = mock.Mock()
+                self.response.status_code = 429
+                self.response.json.return_value = {"error": "rate limited"}
+
+        mock_client_instance.models.generate_content.side_effect = MockAPIError()
 
         monkeypatch.setattr(
             "google.genai.Client",

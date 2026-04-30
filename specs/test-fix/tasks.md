@@ -102,7 +102,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - _Design: Category C_
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
-- [ ] 1.8 Fix GeminiProvider APIError mock type in test_providers.py
+- [x] 1.8 Fix GeminiProvider APIError mock type in test_providers.py
   - **Do**: Fix `test_api_error_captured` to not directly instantiate `real_genai.errors.APIError` with a dict. The `google.genai.errors.APIError` constructor expects a response object, not a raw dict. Change the mock to use a proper response-like structure:
   1. Read the test at line 341-359
   2. Replace the `real_genai.errors.APIError(429, {"error": "rate limited"})` with a simple mock that raises the error correctly:
