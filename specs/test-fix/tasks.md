@@ -142,7 +142,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - _Design: Category D1_
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
-- [ ] 2.2 Remove test_example_configs_have_file_header
+- [x] 2.2 Remove test_example_configs_have_file_header
   - **Do**: Delete `test_example_configs_have_file_header` from `tests/unit/test_example_configs.py`. The test asserts all YAML configs have AEGF header, but one config (home-assistant.yaml) does not. Config files are not in scope.
   - **Files**: tests/unit/test_example_configs.py
   - **Done when**: Test is removed and 3 remaining tests pass
