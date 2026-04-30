@@ -35,17 +35,34 @@ class TestLlmJudgeScoreDSPy:
 
         # Create a mock predictor that returns shaped JSON like a real DSPy Predict would
         mock_predictor_result = Mock()
-        mock_predictor_result.baseline = json.dumps(
-            {"ha_modernity": 0.8, "reasoning_depth": 0.9, "functionality": 0.85}
-        )
-        mock_predictor_result.adapter = json.dumps(
-            {"ha_modernity": 0.85, "reasoning_depth": 0.88, "functionality": 0.92}
-        )
+        mock_predictor_result = Mock()
+        mock_predictor_result.baseline_parsed = {
+            "ha_modernity": 0.8,
+            "reasoning_depth": 0.9,
+            "functionality": 0.85,
+        }
+        mock_predictor_result.adapter_parsed = {
+            "ha_modernity": 0.85,
+            "reasoning_depth": 0.88,
+            "functionality": 0.92,
+        }
         mock_predictor_result.reasoning = "Strong reasoning with modern approach"
 
-        # Patch at the location where get_predict is imported (judge.py)
-        with patch("src.audit.judge.get_predict") as mock_get_predict:
+        # Mock both get_predict and inference router
+        with (
+            patch("src.factory.dspy_utils.get_predict") as mock_get_predict,
+            patch("src.audit.judge._get_inference_router") as mock_router,
+        ):
             mock_get_predict.return_value = Mock(return_value=mock_predictor_result)
+            mock_client = Mock()
+            mock_client.generate_with_retry.return_value = json.dumps(
+                {
+                    "baseline": mock_predictor_result.baseline_parsed,
+                    "adapter": mock_predictor_result.adapter_parsed,
+                    "reasoning": mock_predictor_result.reasoning,
+                }
+            )
+            mock_router.return_value.professor.return_value = mock_client
 
             exam = SimpleNamespace(
                 id="test-1",
@@ -87,19 +104,37 @@ class TestLlmJudgeScoreDSPy:
         from src.audit.judge import llm_judge_score
 
         mock_predictor_result = Mock()
-        mock_predictor_result.baseline = {
+        mock_predictor_result.baseline_parsed = {
             "ha_modernity": 0.7,
             "reasoning_depth": 0.8,
+            "functionality": 0.72,
+            "completeness": 0.65,
+            "style": 0.7,
         }
-        mock_predictor_result.adapter = {
+        mock_predictor_result.adapter_parsed = {
             "ha_modernity": 0.75,
             "reasoning_depth": 0.82,
+            "functionality": 0.78,
+            "completeness": 0.72,
+            "style": 0.75,
         }
         mock_predictor_result.reasoning = "Good analysis"
 
-        # Patch at the location where get_predict is imported (judge.py)
-        with patch("src.audit.judge.get_predict") as mock_get_predict:
+        # Patch get_predict at definition site and mock inference router
+        with (
+            patch("src.factory.dspy_utils.get_predict") as mock_get_predict,
+            patch("src.audit.judge._get_inference_router") as mock_router,
+        ):
             mock_get_predict.return_value = Mock(return_value=mock_predictor_result)
+            mock_client = Mock()
+            mock_client.generate_with_retry.return_value = json.dumps(
+                {
+                    "baseline": mock_predictor_result.baseline_parsed,
+                    "adapter": mock_predictor_result.adapter_parsed,
+                    "reasoning": mock_predictor_result.reasoning,
+                }
+            )
+            mock_router.return_value.professor.return_value = mock_client
 
             exam = SimpleNamespace(
                 id="test-2",

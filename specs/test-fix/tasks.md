@@ -172,7 +172,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - _Design: Category D4_
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
-- [ ] 2.5 Fix patch target in test_judge_dspy_integration.py
+- [x] 2.5 Fix patch target in test_judge_dspy_integration.py
   - **Do**: Change `patch("src.audit.judge.get_predict")` to `patch("src.factory.dspy_utils.get_predict")` in both `test_llm_judge_score_with_stubbed_dspy_predictor` and `test_llm_judge_score_with_dict_outputs_not_json_strings`. The function is defined in `dspy_utils.py` and imported into judge.py — patch where it's defined, not where it's looked up via import.
   - **Files**: tests/audit/test_judge_dspy_integration.py
   - **Done when**: All 4 tests pass
