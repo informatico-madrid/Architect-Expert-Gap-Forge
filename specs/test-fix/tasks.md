@@ -13,7 +13,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - _Design: Category A_
   - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
 
-- [ ] 1.2 [P] Delete tests/discovery/test_auto_integration.py
+- [x] 1.2 [P] Delete tests/discovery/test_auto_integration.py
   - **Do**: Remove the entire file. It imports removed `_detect_strategy` at module level causing collection error.
   - **Verify**: `python -c "import tests.discovery.test_auto_integration" 2>&1 | grep -q "No module named" && echo DELETE_PASS`
   - **Done when**: File no longer exists on disk
