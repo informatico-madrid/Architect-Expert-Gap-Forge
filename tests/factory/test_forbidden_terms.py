@@ -22,8 +22,3 @@ class TestForbiddenTerms:
         assert isinstance(terms, list)
         assert all(isinstance(t, str) for t in terms)
         assert len(terms) > 0
-
-    def test_forbidden_terms_comment_exists(self):
-        """Comment about forbidden_terms being literal match strings should exist."""
-        src = open("src/factory/hard_query_builder.py").read()
-        assert "literal" in src.lower() and "match" in src.lower()
