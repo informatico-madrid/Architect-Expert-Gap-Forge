@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ralph-state.schema.json",
+  "title": "Ralph SpecKit State",
+  "description": "State file for tracking feature execution progress in the Ralph-SpecKit loop",
+  "type": "object",
+  "properties": {
+    "featureId": {
+      "type": "string",
+      "description": "Numeric feature ID with zero-padded prefix (e.g., 001)",
+      "pattern": "^[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Feature name (kebab-case)"
+    },
+    "basePath": {
+      "type": "string",
+      "description": "Path to spec directory relative to repo root"
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["specify", "plan", "tasks", "execution"],
+      "description": "Current workflow phase"
+    },
+    "taskIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based index of current task being executed"
+    },
+    "totalTasks": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of tasks in tasks.md"
+    },
+    "taskIteration": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Retry count for the current task (resets per task)"
+    },
+    "maxTaskIterations": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 5,
+      "description": "Max retry attempts per task"
+    },
+    "globalIteration": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total loop iterations across all tasks"
+    },
+    "maxGlobalIterations": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 100,
+      "description": "Safety cap for total iterations"
+    },
+    "awaitingApproval": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if execution is paused for human approval"
+    },
+    "recoveryMode": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable automatic fix-task generation on failure"
+    },
+    "maxFixTasksPerOriginal": {
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "description": "Max fix attempts per failed task"
+    },
+    "fixTaskMap": {
+      "type": "object",
+      "default": {},
+      "description": "Tracks fix-task attempts: {taskId: {attempts, fixTaskIds, lastError}}"
+    },
+    "lastReviewAt": {
+      "type": "integer",
+      "default": 0,
+      "description": "taskIndex at which last artifact review was performed"
+    },
+    "reviewInterval": {
+      "type": "integer",
+      "default": 5,
+      "description": "Run artifact review every N tasks"
+    }
+  },
+  "required": [
+    "featureId",
+    "name",
+    "basePath",
+    "phase",
+    "taskIndex",
+    "totalTasks",
+    "taskIteration",
+    "maxTaskIterations",
+    "globalIteration",
+    "maxGlobalIterations"
+  ],
+  "additionalProperties": true
+}
