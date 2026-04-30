@@ -16,10 +16,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import List
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.discovery import ProcessingConfig, RepoProcessor
+from src.discovery import Module, ModuleFile, ProcessingConfig, RepoProcessor
 
 
 class TestProcessorModuleDiscoveryManifest:
@@ -207,7 +209,7 @@ class TestProcessorManifestWithOverrides:
                 },
             },
         )
-        RepoProcessor(config)
+        processor = RepoProcessor(config)
 
         # The override mechanism should be available
         assert config.module_overrides is not None

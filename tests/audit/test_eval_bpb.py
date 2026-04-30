@@ -71,9 +71,7 @@ class TestEvaluateBPBScores:
 
     def test_matching_lengths_required(self) -> None:
         """Should raise ValueError when lists have different lengths."""
-        with pytest.raises(
-            ValueError, match="Predictions and targets must have same length"
-        ):
+        with pytest.raises(ValueError, match="Predictions and targets must have same length"):
             evaluate_bpb_scores(["a"], ["b", "c"])
 
     def test_single_prediction(self) -> None:

@@ -1,179 +1,177 @@
 # Requirements: Frontend Discovery Enhancement
 
 ## Goal
-Verify that the data factory processes all fragment types (1-5) correctly across Python, TypeScript, PHP, and YAML repositories with per-file adapter selection, enabling dataset generation with architecture context.
+
+Add generic TypeScript/Lit frontend parsing to the data factory pipeline, enabling ingestion of HomeAssistant frontend files (and any Lit-based frontend) for extraction of custom elements, i18n keys, and service calls into structured training data.
 
 ## User Stories
 
-### US-1: Generate Type 1 (FUNCTIONAL_UNIT) for Python code with tests
-**As a** dataset builder
-**I want to** pair Python logic files with their test files
-**So that** training samples include both implementation and verification for code generation
+### US-1: Parse Lit Custom Elements from TypeScript
+**As a** data curator
+**I want to** extract `@customElement` decorated classes from TypeScript/TSX files
+**So that** I can build a component registry with tag names, properties, and metadata for training
 
 **Acceptance Criteria:**
-- [ ] AC-1.1: Files under `MIN_SIZE` chars are emitted if test exists (size gate bypass)
-- [ ] AC-1.2: Test file located by exact name mirror (e.g., `module.py` → `test_module.py`)
-- [ ] AC-1.3: Output bundle includes `[ARCH_HEADER]` with dependencies from Python AST parser
-- [ ] AC-1.4: Bundle format: `=== LOGICAL ENTITY: {id} ===`, `Type: FUNCTIONAL_UNIT`, logic file, test file
+- [ ] AC-1.1: Parser detects `customElement('ha-dialog')` decorator on class declarations
+- [ ] AC-1.2: Parser extracts tag name from decorator argument (string literal or constant reference)
+- [ ] AC-1.3: Parser extracts class name, property types, default values, and `@property` options (attribute, reflect, state)
+- [ ] AC-1.4: Parser extracts `@state` decorated properties as reactive state
+- [ ] AC-1.5: Parser handles aliased imports (`import { customElement as ce }`) and namespace imports
+- [ ] AC-1.6: Output schema: `{ tag, class_name, file_path, properties[], states[], super_class }`
 
-### US-2: Generate Type 3 (LOGIC_ONLY) for code without tests
-**As a** dataset builder
-**I want to** emit long standalone logic files as training samples
-**So that** substantial code modules are available even without explicit tests
-
-**Acceptance Criteria:**
-- [ ] AC-2.1: Files ≥ `LOGIC_ONLY_MIN_CHARS` (1000) chars are emitted
-- [ ] AC-2.2: Files < `MIN_SIZE` (200 chars) are skipped
-- [ ] AC-2.3: Code files pass `GOLD_PATTERNS` filter if no test exists
-- [ ] AC-2.4: Output bundle: `Type: LOGIC_ONLY`, single file content
-
-### US-3: Generate Type 4 (MODULE_BLUEPRINT) for all repository types
-**As a** dataset builder
-**I want to** aggregate architecture context (anchor files, manifest, README) into one bundle
-**So that** code generation models understand module structure and dependencies
+### US-2: Extract i18n Keys from TypeScript Code
+**As a** data curator
+**I want to** extract `localize()` and `hass.localize()` calls from TypeScript files
+**So that** I can map translation keys to their usage contexts for localization training
 
 **Acceptance Criteria:**
-- [ ] AC-3.1: Always emitted for each discovered module (no size filter)
-- [ ] AC-3.2: Includes `[MODULE_MAP]` with module name, anchor type, file list
-- [ ] AC-3.3: Includes `[DEPENDENCIES]` from manifest.json if present (dependencies, requirements)
-- [ ] AC-3.4: Includes `[SCHEMA]` from services.yaml if present
-- [ ] AC-3.5: Includes `[VOCABULARY]` from const.py if present
-- [ ] AC-3.6: Includes `[README]` section if README.md exists or is inherited
-- [ ] AC-3.7: Works for Python (manifest/__init__.py), TypeScript (directory scan), YAML (yaml strategy), PHP (filesystem)
+- [ ] AC-2.1: Parser detects `localize('ui.panel.lovelace.strategy.view.grid')` pattern
+- [ ] AC-2.2: Parser detects `hass.localize("ui.panel.lovelace.strategy.view.grid")` pattern
+- [ ] AC-2.3: Parser handles template literal keys (e.g., `` `ui.card.${action}` ``) by extracting prefix
+- [ ] AC-2.4: Parser extracts key prefix for dynamic interpolation cases
+- [ ] AC-2.5: Output schema: `{ key, context: 'localize'|'hass.localize'|'template_literal', line_number }`
 
-### US-4: Generate Type 5 (GOVERNANCE_RULES) from repo-level rules
-**As a** dataset builder
-**I want to** extract coding standards and guidelines from `.codecov.yml`, `.gitlab-ci.yml`, `mypy.ini`
-**So that** generated code follows repository conventions
+### US-3: Extract Service Calls from TypeScript Code
+**As a** data curator
+**I want to** extract `hass.callService()` invocations from TypeScript files
+**So that** I can build a domain/service/action vocabulary for smart home training
 
 **Acceptance Criteria:**
-- [ ] AC-4.1: Governance files detected at repository root (not in modules)
-- [ ] AC-4.2: Output bundle includes `[GOVERNANCE_HEADER]` with repo prefix
-- [ ] AC-4.3: Full file content emitted in `[RULES]` section
-- [ ] AC-4.4: Emitted before module processing begins
+- [ ] AC-3.1: Parser detects `hass.callService(domain, service, data)` pattern
+- [ ] AC-3.2: Parser extracts domain string literal (e.g., "cover", "light", "climate")
+- [ ] AC-3.3: Parser extracts service string literal (e.g., "open_cover", "turn_on")
+- [ ] AC-3.4: Parser extracts serviceData object with entity_id when present
+- [ ] AC-3.5: Parser handles `this.hass`, `context._hass`, and plain `hass` variable prefixes
+- [ ] AC-3.6: Output schema: `{ domain, service, entity_ids[], file_path, line_number }`
 
-### US-5: Process TypeScript files with TypeScriptAdapter
-**As a** dataset builder
-**I want to** parse `.ts` and `.tsx` files for dependencies and structure
-**So that** Frontend/Lit components are correctly extracted with import dependencies
-
-**Acceptance Criteria:**
-- [ ] AC-5.1: `.ts` and `.tsx` files route to `TypeScriptAdapter.parse_file()`
-- [ ] AC-5.2: Extracts imports from `import` statements (both named and default)
-- [ ] AC-5.3: Extracts `@customElement` decorator tag names for Lit components
-- [ ] AC-5.4: Extracts `@property` decorator attributes (type, reflect, state)
-- [ ] AC-5.5: Dependencies list includes relative and absolute imports
-
-### US-6: Process YAML/Jinja files with YamlAdapter
-**As a** dataset builder
-**I want to** parse `.yaml`, `.yml`, `.jinja`, `.jinja2` files for structure and dependencies
-**So that** Home Assistant integrations and configurations are extracted correctly
+### US-4: Parse Translation JSON Files
+**As a** data curator
+**I want to** flatten nested translation JSON files into key-value pairs
+**So that** I can associate i18n keys with their translated text values
 
 **Acceptance Criteria:**
-- [ ] AC-6.1: `.yaml`, `.yml`, `.jinja`, `.jinja2` files route to `YamlAdapter.parse_file()`
-- [ ] AC-6.2: Extracts service definitions from YAML structure
-- [ ] AC-6.3: Extracts Jinja templates and their variables
-- [ ] AC-6.4: YAML anchor references (`&`, `*`) are preserved
+- [ ] AC-4.1: Parser recursively flattens nested JSON to dot-path keys (e.g., `ui.panel.lovelace.strategy.view.grid`)
+- [ ] AC-4.2: Parser identifies leaf nodes (string-only values) vs intermediate categories (nested dicts)
+- [ ] AC-4.3: Parser handles ICU message format placeholders (`{name}`, `{count, plural, =0 {Zero}}`)
+- [ ] AC-4.4: Output schema: `{ key, value, file_path, is_leaf }`
 
-### US-7: Process PHP files with PhpLegacyAdapter
-**As a** dataset builder
-**I want to** parse `.php` files for classes and functions
-**So that** PHP legacy code is included in training data
-
-**Acceptance Criteria:**
-- [ ] AC-7.1: `.php` files route to `PhpLegacyAdapter.parse_file()`
-- [ ] AC-7.2: Extracts class definitions and method signatures
-- [ ] AC-7.3: Extracts function definitions (non-class methods)
-- [ ] AC-7.4: Dependencies list includes `require`/`include` statements
-
-### US-8: Process files by extension regardless of repository profile
-**As a** dataset builder
-**I want to** use the correct adapter based on file extension, not repository type
-**So that** mixed-repository repositories (Python with JS config) process correctly
+### US-5: Configure Discovery Pipeline for Frontend Files
+**As a** data engineer
+**I want to** add frontend repos to the discovery config with proper glob patterns and processors
+**So that** the pipeline automatically discovers and processes TypeScript files
 
 **Acceptance Criteria:**
-- [ ] AC-8.1: `.py` files always use `PythonAstAdapter`
-- [ ] AC-8.2: `.ts`/`.tsx` files always use `TypeScriptAdapter`
-- [ ] AC-8.3: `.php` files always use `PhpLegacyAdapter`
-- [ ] AC-8.4: `.yaml`/`.yml`/`.jinja` files always use `YamlAdapter`
-- [ ] AC-8.5: Adapter selection happens per-file, not per-repo
+- [ ] AC-5.1: Discovery config accepts `static_repos` list with frontend repo URLs
+- [ ] AC-5.2: `profile_extensions` includes `.ts` and `.tsx` file extensions
+- [ ] AC-5.3: `processors` section maps file types to extractor adapters
+- [ ] AC-5.4: `file_globs` pattern support exists or `profile_extensions` suffix matching covers TypeScript
+- [ ] AC-5.5: Config validates against schema and fails fast on invalid entries
+
+### US-6: Generate ChatML JSONL Training Data
+**As a** ML engineer
+**I want to** export extracted frontend knowledge as ChatML JSONL
+**So that** I can fine-tune models on HomeAssistant/Lit component behavior
+
+**Acceptance Criteria:**
+- [ ] AC-6.1: Export format is valid JSONL with one record per line
+- [ ] AC-6.2: Each record follows ChatML format: `{ messages: [{role, content}] }`
+- [ ] AC-6.3: System message contains component metadata schema context
+- [ ] AC-6.4: User message contains extraction prompt with source code snippet
+- [ ] AC-6.5: Assistant message contains structured JSON output matching schema
+- [ ] AC-6.6: Output passes JSON validation and Axolotl training compatibility check
+
+### US-7: Integrate Taxonomy Prompts for Frontend Metadata
+**As a** ML engineer
+**I want to** use taxonomy prompts that extract component metadata into structured schema
+**So that** extracted data is consistent and machine-readable
+
+**Acceptance Criteria:**
+- [ ] AC-7.1: Taxonomy prompts cover all LitComponentExtractor output fields
+- [ ] AC-7.2: Taxonomy prompts cover all I18nKeyExtractor output fields
+- [ ] AC-7.3: Taxonomy prompts cover all ServiceCallExtractor output fields
+- [ ] AC-7.4: Prompt includes examples for each extraction type
+- [ ] AC-7.5: Prompts are generic (not HomeAssistant-specific) to support other Lit frontends
 
 ## Functional Requirements
 
 | ID | Requirement | Priority | Acceptance Criteria |
 |----|-------------|----------|---------------------|
-| FR-1 | Type 1 FUNCTIONAL_UNIT generation | High | Logic + test pair emitted, size gate bypass, `[ARCH_HEADER]` with dependencies |
-| FR-2 | Type 3 LOGIC_ONLY generation | High | Size-gated standalone files, `GOLD_PATTERNS` filter, `[ARCH_HEADER]` |
-| FR-3 | Type 4 MODULE_BLUEPRINT generation | High | Always emitted per module, `[MODULE_MAP]`, `[DEPENDENCIES]`, `[SCHEMA]`, `[VOCABULARY]`, `[README]` |
-| FR-4 | Type 5 GOVERNANCE_RULES generation | Medium | Repo-level files extracted, `[GOVERNANCE_HEADER]`, `[RULES]` section |
-| FR-5 | Per-file adapter selection | High | Adapter selected from file suffix: `.ts` → TypeScriptAdapter, `.py` → PythonAstAdapter, `.php` → PhpLegacyAdapter, `.yaml` → YamlAdapter |
-| FR-6 | Discovery strategy per repository type | High | manifest (HA integrations), init (Python packages), typescript (`.ts`), yaml (`.yaml/.jinja`), filesystem (PHP) |
-| FR-7 | README inheritance | Medium | If module lacks README, walk up to repository root and inherit |
-| FR-8 | Test file detection | High | Mirror-based detection: `module.py` → `test_module.py` or `tests/test_module.py` |
-| FR-9 | Parse error handling | High | Configurable policies: `abort`, `skip`, `mark_and_continue`, `fallback` with metrics tracking |
-| FR-10 | Size gate configuration | Medium | `MIN_SIZE` (200 chars) for general filtering, `LOGIC_ONLY_MIN_CHARS` (1000) for standalone, `MAX_SIZE_BACKEND`/`MAX_SIZE_FRONTEND` caps |
+| FR-1 | **TypeScriptAdapter** base class implementing ExtractorAdapter protocol | High | Adapter parses .ts/.tsx files, returns ParseResult with extracted modules |
+| FR-2 | **LitComponentExtractor** plugin for TypeScriptAdapter | High | Extracts @customElement, @property, @state, observed attributes via AST |
+| FR-3 | **I18nKeyExtractor** plugin for TypeScriptAdapter | High | Extracts localize() and hass.localize() keys via AST or regex fallback |
+| FR-4 | **ServiceCallExtractor** plugin for TypeScriptAdapter | High | Extracts callService() domain, service, entity_id via AST |
+| FR-5 | **TranslationJsonParser** standalone parser for JSON files | Medium | Flattens nested JSON to dot-path keys, handles ICU placeholders |
+| FR-6 | **TypeScriptAdapterFactory** registry for adapter instantiation | Medium | Creates TypeScriptAdapter with configured extractors at runtime |
+| FR-7 | **FrontendDiscoveryConfig** schema for stage-1 discovery | High | Validates static_repos, profile_extensions, processors, file_globs |
+| FR-8 | **ChatMLExporter** for JSONL output generation | High | Produces valid ChatML JSONL with schema-compliant messages |
+| FR-9 | **FrontendTaxonomyPrompts** system/user prompt templates | Medium | Covers all extractor output schemas with examples |
 
 ## Non-Functional Requirements
 
 | ID | Requirement | Metric | Target |
 |----|-------------|--------|--------|
-| NFR-1 | Adapter extensibility | Time to add new language | < 1 hour (register in factory.py, implement ExtractorAdapter protocol) |
-| NFR-2 | Memory efficiency | Files in memory | < 1000 concurrent files processed |
-| NFR-3 | Error recovery | Parse error handling | Never crash on malformed files (policy-based handling) |
-| NFR-4 | Processing throughput | Files per second | ≥ 50 files/sec on reference hardware (AMD Threadripper) |
-| NFR-5 | Config flexibility | Profile vs extensions | Accept both for backward compatibility |
+| NFR-1 | **Parsing coverage** (regex fallback) | Key coverage | >= 85% for literal string patterns |
+| NFR-2 | **AST parsing coverage** (tree-sitter/typescript-estree) | Key coverage | >= 95% including constant references |
+| NFR-3 | **Parse latency** per file | Time | < 500ms for files <= 60KB |
+| NFR-4 | **Output schema validation** | Pass rate | 100% of emitted records pass JSON schema |
+| NFR-5 | **Generic architecture** | Framework coupling | Zero HomeAssistant-specific code in core adapters |
 
 ## Glossary
 
-- **Adapter**: Language-specific parser implementing `ExtractorAdapter` protocol (e.g., `PythonAstAdapter`, `TypeScriptAdapter`)
-- **Anchor File**: Module-defining file (manifest.json, const.py, services.yaml, __init__.py, strings.json)
-- **Blueprint**: Architecture context bundle for a module, aggregated from anchor files
-- **Discovery Strategy**: Algorithm for finding modules (manifest, init, typescript, yaml, filesystem, directory_scan)
-- **Fragment**: Extracted code unit from repository
-- **Fragment Type**: Classification of fragment (1=FUNCTIONAL_UNIT, 2=NOT_IMPLEMENTED, 3=LOGIC_ONLY, 4=MODULE_BLUEPRINT, 5=GOVERNANCE_RULES)
-- **GOLD_PATTERNS**: List of strings indicating substantial code (`def`, `class`, `async def`, etc.)
-- **Logic File**: Non-test, non-anchor file containing code to process
-- **Module**: Logical grouping of files discovered via strategy (package, component, feature)
-- **Test File**: File containing tests for logic file (mirror naming or tests/ directory)
+- **@customElement decorator**: TypeScript decorator that registers a Lit web component class with a custom tag name
+- **LitElement**: Base class for Lit web components; components extend this via `extends LitElement`
+- **callService pattern**: `hass.callService(domain, service, serviceData)` - HomeAssistant service invocation API
+- **ICU message format**: International Components for Unicode - `{name}`, `{count, plural, =0 {Zero} other {#}}` placeholders
+- **TypeScriptAdapter**: Base adapter class implementing ExtractorAdapter protocol for TypeScript/Lit files
+- **LitComponentExtractor**: Plugin that extracts @customElement class metadata
+- **I18nKeyExtractor**: Plugin that extracts i18n localize() call keys
+- **ServiceCallExtractor**: Plugin that extracts hass.callService() invocations
+- **ChatML JSONL**: JSON Lines format where each line is a valid JSON object; ChatML format uses `{messages: [{role, content}]}`
+- **dot-path key**: i18n key format using dots as hierarchy separators (e.g., `ui.panel.lovelace.strategy.view.grid`)
 
 ## Out of Scope
 
-- Type 2 (FUNCTIONAL_UNIT_WITH_CONTEXT) - intentionally removed, README content folded into MODULE_BLUEPRINT
-- Repository-level adapter selection (always per-file based on extension)
-- Filtering files by discovery strategy (all files with adapters are processed)
-- Custom adapter implementation (registering existing adapters only)
-- Multi-language adapter selection for single file (one adapter per file)
+- Python AST parsing (not applicable to TypeScript)
+- Node.js runtime or npm package installation
+- Webpack/bundler plugin parsing
+- CSS style extraction
+- Shadow DOM template parsing
+- TypeScript type checker integration (parsing only, no semantic analysis)
+- HomeAssistant-specific entity state machine logic
 
 ## Dependencies
 
-- **Adapter Protocol**: `src/utils/extractors/base.py` defines `ExtractorAdapter` interface
-- **Factory Registry**: `src/utils/extractors/factory.py` maps extensions to adapter classes
-- **Config Schema**: `ProcessingConfig` in `src/discovery/metadata_enricher.py` with `extensions`, `profile_extensions` support
-- **Discovery Config**: `src/discovery/file_scanner.py` with module discovery strategies
-- **Size Thresholds**: `src/discovery/file_scanner.py` constants (`MIN_SIZE`, `LOGIC_ONLY_MIN_CHARS`, etc.)
-
-## Success Criteria
-
-- All 4 implemented fragment types (1, 3, 4, 5) generate correctly for Python, TypeScript, PHP, and YAML repositories
-- Per-file adapter selection processes all file types regardless of repository profile
-- MODULE_BLUEPRINT generation works across all discovery strategies (manifest, init, typescript, yaml, filesystem)
-- Test file detection successfully pairs logic files for Type 1 generation
-- Parse error handling prevents repository-wide failures with configurable policies
+- **tree-sitter** or **typescript-estree** for TypeScript AST parsing
+- **Regex fallback** for cases where AST parsing fails or is unavailable
+- **python-regex** for high-performance pattern matching
+- **jsonschema** for output validation
+- **PyYAML** for config parsing
 
 ## Unresolved Questions
 
-1. **Type 2 removal**: CONFIRMED - Type 2 (FUNCTIONAL_UNIT_WITH_CONTEXT) is intentionally not implemented; README content folded into MODULE_BLUEPRINT
-2. **Adapter selection granularity**: CONFIRMED in Phase 7 fix - adapter selection is per-file based on extension, not per-repo based on profile
-3. **Discovery strategy vs file filtering**: Discovery strategy determines architecture context only, does NOT filter files - all files with adapters are processed
-4. **Type 4 for TypeScript/PHP**: MODULE_BLUEPRINT works for all discovery strategies - TypeScript uses directory scan, PHP uses filesystem, both aggregate anchor files correctly
-5. **Adapter per-file processing**: CONFIRMED - `metadata_enricher.py` line 495-496 shows `adapter = get_adapter(mf.path.suffix)` then `adapter.parse_file(mf.path)` for each file
+1. **Tree-sitter vs typescript-estree**: Which AST library to use for primary parsing? Tree-sitter is more robust but requires native .so build. typescript-estree is pure Python but may miss edge cases.
+2. **Constant reference resolution**: Should tag names defined as constants (`const TAG = 'ha-dialog'`) be resolved or marked as "unresolved"?
+3. **Dynamic key handling**: Template literal keys (`localize(\`ui.card.${action}\`)`) only yield prefix. Is prefix-only acceptable for training data?
+4. **Per-component vs per-file bundling**: Should output bundles be emitted per-component, per-file, or per-module?
+5. **Regex fallback threshold**: Regex achieves 85% coverage. Is this acceptable for v1, or should AST be mandatory?
+
+## Success Criteria
+
+1. **Parsers execute** on a sample of 100 TypeScript/TSX files and produce structured ParseResult output without crashes
+2. **Schema validation passes** for 100% of output records against defined JSON schemas
+3. **LitComponentExtractor** successfully detects 1,300+ @customElement registrations (validated against known 1,382 count)
+4. **ServiceCallExtractor** extracts domain/service pairs matching the 332 known service call references
+5. **I18nKeyExtractor** extracts keys covering 1,200+ of the 1,253 static localize() calls (>= 95% coverage)
+6. **ChatML JSONL output** is valid JSONL with correct ChatML message structure and passes Axolotl training compatibility check
+7. **Discovery config** loads without validation errors and triggers correct adapter routing for .ts/.tsx files
+8. **Generic architecture** verified by successfully parsing a non-HomeAssistant Lit component file without code changes
 
 ## Next Steps
 
-1. Confirm Type 2 intentional removal in code comments/docs
-2. Verify per-file adapter selection fix (Phase 7) is merged and tested
-3. Run integration test on mixed-language repository (Python + TypeScript config files)
-4. Validate MODULE_BLUEPRINT generation for TypeScript and PHP repos
-5. Document adapter extension pattern for future languages
-6. Add Type 1-5 fragment type constants to codebase documentation
-
+1. Select AST parsing strategy (tree-sitter or typescript-estree) based on deployment constraints
+2. Implement TypeScriptAdapter base class following ExtractorAdapter protocol
+3. Implement LitComponentExtractor, I18nKeyExtractor, ServiceCallExtractor as pluggable plugins
+4. Add frontend repo entry to homeassistant.yaml discovery config with .ts/.tsx profile_extensions
+5. Generate ChatML JSONL exporter with schema validation
+6. Create taxonomy prompts for all extractor output schemas
+7. Run parsers on sample files and validate output against acceptance criteria

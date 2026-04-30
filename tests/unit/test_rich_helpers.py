@@ -14,6 +14,10 @@ Unit tests for src/utils/rich_helpers.py
 
 from __future__ import annotations
 
+import sys
+from unittest.mock import patch
+
+import pytest
 
 from rich.console import Console
 from rich.table import Table

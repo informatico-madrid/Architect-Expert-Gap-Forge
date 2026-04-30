@@ -46,7 +46,7 @@ class TestExtractorsFactory:
         adapter1 = get_adapter("python")
         adapter2 = get_adapter("python")
         # Both should be functionally equivalent (same type)
-        assert type(adapter1) is type(adapter2)
+        assert type(adapter1) == type(adapter2)
 
     def test_adapter_can_parse_python_file(self) -> None:
         """Adapter returned from factory should be able to parse files."""
@@ -98,12 +98,12 @@ class TestExtractorsFactory:
 
         # Now get_adapter should return the registered adapter
         adapter2 = get_adapter("test_custom_profile")
-        assert type(adapter2) is default_type
+        assert type(adapter2) == default_type
 
     def test_clear_cache(self) -> None:
         """clear_cache should clear the adapter cache."""
         # Get an adapter (populates cache)
-        get_adapter("cache_test_profile")
+        adapter1 = get_adapter("cache_test_profile")
 
         # Clear the cache
         clear_cache()
@@ -115,7 +115,7 @@ class TestExtractorsFactory:
     def test_register_adapter_clears_existing_cache(self) -> None:
         """register_adapter should clear existing cache for the profile."""
         # Get an adapter and cache it
-        get_adapter("cache_clear_profile")
+        adapter1 = get_adapter("cache_clear_profile")
 
         # Register a new adapter (should clear cache)
         register_adapter(

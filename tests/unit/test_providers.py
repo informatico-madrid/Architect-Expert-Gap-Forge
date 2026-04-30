@@ -347,7 +347,7 @@ class TestGeminiProviderFailures:
         import google.genai as real_genai
 
         mock_client_instance.models.generate_content.side_effect = (
-            real_genai.errors.APIError(429, {"error": "rate limited"})
+            real_genai.errors.APIError(429, {"error": {"message": "rate limited"}})
         )
 
         monkeypatch.setattr(

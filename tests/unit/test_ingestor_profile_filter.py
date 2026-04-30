@@ -14,8 +14,11 @@ discovery, specifically for extensions and ignored paths.
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+from pydantic import ValidationError
 
 from src.discovery.ingestor import DiscoveryConfig, RepoIngestor
 
@@ -111,7 +114,7 @@ class TestIngestorProfileFilter:
             mock_search.return_value = ["owner/repo1", "owner/repo2"]
             ingestor = RepoIngestor(config)
             # The discover method should apply profile filters
-            ingestor.discover()
+            result = ingestor.discover()
             # Verify that profile filtering is considered
             assert config.profile_extensions is not None
 
@@ -140,7 +143,7 @@ class TestIngestorProfileFilter:
         ingestor = RepoIngestor(config)
 
         # In dry-run mode, the ingestor should log the filters being applied
-        with patch("src.discovery.ingestor.logger"):
+        with patch("src.discovery.ingestor.logger") as mock_logger:
             ingestor.fetch(["owner/repo1"], dry_run=True)
             # Verify that profile info is available for logging
             assert ingestor.cfg.profile == "homeassistant"

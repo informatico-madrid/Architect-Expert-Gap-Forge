@@ -18,11 +18,11 @@ This module defines the core abstractions for TypeScript-specific extractors:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Literal, Protocol, runtime_checkable
 
-logger = logger = __import__("logging").getLogger(__name__)
+logger = logger = __import__('logging').getLogger(__name__)
 
 
 @runtime_checkable

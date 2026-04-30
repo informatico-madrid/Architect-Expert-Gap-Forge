@@ -93,14 +93,7 @@ class ProcessingConfig(BaseModel):
     # Accept both 'extensions' and 'profile_extensions' for flexibility
     extensions: Set[str] = Field(default_factory=lambda: {".py", ".md"})
     ignore_patterns: Set[str] = Field(
-        default_factory=lambda: {
-            ".git",
-            "__pycache__",
-            "venv",
-            "node_modules",
-            ".tox",
-            "eggs",
-        }
+        default_factory=lambda: {".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
     )
     # Support profile_extensions alias for DiscoveryConfig compatibility
     profile_extensions: Optional[Set[str]] = Field(
@@ -133,7 +126,7 @@ class ProcessingConfig(BaseModel):
     # Module discovery configuration
     module_discovery_strategy: str = Field(
         default="manifest",
-        description="Strategy for discovering modules: manifest, init, directory, filesystem, typescript, yaml, manual_mapping, auto (auto-detects repository type)",
+        description="Strategy for discovering modules: manifest, init, directory, manual_mapping",
     )
     anchor_filenames: set[str] = Field(
         default_factory=lambda: set(ANCHOR_FILENAMES),
@@ -280,21 +273,6 @@ class RepoProcessor:
     # ------------------------------------------------------------------
     def _discover_modules(self, root: Path) -> List[Module]:
         """Discover modules using the configured strategy."""
-        if self.cfg.module_discovery_strategy == "auto":
-            from src.discovery.file_scanner import _detect_strategy
-
-            detected_strategy = _detect_strategy(root)
-            logger.info("Auto-detected strategy: %s for %s", detected_strategy, root)
-            self.cfg.module_discovery_strategy = detected_strategy
-            return discover_modules(
-                root=root,
-                strategy=detected_strategy,
-                ignore_patterns=self.cfg.ignore_patterns,
-                extensions=self.cfg.extensions,
-                anchor_filenames=self.cfg.anchor_filenames,
-                module_overrides=self.cfg.module_overrides,
-                build_module_func=self._build_module,
-            )
         if self.cfg.module_discovery_strategy == "directory_scan":
             return self._discover_modules_directory_scan(root)
         return discover_modules(
@@ -383,18 +361,7 @@ class RepoProcessor:
                 manifest_data = {}
 
         mod = self._build_module(mod_dir, anchor_type=anchor, manifest=manifest_data)
-        # Extract owner_dir from repo_root (repo_root is owner_dir/owner_name)
-        owner_dir = (
-            repo_root.parent if repo_root.parent.name != "homeassistant" else None
-        )
-        self._emit_module(
-            mod,
-            repo_root,
-            prefix,
-            size_limit,
-            repo_prefix=repo_prefix,
-            owner_dir=owner_dir,
-        )
+        self._emit_module(mod, repo_root, prefix, size_limit, repo_prefix=repo_prefix)
 
     # ------------------------------------------------------------------
     # Module emission: generates TIPO 1-4 bundles
@@ -409,8 +376,7 @@ class RepoProcessor:
     ) -> None:
         """For one module, emit all applicable fragment types."""
         # Each module gets its own subdirectory inside target_root
-        # Structure: target_root/repo_name/mod_name (no owner level)
-        module_dir = self.target_root / repo_root.name / mod.name
+        module_dir = self.target_root / mod.name
         module_dir.mkdir(parents=True, exist_ok=True)
 
         # Separate files by role
@@ -485,7 +451,9 @@ class RepoProcessor:
             except ParseError as e:
                 self._stats["parse_errors"] += 1
                 # T030c: Emit metrics for parse error
-                self._metrics.increment_parse_error(repo_root.name, self.cfg.profile)
+                self._metrics.increment_parse_error(
+                    repo_root.name, self.cfg.profile
+                )
                 if self._on_parse_error == "abort":
                     # T009d: Abort the entire repository, not just the file
                     logger.warning(
@@ -498,7 +466,9 @@ class RepoProcessor:
                         repo_name=repo_root.name, file_path=mf.path, parse_error=e
                     )
                 elif self._on_parse_error == "skip":
-                    logger.warning("Parse error in %s, skipping file: %s", mf.path, e)
+                    logger.warning(
+                        "Parse error in %s, skipping file: %s", mf.path, e
+                    )
                     continue
                 elif self._on_parse_error == "mark_and_continue":
                     # T009f: Mark file as needs_manual_review but continue processing

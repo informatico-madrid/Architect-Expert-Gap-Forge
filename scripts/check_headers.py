@@ -34,7 +34,6 @@ INCLUDE_PREFIXES = (
     "diagnose/",
     "examples/",
     "legacy/",
-    "infrastructure/",
 )
 
 HEADER_TOKENS = (

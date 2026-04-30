@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class HuggingFaceMock:
@@ -158,7 +158,7 @@ def hf_mock(monkeypatch: pytest.MonkeyPatch) -> HuggingFaceMock:
         
         # Create a mock dataset object
         mock_dataset = MagicMock()
-        mock.repositories[dataset_name]["files"]
+        files = mock.repositories[dataset_name]["files"]
         data = mock.repositories[dataset_name]["data"]
         
         # Return mock splits

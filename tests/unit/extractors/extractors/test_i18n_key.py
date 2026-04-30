@@ -47,9 +47,9 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].token_type == "i18n_key"
-        assert tokens[0].data["key"] == "ui.card.door.lock"
-        assert tokens[0].data["context"] == "localize"
+        assert tokens[0].token_type == 'i18n_key'
+        assert tokens[0].data['key'] == 'ui.card.door.lock'
+        assert tokens[0].data['context'] == 'localize'
         assert tokens[0].file_path == sample_file_path
 
     def test_localize_double_quotes(self, extractor, sample_file_path):
@@ -58,9 +58,9 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].token_type == "i18n_key"
-        assert tokens[0].data["key"] == "ui.panel.config.users"
-        assert tokens[0].data["context"] == "localize"
+        assert tokens[0].token_type == 'i18n_key'
+        assert tokens[0].data['key'] == 'ui.panel.config.users'
+        assert tokens[0].data['context'] == 'localize'
 
     def test_localize_with_spaces(self, extractor, sample_file_path):
         """Test extraction of localize() calls with extra whitespace."""
@@ -68,7 +68,7 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].data["key"] == "ui.card.door.unlock"
+        assert tokens[0].data['key'] == 'ui.card.door.unlock'
 
     def test_localize_multiple_calls(self, extractor, sample_file_path):
         """Test extraction of multiple localize() calls in same file."""
@@ -80,12 +80,12 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 3
-        keys = [t.data["key"] for t in tokens]
-        assert "ui.card.door.lock" in keys
-        assert "ui.card.door.unlock" in keys
-        assert "ui.panel.config" in keys
+        keys = [t.data['key'] for t in tokens]
+        assert 'ui.card.door.lock' in keys
+        assert 'ui.card.door.unlock' in keys
+        assert 'ui.panel.config' in keys
         for token in tokens:
-            assert token.data["context"] == "localize"
+            assert token.data['context'] == 'localize'
 
     # --- hass.localize() extraction tests ---
 
@@ -95,9 +95,9 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].token_type == "i18n_key"
-        assert tokens[0].data["key"] == "ui.card.climate.temp"
-        assert tokens[0].data["context"] == "hass.localize"
+        assert tokens[0].token_type == 'i18n_key'
+        assert tokens[0].data['key'] == 'ui.card.climate.temp'
+        assert tokens[0].data['context'] == 'hass.localize'
 
     def test_hass_localize_double_quotes(self, extractor, sample_file_path):
         """Test extraction of hass.localize() calls with double quotes."""
@@ -105,8 +105,8 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].data["key"] == "ui.card.light.brightness"
-        assert tokens[0].data["context"] == "hass.localize"
+        assert tokens[0].data['key'] == 'ui.card.light.brightness'
+        assert tokens[0].data['context'] == 'hass.localize'
 
     def test_hass_localize_multiple_calls(self, extractor, sample_file_path):
         """Test extraction of multiple hass.localize() calls."""
@@ -117,11 +117,11 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 2
-        keys = [t.data["key"] for t in tokens]
-        assert "ui.card.sensor.temp" in keys
-        assert "ui.card.sensor.humidity" in keys
+        keys = [t.data['key'] for t in tokens]
+        assert 'ui.card.sensor.temp' in keys
+        assert 'ui.card.sensor.humidity' in keys
         for token in tokens:
-            assert token.data["context"] == "hass.localize"
+            assert token.data['context'] == 'hass.localize'
 
     def test_mixed_localize_and_hass_localize(self, extractor, sample_file_path):
         """Test extraction of mixed localize() and hass.localize() calls."""
@@ -133,47 +133,43 @@ class TestI18nKeyExtractor:
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 3
-        localize_keys = [
-            t.data["key"] for t in tokens if t.data["context"] == "localize"
-        ]
-        hass_localize_keys = [
-            t.data["key"] for t in tokens if t.data["context"] == "hass.localize"
-        ]
-        assert "ui.card.door.lock" in localize_keys
-        assert "ui.panel.config" in localize_keys
-        assert "ui.card.door.unlock" in hass_localize_keys
+        localize_keys = [t.data['key'] for t in tokens if t.data['context'] == 'localize']
+        hass_localize_keys = [t.data['key'] for t in tokens if t.data['context'] == 'hass.localize']
+        assert 'ui.card.door.lock' in localize_keys
+        assert 'ui.panel.config' in localize_keys
+        assert 'ui.card.door.unlock' in hass_localize_keys
 
     # --- template literal key prefix extraction tests ---
 
     def test_template_literal_prefix_extraction(self, extractor, sample_file_path):
         """Test extraction of template literal prefix for dynamic keys."""
-        raw = "localize(`ui.card.${action}`)"
+        raw = 'localize(`ui.card.${action}`)'
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) >= 1
         # The template literal should be extracted
-        template_tokens = [t for t in tokens if t.data["context"] == "template_literal"]
+        template_tokens = [t for t in tokens if t.data['context'] == 'template_literal']
         assert len(template_tokens) == 1
-        assert template_tokens[0].data["prefix"] == "ui.card."
+        assert template_tokens[0].data['prefix'] == 'ui.card.'
 
     def test_template_literal_with_hass_localize(self, extractor, sample_file_path):
         """Test template literal prefix extraction with hass.localize()."""
-        raw = "hass.localize(`ui.card.${action}`)"
+        raw = 'hass.localize(`ui.card.${action}`)'
         tokens = extractor.extract(None, raw, sample_file_path)
 
         # Should extract both the hass.localize call and the template literal
-        template_tokens = [t for t in tokens if t.data["context"] == "template_literal"]
+        template_tokens = [t for t in tokens if t.data['context'] == 'template_literal']
         assert len(template_tokens) >= 1
-        assert template_tokens[0].data["prefix"] == "ui.card."
+        assert template_tokens[0].data['prefix'] == 'ui.card.'
 
     def test_template_literal_complex_prefix(self, extractor, sample_file_path):
         """Test template literal with complex prefix."""
-        raw = "localize(`ui.card.climate.${mode}.${setting}`)"
+        raw = 'localize(`ui.card.climate.${mode}.${setting}`)'
         tokens = extractor.extract(None, raw, sample_file_path)
 
-        template_tokens = [t for t in tokens if t.data["context"] == "template_literal"]
+        template_tokens = [t for t in tokens if t.data['context'] == 'template_literal']
         assert len(template_tokens) >= 1
-        assert template_tokens[0].data["prefix"] == "ui.card.climate."
+        assert template_tokens[0].data['prefix'] == 'ui.card.climate.'
 
     # --- setupCustomlocalize() wrapper pattern tests ---
 
@@ -182,14 +178,14 @@ class TestI18nKeyExtractor:
         raw = "setupLocalize()"
         match = SETUP_LOCALIZE_PATTERN.search(raw)
         assert match is not None
-        assert match.group(0) == "setupLocalize()"
+        assert match.group(0) == 'setupLocalize()'
 
     def test_setup_custom_localize_pattern(self, extractor, sample_file_path):
         """Test setupCustomLocalize() wrapper pattern detection."""
         raw = "setupCustomLocalize()"
         match = SETUP_LOCALIZE_PATTERN.search(raw)
         assert match is not None
-        assert match.group(0) == "setupCustomLocalize()"
+        assert match.group(0) == 'setupCustomLocalize()'
 
     def test_setup_localize_with_whitespace(self, extractor, sample_file_path):
         """Test setupLocalize() with extra whitespace."""
@@ -210,7 +206,7 @@ class TestI18nKeyExtractor:
         """
         match = SETUP_LOCALIZE_PATTERN.search(raw)
         assert match is not None
-        assert "setupLocalize" in match.group(0)
+        assert 'setupLocalize' in match.group(0)
 
     # --- line number extraction tests ---
 
@@ -240,20 +236,16 @@ line5: localize('ui.card.line5');
         """
         tokens = extractor.extract(None, raw, sample_file_path)
         # Only template_literal context tokens might be found, not direct localize calls
-        localize_tokens = [
-            t for t in tokens if t.data["context"] in ("localize", "hass.localize")
-        ]
+        localize_tokens = [t for t in tokens if t.data['context'] in ('localize', 'hass.localize')]
         assert len(localize_tokens) == 0
 
-    def test_localize_with_nested_quotes_fails_gracefully(
-        self, extractor, sample_file_path
-    ):
+    def test_localize_with_nested_quotes_fails_gracefully(self, extractor, sample_file_path):
         """Test that nested quotes in localize keys don't cause issues."""
         raw = "localize('ui.card.door')"
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].data["key"] == "ui.card.door"
+        assert tokens[0].data['key'] == 'ui.card.door'
 
     def test_empty_key_not_extracted(self, extractor, sample_file_path):
         """Test that empty keys are not extracted."""
@@ -271,31 +263,31 @@ line5: localize('ui.card.line5');
         # Single quotes
         match = LOCALIZE_CALL_PATTERN.search("localize('test.key')")
         assert match is not None
-        assert match.group(1) == "test.key"
+        assert match.group(1) == 'test.key'
 
         # Double quotes
         match = LOCALIZE_CALL_PATTERN.search('localize("test.key")')
         assert match is not None
-        assert match.group(1) == "test.key"
+        assert match.group(1) == 'test.key'
 
     def test_hass_localize_pattern_matches(self):
         """Test HASS_LOCALIZE_PATTERN regex directly."""
         match = HASS_LOCALIZE_PATTERN.search("hass.localize('test.key')")
         assert match is not None
-        assert match.group(1) == "test.key"
+        assert match.group(1) == 'test.key'
 
     def test_template_literal_pattern_matches(self):
         """Test TEMPLATE_PREFIX_CONTEXT regex directly."""
-        match = TEMPLATE_PREFIX_CONTEXT.search("localize(`ui.card.${action}`)")
+        match = TEMPLATE_PREFIX_CONTEXT.search('localize(`ui.card.${action}`)')
         assert match is not None
-        assert match.group(1) == "ui.card.${action}"
+        assert match.group(1) == 'ui.card.${action}'
 
     def test_setup_localize_pattern_matches(self):
         """Test SETUP_LOCALIZE_PATTERN regex directly."""
-        match = SETUP_LOCALIZE_PATTERN.search("setupLocalize()")
+        match = SETUP_LOCALIZE_PATTERN.search('setupLocalize()')
         assert match is not None
 
-        match = SETUP_LOCALIZE_PATTERN.search("setupCustomLocalize()")
+        match = SETUP_LOCALIZE_PATTERN.search('setupCustomLocalize()')
         assert match is not None
 
     # --- token data structure tests ---
@@ -307,14 +299,14 @@ line5: localize('ui.card.line5');
 
         assert len(tokens) == 1
         token = tokens[0]
-        assert hasattr(token, "token_type")
-        assert hasattr(token, "data")
-        assert hasattr(token, "file_path")
-        assert hasattr(token, "line_number")
-        assert token.token_type == "i18n_key"
-        assert "key" in token.data
-        assert "context" in token.data
-        assert "prefix" in token.data
+        assert hasattr(token, 'token_type')
+        assert hasattr(token, 'data')
+        assert hasattr(token, 'file_path')
+        assert hasattr(token, 'line_number')
+        assert token.token_type == 'i18n_key'
+        assert 'key' in token.data
+        assert 'context' in token.data
+        assert 'prefix' in token.data
 
     def test_token_prefix_is_none_for_direct_keys(self, extractor, sample_file_path):
         """Test that direct localize() keys have prefix=None."""
@@ -322,7 +314,7 @@ line5: localize('ui.card.line5');
         tokens = extractor.extract(None, raw, sample_file_path)
 
         assert len(tokens) == 1
-        assert tokens[0].data["prefix"] is None
+        assert tokens[0].data['prefix'] is None
 
     def test_extractor_name(self, extractor):
         """Test that extractor has correct name."""
@@ -360,9 +352,9 @@ class TestI18nKeyExtractorIntegration:
 
         # Should find the localize calls
         assert len(tokens) >= 2
-        keys = [t.data["key"] for t in tokens]
-        assert "ui.card.door.lock" in keys
-        assert "ui.card.door.unlock" in keys
+        keys = [t.data['key'] for t in tokens]
+        assert 'ui.card.door.lock' in keys
+        assert 'ui.card.door.unlock' in keys
 
     def test_i18n_in_service_call_context(self):
         """Test extraction when i18n keys appear in service call context."""
@@ -379,10 +371,6 @@ class TestI18nKeyExtractorIntegration:
         tokens = extractor.extract(None, raw, file_path)
 
         # Should extract the hass.localize key
-        hass_localize_tokens = [
-            t for t in tokens if t.data["context"] == "hass.localize"
-        ]
+        hass_localize_tokens = [t for t in tokens if t.data['context'] == 'hass.localize']
         assert len(hass_localize_tokens) >= 1
-        assert any(
-            t.data["key"] == "ui.notification.saved" for t in hass_localize_tokens
-        )
+        assert any(t.data['key'] == 'ui.notification.saved' for t in hass_localize_tokens)

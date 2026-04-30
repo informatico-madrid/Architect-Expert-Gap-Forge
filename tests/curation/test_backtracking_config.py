@@ -7,6 +7,11 @@
 
 """Tests for backtracking_config module."""
 
+import tempfile
+from pathlib import Path
+
+import pytest
+
 from src.curation.backtracking_config import (
     BacktrackingConfig,
     PipelineReport,

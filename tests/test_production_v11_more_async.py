@@ -14,13 +14,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from types import SimpleNamespace
 from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 
+import pytest
 
 import src.factory.prompt_builder as pb_module
 import src.factory.pipeline_runner as pr_module
+from src.factory import config as cfg_module
 from src.factory import config as cfg_module
 from src.factory.cli import main as cli_main, parse_args as cli_parse_args
 from src.factory.pipeline_runner import generate_sample_async, main_async
@@ -55,11 +58,6 @@ def make_theory_frag(name: str = "T1") -> dict:
 
 def test_generate_theory_sample_success_and_failure(monkeypatch):
     monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
-    monkeypatch.setattr(
-        pb_module,
-        "THEORY_QUESTION_TEMPLATES",
-        [{"template": "Write theory about $section_title", "type": "doc"}],
-    )
     # Success: assistant returns <think>reason</think> + long answer (>150 chars)
     answer = "A" * 200
     content = f"<think>{'reasoning' * 30}</think>{answer}"
@@ -78,7 +76,7 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
     )
 
     # Failure: answer too short -> rejected after retries
-    short_content = "<think>r</think>short"
+    short_content = f"<think>r</think>short"
     client2 = FakeClient(short_content)
     res2 = asyncio.run(
         pr_module.generate_theory_sample_async(
@@ -100,9 +98,6 @@ def test_generate_theory_sample_success_and_failure(monkeypatch):
 
 def test_generate_sample_async_poison_and_legacy(monkeypatch):
     monkeypatch.setattr(pb_module, "_prompt", lambda key: "prompt")
-    monkeypatch.setattr(
-        pb_module, "LEGACY_2023_PATTERNS", [{"legacy_code": "# old 2023 code pattern"}]
-    )
     # Prepare a clean tool_call with long generated content (passes LDI)
     tool_json = {
         "name": "write_to_file",

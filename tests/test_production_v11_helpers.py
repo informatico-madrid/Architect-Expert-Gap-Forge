@@ -28,6 +28,7 @@ from src.factory.fragment_extractor import (
 )
 from src.factory.ldi_validator import assign_example_type, validate_ldi
 import src.factory.ldi_validator as _ldi_module
+from src.factory.config import EVOL_LEVELS
 from src.factory.pipeline_runner import parse_raw_response
 from src.factory.prompt_builder import detect_legacy_patterns
 

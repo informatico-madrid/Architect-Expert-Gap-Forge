@@ -12,6 +12,7 @@ while PRESERVING technical identifiers that were previously deleted.
 These tests MUST FAIL with the current regex pattern and PASS after the fix.
 """
 
+import pytest
 from src.curation.backtracking_helpers import _sanitize_generated_reasoning
 
 

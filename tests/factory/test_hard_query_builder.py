@@ -51,10 +51,7 @@ def five_seeds() -> list[dict[str, Any]]:
             # Abstract context - no forbidden terms
             "context": "Sistema que conecta dispositivos locales y servicios en la nube",
             "question": "Diseña async_setup_entry para una integración dual-mode",
-            "expected_patterns": [
-                "async_forward_entry_setups",
-                "DataUpdateCoordinator",
-            ],
+            "expected_patterns": ["async_forward_entry_setups", "DataUpdateCoordinator"],
         },
         {
             "seed_id": "ha_seed_002",
@@ -98,7 +95,9 @@ def five_seeds() -> list[dict[str, Any]]:
 @pytest.fixture
 def hard_query_templates_path() -> Path:
     """Path to the hard query templates YAML file."""
-    return Path("configs/stage_2_factory/prompts/hard_query_templates.yaml")
+    return Path(
+        "configs/stage_2_factory/prompts/hard_query_templates.yaml"
+    )
 
 
 @pytest.fixture
@@ -175,10 +174,7 @@ class TestHardQueryBuilderForbiddenTerms:
     """Tests for forbidden terms validation in hard queries."""
 
     def test_generated_prompt_does_not_contain_forbidden_terms(
-        self,
-        five_seeds: list[dict[str, Any]],
-        mock_hard_query_templates: dict[str, Any],
-        forbidden_terms: list[str],
+        self, five_seeds: list[dict[str, Any]], mock_hard_query_templates: dict[str, Any], forbidden_terms: list[str]
     ) -> None:
         """Test that generated prompts do not contain forbidden terms."""
         # This test simulates HardQueryBuilder behavior
@@ -341,9 +337,7 @@ class TestHardQueryBuilderValidation:
         # Forbidden terms to check
         forbidden = ["async_setup_entry", "DataUpdateCoordinator", "llama al servicio"]
 
-        detected = [
-            term for term in forbidden if term.lower() in abstract_prompt.lower()
-        ]
+        detected = [term for term in forbidden if term.lower() in abstract_prompt.lower()]
 
         # Abstract prompt should pass validation
         is_valid = len(detected) == 0
@@ -360,9 +354,7 @@ class TestHardQueryBuilderValidation:
         # Forbidden terms to check
         forbidden = ["async_setup_entry", "DataUpdateCoordinator", "llama al servicio"]
 
-        detected = [
-            term for term in forbidden if term.lower() in explicit_prompt.lower()
-        ]
+        detected = [term for term in forbidden if term.lower() in explicit_prompt.lower()]
 
         # Should detect forbidden terms
         assert len(detected) > 0, "Validator should detect forbidden terms"
@@ -388,11 +380,7 @@ class TestHardQueryBuilderValidation:
             "llama a la función",
         ]
 
-        detected = [
-            verb
-            for verb in imperative_verbs
-            if verb.lower() in imperative_prompt.lower()
-        ]
+        detected = [verb for verb in imperative_verbs if verb.lower() in imperative_prompt.lower()]
 
         # Should detect imperative verbs
         assert len(detected) > 0, "Validator should detect imperative verbs"
@@ -492,7 +480,7 @@ class TestHardQueryBuilderIntegration:
             hard_query = f"""
             Necesito que el sistema maneje la integración de dispositivos de forma autónoma.
 
-            Disponible: Contexto de {seed["category"]}
+            Disponible: Contexto de {seed['category']}
 
             El comportamiento esperado debe ser:
             - Sincronización automática de estado
@@ -514,9 +502,7 @@ class TestHardQueryBuilderTransform:
         builder = HardQueryBuilder(use_case="home_assistant", seed=42)
         result = builder._transform_to_abstract("dual_mode_coordinator", "test context")
         assert "coordinar" in result.lower() or "coordinador" in result.lower()
-        assert (
-            "automáticamente" in result.lower() or "automaticamente" in result.lower()
-        )
+        assert "automáticamente" in result.lower() or "automaticamente" in result.lower()
 
     def test_transform_integration_category(self) -> None:
         """Test transformation of integration-related categories."""
@@ -620,9 +606,7 @@ class TestHardQueryBuilderWithValidation:
         }
 
         # Should raise ValueError after 3 retries
-        with pytest.raises(
-            ValueError, match="Could not generate valid abstract prompt"
-        ):
+        with pytest.raises(ValueError, match="Could not generate valid abstract prompt"):
             builder.build_with_validation(seed_data)
 
     def test_build_with_validation_different_templates(self) -> None:
@@ -785,9 +769,7 @@ validator:
         ]
 
         for prompt in imperative_prompts:
-            assert builder.validate_prompt(prompt) is False, (
-                f"Failed to detect: {prompt}"
-            )
+            assert builder.validate_prompt(prompt) is False, f"Failed to detect: {prompt}"
 
 
 class TestHardQueryBuilderBuildTemplates:
@@ -820,11 +802,7 @@ validator:
         }
         result = builder.build(seed)
         # Should use outcome template format
-        assert (
-            "Necesito lograr:" in result
-            or "Disponible:" in result
-            or "resultado" in result
-        )
+        assert "Necesito lograr:" in result or "Disponible:" in result or "resultado" in result
 
     def test_build_with_question_template(self, tmp_path: Path) -> None:
         """Test build uses question-background template when available."""
@@ -920,9 +898,7 @@ class TestHardQueryBuilderErrorCases:
         """
 
         # Check for forbidden terms
-        detected = [
-            term for term in forbidden_terms if term.lower() in mixed_prompt.lower()
-        ]
+        detected = [term for term in forbidden_terms if term.lower() in mixed_prompt.lower()]
 
         # Should detect the forbidden term
         assert "DataUpdateCoordinator" in detected

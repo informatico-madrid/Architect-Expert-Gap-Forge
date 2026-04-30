@@ -1,294 +1,149 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python3
 # Architect-Expert-Gap-Forge (AEGF)
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
-# Source: https://github.com/informatico-madrid/Architect-Expert-Gap-Forge
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
 # SPDX-License-Identifier: Apache-2.0
 
-"""
-Pytest configuration and fixtures for AEGF tests.
+"""Pytest conftest: ensure a minimal prompt taxonomy is loaded for tests.
 
-This module provides shared fixtures and configuration for all tests.
-DO NOT REMOVE - used by pipeline and CI/CD
+This session-scoped autouse fixture writes a minimal taxonomy YAML and
+invokes `src.factory.prompt_builder.load_taxonomy` so tests that rely on
+prompt templates and tools have a stable baseline during the test run.
 """
 
 from __future__ import annotations
 
-import json
-import tempfile
+import sys
+import yaml
 from pathlib import Path
-from typing import Any
 
 import pytest
 
-from src.audit.schema import ExamRecord, SampleRecord, ScoreCard
-
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-
-
-def _load_fixture(filename: str) -> dict[str, Any]:
-    """Load a JSON fixture file."""
-    path = FIXTURES_DIR / filename
-    if not path.exists():
-        raise FileNotFoundError(f"Fixture not found: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+from src.factory import prompt_builder as pb_module
+from src.factory.prompt_builder import load_taxonomy, set_test_state
+from src.factory.config import TaxonomyState
 
 
-@pytest.fixture
-def tmp_repo_path() -> Path:
-    """Create a temporary repository structure for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        repo_path = Path(tmpdir) / "test_repo"
-        repo_path.mkdir()
-        owner_dir = repo_path / "owner" / "myrepo"
-        owner_dir.mkdir(parents=True)
-        yield repo_path
+@pytest.fixture(scope="session", autouse=True)
+def minimal_taxonomy(tmp_path_factory) -> Path:
+    """Create and load a minimal taxonomy for the whole test session.
 
-
-@pytest.fixture
-def sample_python_code() -> str:
-    """Sample Python code for testing."""
-    return """
-def add_numbers(a: int, b: int) -> int:
-    '''Add two numbers together.'''
-    return a + b
-
-def calculate_total(items: list) -> float:
-    '''Calculate total price from items.'''
-    total = 0
-    for item in items:
-        total += item.get('price', 0)
-    return total
-"""
-
-
-@pytest.fixture
-def sample_typescript_code() -> str:
-    """Sample TypeScript code for testing."""
-    return """
-import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
-
-@customElement('ha-button-card')
-export class HaButtonCard extends LitElement {
-  @property({ type: String }) private label = 'Click me';
-
-  render() {
-    return html`<button>${this.label}</button>`;
-  }
-}
-"""
-
-
-@pytest.fixture
-def sample_php_code() -> str:
-    """Sample PHP code for testing."""
-    return """<?php
-
-namespace App\\Services;
-
-class UserService {
-    private array $users = [];
-
-    public function createUser(string $name, string $email): User {
-        $user = new User($name, $email);
-        $this->users[] = $user;
-        return $user;
+    The taxonomy contains the small set of keys used by the prompt builders
+    and avoids KeyError('system') during tests that do not explicitly load
+    a taxonomy file.
+    """
+    tax_dir = tmp_path_factory.mktemp("taxonomy")
+    tax_file = tax_dir / "taxonomy_minimal.yaml"
+    taxonomy = {
+        "ha_error_templates": [{"error": "Error in {entity} at {component}"}],
+        "legacy_2023_patterns": [{"legacy_code": "hass.data["}],
+        "jinja_ha_error_templates": [{"error": "Jinja error {component}"}],
+        "jinja_legacy_2023_patterns": [{"legacy_code": "platform:"}],
+        "theory_question_templates": [
+            {
+                "template": "Write a doctrinal note about {section_title}.",
+                "type": "explain",
+            }
+        ],
+        "tools_definition": [
+            {
+                "name": "write_to_file",
+                "arguments": {"path": "<path>", "content": "<content>"},
+            }
+        ],
+        "prompts": {
+            "system": {
+                "python": {
+                    "base": "BASE $tools_json master:$master changelog:$changelog",
+                    "nominal_suffix": "NOMINAL",
+                    "contrast_suffix": "CONTRAST",
+                    "error_recovery_suffix": "ERROR",
+                    "blueprint_context": "BLUEPRINT: $blueprint\nLOCAL IMPORTS: $local_imports",
+                    "governance_context": "GOVERNANCE: $governance_rules",
+                },
+                "jinja": {
+                    "base": "BASE_JINJA $tools_json jinja:$jinja_guide",
+                    "nominal_suffix": "JINJA_NOMINAL",
+                    "contrast_suffix": "JINJA_CONTRAST",
+                    "error_recovery_suffix": "JINJA_ERROR",
+                },
+                "theory": "THEORY SYSTEM: master:$master changelog:$changelog",
+            },
+            "user": {
+                "python": {
+                    "nominal_easy": "EASY $virtual_filename",
+                    "nominal_medium": "MEDIUM $virtual_filename",
+                    "nominal_hard_anchor_free": ["ANCHOR_FREE $virtual_filename"],
+                    "nominal_hard_anchor": "HARD $virtual_filename",
+                    "contrast": "CONTRAST $legacy_code",
+                    "error_recovery": "ERROR_RECOVERY",
+                    "functional_unit": "FUNCTIONAL UNIT: $virtual_filename\nNAME: $name\nSKELETON:\n$skeleton",
+                },
+                "jinja": {
+                    "nominal_easy": "JINJA_EASY",
+                    "nominal_medium": "JINJA_MEDIUM",
+                    "nominal_hard_anchor_free": ["JINJA_ANCHOR_FREE"],
+                    "nominal_hard_anchor": "JINJA_HARD_ANCHOR",
+                    "contrast": "JINJA_CONTRAST",
+                    "error_recovery": "JINJA_ERROR_RECOVERY",
+                },
+            },
+        },
     }
-}
+    tax_file.write_text(yaml.safe_dump(taxonomy, allow_unicode=True))
+    state = load_taxonomy(tax_file)
+    set_test_state(state)
+    return tax_file
+
+
+#!/usr/bin/env python3
+# Architect-Expert-Gap-Forge (AEGF)
+# Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
+# SPDX-License-Identifier: Apache-2.0
+
+"""Shared pytest fixtures for the AEGF test suite.
+
+All domain objects are constructed here so individual test modules stay
+focused on behaviour rather than boilerplate.
 """
 
+import textwrap
+from pathlib import Path
+from typing import Any, Dict, List
+from src.schemas.common import RawRecord
+from unittest.mock import MagicMock
 
-@pytest.fixture
-def sample_yaml_code() -> str:
-    """Sample YAML code for testing."""
-    return """
-# Home Assistant automation
-automation:
-  - alias: "Light Control"
-    trigger:
-      platform: state
-      entity_id: light.living_room
-    action:
-      service: light.toggle
-"""
+import pytest
+import yaml
 
-
-@pytest.fixture
-def sample_record():
-    """Create a sample SampleRecord for testing."""
-    from src.audit.schema import SampleRecord
-
-    return SampleRecord(
-        id="test-sample-1",
-        example_type="nominal",
-        evol_difficulty="easy",
-        fragment_name="test.py",
-        source_file="test.py",
-        user_prompt="test",
-        reference_response="test",
-        gold_injected=False,
-        ldi=0.85,
-    )
+from src.audit.schema import (
+    AuditReport,
+    ExamRecord,
+    InferenceResult,
+    SampleRecord,
+    ScoreCard,
+)
 
 
-@pytest.fixture
-def golden_sample() -> SampleRecord:
-    """Load a golden SampleRecord from fixture.
-
-    Used by tests/test_model_evaluator_error_cases.py and
-    tests/test_model_evaluator_integration_paths.py.
-    """
-    data = _load_fixture("sample_record.json")
-    return SampleRecord(
-        id=data["id"],
-        example_type=data["example_type"],
-        evol_difficulty=data["evol_difficulty"],
-        fragment_name=data["fragment_name"],
-        source_file=data["source_file"],
-        user_prompt=data["user_prompt"],
-        reference_response=data["reference_response"],
-        gold_injected=data["gold_injected"],
-        ldi=data["ldi"],
-        reference_standards=data["reference_standards"],
-        gap_analysis=data["gap_analysis"],
-    )
-
-
-@pytest.fixture
-def golden_exam(golden_sample: SampleRecord) -> ExamRecord:
-    """Load a golden ExamRecord from fixture."""
-    data = _load_fixture("exam_record.json")
-    return ExamRecord.from_sample(
-        golden_sample,
-        exam_question=data["exam_question"],
-        eval_criteria=data["eval_criteria"],
-        target_patterns=data["target_patterns"],
-    )
-
-
-@pytest.fixture
-def manifest_json() -> str:
-    """Sample manifest.json for HA integrations."""
-    return '{"name": "Test Integration", "domain": "test"}'
-
-
-@pytest.fixture
-def gap_dir() -> Path:
-    """Path to test fixtures directory."""
-    return Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture
-def fixtures_dir() -> Path:
-    """Path to test fixtures directory (alias for gap_dir)."""
-    return Path(__file__).parent / "fixtures"
-
-
-# Legacy fixtures for backward compatibility
-def make_exam_record(
-    sample: SampleRecord | None = None,
-    sample_id: str = "test-sample-1",
-    exam_question: str = "Test exam question",
-    eval_criteria: list[str] | None = None,
-    target_patterns: list[str] | None = None,
-    example_type: str = "nominal",
-    evol_difficulty: str = "easy",
-    fragment_name: str = "test.py",
-    source_file: str = "test.py",
-    user_prompt: str = "test",
-    reference_response: str = "test",
-    gold_injected: bool = False,
-    ldi: float = 0.85,
-    reference_standards: str = "",
-    gap_analysis: str = "",
-) -> ExamRecord:
-    """Create a sample ExamRecord for testing.
-
-    Can be called in two ways:
-    1. With a SampleRecord: make_exam_record(sample=some_sample)
-    2. With explicit fields: make_exam_record(sample_id="x", ...)
-
-    Args:
-        sample: Optional SampleRecord to elevate to ExamRecord.
-        sample_id: Sample record ID (used if sample not provided).
-        exam_question: Generated exam question.
-        eval_criteria: Evaluation criteria list.
-        target_patterns: Target patterns list.
-        example_type: Type of example.
-        evol_difficulty: Difficulty level.
-        fragment_name: Fragment name.
-        source_file: Source file path.
-        user_prompt: User prompt.
-        reference_response: Reference response.
-        gold_injected: Whether gold was injected.
-        ldi: LDI score.
-        reference_standards: Reference standards.
-        gap_analysis: Gap analysis.
-
-    Returns:
-        A new ExamRecord instance.
-    """
-    if eval_criteria is None:
-        eval_criteria = []
-    if target_patterns is None:
-        target_patterns = []
-
-    # If sample is provided, elevate it to ExamRecord
-    if sample is not None:
-        return ExamRecord.from_sample(sample, exam_question=exam_question)
-
-    # Otherwise, construct from fields
-    return ExamRecord(
-        id=sample_id,
-        exam_question=exam_question,
-        eval_criteria=eval_criteria,
-        target_patterns=target_patterns,
-        example_type=example_type,
-        evol_difficulty=evol_difficulty,
-        fragment_name=fragment_name,
-        source_file=source_file,
-        user_prompt=user_prompt,
-        reference_response=reference_response,
-        gold_injected=gold_injected,
-        ldi=ldi,
-        reference_standards=reference_standards,
-        gap_analysis=gap_analysis,
-    )
+# ---------------------------------------------------------------------------
+# Domain entity factories
+# ---------------------------------------------------------------------------
 
 
 def make_sample(
-    id: str = "test-sample-1",
+    id: str = "sample-001",
     example_type: str = "nominal",
-    evol_difficulty: str = "easy",
-    fragment_name: str = "test.py",
-    source_file: str = "test.py",
-    user_prompt: str = "test",
-    reference_response: str = "test",
-    gold_injected: bool = False,
+    evol_difficulty: str = "medium",
+    fragment_name: str = "climate_entity",
+    source_file: str = "components/climate/__init__.py",
+    user_prompt: str = "Implement a CoordinatorEntity for a climate sensor.",
+    reference_response: str = "<think>I need to use modern HA APIs.</think>\n```python\npass\n```",
+    gold_injected: bool = True,
     ldi: float = 0.85,
-    reference_standards: str = "",
-    gap_analysis: str = "",
+    reference_standards: str = "Use entry.runtime_data, CoordinatorEntity, async_setup_entry.",
+    gap_analysis: str = "Missing DataUpdateCoordinator pattern.",
 ) -> SampleRecord:
-    """Create a sample SampleRecord for testing.
-
-    Args:
-        id: Sample record ID.
-        example_type: Type of example.
-        evol_difficulty: Difficulty level.
-        fragment_name: Fragment name.
-        source_file: Source file path.
-        user_prompt: User prompt.
-        reference_response: Reference response.
-        gold_injected: Whether gold was injected.
-        ldi: LDI score.
-        reference_standards: Reference standards.
-        gap_analysis: Gap analysis.
-
-    Returns:
-        A new SampleRecord instance.
-    """
+    """Construct a minimal but valid SampleRecord."""
     return SampleRecord(
         id=id,
         example_type=example_type,
@@ -304,103 +159,393 @@ def make_sample(
     )
 
 
+def make_exam_record(sample: SampleRecord | None = None, **kwargs: Any) -> ExamRecord:
+    """Construct a minimal ExamRecord from an optional base sample."""
+    base = sample or make_sample()
+    defaults: Dict[str, Any] = {
+        "exam_question": "Implement a climate entity using CoordinatorEntity.",
+        "eval_criteria": ["Uses entry.runtime_data", "Proper error handling"],
+        "target_patterns": ["CoordinatorEntity", "async_setup_entry"],
+    }
+    defaults.update(kwargs)
+    return ExamRecord.from_sample(base, **defaults)
+
+
 def make_scorecard(
-    record_id: str = "test-sample-1",
+    record_id: str = "sample-001",
+    sample_id: str = "sample-001",  # Alias for record_id
     example_type: str = "nominal",
-    fragment_name: str = "test.py",
-    sample_id: str = "test-sample-1",
-    ha_modernity: float = 0.85,
-    reasoning_depth: float = 0.85,
+    fragment_name: str = "climate_entity",
+    ha_modernity: float = 0.9,
+    reasoning_depth: float = 0.8,
     functionality: float = 0.85,
-    completeness: float = 0.85,
-    style: float = 0.85,
-    judge_reasoning: str = "",
-    notes: str = "",
+    completeness: float = 0.9,
+    style: float = 0.7,
+    composite_score: float = 0.86,
 ) -> ScoreCard:
-    """Create a sample ScoreCard for testing.
-
-    Args:
-        record_id: Record ID.
-        example_type: Example type.
-        fragment_name: Fragment name.
-        sample_id: Sample ID (alias for record_id).
-        ha_modernity: HA modernity score.
-        reasoning_depth: Reasoning depth score.
-        functionality: Functionality score.
-        completeness: Completeness score.
-        style: Style score.
-        judge_reasoning: Judge reasoning text.
-        notes: Notes text.
-
-    Returns:
-        A new ScoreCard instance.
-    """
+    """Construct a ScoreCard with sensible defaults."""
     return ScoreCard(
         record_id=record_id,
+        sample_id=sample_id,
         example_type=example_type,
         fragment_name=fragment_name,
-        sample_id=sample_id,
         ha_modernity=ha_modernity,
         reasoning_depth=reasoning_depth,
         functionality=functionality,
         completeness=completeness,
         style=style,
-        judge_reasoning=judge_reasoning,
-        notes=notes,
+        composite_score=composite_score,
+        delta_vs_baseline=0.05,
+        judge_reasoning="Model shows correct API usage.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Pytest fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sample_record() -> SampleRecord:
+    """A single valid SampleRecord."""
+    return make_sample()
+
+
+@pytest.fixture
+def exam_record(sample_record: SampleRecord) -> ExamRecord:
+    """An ExamRecord derived from the base sample_record fixture."""
+    return make_exam_record(sample_record)
 
 
 @pytest.fixture
 def scorecard() -> ScoreCard:
-    """Create a sample ScoreCard for testing."""
+    """A single ScoreCard with default values."""
     return make_scorecard()
 
 
 @pytest.fixture
-def audit_report() -> ScoreCard:
-    """Create a sample ScoreCard for testing (named audit_report for schema tests)."""
-    from src.audit.schema import AuditReport
-
-    return AuditReport()
+def audit_report(scorecard: ScoreCard) -> AuditReport:
+    """A minimal AuditReport with one scorecard."""
+    return AuditReport(
+        timestamp="2026-03-03T00:00:00",
+        dataset_path="data/audit/baseline.jsonl",
+        base_model="qwen3-5-35b-a3b-nvfp4",
+        adapter_model="platinum_adapter",
+        judge_model="gemini-2.5-flash",
+        sample_size=1,
+        type_distribution={"nominal": 1},
+        scorecards=[scorecard],
+        final_grade=86.0,
+        verdict="PASS",
+    )
 
 
 @pytest.fixture
-def prompts_yaml_path() -> Path:
-    """Path to prompt configuration file for testing."""
-    return Path(__file__).parent / "fixtures" / "prompts" / "prompt_manager.yaml"
+def multi_sample_records() -> List[SampleRecord]:
+    """A list of SampleRecords covering all four canonical example_types."""
+    types = ["nominal", "contrast", "error_recovery", "theory"]
+    records: List[SampleRecord] = []
+    for i, et in enumerate(types):
+        for j in range(3):  # 3 records per type → 12 total
+            records.append(
+                make_sample(
+                    id=f"{et}-{j:03d}",
+                    example_type=et,
+                    ldi=0.5 + j * 0.1,
+                )
+            )
+    return records
 
 
 @pytest.fixture
-def raw_records(tmp_path: Path) -> list[dict[str, Any]]:
-    """Create sample raw records for testing."""
-    records: list[dict[str, Any]] = []
-    example_types = ["nominal", "contrast", "error_recovery", "theory"]
-    for i, et in enumerate(example_types):
-        # Create multiple records per type to allow for proper sampling tests
-        for j in range(3):
+def raw_records() -> List[RawRecord]:
+    """Raw JSONL-like dicts as returned by load_jsonl(), used for sampling tests."""
+    types = ["nominal", "contrast", "error_recovery", "theory"]
+    records: List[Dict[str, Any]] = []
+    for i, et in enumerate(types):
+        for j in range(4):
             records.append(
                 {
-                    "id": f"{et}-{i}-{j}",
+                    "id": f"{et}-{j:03d}",
                     "metadata": {
                         "example_type": et,
                         "evol_difficulty": "medium",
-                        "fragment_name": f"frag_{i}_{j}",
-                        "source_file": f"components/{et}/{i}_{j}.py",
+                        "fragment_name": f"fragment_{j}",
+                        "source_file": "components/sensor/__init__.py",
                         "gold_injected": True,
-                        "ldi": 0.7 + i * 0.01 + j * 0.001,
+                        "ldi": 0.7 + j * 0.05,
                         "reference_standards": "Use entry.runtime_data.",
-                        "gap_analysis": "Legacy pattern detected.",
+                        "gap_analysis": "Missing CoordinatorEntity.",
                     },
                     "conversation": [
-                        {
-                            "role": "user",
-                            "content": f"Implement {et} component {i} variant {j}.",
-                        },
+                        {"role": "user", "content": f"Implement sensor {j}."},
                         {
                             "role": "assistant",
-                            "content": "<think>OK</think>\n```python\npass\n```",
+                            "content": f"<think>Thinking...</think>\n```python\npass\n```",
                         },
                     ],
                 }
             )
     return records
+
+
+@pytest.fixture
+def prompts_yaml_path(tmp_path: Path) -> Path:
+    """Write a minimal eval_prompts.yaml into a temp dir and return the path."""
+    content = textwrap.dedent("""\
+        test_group:
+          system: "You are a test assistant."
+          user: "Hello {name}, answer {question}."
+        another_group:
+          system: "Second system prompt."
+          user: "Second user prompt."
+    """)
+    p = tmp_path / "eval_prompts.yaml"
+    p.write_text(content, encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def gap_dir(tmp_path: Path) -> Path:
+    """Create a temporary gap_dir with the three required master docs."""
+    d = tmp_path / "gap"
+    d.mkdir()
+    (d / "HA_MASTER_GUIDE_2026.md").write_text(
+        "# Master Guide content", encoding="utf-8"
+    )
+    (d / "technical_changelog_2026.md").write_text(
+        "# Changelog content", encoding="utf-8"
+    )
+    (d / "HA_JINJA_YAML_GUIDE_2026.md").write_text(
+        "# Jinja guide content", encoding="utf-8"
+    )
+    return d
+
+
+@pytest.fixture
+def mock_inference_client() -> MagicMock:
+    """A MagicMock that conforms to BaseInferenceClient's interface."""
+    client = MagicMock()
+    client.generate.return_value = '{"result": "ok"}'
+    client.generate_with_retry.return_value = '{"result": "ok"}'
+    return client
+
+
+# =============================================================================
+# ADDITIONAL TEST FIXTURES - Use these for creating tests
+# =============================================================================
+
+
+@pytest.fixture
+def sample_records() -> List[SampleRecord]:
+    """A list of SampleRecords for batch testing."""
+    types = ["nominal", "contrast", "error_recovery", "theory"]
+    records: List[SampleRecord] = []
+    for i, et in enumerate(types):
+        for j in range(3):
+            records.append(
+                make_sample(
+                    id=f"{et}-{j:03d}",
+                    example_type=et,
+                    ldi=0.5 + j * 0.1,
+                )
+            )
+    return records
+
+
+@pytest.fixture
+def empty_sample_record() -> SampleRecord:
+    """A SampleRecord with minimal/empty fields."""
+    return SampleRecord(
+        id="empty-001",
+        example_type="nominal",
+        evol_difficulty="easy",
+        fragment_name="empty",
+        source_file="test.py",
+        user_prompt="",
+        reference_response="",
+        gold_injected=False,
+        ldi=0.0,
+        reference_standards="",
+        gap_analysis="",
+    )
+
+
+@pytest.fixture
+def invalid_sample_record() -> dict:
+    """An invalid sample record (dict format) for error testing."""
+    return {
+        "id": "invalid-001",
+        "metadata": {
+            "example_type": "invalid_type",
+            "evol_difficulty": "unknown",
+            "fragment_name": "",
+            "source_file": "",
+            "gold_injected": False,
+            "ldi": 1.5,  # Invalid: > 1.0
+            "reference_standards": "",
+            "gap_analysis": "",
+        },
+        "conversation": [],
+    }
+
+
+@pytest.fixture
+def mock_api_response_success() -> dict:
+    """A successful API response for mocking."""
+    return {
+        "status": "success",
+        "data": {"result": "expected_value"},
+        "message": "Operation completed",
+    }
+
+
+@pytest.fixture
+def mock_api_response_error() -> dict:
+    """An error API response for mocking."""
+    return {
+        "status": "error",
+        "error": {"code": 500, "message": "Internal server error"},
+    }
+
+
+@pytest.fixture
+def temp_json_file(tmp_path: Path) -> Path:
+    """Create a temporary JSON file for testing file I/O."""
+    import json
+
+    data = {"key": "value", "number": 42}
+    file_path = tmp_path / "test.json"
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    return file_path
+
+
+# =============================================================================
+# PHP LEGACY DRIVER FIXTURES
+# =============================================================================
+
+PHP_LEGACY_FIXTURES_DIR = Path(__file__).parent / "fixtures" / "php_legacy"
+
+
+def pytest_configure(config):
+    """Register custom pytest marks for PHP legacy driver tests."""
+    config.addinivalue_line(
+        "markers", "php_legacy: marks tests for PHP legacy driver functionality"
+    )
+    config.addinivalue_line(
+        "markers", "php_legacy_unit: marks unit tests for PHP legacy driver"
+    )
+    config.addinivalue_line(
+        "markers",
+        "php_legacy_integration: marks integration tests for PHP legacy driver",
+    )
+
+
+@pytest.fixture
+def php_legacy_fixtures_dir() -> Path:
+    """Return the path to the PHP legacy fixtures directory."""
+    return PHP_LEGACY_FIXTURES_DIR
+
+
+@pytest.fixture
+def php_legacy_sample_content() -> str:
+    """Load a sample PHP content for testing fragment extraction.
+
+    This fixture provides a minimal PHP file with common legacy patterns
+    including functions, includes, and database calls.
+    """
+    return """<?php
+// Sample PHP file for testing
+global $languages_id, $db;
+
+include(DIR_WS_INCLUDES . 'application_top.php');
+
+function tep_db_query($query) {
+    return mysql_query($query);
+}
+
+function get_categories() {
+    global $db;
+    $query = "SELECT * FROM categories WHERE categories_id = '" . $languages_id . "'";
+    return tep_db_query($query);
+}
+
+// Switch case block
+switch ($action) {
+    case 'edit':
+        tep_redirect(FILENAME_EDIT);
+        break;
+    case 'delete':
+        $_SESSION['customer_id'] = $customer_id;
+        break;
+}
+?>"""
+
+
+# Minimal fallback content used when specific fixtures don't exist yet
+PHP_LEGACY_FALLBACK_CONTENT = """<?php
+// Sample PHP file for testing
+global $languages_id, $db;
+
+include(DIR_WS_INCLUDES . 'application_top.php');
+
+function tep_db_query($query) {
+    return mysql_query($query);
+}
+
+function get_categories() {
+    global $db;
+    $query = "SELECT * FROM categories WHERE categories_id = '" . $languages_id . "'";
+    return tep_db_query($query);
+}
+
+// Switch case block
+switch ($action) {
+    case 'edit':
+        tep_redirect(FILENAME_EDIT);
+        break;
+    case 'delete':
+        $_SESSION['customer_id'] = $customer_id;
+        break;
+}
+?>"""
+
+
+@pytest.fixture
+def php_legacy_oscommerce_fixture() -> str:
+    """Load the osCommerce categories fixture for integration tests."""
+    from tests.fixtures.php_legacy import load_php_fixture
+
+    try:
+        return load_php_fixture("oscommerce_categories.php")
+    except FileNotFoundError:
+        # Return minimal fixture if file not yet created (T002)
+        return PHP_LEGACY_FALLBACK_CONTENT
+
+
+@pytest.fixture
+def php_legacy_wordpress_fixture() -> str:
+    """Load the WordPress ajax actions fixture for integration tests."""
+    from tests.fixtures.php_legacy import load_php_fixture
+
+    try:
+        return load_php_fixture("wordpress_ajax_actions.php")
+    except FileNotFoundError:
+        return PHP_LEGACY_FALLBACK_CONTENT
+
+
+@pytest.fixture
+def php_legacy_zencart_fixture() -> str:
+    """Load the ZenCart customers fixture for integration tests."""
+    from tests.fixtures.php_legacy import load_php_fixture
+
+    try:
+        return load_php_fixture("zencart_customers.php")
+    except FileNotFoundError:
+        return PHP_LEGACY_FALLBACK_CONTENT
+
+
+@pytest.fixture
+def fixtures_dir() -> Path:
+    """Return the path to the tests/fixtures directory."""
+    return Path(__file__).parent / "fixtures"

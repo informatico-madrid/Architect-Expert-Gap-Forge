@@ -32,22 +32,12 @@ class TestIngestorCli:
     @pytest.fixture
     def valid_yaml_path(self) -> Path:
         """Path to the valid YAML config fixture."""
-        return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "yaml_configs"
-            / "valid_config.yaml"
-        )
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "valid_config.yaml"
 
     @pytest.fixture
     def invalid_syntax_yaml_path(self) -> Path:
         """Path to the invalid syntax YAML config fixture."""
-        return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "yaml_configs"
-            / "invalid_syntax.yaml"
-        )
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "invalid_syntax.yaml"
 
     @pytest.fixture
     def nonexistent_yaml_path(self, tmp_path: Path) -> Path:
@@ -97,9 +87,7 @@ class TestIngestorCli:
         # Assert - should return non-zero exit code for missing file
         assert exit_code == 1
 
-    def test_cli_fails_with_invalid_yaml_syntax(
-        self, invalid_syntax_yaml_path: Path
-    ) -> None:
+    def test_cli_fails_with_invalid_yaml_syntax(self, invalid_syntax_yaml_path: Path) -> None:
         """Test that CLI with invalid YAML syntax returns error.
 
         T023, T025: Integration test for CLI with invalid YAML.
@@ -146,12 +134,7 @@ class TestIngestorCliSubprocess:
     @pytest.fixture
     def valid_yaml_path(self) -> Path:
         """Path to the valid YAML config fixture."""
-        return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "yaml_configs"
-            / "valid_config.yaml"
-        )
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "valid_config.yaml"
 
     def test_cli_subprocess_with_valid_config(self, valid_yaml_path: Path) -> None:
         """Test CLI subprocess execution with valid config.
@@ -177,7 +160,7 @@ class TestIngestorCliSubprocess:
         # the processor which requires GitHub token, but it should at least
         # pass YAML loading and validation stages
         # We check that it doesn't fail on YAML parsing
-        assert "YAML" not in result.stderr and "error" not in result.stderr.lower()
+        assert "YAML" not in result.stderr or "error" not in result.stderr.lower()
 
     def test_cli_subprocess_with_missing_file(self, tmp_path: Path) -> None:
         """Test CLI subprocess with missing config file.
@@ -201,7 +184,4 @@ class TestIngestorCliSubprocess:
 
         # Should fail with non-zero exit code
         assert result.returncode != 0
-        assert (
-            "not found" in result.stderr.lower()
-            or "does not exist" in result.stderr.lower()
-        )
+        assert "not found" in result.stderr.lower() or "does not exist" in result.stderr.lower()

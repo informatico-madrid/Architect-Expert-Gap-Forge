@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from src.discovery import ProcessingConfig, RepoProcessor
+from src.discovery import Module, ProcessingConfig, RepoProcessor
 
 
 class TestProcessorModuleDiscoveryDirectory:
@@ -135,7 +136,7 @@ class TestProcessorModuleDiscoveryManualMapping:
         processor = RepoProcessor(config)
 
         # Manual mapping should use the overrides to discover modules
-        processor._discover_modules(temp_repo_for_manual_mapping)
+        modules = processor._discover_modules(temp_repo_for_manual_mapping)
 
         # The processor should consider module_overrides when using manual_mapping
         assert config.module_overrides is not None
@@ -161,7 +162,7 @@ class TestProcessorModuleDiscoveryManualMapping:
             module_discovery_strategy="manual_mapping",
             module_overrides=manual_mapping,
         )
-        RepoProcessor(config)
+        processor = RepoProcessor(config)
 
         # Verify the override configuration
         assert config.module_overrides is not None
@@ -196,13 +197,8 @@ class TestProcessorStrategySelection:
         # Should find at least the sensor component
         assert len(modules) >= 1
 
-    def test_strategy_defaults_to_auto(self, tmp_path: Path) -> None:
-        """Test that discover_modules auto-detects the correct strategy.
-
-        The default in ProcessingConfig is "manifest", but when calling
-        _discover_modules with a repo that has manifest.json, the auto
-        detection should detect and use the manifest strategy.
-        """
+    def test_strategy_defaults_to_manifest(self, tmp_path: Path) -> None:
+        """Test that default strategy is manifest."""
         # Create a repo with manifest.json
         repo_root = tmp_path / "test_repo"
         repo_root.mkdir()
@@ -215,14 +211,15 @@ class TestProcessorStrategySelection:
             raw_subdir=".",
             output_subdir="output",
             category="test",
-            # Not specifying strategy - defaults to "manifest"
+            # Not specifying strategy - should default to manifest
         )
         processor = RepoProcessor(config)
 
-        # Discover modules - this will auto-detect the strategy
+        # Default should be manifest
+        assert config.module_discovery_strategy == "manifest"
+
         modules = processor._discover_modules(repo_root)
         assert len(modules) >= 1
-        # Auto strategy should detect manifest repos
         assert modules[0].anchor_type == "manifest"
 
 

@@ -6,7 +6,7 @@ requests>=2.28
 tqdm>=4.64
 httpx>=0.27
 huggingface-hub>=0.22
-
+datasets>=2.19
 tiktoken>=0.7
 click>=8.1
 
@@ -16,19 +16,3 @@ google-genai>=1.0
 
 # dotenv support for loading environment variables in dev/CI
 python-dotenv>=1.0
-
-# New dependencies — added for dependency-compatibility spec (2026-04-24)
-dspy==3.2.0
-langgraph==0.2.76
-openai==2.32.0
-
-# Bugfix: previously missing, required by src/audit/eval_bpb.py and scripts/benchmark/measure_performance.py
-numpy==2.4.4
-scipy==1.17.1
-
-# Pinned to prevent 4.x API breakage (datasets 4.x changes core data format)
-datasets==2.21.0
-
-# Bounded ranges for known breaking-change transitive dependencies
-packaging>=25.0,<26.0
-fsspec>=2023.1.0,<2025.0.0

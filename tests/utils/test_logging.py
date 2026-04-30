@@ -78,7 +78,6 @@ class TestGetLogger:
         if not parent_logger.handlers and not parent_logger.parent.handlers:
             # Manually add a handler to parent to simulate configured parent
             import sys
-
             handler = logging.StreamHandler(sys.stderr)
             parent_logger.addHandler(handler)
         # Now get child - it should not add duplicate handlers

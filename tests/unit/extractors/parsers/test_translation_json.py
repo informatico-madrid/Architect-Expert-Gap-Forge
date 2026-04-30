@@ -107,17 +107,23 @@ class TestFlattenDict:
     def test_flat_dict_single_level(self) -> None:
         """Test flattening a single-level dictionary."""
         data = {"key1": "value1", "key2": "value2"}
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         assert len(entries) == 2
         keys = {e.key for e in entries}
-        assert "key1" in keys
-        assert "key2" in keys
+        assert 'key1' in keys
+        assert 'key2' in keys
 
     def test_nested_dict_dot_path(self) -> None:
         """Test that nested dict creates proper dot-path keys."""
-        data = {"ui": {"card": {"title": "Card Title"}}}
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        data = {
+            "ui": {
+                "card": {
+                    "title": "Card Title"
+                }
+            }
+        }
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         assert len(entries) == 1
         assert entries[0].key == "ui.card.title"
@@ -126,16 +132,30 @@ class TestFlattenDict:
 
     def test_deeply_nested_dict(self) -> None:
         """Test deeply nested dictionary flattening."""
-        data = {"level1": {"level2": {"level3": {"value": "deep value"}}}}
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        data = {
+            "level1": {
+                "level2": {
+                    "level3": {
+                        "value": "deep value"
+                    }
+                }
+            }
+        }
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         assert len(entries) == 1
         assert entries[0].key == "level1.level2.level3.value"
 
     def test_intermediate_category_not_included(self) -> None:
         """Test that intermediate categories don't produce entries."""
-        data = {"ui": {"card": {"title": "Card Title"}}}
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        data = {
+            "ui": {
+                "card": {
+                    "title": "Card Title"
+                }
+            }
+        }
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         # Should only have the leaf, not "ui" or "ui.card"
         keys = {e.key for e in entries}
@@ -150,11 +170,11 @@ class TestFlattenDict:
                 "card": {
                     "title": "Card Title",
                     "subtitle": "Card Subtitle",
-                    "description": "Card Description",
+                    "description": "Card Description"
                 }
             }
         }
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         assert len(entries) == 3
         keys = {e.key for e in entries}
@@ -164,8 +184,13 @@ class TestFlattenDict:
 
     def test_list_handling(self) -> None:
         """Test that lists are properly flattened with index notation."""
-        data = {"items": [{"name": "Item 1"}, {"name": "Item 2"}]}
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        data = {
+            "items": [
+                {"name": "Item 1"},
+                {"name": "Item 2"}
+            ]
+        }
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         keys = {e.key for e in entries}
         assert "items[0].name" in keys
@@ -174,9 +199,16 @@ class TestFlattenDict:
     def test_mixed_nested_structure(self) -> None:
         """Test mixed nested structure with multiple paths."""
         data = {
-            "ui": {"card": {"title": "Card Title"}, "panel": {"title": "Panel Title"}}
+            "ui": {
+                "card": {
+                    "title": "Card Title"
+                },
+                "panel": {
+                    "title": "Panel Title"
+                }
+            }
         }
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         assert len(entries) == 2
         keys = {e.key for e in entries}
@@ -187,15 +219,20 @@ class TestFlattenDict:
         """Test that file_path is correctly stored in entries."""
         data = {"key": "value"}
         file_path = "/path/to/translations/en.json"
-        entries = _flatten_dict(data, "", file_path)
+        entries = _flatten_dict(data, '', file_path)
 
         assert len(entries) == 1
         assert entries[0].file_path == file_path
 
     def test_string_only_nested_dict_leaf(self) -> None:
         """Test that a dict with only string values becomes a leaf."""
-        data = {"card": {"en": "Card", "es": "Tarjeta"}}
-        entries = _flatten_dict(data, "", "/path/to/file.json")
+        data = {
+            "card": {
+                "en": "Card",
+                "es": "Tarjeta"
+            }
+        }
+        entries = _flatten_dict(data, '', '/path/to/file.json')
 
         # The inner dict has only string values, so it should be flattened
         keys = {e.key for e in entries}
@@ -210,15 +247,21 @@ class TestTranslationJsonParser:
     def temp_json_file(self) -> Path:
         """Create a temporary JSON file for testing."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
+            mode='w',
+            suffix='.json',
+            delete=False,
+            encoding='utf-8'
         ) as f:
             yield Path(f.name)
         Path(f.name).unlink()
 
     def test_parse_simple_json(self, temp_json_file: Path) -> None:
         """Test parsing a simple JSON file."""
-        data = {"greeting": "Hello", "farewell": "Goodbye"}
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        data = {
+            "greeting": "Hello",
+            "farewell": "Goodbye"
+        }
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -229,8 +272,14 @@ class TestTranslationJsonParser:
 
     def test_parse_nested_json(self, temp_json_file: Path) -> None:
         """Test parsing nested JSON structure."""
-        data = {"ui": {"card": {"title": "My Card"}}}
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        data = {
+            "ui": {
+                "card": {
+                    "title": "My Card"
+                }
+            }
+        }
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -242,33 +291,47 @@ class TestTranslationJsonParser:
         """Test that ICU placeholders are preserved in parsed values."""
         data = {
             "greeting": "Hello {name}",
-            "items": "{count, plural, =0 {No items} other {Many items}}",
+            "items": "{count, plural, =0 {No items} other {Many items}}"
         }
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
         assert len(entries) == 2
         entries_by_key = {e.key: e for e in entries}
         assert entries_by_key["greeting"].value == "Hello {name}"
-        assert (
-            entries_by_key["items"].value
-            == "{count, plural, =0 {No items} other {Many items}}"
-        )
+        assert entries_by_key["items"].value == "{count, plural, =0 {No items} other {Many items}}"
 
     def test_parse_complex_homeassistant_structure(self, temp_json_file: Path) -> None:
         """Test parsing complex HomeAssistant translation structure."""
         data = {
             "ui": {
-                "common": {"confirm": "Confirm", "cancel": "Cancel"},
-                "card": {
-                    "camera": {"title": "Camera", "streams": "Streams"},
-                    "energy": {"title": "Energy", "Solar": "Solar", "Grid": "Grid"},
+                "common": {
+                    "confirm": "Confirm",
+                    "cancel": "Cancel"
                 },
+                "card": {
+                    "camera": {
+                        "title": "Camera",
+                        "streams": "Streams"
+                    },
+                    "energy": {
+                        "title": "Energy",
+                        "Solar": "Solar",
+                        "Grid": "Grid"
+                    }
+                }
             },
-            "component": {"climate": {"state": {"off": "Off", "heat": "Heat"}}},
+            "component": {
+                "climate": {
+                    "state": {
+                        "off": "Off",
+                        "heat": "Heat"
+                    }
+                }
+            }
         }
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -284,8 +347,12 @@ class TestTranslationJsonParser:
 
     def test_parse_is_leaf_flag(self, temp_json_file: Path) -> None:
         """Test that is_leaf flag is correctly set."""
-        data = {"parent": {"child": "value"}}
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        data = {
+            "parent": {
+                "child": "value"
+            }
+        }
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -295,7 +362,7 @@ class TestTranslationJsonParser:
     def test_parse_stores_file_path(self, temp_json_file: Path) -> None:
         """Test that the source file path is stored in entries."""
         data = {"key": "value"}
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -309,7 +376,10 @@ class TestParseTranslationJsonFunction:
     def test_parse_translation_json_returns_entries(self) -> None:
         """Test that parse_translation_json returns TranslationEntry list."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
+            mode='w',
+            suffix='.json',
+            delete=False,
+            encoding='utf-8'
         ) as f:
             json.dump({"key": "value"}, f)
             temp_path = Path(f.name)
@@ -332,7 +402,7 @@ class TestTranslationEntry:
             key="ui.card.title",
             value="Card Title",
             file_path="/path/to/file.json",
-            is_leaf=True,
+            is_leaf=True
         )
 
         assert entry.key == "ui.card.title"
@@ -348,7 +418,10 @@ class TestIcuMessagePreservation:
     def temp_json_file(self) -> Path:
         """Create a temporary JSON file for testing."""
         with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
+            mode='w',
+            suffix='.json',
+            delete=False,
+            encoding='utf-8'
         ) as f:
             yield Path(f.name)
         Path(f.name).unlink()
@@ -356,7 +429,7 @@ class TestIcuMessagePreservation:
     def test_simple_variable_placeholder(self, temp_json_file: Path) -> None:
         """Test preservation of simple {variable} placeholder."""
         data = {"welcome": "Welcome, {username}!"}
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -367,7 +440,7 @@ class TestIcuMessagePreservation:
         data = {
             "item_count": "{count, plural, =0 {No items} =1 {One item} other {# items}}"
         }
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -380,7 +453,7 @@ class TestIcuMessagePreservation:
         data = {
             "gender_pronoun": "{gender, select, male {he} female {she} other {they}}"
         }
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -393,7 +466,7 @@ class TestIcuMessagePreservation:
         data = {
             "greeting": "Hello {first_name} and {second_name}, you have {count} messages"
         }
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 
@@ -404,8 +477,10 @@ class TestIcuMessagePreservation:
 
     def test_placeholder_with_attributes(self, temp_json_file: Path) -> None:
         """Test placeholders with ICU-style attributes are preserved."""
-        data = {"datetime": "{date, time, short} at {time, time, short}"}
-        temp_json_file.write_text(json.dumps(data), encoding="utf-8")
+        data = {
+            "datetime": "{date, time, short} at {time, time, short}"
+        }
+        temp_json_file.write_text(json.dumps(data), encoding='utf-8')
 
         entries = TranslationJsonParser.parse(temp_json_file)
 

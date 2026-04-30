@@ -2,358 +2,342 @@
 
 ## Overview
 
-This design documents the adapter-based discovery architecture that processes Python, TypeScript, PHP, and YAML repositories with per-file adapter selection. The system uses the `ExtractorAdapter` protocol to parse files and extract dependencies, combined with discovery strategies (manifest, init, typescript, yaml, filesystem) to aggregate modules and emit fragments.
+Add TypeScript/Lit frontend parsing to the data factory via a new `TypeScriptAdapter` implementing the existing `ExtractorAdapter` protocol, with pluggable extractors for Lit components, i18n keys, and service calls. The adapter uses tree-sitter for AST parsing with regex fallback (~85% coverage v1), outputs structured `ParseResult` compatible with `RepoProcessor`, and generates ChatML JSONL for training.
 
 ## Architecture
 
 ```mermaid
 graph TB
-    subgraph "Data Factory Core"
-        A[RepoProcessor] --> B[Discovery Strategy Dispatcher]
-        B --> C1[manifest strategy]
-        B --> C2[init strategy]
-        B --> C3[typescript strategy]
-        B --> C4[yaml strategy]
-        B --> C5[filesystem strategy]
-        
-        C1 --> D[Module List]
-        C2 --> D
-        C3 --> D
-        C4 --> D
-        C5 --> D
-        
-        D --> E[Module Emitter]
-        E --> F[Type 1: FUNCTIONAL_UNIT]
-        E --> G[Type 3: LOGIC_ONLY]
-        E --> H[Type 4: MODULE_BLUEPRINT]
-        E --> I[Type 5: GOVERNANCE_RULES]
+    subgraph Adapters["Extractor Adapter Layer"]
+        TS[TypeScriptAdapter]
     end
-    
-    subgraph "Adapter Registry"
-        J[Factory.get_adapter(ext)] --> K1[PythonAstAdapter]
-        J --> K2[TypeScriptAdapter]
-        J --> K3[PhpLegacyAdapter]
-        J --> K4[YamlAdapter]
+
+    subgraph Extractors["Pluggable Extractors"]
+        Lit[LitComponentExtractor]
+        I18n[I18nKeyExtractor]
+        Svc[ServiceCallExtractor]
     end
-    
-    E -.->|per-file adapter selection | K1
-    E -.->|per-file adapter selection | K2
-    E -.->|per-file adapter selection | K3
-    E -.->|per-file adapter selection | K4
+
+    subgraph Parsers["Specialized Parsers"]
+        TJSON[TranslationJsonParser]
+    end
+
+    subgraph Export["Export Layer"]
+        ChatML[ChatMLExporter]
+        Prompts[FrontendTaxonomyPrompts]
+    end
+
+    subgraph Discovery["Existing Discovery System"]
+        RP[RepoProcessor]
+        Config[ProcessingConfig]
+        Factory[get_adapter factory]
+    end
+
+    TS --> Lit
+    TS --> I18n
+    TS --> Svc
+    TS --> TJSON
+
+    RP --> Factory
+    Factory -.->|lazy load| TS
+
+    Lit --> ChatML
+    I18n --> ChatML
+    Svc --> ChatML
+    Prompts --> ChatML
 ```
 
 ## Components
 
-### RepoProcessor
+### TypeScriptAdapter
 
-**Purpose**: Orchestrates repository processing, module discovery, and fragment emission.
-
-**Responsibilities**:
-- Dispatch repository processing to appropriate discovery strategy
-- Emit Type 1-5 fragments based on module analysis
-- Handle parse errors with configurable policies
-- Collect metrics and track processing stats
-
-**Interfaces**:
-```python
-class RepoProcessor:
-    def run(self) -> None          # Entry point for category processing
-    def _process_repository(...)   # Process single repository
-    def _discover_modules(...)     # Discover modules via strategy
-    def _emit_module(...)          # Emit fragments for module
-```
-
-### Discovery Strategy Dispatcher
-
-**Purpose**: Routes module discovery to appropriate algorithm based on repository type.
+**Purpose**: Base adapter implementing `ExtractorAdapter` protocol for `.ts`/`.tsx` files.
 
 **Responsibilities**:
-- Auto-detect strategy based on repo contents (manifest.json, __init__.py, .ts, .yaml, .php)
-- Apply configured strategy when explicitly set
-- Return list of Module objects for downstream processing
+- Parse TypeScript/TSX via tree-sitter (primary) or regex fallback
+- Route to pluggable extractors for domain-specific extraction
+- Return `ParseResult` with extracted modules
 
-**Strategies**:
-
-| Strategy | Detection | Use Case |
-|----------|-----------|----------|
-| manifest | manifest.json present | Home Assistant integrations |
-| init | __init__.py present | Python packages |
-| typescript | >50 .ts/.tsx files | TypeScript/TSX repos |
-| yaml | >5 .yaml/.yml/.jinja files | Home Assistant YAML/Jinja |
-| filesystem | .php files present | PHP legacy repos |
-
-**Interfaces**:
+**Interface**:
 ```python
-def discover_modules(
-    root: Path,
-    strategy: str,
-    ignore_patterns: Set[str],
-    extensions: Set[str],
-    anchor_filenames: Set[str],
-) -> List[Module]
+class TypeScriptAdapter:
+    def __init__(
+        self,
+        extractors: list[TypeScriptExtractor] | None = None,
+        use_regex_fallback: bool = True,
+    ): ...
+
+    def parse_file(self, file_path: Path) -> ParseResult: ...
+
+    def extract_dependencies(self, file_path: Path) -> list[Dependency]: ...
 ```
 
-### Adapter Factory
+### TypeScriptExtractor (Protocol)
 
-**Purpose**: Maps file extensions to adapter classes and provides cached instances.
+**Purpose**: Pluggable extractor interface for domain-specific AST traversal.
 
-**Responsibilities**:
-- Lazy-loading of adapter classes to avoid import-time side effects
-- Extension-based adapter selection (`.ts` → TypeScriptAdapter, etc.)
-- Cache management for adapter instances
-
-**Registry Mapping**:
 ```python
-ADAPTER_REGISTRY = {
-    ".ts": "typescript",
-    ".tsx": "typescript",
-    ".py": "python",
-    ".php": "php_legacy",
-    ".yaml": "yaml",
-    ".yml": "yaml",
-    ".jinja": "jinja",
-    ".jinja2": "jinja",
-}
-```
-
-**Interfaces**:
-```python
-def get_adapter(extension: str) -> ExtractorAdapter
-def register_adapter(profile: str, adapter_path: str) -> None
-def clear_cache() -> None
-```
-
-### ExtractorAdapter Protocol
-
-**Purpose**: Defines interface for language-specific parsers.
-
-**Responsibilities**:
-- Parse files and return structured results
-- Extract dependencies from source files
-- Support error handling with ParseError
-
-**Protocol**:
-```python
-@runtime_checkable
-class ExtractorAdapter(Protocol):
-    def parse_file(self, file_path: Path) -> ParseResult
-    def extract_dependencies(self, file_path: Path) -> List[Dependency]
+class TypeScriptExtractor(Protocol):
+    def extract(self, node: tree_sitter.Node, raw: str) -> list[FrontendToken]: ...
 ```
 
 **Implementations**:
 
-| Adapter | Language | Parsing | Dependency Extraction |
-|---------|----------|---------|----------------------|
-| PythonAstAdapter | Python | AST (ast module) | Import analysis |
-| TypeScriptAdapter | TypeScript/TSX | tree-sitter + regex | Import/require analysis |
-| PhpLegacyAdapter | PHP | Regex parsing | include/require analysis |
-| YamlAdapter | YAML/Jinja | PyYAML + regex | service/trigger extraction |
+| Extractor | Responsibility | Output Schema |
+|-----------|---------------|---------------|
+| `LitComponentExtractor` | @customElement, @property, @state | `{tag, class_name, properties[], states[], super_class, file_path}` |
+| `I18nKeyExtractor` | localize(), hass.localize() | `{key, context, line_number}` |
+| `ServiceCallExtractor` | hass.callService() | `{domain, service, entity_ids[], file_path, line_number}` |
 
-### Module Emitter
+### TranslationJsonParser
 
-**Purpose**: Analyzes module files and emits appropriate fragment types.
+**Purpose**: Standalone parser for nested translation JSON files.
 
 **Responsibilities**:
-- Separate anchor, logic, and test files
-- Detect test files for Type 1 pairing
-- Apply size gates for Type 3 emission
-- Aggregate blueprint context for Type 4
-- Emit governance rules from repo root
+- Recursively flatten nested JSON to dot-path keys
+- Identify leaf nodes (string values) vs intermediate categories
+- Handle ICU message placeholders
 
-**Processing Flow**:
-1. Read all logic files content
-2. For each file: detect test file → Type 1 if found
-3. Apply size gates (MIN_SIZE, LOGIC_ONLY_MIN_CHARS)
-4. Gold pattern filter for Python
-5. Emit Type 3 LOGIC_ONLY for large files
-6. Always emit Type 4 MODULE_BLUEPRINT from anchor files
-
-**Interfaces**:
+**Interface**:
 ```python
-def _emit_module(
-    mod: Module,
-    repo_root: Path,
-    prefix: str,
-    size_limit: int,
-    repo_prefix: str,
-) -> None
+@dataclass(frozen=True)
+class TranslationEntry:
+    key: str
+    value: str
+    file_path: Path
+    is_leaf: bool
+
+def parse_translation_json(file_path: Path) -> list[TranslationEntry]: ...
+```
+
+### ChatMLExporter
+
+**Purpose**: Generate ChatML JSONL training data from extracted frontend knowledge.
+
+**Interface**:
+```python
+@dataclass
+class ChatMLRecord:
+    messages: list[Message]
+
+@dataclass
+class Message:
+    role: Literal["system", "user", "assistant"]
+    content: str
+
+class ChatMLExporter:
+    def export(
+        self,
+        tokens: list[FrontendToken],
+        system_prompt: str,
+    ) -> Iterator[ChatMLRecord]: ...
+
+    def to_jsonl(self, records: Iterator[ChatMLRecord], output: Path) -> None: ...
+```
+
+### FrontendTaxonomyPrompts
+
+**Purpose**: System/user prompt templates covering all extractor output schemas.
+
+**Structure**:
+```python
+@dataclass
+class FrontendTaxonomyPrompts:
+    system_lit_component: str  # Schema context for Lit components
+    user_lit_extraction: str     # Extraction prompt with code snippet
+    system_i18n: str
+    user_i18n_extraction: str
+    system_service_call: str
+    user_service_call_extraction: str
 ```
 
 ## Data Flow
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Processor
-    participant Factory
-    participant Adapter
-    participant Strategy
-    
-    User->>Processor: run()
-    Processor->>Processor: _discover_modules()
-    Processor->>Strategy: discover_modules(strategy)
-    Strategy->>Strategy: parse repo contents
-    Strategy-->>Processor: List[Module]
-    
-    loop for each module
-        Processor->>Processor: Separate anchor/logic/test files
-        Processor->>Adapter: parse_file(file.path)
-        Adapter->>Adapter: parse with language parser
-        Adapter-->>Processor: ParseResult
-        Processor->>Processor: extract dependencies
-        
-        alt test file found
-            Processor->>Processor: Emit TYPE 1 FUNCTIONAL_UNIT
-        else large enough file
-            Processor->>Processor: Emit TYPE 3 LOGIC_ONLY
-        end
-        
-        Processor->>Processor: Emit TYPE 4 MODULE_BLUEPRINT
+    participant RP as RepoProcessor
+    participant TS as TypeScriptAdapter
+    participant Lit as LitComponentExtractor
+    participant I18n as I18nKeyExtractor
+    participant Svc as ServiceCallExtractor
+    participant TJSON as TranslationJsonParser
+    participant ChatML as ChatMLExporter
+
+    RP->>TS: parse_file(path)
+    TS->>TS: tree-sitter parse OR regex fallback
+    TS->>Lit: extract(node, raw)
+    TS->>I18n: extract(node, raw)
+    TS->>Svc: extract(node, raw)
+
+    alt is .json
+        TS->>TJSON: parse_translation_json(path)
+        TJSON-->>TS: list[TranslationEntry]
     end
-    
-    Processor->>Processor: Emit TYPE 5 GOVERNANCE_RULES
-    Processor-->>User: Complete
+
+    Lit-->>TS: list[FrontendToken]
+    I18n-->>TS: list[FrontendToken]
+    Svc-->>TS: list[FrontendToken]
+    TS-->>RP: ParseResult(ast_tree, raw_content, dependencies)
+
+    RP->>ChatML: export(tokens, system_prompt)
+    ChatML-->>RP: Iterator[ChatMLRecord]
 ```
 
-1. **Repository Entry**: `RepoProcessor.run()` iterates over repositories
-2. **Module Discovery**: `_discover_modules()` applies strategy (manifest, init, typescript, yaml, filesystem)
-3. **File Processing**: For each module file:
-   - Call `get_adapter(mf.path.suffix)` for per-file adapter selection
-   - Call `adapter.parse_file(mf.path)` to extract content and dependencies
-4. **Fragment Emission**:
-   - Type 1: Logic + Test pairing (size gate bypass)
-   - Type 3: Standalone files ≥ LOGIC_ONLY_MIN_CHARS
-   - Type 4: Aggregate anchor files into blueprint
-   - Type 5: Governance files from repo root
-5. **Error Handling**: ParseError caught → policy applied (abort, skip, mark_and_continue, fallback)
+**Steps**:
+1. `RepoProcessor` calls `TypeScriptAdapter.parse_file(path)` for `.ts`/`.tsx` files
+2. Adapter parses via tree-sitter (AST) or regex fallback (~85% coverage)
+3. Adapter routes AST to registered extractors (Lit, I18n, ServiceCall)
+4. Each extractor walks the AST and emits `FrontendToken` objects
+5. Adapter returns `ParseResult` with AST tree and extracted tokens
+6. `ChatMLExporter` converts tokens to ChatML JSONL records
 
 ## Technical Decisions
 
 | Decision | Options Considered | Choice | Rationale |
 |----------|-------------------|--------|-----------|
-| **Adapter selection** | Profile-based vs extension-based | Extension-based (per-file) | FR-5 requires `.ts` → TypeScriptAdapter regardless of repo profile |
-| **Discovery strategies** | Single strategy vs multi-strategy | Multi-strategy (5 strategies) | Different repo types require different module detection algorithms |
-| **Parse error handling** | Single policy vs configurable | Configurable (abort, skip, mark_and_continue, fallback) | FR-9 requires policy configurability for different repositories |
-| **Test file detection** | Exact match vs scored matching | Hybrid (exact + scored) | AC-1.2 requires exact name mirror with fallback for directory structure |
-| **Type 2 removal** | Keep vs remove | Remove intentionally | Type 2 (FUNCTIONAL_UNIT_WITH_CONTEXT) removed; README folded into Type 4 |
-| **Registry caching** | Eager vs lazy loading | Lazy loading | Avoids import-time side effects as per constitution requirements |
-| **Module detection** | Depth-first vs breadth-first | Directory-based grouping | Groups files by parent directory for TypeScript/YAML/PHP repos |
-| **README inheritance** | Per-module vs repo-level | Walk-up to repo root | FR-7 requires README inheritance when module lacks README |
+| AST Library | tree-sitter, typescript-estree, @babel/parser, regex | **tree-sitter** with regex fallback | Most robust for TS/TSX; regex fallback achieves 85% for v1; no Node.js dependency |
+| Constant resolution | resolve, mark "unresolved", skip | **mark "unresolved"** | v1 scope; constant references are ~15% of tag names; defer to future enhancement |
+| Dynamic key handling | full AST analysis, prefix-only, skip | **prefix-only** | ~20% of keys use template literals; prefix conveys semantic grouping for training |
+| Bundle granularity | per-component, per-file, per-module | **per-component** | Fine-grained for training; matches existing module discovery pattern |
+| Regex fallback threshold | mandatory AST, 85% acceptable, configurable | **85% acceptable for v1** | Deployment flexibility; tree-sitter is stretch goal for v2 |
 
 ## File Structure
 
 | File | Action | Purpose |
 |------|--------|---------|
-| `src/utils/extractors/base.py` | Existing | Defines `ExtractorAdapter` protocol, `ParseError`, `ParseResult` |
-| `src/utils/extractors/factory.py` | Existing | Maps extensions to adapter classes, lazy-loading registry |
-| `src/utils/extractors/python_ast_adapter.py` | Existing | Python AST-based parsing |
-| `src/utils/extractors/typescript_adapter.py` | Existing | TypeScript/TSX parsing with tree-sitter + regex |
-| `src/utils/extractors/php_legacy_adapter.py` | Existing | PHP legacy parsing with 3-stage pipeline |
-| `src/utils/extractors/yaml_adapter.py` | Existing | YAML/Jinja parsing |
-| `src/discovery/file_scanner.py` | Existing | Discovery strategies, size constants, anchor file detection |
-| `src/discovery/metadata_enricher.py` | Existing | `RepoProcessor` implementation, fragment emission |
-| `src/discovery/fragment_parser.py` | Existing | `Module` data class, `build_module()`, dependency extraction |
+| `src/utils/extractors/typescript_adapter.py` | **Create** | TypeScriptAdapter implementing ExtractorAdapter protocol |
+| `src/utils/extractors/extractors/lit_component.py` | **Create** | LitComponentExtractor plugin |
+| `src/utils/extractors/extractors/i18n_key.py` | **Create** | I18nKeyExtractor plugin |
+| `src/utils/extractors/extractors/service_call.py` | **Create** | ServiceCallExtractor plugin |
+| `src/utils/extractors/extractors/base.py` | **Create** | TypeScriptExtractor protocol and FrontendToken types |
+| `src/utils/extractors/parsers/translation_json.py` | **Create** | TranslationJsonParser standalone |
+| `src/export/chatml_exporter.py` | **Create** | ChatMLExporter for JSONL generation |
+| `src/export/frontend_taxonomy_prompts.py` | **Create** | Taxonomy prompt templates |
+| `src/utils/extractors/factory.py` | **Modify** | Register "typescript" profile in _ADAPTER_REGISTRY |
+| `configs/stage_1_discovery/examples/homeassistant_frontend.yaml` | **Create** | Frontend discovery config example |
+| `configs/homeassistant.yaml` | **Modify** | Add homeassistant/frontend to static_repos, .ts/.tsx to extensions |
+| `tests/unit/extractors/test_typescript_adapter.py` | **Create** | Unit tests for adapter |
+| `tests/unit/extractors/extractors/test_lit_component.py` | **Create** | Unit tests for Lit extractor |
+| `tests/unit/extractors/extractors/test_i18n_key.py` | **Create** | Unit tests for i18n extractor |
+| `tests/unit/extractors/extractors/test_service_call.py` | **Create** | Unit tests for service call extractor |
+
+## Unresolved Questions (Resolved)
+
+1. **Tree-sitter vs typescript-estree**: Tree-sitter primary (robust AST), regex fallback for v1 (~85% coverage).
+2. **Constant reference resolution**: Tag names resolved as constants marked "unresolved" in v1.
+3. **Dynamic key prefix-only**: Prefix-only extraction acceptable (~20% use template literals).
+4. **Per-component bundling**: Per-component granularity for training data alignment.
+5. **Regex fallback threshold**: 85% acceptable for v1; tree-sitter AST is v2 stretch goal.
 
 ## Error Handling
 
 | Error Scenario | Handling Strategy | User Impact |
 |----------------|-------------------|-------------|
-| ParseError (malformed Python) | Policy-based: abort, skip, mark_and_continue, fallback | Repository processing continues with configurable tolerance |
-| ParseError (TypeScript syntax) | Same as Python | Consistent error handling across all languages |
-| Missing adapter for extension | Fallback to PythonAstAdapter | Graceful degradation, logged warning |
-| Missing test file | Skip Type 1, apply size gate for Type 3 | File may be emitted as LOGIC_ONLY instead of FUNCTIONAL_UNIT |
-| Large file exceeds size limit | Skip file | File excluded from output, counted in `skipped_size` |
-| Gold pattern filter fails (Python) | Skip file | Counted in `skipped_gold`, not emitted |
-| Repository-level abort | All remaining files skipped | Repository processing stops, added to `needs_manual_review` |
+| Tree-sitter parse fails | Fall back to regex extraction | Partial coverage (~85%); logged warning |
+| Regex extraction fails | Skip file, continue processing | No output for this file; logged error |
+| Malformed JSON (translation) | Skip file, continue processing | No i18n entries; logged error |
+| ICU placeholder parsing | Pass through raw placeholder | Placeholder preserved in value |
+| File too large (>60KB) | Skip file | Not processed; logged at debug |
 
-**Metrics Tracked**:
-- `TYPE1_FUNCTIONAL_UNIT`: Count of functional units emitted
-- `TYPE3_LOGIC_ONLY`: Count of standalone files emitted
-- `TYPE4_MODULE_BLUEPRINT`: Count of blueprints emitted
-- `TYPE5_GOVERNANCE_RULES`: Count of governance rules emitted
-- `skipped_size`: Files excluded due to size gates
-- `skipped_gold`: Python files failing gold pattern filter
-- `parse_errors`: Total parse errors encountered
-- `parse_errors_aborted`: Repositories aborted due to parse errors
-- `needs_manual_review`: List of files requiring manual review
+## Edge Cases
+
+- **Aliased imports** (`import { customElement as ce }`): Resolved via import alias tracking.
+- **Namespace imports** (`import * as helpers`): Not supported in v1; logged warning.
+- **Nested decorators**: Only top-level `@customElement` on class declarations extracted.
+- **Template literal keys** (` `ui.card.${action}` `): Extract static prefix only.
+- **Dynamic callService targets** (`hass[x]()`): Not supported; logged at debug.
+- **Mixed TS/TSX**: Handled via file extension routing.
 
 ## Test Strategy
 
 ### Unit Tests
-
-**Adapter Tests** (`tests/utils/extractors/`):
-- `test_python_ast_adapter.py`: Parse Python files, extract imports, dependencies
-- `test_typescript_adapter.py`: Parse TS/TSX, extract imports, Lit components
-- `test_php_legacy_adapter.py`: Parse PHP, extract includes, function calls
-- `test_yaml_adapter.py`: Parse YAML/Jinja, extract services, triggers
-- `test_factory.py`: Extension-to-adapter mapping, caching behavior
-
-**Discovery Strategy Tests** (`tests/discovery/`):
-- `test_manifest_strategy.py`: manifest.json discovery
-- `test_init_strategy.py`: __init__.py discovery
-- `test_typescript_strategy.py`: .ts/.tsx directory grouping
-- `test_yaml_strategy.py`: .yaml/.jinja directory grouping
-- `test_filesystem_strategy.py`: .php directory grouping
+- `test_typescript_adapter_parse_file`: Valid .ts file returns ParseResult
+- `test_lit_component_extractor`: Decorator detection, property/state extraction
+- `test_i18n_key_extractor`: localize() and hass.localize() detection, template literal prefix
+- `test_service_call_extractor`: callService pattern, domain/service/entity_id extraction
+- `test_translation_json_parser`: Flattening, leaf detection, ICU placeholder
 
 ### Integration Tests
-
-**End-to-End Tests** (`tests/integration/`):
-- `test_python_integration.py`: Python repo → TYPE 1, 3, 4, 5 emission
-- `test_typescript_integration.py`: TypeScript repo → TYPE 3, 4 emission
-- `test_yaml_integration.py`: YAML/Jinja repo → TYPE 3, 4 emission
-- `test_php_integration.py`: PHP repo → TYPE 3, 4 emission
-
-**Per-File Adapter Selection Tests**:
-- Mixed-language repo: Python repo with TypeScript config files
-- Verify `.ts` files → TypeScriptAdapter regardless of repo type
-- Verify `.py` files → PythonAstAdapter regardless of repo type
-
-### Verification Tests
-
-**Fragment Type Verification** (`tests/verification/`):
-- Verify all TYPE 1 bundles include `[ARCH_HEADER]` with dependencies
-- Verify all TYPE 3 bundles pass size gate (≥800 chars)
-- Verify all TYPE 4 bundles include `[MODULE_MAP]`, `[DEPENDENCIES]`, `[SCHEMA]`, `[VOCABULARY]`, `[README]`
-- Verify all TYPE 5 bundles include `[GOVERNANCE_HEADER]` at repo root
-
-**Acceptance Criteria Tests**:
-- AC-1.1 to AC-1.4: Type 1 FUNCTIONAL_UNIT generation
-- AC-2.1 to AC-2.4: Type 3 LOGIC_ONLY generation
-- AC-3.1 to AC-3.7: Type 4 MODULE_BLUEPRINT generation
-- AC-4.1 to AC-4.4: Type 5 GOVERNANCE_RULES generation
-- AC-5.1 to AC-5.5: TypeScriptAdapter parsing
-- AC-6.1 to AC-6.4: YamlAdapter parsing
-- AC-7.1 to AC-7.4: PhpLegacyAdapter parsing
-- AC-8.1 to AC-8.5: Per-file adapter selection
+- End-to-end parse of sample .ts file through TypeScriptAdapter
+- ChatML JSONL output validation against schema
+- Config loading with new profile
 
 ## Performance Considerations
 
-- **Adapter Caching**: Single instance per adapter type in factory cache
-- **Lazy Loading**: Adapter classes only imported when first requested
-- **File Scanning**: `Path.rglob()` with early filtering for large repos
-- **Parse Error Prevention**: Policy-based error handling prevents repository aborts
-- **Memory**: <1000 concurrent files processed (NFR-2)
+- Tree-sitter parsing: <100ms for files <=60KB
+- Regex fallback: <50ms for files <=60KB
+- Parallel extractor execution via concurrent.futures (v2)
+- Lazy-loaded extractors (created only when file matches extension)
 
 ## Security Considerations
 
-- **File Path Validation**: All paths validated before processing
-- **Encoding Handling**: UTF-8 with `errors="ignore"` for robustness
-- **No External Calls**: Processing is purely local filesystem operations
-- **Regex Safety**: All regex patterns are compiled and tested for catastrophic backtracking
+- No arbitrary code execution; parsing only
+- File path validation before read
+- No network access required
+- Output sanitization for JSONL generation
 
 ## Existing Patterns to Follow
 
 Based on codebase analysis:
+- `ExtractorAdapter` protocol in `src/utils/extractors/base.py`
+- `PythonAstAdapter` implementation pattern with ParseResult return
+- `get_adapter()` lazy-loading factory in `src/utils/extractors/factory.py`
+- `ProcessingConfig` Pydantic model structure
+- RepoProcessor error handling with `RepoAbortError`
+- ChatML format uses `{messages: [{role, content}]}` (not instruction-tuned format)
 
-1. **Protocol-Based Architecture**: All adapters implement `ExtractorAdapter` protocol defined in `base.py`
-2. **Factory Registry Pattern**: Extension-to-class mapping with lazy loading in `factory.py`
-3. **ParseError-First Policy**: Parse errors are raised and caught by processor, not swallowed in adapter
-4. **Constitution Compliance**: No import-time side effects (lazy loading, module-level constants only)
-5. **Discovery Strategy Pattern**: Each strategy function follows same signature and returns `List[Module]`
-6. **Metrics Integration**: All processing increments metrics via `get_metrics()`
-7. **Logging Consistency**: All components use `logger = logging.getLogger(__name__)`
-8. **Size Gate Constants**: `MIN_SIZE`, `LOGIC_ONLY_MIN_CHARS`, `MAX_SIZE_BACKEND`, `MAX_SIZE_FRONTEND` from `file_scanner.py`
+## Integration Points
 
-## Unresolved Questions
+1. **Factory Registration**: Add `"typescript": "src.utils.extractors.typescript_adapter.TypeScriptAdapter"` to `_ADAPTER_REGISTRY` in `factory.py`
+2. **Config Schema**: Add `.ts` and `.tsx` to `extensions` in `ProcessingConfig`
+3. **Discovery Config**: Add `homeassistant/frontend` to `static_repos` in `homeassistant.yaml`
+4. **Size Limits**: Already defined via `MAX_SIZE_FRONTEND = 60_000` in `file_scanner.py`
+5. **Output Path**: Uses existing `output_subdir`/`output_category` path structure
 
-- None. All requirements confirmed complete in Phase 7 fix.
+## Critical Bug: Adapter Selection (FIXED IN PHASE 7)
+
+### Bug Description
+**Severity**: Critical - TypeScript files not parsed at all
+
+In `metadata_enricher.py`:
+```python
+# Line 145: Adapter initialized once per RepoProcessor, using profile
+self._adapter = get_adapter(cfg.profile)  # e.g., "homeassistant" → PythonAstAdapter
+
+# Line 420: Adapter only called for .py files
+if mf.path.suffix == ".py":
+    parse_result = self._adapter.parse_file(mf.path)
+# .ts, .tsx files skip adapter entirely!
+```
+
+### Root Cause
+- `cfg.profile` is "homeassistant" → selects `PythonAstAdapter`
+- PythonAstAdapter is used for ALL files regardless of extension
+- `.ts` and `.tsx` files are never processed by TypeScriptAdapter
+
+### Fix Required
+Modify `metadata_enricher.py` to select adapter per-file based on extension:
+```python
+# Instead of self._adapter = get_adapter(cfg.profile) at repo level
+# Select adapter per file in _process_file loop:
+adapter = get_adapter(mf.path.suffix)  # ".ts" → TypeScriptAdapter
+parse_result = adapter.parse_file(mf.path)
+```
+
+### Files to Modify
+- `src/discovery/metadata_enricher.py`: Change adapter selection from repo-level to file-level
+
+## Implementation Steps
+
+1. Create `src/utils/extractors/extractors/base.py` with `TypeScriptExtractor` protocol and `FrontendToken` types
+2. Create `src/utils/extractors/extractors/lit_component.py` implementing `LitComponentExtractor`
+3. Create `src/utils/extractors/extractors/i18n_key.py` implementing `I18nKeyExtractor`
+4. Create `src/utils/extractors/extractors/service_call.py` implementing `ServiceCallExtractor`
+5. Create `src/utils/extractors/parsers/translation_json.py` with `TranslationJsonParser`
+6. Create `src/utils/extractors/typescript_adapter.py` implementing `ExtractorAdapter` protocol
+7. Register "typescript" in `src/utils/extractors/factory.py` _ADAPTER_REGISTRY
+8. Create `src/export/chatml_exporter.py` with ChatMLExporter
+9. Create `src/export/frontend_taxonomy_prompts.py` with taxonomy prompt templates
+10. Update `configs/homeassistant.yaml` with frontend repo and .ts/.tsx extensions
+11. Write unit tests for each extractor
+12. Integration test with sample HomeAssistant frontend files

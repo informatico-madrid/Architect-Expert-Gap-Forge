@@ -6,6 +6,8 @@
 """Tests for main_async branches in production_v11.py to increase coverage."""
 
 import asyncio
+import tempfile
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

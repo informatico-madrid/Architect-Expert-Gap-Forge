@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "type": "spearman_baseline",
+  "timestamp": "2026-04-25T11:52:47Z",
+  "score": 1.0,
+  "status": "ok",
+  "score_description": "rho: Spearman rank correlation, range [-1, 1]",
+  "details": {
+    "method": "asymptotic",
+    "n": 10,
+    "p_value": 0.0,
+    "reason": null
+  }
+}

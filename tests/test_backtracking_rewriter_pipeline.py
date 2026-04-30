@@ -6,6 +6,7 @@
 import asyncio
 import json
 
+import pytest
 
 from src.curation import backtracking_config as br_cfg
 from src.curation import backtrack_strategy as br_strategy

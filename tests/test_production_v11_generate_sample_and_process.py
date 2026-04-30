@@ -14,8 +14,10 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+import pytest
 
 from src.factory import prompt_builder as pb_module
+from src.factory import config as cfg_module
 from src.factory.checkpoint import ProgressTracker
 from src.factory.pipeline_runner import generate_sample_async, process_fragment
 

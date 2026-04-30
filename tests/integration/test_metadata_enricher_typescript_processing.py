@@ -53,6 +53,7 @@ export class HaDialog extends LitElement {
         # Create an __init__.py to make this directory a discoverable module
         (repo / "__init__.py").write_text("")
 
+
         # Create another TypeScript file with i18n and service calls
         (repo / "service_handler.ts").write_text("""
 import { HassService } from './types';
@@ -127,30 +128,25 @@ export class MyElement extends LitElement {
         processor = RepoProcessor(cfg)
 
         # Track if adapter.parse_file was called via per-file lookup
+        adapter_called_files = []
         mock_adapter = MagicMock()
         mock_parse_result = MagicMock()
         mock_parse_result.dependencies = []
         mock_adapter.parse_file.return_value = mock_parse_result
 
         def track_get_adapter(extension):
-            if extension in (".ts", ".tsx"):
+            if extension in ('.ts', '.tsx'):
                 return mock_adapter
             # Return a real adapter for other extensions to not break processing
             from src.utils.extractors import get_adapter as real_get_adapter
-
             return real_get_adapter(extension)
 
-        with patch(
-            "src.discovery.metadata_enricher.get_adapter", side_effect=track_get_adapter
-        ):
+        with patch('src.discovery.metadata_enricher.get_adapter', side_effect=track_get_adapter):
             processor._process_repository("test_owner", repo_copy)
 
         # Verify TypeScript files were passed to adapter
-        ts_calls = [
-            call
-            for call in mock_adapter.parse_file.call_args_list
-            if call[0][0].suffix == ".ts"
-        ]
+        ts_calls = [call for call in mock_adapter.parse_file.call_args_list
+                    if call[0][0].suffix == '.ts']
         assert len(ts_calls) > 0, (
             f"TypeScriptAdapter.parse_file() was never called for .ts files. "
             f"Adapter was called with: {[call[0][0].name for call in mock_adapter.parse_file.call_args_list]}"
@@ -189,25 +185,19 @@ export class MyElement extends LitElement {
         mock_adapter.parse_file.return_value = mock_parse_result
 
         def track_get_adapter(extension):
-            if extension in (".ts", ".tsx"):
+            if extension in ('.ts', '.tsx'):
                 adapter_called_files.append(extension)
                 return mock_adapter
             # Return a real adapter for other extensions to not break processing
             from src.utils.extractors import get_adapter as real_get_adapter
-
             return real_get_adapter(extension)
 
-        with patch(
-            "src.discovery.metadata_enricher.get_adapter", side_effect=track_get_adapter
-        ):
+        with patch('src.discovery.metadata_enricher.get_adapter', side_effect=track_get_adapter):
             processor._process_repository("test_owner", repo_copy)
 
         # Verify TSX files were passed to adapter
-        tsx_calls = [
-            call
-            for call in mock_adapter.parse_file.call_args_list
-            if call[0][0].suffix == ".tsx"
-        ]
+        tsx_calls = [call for call in mock_adapter.parse_file.call_args_list
+                     if call[0][0].suffix == '.tsx']
         assert len(tsx_calls) > 0, (
             f"TypeScriptAdapter.parse_file() was never called for .tsx files. "
             f"Adapter was called with: {[call[0][0].name for call in mock_adapter.parse_file.call_args_list]}"
@@ -247,20 +237,17 @@ export class MyElement extends LitElement {
 
         def track_get_adapter(extension):
             adapter_selection_log.append(extension)
-            if extension in (".ts", ".tsx"):
+            if extension in ('.ts', '.tsx'):
                 return mock_adapter
             # Return a real adapter for other extensions
             from src.utils.extractors import get_adapter as real_get_adapter
-
             return real_get_adapter(extension)
 
-        with patch(
-            "src.discovery.metadata_enricher.get_adapter", side_effect=track_get_adapter
-        ):
+        with patch('src.discovery.metadata_enricher.get_adapter', side_effect=track_get_adapter):
             processor._process_repository("test_owner", repo_copy)
 
         # Verify .ts extension was passed to get_adapter (per-file selection)
-        assert ".ts" in adapter_selection_log, (
+        assert '.ts' in adapter_selection_log, (
             f"Per-file adapter selection not happening. "
             f"get_adapter was called with extensions: {adapter_selection_log}"
         )

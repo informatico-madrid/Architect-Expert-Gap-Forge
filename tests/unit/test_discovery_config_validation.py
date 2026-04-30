@@ -130,13 +130,10 @@ class TestConfigFileValidation:
 
     def test_homeassistant_frontend_config_structure(self) -> None:
         """homeassistant_frontend.yaml has correct field names."""
-        config_path = Path(
-            "configs/stage_1_discovery/examples/homeassistant_frontend.yaml"
-        )
+        config_path = Path("configs/stage_1_discovery/examples/homeassistant_frontend.yaml")
         assert config_path.exists(), f"Config file not found: {config_path}"
 
         import yaml
-
         config_data = yaml.safe_load(config_path.read_text())
 
         # Must have 'extensions' field
@@ -154,9 +151,7 @@ class TestConfigFileValidation:
         """homeassistant_frontend config must have TypeScript extensions."""
         import yaml
 
-        config_path = Path(
-            "configs/stage_1_discovery/examples/homeassistant_frontend.yaml"
-        )
+        config_path = Path("configs/stage_1_discovery/examples/homeassistant_frontend.yaml")
         config_data = yaml.safe_load(config_path.read_text())
 
         extensions = config_data.get("extensions", [])
@@ -164,27 +159,22 @@ class TestConfigFileValidation:
             "Frontend config must include .ts or .tsx extensions"
         )
 
-    def test_homeassistant_frontend_uses_typescript_profile(self) -> None:
-        """homeassistant_frontend config uses typescript profile for adapter selection."""
+    def test_homeassistant_frontend_profile_is_typescript(self) -> None:
+        """homeassistant_frontend config must use typescript profile."""
         import yaml
 
-        config_path = Path(
-            "configs/stage_1_discovery/examples/homeassistant_frontend.yaml"
-        )
+        config_path = Path("configs/stage_1_discovery/examples/homeassistant_frontend.yaml")
         config_data = yaml.safe_load(config_path.read_text())
 
-        # Profile should be typescript to force TypeScriptAdapter
         assert config_data.get("profile") == "typescript", (
-            "Frontend config should use profile: typescript to get TypeScriptAdapter"
+            "Frontend config must use profile: typescript to get TypeScriptAdapter"
         )
 
     def test_homeassistant_frontend_static_repos_non_empty(self) -> None:
         """homeassistant_frontend config must have non-empty static_repos."""
         import yaml
 
-        config_path = Path(
-            "configs/stage_1_discovery/examples/homeassistant_frontend.yaml"
-        )
+        config_path = Path("configs/stage_1_discovery/examples/homeassistant_frontend.yaml")
         config_data = yaml.safe_load(config_path.read_text())
 
         static_repos = config_data.get("static_repos", [])

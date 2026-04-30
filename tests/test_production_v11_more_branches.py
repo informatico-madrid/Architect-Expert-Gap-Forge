@@ -14,7 +14,9 @@ Covers:
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
 
+import pytest
 
 from src.factory import prompt_builder as pb_module
 from src.factory.pipeline_runner import generate_sample_async

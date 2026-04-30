@@ -164,7 +164,9 @@ class TestChatMLExporter:
 
     # --- messages array structure tests ---
 
-    def test_export_creates_three_messages(self, exporter, sample_token, system_prompt):
+    def test_export_creates_three_messages(
+        self, exporter, sample_token, system_prompt
+    ):
         """Test that each record has system, user, and assistant messages."""
         tokens = [sample_token]
         records = list(exporter.export(tokens, system_prompt))
@@ -252,7 +254,9 @@ class TestChatMLExporter:
         assert records[0].meta is not None
         assert records[0].meta["source"] == "lit_component"
 
-    def test_export_meta_file_is_file_path(self, exporter, sample_token, system_prompt):
+    def test_export_meta_file_is_file_path(
+        self, exporter, sample_token, system_prompt
+    ):
         """Test that meta.file equals token file_path."""
         tokens = [sample_token]
         records = list(exporter.export(tokens, system_prompt))
@@ -285,7 +289,9 @@ class TestChatMLExporter:
 
     # --- JSONL output format tests ---
 
-    def test_to_jsonl_writes_valid_jsonl(self, exporter, sample_token, system_prompt):
+    def test_to_jsonl_writes_valid_jsonl(
+        self, exporter, sample_token, system_prompt
+    ):
         """Test that to_jsonl produces valid JSONL output."""
         tokens = [sample_token]
         records = exporter.export(tokens, system_prompt)
@@ -359,7 +365,9 @@ class TestChatMLExporter:
                 lines = f.readlines()
             assert len(lines) == 1
 
-    def test_jsonl_record_structure(self, exporter, sample_token, system_prompt):
+    def test_jsonl_record_structure(
+        self, exporter, sample_token, system_prompt
+    ):
         """Test the complete structure of a JSONL record."""
         tokens = [sample_token]
         records = exporter.export(tokens, system_prompt)
@@ -386,7 +394,9 @@ class TestChatMLExporter:
 
     # --- different token type schema context tests ---
 
-    def test_export_i18n_key_token_schema(self, exporter, system_prompt):
+    def test_export_i18n_key_token_schema(
+        self, exporter, system_prompt
+    ):
         """Test schema context for i18n_key tokens."""
         token = FrontendToken(
             token_type="i18n_key",
@@ -405,7 +415,9 @@ class TestChatMLExporter:
         assert parsed["key"] == "ui.card.door.lock"
         assert parsed["context"] == "localize"
 
-    def test_export_service_call_token_schema(self, exporter, system_prompt):
+    def test_export_service_call_token_schema(
+        self, exporter, system_prompt
+    ):
         """Test schema context for service_call tokens."""
         token = FrontendToken(
             token_type="service_call",

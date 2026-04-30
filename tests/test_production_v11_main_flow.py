@@ -155,11 +155,7 @@ def test_main_async_processes_fragments_writes_output(
     # Validate that output file was created and contains JSON lines
     out_path = Path(args.output)
     assert out_path.exists()
-    lines = [
-        line
-        for line in out_path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    lines = [l for l in out_path.read_text(encoding="utf-8").splitlines() if l.strip()]
     assert len(lines) >= 1
     rec = json.loads(lines[0])
     assert (
@@ -283,9 +279,5 @@ rule: value
     asyncio.run(pv_main_async(args))
     out_path = Path(args.output)
     assert out_path.exists()
-    lines = [
-        line
-        for line in out_path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    lines = [l for l in out_path.read_text(encoding="utf-8").splitlines() if l.strip()]
     assert len(lines) >= 1

@@ -31,12 +31,7 @@ class TestYamlRequiredFieldValidation:
     @pytest.fixture
     def missing_category_yaml_path(self) -> Path:
         """Path to the YAML config fixture missing required 'category' field."""
-        return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "yaml_configs"
-            / "missing_category.yaml"
-        )
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "missing_category.yaml"
 
     def test_missing_category_field_raises_validation_error(self) -> None:
         """Test that missing required field 'category' raises ValidationError.
@@ -59,9 +54,7 @@ class TestYamlRequiredFieldValidation:
         error_messages = str(exc_info.value).lower()
         assert "category" in error_messages
 
-    def test_missing_category_field_fails_validation(
-        self, missing_category_yaml_path: Path
-    ) -> None:
+    def test_missing_category_field_fails_validation(self, missing_category_yaml_path: Path) -> None:
         """Test that missing required field 'category' in YAML file raises ValidationError.
 
         T020: Unit test for missing required field validation using YAML fixture file.
@@ -131,12 +124,7 @@ class TestYamlEnumValidation:
     @pytest.fixture
     def invalid_mode_yaml_path(self) -> Path:
         """Path to the YAML config fixture with invalid 'mode' enum value."""
-        return (
-            Path(__file__).parent.parent
-            / "fixtures"
-            / "yaml_configs"
-            / "invalid_mode.yaml"
-        )
+        return Path(__file__).parent.parent / "fixtures" / "yaml_configs" / "invalid_mode.yaml"
 
     def test_invalid_mode_value_raises_validation_error(self) -> None:
         """Test that invalid enum value for 'mode' raises ValidationError.

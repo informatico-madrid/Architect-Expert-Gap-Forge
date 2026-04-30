@@ -21,8 +21,11 @@ Usage:
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+from unittest.mock import patch as mock_patch
 
 
 class MockHuggingFaceHub:
@@ -124,9 +127,7 @@ class MockHuggingFaceHub:
 
         # Setup splits
         if train_data is not None:
-            mock_dataset.__getitem__ = lambda key, idx: (
-                train_data[idx] if idx < len(train_data) else {}
-            )
+            mock_dataset.__getitem__ = lambda key, idx: train_data[idx] if idx < len(train_data) else {}
             mock_dataset.keys = lambda: ["train"] if train_data else []
             mock_dataset["train"] = mock_dataset
 
@@ -160,6 +161,8 @@ class MockHuggingFaceContext:
         self._patchers = self.mock_hub.create_patchers()
 
         # Apply patches
+        from huggingface_hub import list_repo_files, snapshot_download
+        from datasets import load_dataset
 
         # Patch list_repo_files
         self._patchers["list_repo_files"].__enter__ = lambda self: None

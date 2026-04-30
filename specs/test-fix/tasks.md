@@ -21,7 +21,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - _Requirements: FR-1, AC-1.1_
   - _Design: Category A_
 
-- [ ] 1.3 [P] Delete tests/e2e/test_e2e_auto_detection.py
+- [x] 1.3 [P] Delete tests/e2e/test_e2e_auto_detection.py
   - **Do**: Remove the entire file. It imports removed `_detect_strategy` at module level causing collection error.
   - **Verify**: `python -c "import tests.e2e.test_e2e_auto_detection" 2>&1 | grep -q "No module named" && echo DELETE_PASS`
   - **Done when**: File no longer exists on disk
@@ -29,7 +29,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - _Requirements: FR-1, AC-1.1_
   - _Design: Category A_
 
-- [ ] 1.4 Add fixtures_dir fixture to conftest.py
+- [x] 1.4 Add fixtures_dir fixture to conftest.py
   - **Do**: Add the following fixture to `tests/conftest.py` after the existing `php_legacy_zencart_fixture` fixture (after line 545):
   ```python
   @pytest.fixture

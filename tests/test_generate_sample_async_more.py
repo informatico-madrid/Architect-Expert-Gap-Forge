@@ -14,11 +14,13 @@ from __future__ import annotations
 import asyncio
 import json
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 
 from src.factory import prompt_builder as pb_module
 from src.factory.pipeline_runner import generate_sample_async, process_fragment
+from src.factory.ldi_validator import assign_example_type
 
 
 @pytest.fixture(autouse=True)

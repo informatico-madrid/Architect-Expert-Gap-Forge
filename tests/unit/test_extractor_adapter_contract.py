@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List
+import pytest
 
 from src.utils.extractors.base import (
     ExtractorAdapter,

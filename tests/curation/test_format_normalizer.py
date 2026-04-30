@@ -89,10 +89,7 @@ def sharegpt_record_minimal() -> dict[str, Any]:
     return {
         "conversations": [
             {"from": "human", "value": "Explain Home Assistant automations"},
-            {
-                "from": "gpt",
-                "value": "Automations in Home Assistant allow you to trigger actions based on events.",
-            },
+            {"from": "gpt", "value": "Automations in Home Assistant allow you to trigger actions based on events."},
         ]
     }
 
@@ -127,10 +124,7 @@ def openai_messages_minimal() -> dict[str, Any]:
     return {
         "messages": [
             {"role": "user", "content": "What is a scene in Home Assistant?"},
-            {
-                "role": "assistant",
-                "content": "A scene allows you to set multiple entities to specific states at once.",
-            },
+            {"role": "assistant", "content": "A scene allows you to set multiple entities to specific states at once."},
         ]
     }
 
@@ -188,9 +182,7 @@ class TestAlpacaToChatML:
         assert instruction in expected_messages[0].content
         assert output == expected_messages[1].content
 
-    def test_alpaca_to_chatml_minimal(
-        self, alpaca_record_minimal: dict[str, Any]
-    ) -> None:
+    def test_alpaca_to_chatml_minimal(self, alpaca_record_minimal: dict[str, Any]) -> None:
         """Test minimal Alpaca format (instruction + output only) converts correctly."""
         instruction = alpaca_record_minimal["instruction"]
         output = alpaca_record_minimal["output"]
@@ -299,7 +291,8 @@ class TestOpenAIMessagesPassthrough:
 
         # Convert to Message objects (should be identity for OpenAI format)
         messages = [
-            Message(role=msg["role"], content=msg["content"]) for msg in messages_data
+            Message(role=msg["role"], content=msg["content"])
+            for msg in messages_data
         ]
 
         # Verify structure preserved
@@ -316,7 +309,8 @@ class TestOpenAIMessagesPassthrough:
         messages_data = openai_messages_minimal["messages"]
 
         messages = [
-            Message(role=msg["role"], content=msg["content"]) for msg in messages_data
+            Message(role=msg["role"], content=msg["content"])
+            for msg in messages_data
         ]
 
         assert len(messages) == 2
@@ -330,7 +324,8 @@ class TestOpenAIMessagesPassthrough:
         messages_data = openai_messages_record["messages"]
 
         messages = [
-            Message(role=msg["role"], content=msg["content"]) for msg in messages_data
+            Message(role=msg["role"], content=msg["content"])
+            for msg in messages_data
         ]
 
         # First message should be system
@@ -348,10 +343,7 @@ class TestNormalizationError:
         # Simulate the validation that FormatNormalizer would perform
 
         has_messages = "messages" in invalid_record_no_messages
-        has_alpaca = (
-            "instruction" in invalid_record_no_messages
-            and "output" in invalid_record_no_messages
-        )
+        has_alpaca = "instruction" in invalid_record_no_messages and "output" in invalid_record_no_messages
 
         # Should raise NormalizationError
         if not has_messages and not has_alpaca:
@@ -361,10 +353,7 @@ class TestNormalizationError:
                     "or 'instruction' + 'output' (Alpaca format)"
                 )
 
-            assert (
-                "messages" in str(exc_info.value).lower()
-                or "instruction" in str(exc_info.value).lower()
-            )
+            assert "messages" in str(exc_info.value).lower() or "instruction" in str(exc_info.value).lower()
 
     def test_partial_alpaca_fields_raises_exception(
         self, invalid_record_partial_fields: dict[str, Any]
@@ -518,9 +507,7 @@ class TestEdgeCases:
         }
 
         messages = [
-            Message(
-                role=role_mapping.get(conv["from"], conv["from"]), content=conv["value"]
-            )
+            Message(role=role_mapping.get(conv["from"], conv["from"]), content=conv["value"])
             for conv in record["conversations"]
         ]
 
@@ -573,10 +560,7 @@ class TestConvertAlpaca:
         assert messages[0].role == "user"
         assert messages[0].content == "What is Home Assistant?"
         assert messages[1].role == "assistant"
-        assert (
-            messages[1].content
-            == "Home Assistant is an open-source home automation platform."
-        )
+        assert messages[1].content == "Home Assistant is an open-source home automation platform."
 
     def test_convert_alpaca_missing_instruction_raises_error(self) -> None:
         """Test that missing instruction field raises NormalizationError."""
@@ -697,7 +681,7 @@ class TestConvertAlpaca:
         """Test that special characters in content are preserved."""
         normalizer = FormatNormalizer()
         record = {
-            "instruction": 'Use JSON: {"key": "value"}',
+            "instruction": "Use JSON: {\"key\": \"value\"}",
             "input": "Code: `print('hello')`",
             "output": "Answer with <html> tags",
         }
@@ -899,7 +883,7 @@ class TestConvertShareGPT:
         normalizer = FormatNormalizer()
         record = {
             "conversations": [
-                {"from": "human", "value": 'Use JSON: {"key": "value"}'},
+                {"from": "human", "value": "Use JSON: {\"key\": \"value\"}"},
                 {"from": "gpt", "value": "Answer with <html> tags and `code`"},
             ]
         }
@@ -1104,7 +1088,7 @@ class TestConvertOpenAIMessages:
         normalizer = FormatNormalizer()
         record = {
             "messages": [
-                {"role": "user", "content": 'Use JSON: {"key": "value"}'},
+                {"role": "user", "content": "Use JSON: {\"key\": \"value\"}"},
                 {"role": "assistant", "content": "Answer with <html> tags and `code`"},
             ]
         }

@@ -10,6 +10,8 @@ Covers error propagation, fallback logic, and all command dispatch paths.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -64,7 +66,7 @@ class TestCommandErrorPropagation:
         args.api_url = "http://localhost:8000"
         args.validate = False
 
-        with patch("src.audit.cli.logger"):
+        with patch("src.audit.cli.logger") as mock_logger:
             # cmd_score should handle missing baseline.jsonl
             try:
                 cmd_score(args)
@@ -81,6 +83,7 @@ class TestCmdFullIfExists:
 
     def test_cmd_full_exists_and_is_callable(self) -> None:
         """Verify cmd_full exists in the module."""
+        from src.audit.cli import cmd_full
 
         assert callable(cmd_full)
 
@@ -323,10 +326,11 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with (
-            patch("src.audit.gap_generator._get_prompt_manager") as mock_pm,
-            patch("src.audit.gap_generator._get_inference_router") as mock_router,
-        ):
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"
@@ -405,10 +409,11 @@ class TestGapAnalysisGeneration:
             gap_analysis="",
         )
 
-        with (
-            patch("src.audit.gap_generator._get_prompt_manager") as mock_pm,
-            patch("src.audit.gap_generator._get_inference_router") as mock_router,
-        ):
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"

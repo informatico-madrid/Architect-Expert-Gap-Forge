@@ -17,6 +17,7 @@ import json
 from src.curation.curator_cli import main as ncs_main
 
 # Module alias for backward compatibility
+from src.curation import curator_cli as ncs
 
 
 def make_jsonl(path: Path, records: list) -> None:

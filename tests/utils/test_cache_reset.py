@@ -116,9 +116,9 @@ class TestCacheResetEdgeCases:
         # First import the factory to ensure it's in sys.modules
         from src.utils.extractors import factory as factory_module
 
-        original_cache = getattr(factory_module, "_adapter_cache", None)
-        if hasattr(factory_module, "_adapter_cache"):
-            delattr(factory_module, "_adapter_cache")
+        original_cache = getattr(factory_module, '_adapter_cache', None)
+        if hasattr(factory_module, '_adapter_cache'):
+            delattr(factory_module, '_adapter_cache')
         try:
             result = reset_all_caches()
             # Should return False for adapter_cache
@@ -131,10 +131,9 @@ class TestCacheResetEdgeCases:
     def test_scorecard_cache_attribute_missing(self, capsys) -> None:
         """Should handle missing _domain_patterns_cache in scorecard."""
         from src.audit import scorecard
-
-        original_cache = getattr(scorecard, "_domain_patterns_cache", None)
-        if hasattr(scorecard, "_domain_patterns_cache"):
-            delattr(scorecard, "_domain_patterns_cache")
+        original_cache = getattr(scorecard, '_domain_patterns_cache', None)
+        if hasattr(scorecard, '_domain_patterns_cache'):
+            delattr(scorecard, '_domain_patterns_cache')
         try:
             result = reset_all_caches()
             # Should return False for scorecard_domain_patterns_cache
@@ -146,8 +145,7 @@ class TestCacheResetEdgeCases:
     def test_metrics_attribute_missing(self, capsys) -> None:
         """Should handle missing _default_metrics in metrics."""
         from src.utils import metrics
-
-        original_metrics = getattr(metrics, "_default_metrics", None)
+        original_metrics = getattr(metrics, '_default_metrics', None)
         # Set to None instead of deleting to maintain module namespace
         metrics._default_metrics = None
         try:
@@ -198,22 +196,18 @@ class TestLogMemoryUsageEdgeCases:
             # Need to reimport to trigger the branch
             import importlib
             import src.utils.cache_reset as cache_reset_module
-
             importlib.reload(cache_reset_module)
             # Now test with psutil not available
             cache_reset_module.log_memory_usage()
             captured = capsys.readouterr()
             # Should fall back to resource or show unavailable
-            assert (
-                "Memory usage" in captured.err or "unavailable" in captured.err.lower()
-            )
+            assert "Memory usage" in captured.err or "unavailable" in captured.err.lower()
 
     def test_resource_unavailable(self, capsys) -> None:
         """Should handle resource module unavailable."""
         with patch.dict("sys.modules", {"psutil": None, "resource": None}):
             import importlib
             import src.utils.cache_reset as cache_reset_module
-
             importlib.reload(cache_reset_module)
             cache_reset_module.log_memory_usage()
             captured = capsys.readouterr()

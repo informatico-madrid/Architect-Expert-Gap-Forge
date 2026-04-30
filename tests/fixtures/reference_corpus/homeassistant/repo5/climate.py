@@ -9,9 +9,12 @@ Home Assistant climate component - fixture for recall measurement.
 """
 
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from homeassistant.components.climate import (
+    ATTR_HVAC_MODE,
+    ATTR_TARGET_TEMP_HIGH,
+    ATTR_TARGET_TEMP_LOW,
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
@@ -21,9 +24,12 @@ from homeassistant.const import (
     ATTR_TEMPERATURE,
     CONF_NAME,
     TEMP_CELSIUS,
+    TEMP_FAHRENHEIT,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.temperature import display_temp
+import requests
 
 
 SUPPORT_FLAGS = (
@@ -92,7 +98,7 @@ class MyClimate(ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
-        self._hvac_mode = hvac_mode
+        self._hvac_mode = hvm_mode
         await self._send_command("set_hvac_mode", hvac_mode.value)
 
     async def _send_command(self, command: str, value: Any) -> None:

@@ -1,0 +1,14 @@
+{
+  "schema_version": "1",
+  "type": "spearman_baseline",
+  "timestamp": "2026-04-25T11:47:09Z",
+  "score": 1.0,
+  "status": "ok",
+  "score_description": "Spearman rank correlation (n=10, method=asymptotic): rho=1.0000, p=6.6469e-64",
+  "details": {
+    "method": "asymptotic",
+    "n_valid_pairs": 10,
+    "reason": null,
+    "p_value": 0.0
+  }
+}

@@ -31,27 +31,11 @@ _ADAPTER_REGISTRY: Dict[str, str] = {
     "typescript": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
     "ts": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
     "tsx": "src.utils.extractors.typescript_adapter.TypeScriptAdapter",
-    "yaml": "src.utils.extractors.yaml_adapter.YamlAdapter",
-    "yml": "src.utils.extractors.yaml_adapter.YamlAdapter",
-    "jinja": "src.utils.extractors.jinja_adapter.JinjaAdapter",
-    "jinja2": "src.utils.extractors.jinja_adapter.JinjaAdapter",
     "default": "src.utils.extractors.python_ast_adapter.PythonAstAdapter",
 }
 
 # Cache for instantiated adapters
 _adapter_cache: Dict[str, ExtractorAdapter] = {}
-
-# Extension to profile mapping — shared across both extension handling branches
-_EXTENSION_MAP = {
-    ".ts": "typescript",
-    ".tsx": "typescript",
-    ".py": "python",
-    ".php": "php_legacy",
-    ".yaml": "yaml",
-    ".yml": "yaml",
-    ".jinja": "jinja",
-    ".jinja2": "jinja",
-}
 
 
 def get_adapter(profile: str) -> ExtractorAdapter:
@@ -77,18 +61,31 @@ def get_adapter(profile: str) -> ExtractorAdapter:
     # Normalize profile name
     normalized = profile.lower().strip()
 
-    # Handle file extensions (e.g., ".ts", ".tsx", "test.ts")
-    if normalized.startswith("."):
-        normalized = _EXTENSION_MAP.get(normalized, "default")
-    elif "." in normalized:
-        # File name with extension like "test.ts"
-        ext = "." + normalized.split(".")[-1]
-        normalized = _EXTENSION_MAP.get(ext, "default")
-
-    # Check cache first (using normalized profile name)
+    # Check cache first
     if normalized in _adapter_cache:
         logger.debug("Returning cached adapter for profile: %s", normalized)
         return _adapter_cache[normalized]
+
+    # Handle file extensions (e.g., ".ts", ".tsx", "test.ts")
+    if normalized.startswith("."):
+        # Bare extension like ".ts"
+        ext_mapping = {
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".py": "python",
+            ".php": "php_legacy",
+        }
+        normalized = ext_mapping.get(normalized, "default")
+    elif "." in normalized:
+        # File name with extension like "test.ts"
+        ext = "." + normalized.split(".")[-1]
+        ext_mapping = {
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".py": "python",
+            ".php": "php_legacy",
+        }
+        normalized = ext_mapping.get(ext, "default")
 
     # Get adapter class path from registry (default to python if unknown)
     adapter_path = _ADAPTER_REGISTRY.get(normalized, _ADAPTER_REGISTRY["default"])
@@ -117,9 +114,6 @@ def _load_adapter(adapter_path: str) -> ExtractorAdapter:
         module = __import__(module_path, fromlist=[class_name])
         adapter_class: Type[ExtractorAdapter] = getattr(module, class_name)
         return adapter_class()
-    except ValueError as e:
-        logger.error("Invalid adapter path (no module separator): %s", adapter_path)
-        raise RuntimeError(f"Invalid adapter path: {adapter_path}") from e
     except ImportError as e:
         logger.error("Failed to import adapter module: %s, error: %s", module_path, e)
         raise RuntimeError(f"Failed to load adapter: {adapter_path}") from e
@@ -141,11 +135,10 @@ def register_adapter(profile: str, adapter_path: str) -> None:
         profile: The profile name to register.
         adapter_path: Fully qualified path to the adapter class.
     """
-    _profile = profile.lower().strip()
-    _ADAPTER_REGISTRY[_profile] = adapter_path
+    _ADAPTER_REGISTRY[profile.lower().strip()] = adapter_path
     # Clear cache for this profile if it exists
-    if _profile in _adapter_cache:
-        del _adapter_cache[_profile]
+    if profile.lower().strip() in _adapter_cache:
+        del _adapter_cache[profile.lower().strip()]
     logger.info("Registered new adapter for profile: %s", profile)
 
 

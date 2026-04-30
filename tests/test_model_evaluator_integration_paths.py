@@ -34,9 +34,11 @@ from src.audit.cli import (
 from src.audit.schema import (
     InferenceResult,
     ScoreCard,
+    SampleRecord,
     ExamRecord,
     AuditReport,
 )
+from tests.fixtures import golden_sample, golden_exam
 
 
 @pytest.mark.integration
@@ -604,7 +606,7 @@ class TestCmdInferencePaths:
             with patch("src.audit.cli.load_exam") as mock_load_exam:
                 with patch("src.audit.cli.load_persisted_sample") as mock_load_sample:
                     with patch("src.audit.cli.run_inference") as mock_infer:
-                        with patch("src.audit.cli.persist_inference"):
+                        with patch("src.audit.cli.persist_inference") as mock_persist:
                             # Exam not found
                             mock_load_exam.side_effect = FileNotFoundError()
                             # Fall back to sample
@@ -831,6 +833,7 @@ class TestScorecardDimensionAggregation:
         self, golden_exam: Any
     ) -> None:
         """compute_scorecard must calculate composite from all dimensions."""
+        baseline_resp = "baseline code"
         adapter_resp = "adapter code"
 
         with patch("src.audit.judge._get_inference_router") as mock_router:
@@ -1153,6 +1156,7 @@ class TestScoringAndDimensionCalculation:
         self, golden_exam: Any
     ) -> None:
         """compute_scorecard must correctly calculate from varying dimension scores."""
+        baseline_resp = "baseline implementation"
         adapter_resp = "improved implementation"
 
         with patch("src.audit.judge._get_inference_router") as mock_router:
@@ -1190,6 +1194,7 @@ class TestScoringAndDimensionCalculation:
 
     def test_compute_scorecard_preserves_reasoning(self, golden_exam: Any) -> None:
         """compute_scorecard must preserve judge's reasoning."""
+        baseline_resp = "baseline"
         adapter_resp = "adapter"
         expected_reasoning = "Custom reasoning about the improvement"
 
@@ -1223,6 +1228,7 @@ class TestCompositeScoreCalculation:
         self, golden_exam: Any
     ) -> None:
         """Composite score must reflect weighted dimension scores."""
+        baseline_resp = "baseline"
         adapter_resp = "adapter"
 
         with patch("src.audit.judge._get_inference_router") as mock_router:
@@ -1269,6 +1275,7 @@ class TestInferenceCoreLoopCoverage:
         self, golden_sample: Any
     ) -> None:
         """run_inference token counting and timing calculation."""
+        from datetime import datetime, timezone
 
         samples = [
             dataclasses.replace(golden_sample, id=f"tc_{i:02d}") for i in range(2)
@@ -1308,10 +1315,11 @@ class TestInferenceCoreLoopCoverage:
         changelog = "Changelog content"
         jinja_guide = "Jinja guide content"
 
-        with (
-            patch("src.audit.gap_generator._get_prompt_manager") as mock_pm,
-            patch("src.audit.gap_generator._get_inference_router") as mock_router,
-        ):
+        with patch(
+            "src.audit.gap_generator._get_prompt_manager"
+        ) as mock_pm, patch(
+            "src.audit.gap_generator._get_inference_router"
+        ) as mock_router:
             mock_pm_instance = MagicMock()
             mock_pm_instance.format.return_value = "test prompt"
             mock_pm_instance.system.return_value = "system prompt"

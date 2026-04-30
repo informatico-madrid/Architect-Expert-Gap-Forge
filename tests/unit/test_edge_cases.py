@@ -190,24 +190,27 @@ def _make_mock_response(json_body: dict) -> mock.Mock:
 class TestMalformedAPIResponses:
     """VLLMProvider handles various malformed responses without raising."""
 
-    def test_empty_choices_list(self):
+    def test_empty_choices_list(self, monkeypatch):
         """Response with no choices returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = _make_mock_response({"choices": []})
         with mock.patch("requests.post", return_value=mock_resp):
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_choice_missing_message_key(self):
+    def test_choice_missing_message_key(self, monkeypatch):
         """choices[0] has no 'message' key returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = _make_mock_response({"choices": [{"not_message": "data"}]})
         with mock.patch("requests.post", return_value=mock_resp):
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_message_missing_content_key(self):
+    def test_message_missing_content_key(self, monkeypatch):
         """message has no 'content' key returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = _make_mock_response(
             {"choices": [{"message": {"not_content": "x"}}]}
@@ -216,8 +219,9 @@ class TestMalformedAPIResponses:
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_content_is_not_json(self):
+    def test_content_is_not_json(self, monkeypatch):
         """Message content is plain text, not JSON — returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = _make_mock_response(
             {
@@ -228,8 +232,9 @@ class TestMalformedAPIResponses:
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_content_is_invalid_json(self):
+    def test_content_is_invalid_json(self, monkeypatch):
         """Message content is malformed JSON — returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = _make_mock_response(
             {
@@ -240,16 +245,18 @@ class TestMalformedAPIResponses:
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_response_body_missing_choices_key(self):
+    def test_response_body_missing_choices_key(self, monkeypatch):
         """Response body has no 'choices' key at all."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = _make_mock_response({"status": "ok", "data": "nothing useful"})
         with mock.patch("requests.post", return_value=mock_resp):
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_anchorecord_validation_fails(self):
+    def test_anchorecord_validation_fails(self, monkeypatch):
         """Valid JSON but invalid AnchorRecord fields returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         bad_record = {"id": "bad_id", "domain": "invalid", "difficulty": "easy"}
         mock_resp = _make_mock_response(
@@ -259,8 +266,9 @@ class TestMalformedAPIResponses:
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_response_500_error(self):
+    def test_response_500_error(self, monkeypatch):
         """HTTP 500 error is captured and returns None."""
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         mock_resp = mock.Mock()
         mock_resp.raise_for_status.side_effect = Exception("500 Internal Server Error")
@@ -268,10 +276,11 @@ class TestMalformedAPIResponses:
             result = provider.generate("sys", "user")
         assert result is None
 
-    def test_all_retries_exhausted_on_connection_error(self):
+    def test_all_retries_exhausted_on_connection_error(self, monkeypatch):
         """Connection error exhausts retries and returns None."""
         import requests as req
 
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         with mock.patch(
             "requests.post",
@@ -281,10 +290,11 @@ class TestMalformedAPIResponses:
         assert post_fn.call_count == provider.MAX_RETRIES
         assert result is None
 
-    def test_all_retries_exhausted_on_timeout(self):
+    def test_all_retries_exhausted_on_timeout(self, monkeypatch):
         """Timeout exhausts retries and returns None."""
         import requests as req
 
+        monkeypatch.setenv("VLLM_API_KEY", "test-key")
         provider = VLLMProvider()
         with mock.patch(
             "requests.post",

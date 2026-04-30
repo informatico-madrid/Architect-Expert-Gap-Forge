@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -46,7 +47,6 @@ logger = logging.getLogger(__name__)
 # Try to import tree-sitter (optional dependency)
 try:
     from tree_sitter import Language, Parser
-
     TREE_SITTER_AVAILABLE = True
 except ImportError:
     TREE_SITTER_AVAILABLE = False
@@ -56,14 +56,19 @@ except ImportError:
 
 # Regex pattern for TypeScript/JS imports
 IMPORT_PATTERN = re.compile(
-    r"import\s+(?:\{[^}]*\}|\w+)\s+from\s+['\"]([^'\"]+)['\"]", re.MULTILINE
+    r"import\s+(?:\{[^}]*\}|\w+)\s+from\s+['\"]([^'\"]+)['\"]",
+    re.MULTILINE
 )
 
 # Regex pattern for require() calls
-REQUIRE_PATTERN = re.compile(r"require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)", re.MULTILINE)
+REQUIRE_PATTERN = re.compile(
+    r"require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)",
+    re.MULTILINE
+)
 
 
-class TypeScriptAdapter(ExtractorAdapter):
+@dataclass
+class TypeScriptAdapter:
     """Adapter for parsing TypeScript/TSX files.
 
     This adapter integrates multiple TypeScript extractors to parse
@@ -76,8 +81,8 @@ class TypeScriptAdapter(ExtractorAdapter):
             parsing fails or is unavailable.
     """
 
-    extractors: List[TypeScriptExtractorProtocol]
-    use_regex_fallback: bool
+    extractors: List[TypeScriptExtractorProtocol] = field(default_factory=list)
+    use_regex_fallback: bool = True
 
     def __init__(
         self,
@@ -113,8 +118,6 @@ class TypeScriptAdapter(ExtractorAdapter):
         # Note: In production, would need to load tree-sitter languages
         # For v1, we rely primarily on regex fallback
         try:
-            from tree_sitter import Parser
-
             self._parser = Parser()
             logger.debug("Tree-sitter parser initialized")
         except Exception as e:
@@ -170,7 +173,9 @@ class TypeScriptAdapter(ExtractorAdapter):
             # or just return tokens in the result for downstream processing
         )
 
-    def _parse_json_file(self, file_path: Path, raw_content: str) -> ParseResult:
+    def _parse_json_file(
+        self, file_path: Path, raw_content: str
+    ) -> ParseResult:
         """Parse a JSON translation file.
 
         Args:
@@ -231,7 +236,7 @@ class TypeScriptAdapter(ExtractorAdapter):
                 except Exception as e:
                     logger.debug(
                         "Extractor %s failed: %s",
-                        getattr(extractor, "name", "unknown"),
+                        getattr(extractor, 'name', 'unknown'),
                         e,
                     )
 
@@ -265,7 +270,7 @@ class TypeScriptAdapter(ExtractorAdapter):
             except Exception as e:
                 logger.debug(
                     "Extractor %s failed: %s",
-                    getattr(extractor, "name", "unknown"),
+                    getattr(extractor, 'name', 'unknown'),
                     e,
                 )
 
@@ -345,49 +350,17 @@ class TypeScriptAdapter(ExtractorAdapter):
         """
         # Common TypeScript/JavaScript stdlib modules
         stdlib_modules = {
-            "fs",
-            "path",
-            "os",
-            "http",
-            "https",
-            "url",
-            "querystring",
-            "util",
-            "events",
-            "stream",
-            "buffer",
-            "crypto",
-            "zlib",
-            "assert",
-            "perf_hooks",
-            "timers",
-            "console",
-            "process",
+            "fs", "path", "os", "http", "https", "url", "querystring",
+            "util", "events", "stream", "buffer", "crypto", "zlib",
+            "assert", "perf_hooks", "timers", "console", "process",
         }
 
         # Common external modules
         external_modules = {
-            "react",
-            "react-dom",
-            "next",
-            "vue",
-            "angular",
-            "lit",
-            "@lit",
-            "typescript",
-            "tree-sitter",
-            "esprima",
-            "@babel",
-            "lodash",
-            "ramda",
-            "classnames",
-            "axios",
-            "fetch",
-            "mobx",
-            "redux",
-            "zustand",
-            "express",
-            "fastify",
+            "react", "react-dom", "next", "vue", "angular", "lit",
+            "@lit", "typescript", "tree-sitter", "esprima", "@babel",
+            "lodash", "ramda", "classnames", "axios", "fetch",
+            "mobx", "redux", "zustand", "express", "fastify",
         }
 
         if name in stdlib_modules:
@@ -398,5 +371,5 @@ class TypeScriptAdapter(ExtractorAdapter):
 
 
 # Protocol conformance check
-assert hasattr(TypeScriptAdapter, "parse_file")
-assert hasattr(TypeScriptAdapter, "extract_dependencies")
+assert hasattr(TypeScriptAdapter, 'parse_file')
+assert hasattr(TypeScriptAdapter, 'extract_dependencies')

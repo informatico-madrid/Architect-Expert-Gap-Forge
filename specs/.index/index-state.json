@@ -1,10 +1,10 @@
 {
   "version": "1.0",
-  "updated": "2026-04-29T07:02:11Z",
+  "updated": "2026-03-31T08:06:59Z",
   "directories": [
     {
       "path": "./specs",
-      "specsCount": 32,
+      "specsCount": 14,
       "isDefault": true
     }
   ],
@@ -53,15 +53,24 @@
       "name": "006-project-maintenance",
       "path": "./specs/006-project-maintenance",
       "phase": "tasks",
-      "taskIndex": 0,
+      "taskIndex": 0
+0,
       "totalTasks": 48
     },
     {
       "name": "008-fix-ingestor-cli-execution",
       "path": "./specs/008-fix-ingestor-cli-execution",
       "phase": "tasks",
-      "taskIndex": 0,
+      "taskIndex": 0
+0,
       "totalTasks": 9
+    },
+    {
+      "name": "010-agentic-dataset-redesign",
+      "path": "./specs/010-agentic-dataset-redesign",
+      "phase": "tasks",
+      "taskIndex": 37,
+      "totalTasks": 39
     },
     {
       "name": "011-fix-failing-tests",
@@ -88,118 +97,15 @@
       "name": "014-rich-cli-output",
       "path": "./specs/014-rich-cli-output",
       "phase": "tasks",
-      "taskIndex": 0,
+      "taskIndex": 0
+0,
       "totalTasks": 34
-    },
-    {
-      "name": "yaml-adapter",
-      "path": "./specs/yaml-adapter",
-      "phase": "tasks"
     },
     {
       "name": "frontend-discovery-enhancement",
       "path": "./specs/frontend-discovery-enhancement",
-      "phase": "completed",
-      "taskIndex": 26,
-      "totalTasks": 26
-    },
-    {
-      "name": "module-discovery-auto",
-      "path": "./specs/module-discovery-auto",
-      "phase": "execution",
-      "taskIndex": 50,
-      "totalTasks": 50
-    },
-    {
-      "name": "aegf-infrastructure",
-      "path": "./specs/aegf-infrastructure",
-      "phase": "research"
-    },
-    {
-      "name": "_epics",
-      "path": "./specs/_epics",
-      "phase": "new"
-    },
-    {
-      "name": "baseline-measurement",
-      "path": "./specs/baseline-measurement",
-      "phase": "tasks"
-    },
-    {
-      "name": "prompt-externalization",
-      "path": "./specs/prompt-externalization",
-      "phase": "completed",
-      "taskIndex": 12,
-      "totalTasks": 12
-    },
-    {
-      "name": "anchor-dataset",
-      "path": "./specs/anchor-dataset",
-      "phase": "completed",
-      "taskIndex": 43,
-      "totalTasks": 43
-    },
-    {
-      "name": "dependency-compatibility",
-      "path": "./specs/dependency-compatibility",
-      "phase": "research",
+      "phase": "design",
       "awaitingApproval": true
-    },
-    {
-      "name": "module-discovery-strategy-auto",
-      "path": "./specs/module-discovery-strategy-auto",
-      "phase": "research",
-      "awaitingApproval": true
-    },
-    {
-      "name": "dspy-integration",
-      "path": "./specs/dspy-integration",
-      "phase": "tasks"
-    },
-    {
-      "name": "001-dataset-mixing",
-      "path": "./specs/001-dataset-mixing",
-      "phase": "new"
-    },
-    {
-      "name": "002-agentic-preservation",
-      "path": "./specs/002-agentic-preservation",
-      "phase": "new"
-    },
-    {
-      "name": "003-multi-language-training",
-      "path": "./specs/003-multi-language-training",
-      "phase": "new"
-    },
-    {
-      "name": "004-eic-integration-gate",
-      "path": "./specs/004-eic-integration-gate",
-      "phase": "new"
-    },
-    {
-      "name": "005-migration-state",
-      "path": "./specs/005-migration-state",
-      "phase": "new"
-    },
-    {
-      "name": "006-langgraph-graph",
-      "path": "./specs/006-langgraph-graph",
-      "phase": "new"
-    },
-    {
-      "name": "007-langgraph-conditional-edges",
-      "path": "./specs/007-langgraph-conditional-edges",
-      "phase": "new"
-    },
-    {
-      "name": "008-langgraph-interrupt",
-      "path": "./specs/008-langgraph-interrupt",
-      "phase": "new"
-    },
-    {
-      "name": "009-langgraph-checkpointing",
-      "path": "./specs/009-langgraph-checkpointing",
-      "phase": "new"
     }
   ]
 }

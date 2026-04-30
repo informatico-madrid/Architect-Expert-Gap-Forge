@@ -8,35 +8,6 @@
 # Home Assistant Frontend Discovery Configuration
 # This configuration defines the discovery settings for processing the Home Assistant
 # frontend repository (TypeScript/ Lit components).
-#
-# =============================================================================
-# ADAPTER SELECTION BEHAVIOR
-# =============================================================================
-#
-# The processor automatically selects the adapter based on file extension:
-# - .ts files → TypeScriptAdapter (TypeScript)
-# - .tsx files → TypeScriptAdapter (TypeScript)
-# - .json files → TranslationJsonParser (JSON/i18n)
-#
-# IMPORTANT: DO NOT set 'profile' if you want automatic adapter selection.
-# Setting a fixed 'profile' forces a single adapter for ALL files.
-# Leave 'profile' commented out to allow the system to detect the adapter
-# automatically based on file extension.
-#
-# =============================================================================
-# MODULE DISCOVERY STRATEGY
-# =============================================================================
-#
-# Discovery strategy: auto-detect based on repo contents
-# The system will automatically choose:
-# - 'manifest' strategy for Python HA repos (manifest.json + __init__.py)
-# - 'init' strategy for Python packages (__init__.py only)
-# - 'typescript' strategy for TypeScript/TSX repos (.ts/.tsx files)
-# - 'filesystem' strategy for PHP repos (.php files, composer.json)
-# - 'directory' strategy for Python repos without __init__.py
-#
-# Leave 'module_discovery_strategy' commented to allow auto-detection.
-# =============================================================================
 
 # Target subdirectory for discovered repositories
 category: homeassistant
@@ -44,9 +15,8 @@ category: homeassistant
 # Discovery mode: static (predefined repos) or dynamic (GitHub search)
 mode: static
 
-# Discovery strategy: auto-detect based on repo contents
-# Leave module_discovery_strategy commented for auto-detection
-# module_discovery_strategy: auto
+# Profile: TypeScript adapter for .ts/.tsx files
+profile: typescript
 
 # File extensions to process (mapped to profile_extensions by processor)
 extensions:
@@ -76,9 +46,6 @@ min_stars: 0
 
 # Results per page for GitHub API requests
 per_page: 100
-
-# Target profile for adapter selection (enables TypeScriptAdapter for .ts/.tsx)
-# profile commented out to allow automatic adapter selection per extension
 
 # Base directory for output
 base_dir: .

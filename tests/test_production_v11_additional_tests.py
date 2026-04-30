@@ -3,6 +3,10 @@
 # Copyright (c) 2026 Joao Maria Arranz Aparicio <joao@informatico-madrid.com>
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+from pathlib import Path
+
+import pytest
 
 from src.factory import config as cfg_module
 from src.factory.prompt_builder import detect_legacy_patterns, load_master_docs

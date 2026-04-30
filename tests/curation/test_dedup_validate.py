@@ -18,11 +18,7 @@ from typing import Any
 
 import pytest
 
-from src.curation.dedup_and_validate import (
-    DedupAndValidate,
-    DeduplicationError,
-    detect_tool_format,
-)
+from src.curation.dedup_and_validate import DedupAndValidate, DeduplicationError, detect_tool_format
 from src.utils.schema import DatasetRecord, Message, CompositionReport
 
 logger = logging.getLogger(__name__)
@@ -98,10 +94,7 @@ def duplicate_records() -> list[DatasetRecord]:
     # Create some records that are duplicates
     base_messages = [
         Message(role="user", content="How do I configure a sensor?"),
-        Message(
-            role="assistant",
-            content="You can configure a sensor in configuration.yaml.",
-        ),
+        Message(role="assistant", content="You can configure a sensor in configuration.yaml."),
     ]
 
     records = [
@@ -226,14 +219,10 @@ class TestDuplicateElimination:
         # Should have kept only 2 records (3 input - 1 duplicate = 2)
         assert len(kept_records) == 2, f"Expected 2 records, got {len(kept_records)}"
         # Should have discarded 1 duplicate
-        assert len(discarded_seeds) == 1, (
-            f"Expected 1 discarded, got {len(discarded_seeds)}"
-        )
+        assert len(discarded_seeds) == 1, f"Expected 1 discarded, got {len(discarded_seeds)}"
 
     def test_no_duplicates_preserves_all_records(
-        self,
-        specialized_records: list[DatasetRecord],
-        anchor_records: list[DatasetRecord],
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
     ) -> None:
         """Test that when there are no duplicates, all records are preserved."""
         all_records = specialized_records + anchor_records
@@ -320,8 +309,7 @@ class TestNoCallValidation:
             if record_type == "no-call":
                 # Check if any message content contains tool_call
                 has_tool_call = any(
-                    "<tool_call>" in m.content.lower()
-                    or "tool_call" in m.content.lower()
+                    "<tool_call>" in m.content.lower() or "tool_call" in m.content.lower()
                     for m in record.messages
                 )
 
@@ -373,7 +361,9 @@ class TestNoCallValidation:
             metadata={"type": "no-call", "seed_id": "seed_uppercase"},
         )
 
-        has_tool_call = any("<tool_call>" in m.content.lower() for m in record.messages)
+        has_tool_call = any(
+            "<tool_call>" in m.content.lower() for m in record.messages
+        )
 
         assert has_tool_call is True
 
@@ -384,7 +374,9 @@ class TestNoCallValidation:
         # Record with JSON tool call in no-call type
         record = DatasetRecord(
             messages=[
-                Message(role="user", content="Call the function"),
+                Message(
+                    role="user", content="Call the function"
+                ),
                 Message(
                     role="assistant",
                     content='{"tool": "get_weather", "arguments": {"location": "NYC"}}',
@@ -420,12 +412,10 @@ class TestDiscardLogging:
 
             if record_hash in seen_hashes:
                 # Log the discard with seed_id
-                discard_logs.append(
-                    {
-                        "seed_id": record.metadata.get("seed_id", "unknown"),
-                        "reason": "duplicate",
-                    }
-                )
+                discard_logs.append({
+                    "seed_id": record.metadata.get("seed_id", "unknown"),
+                    "reason": "duplicate",
+                })
             else:
                 seen_hashes.add(record_hash)
 
@@ -447,12 +437,10 @@ class TestDiscardLogging:
             record_hash = hashlib.sha256(content.encode()).hexdigest()
 
             if record_hash in seen_hashes:
-                discard_logs.append(
-                    {
-                        "seed_id": record.metadata.get("seed_id", "unknown"),
-                        "reason": "duplicate",
-                    }
-                )
+                discard_logs.append({
+                    "seed_id": record.metadata.get("seed_id", "unknown"),
+                    "reason": "duplicate",
+                })
             else:
                 seen_hashes.add(record_hash)
 
@@ -476,12 +464,10 @@ class TestDiscardLogging:
             record_hash = hashlib.sha256(content.encode()).hexdigest()
 
             if record_hash in seen_hashes:
-                discard_logs.append(
-                    {
-                        "seed_id": record.metadata.get("seed_id", "unknown"),
-                        "reason": "duplicate",
-                    }
-                )
+                discard_logs.append({
+                    "seed_id": record.metadata.get("seed_id", "unknown"),
+                    "reason": "duplicate",
+                })
             else:
                 seen_hashes.add(record_hash)
 
@@ -489,15 +475,14 @@ class TestDiscardLogging:
         for record in nocall_records:
             if record.metadata.get("type") == "no-call":
                 has_tool_call = any(
-                    "<tool_call>" in m.content.lower() for m in record.messages
+                    "<tool_call>" in m.content.lower()
+                    for m in record.messages
                 )
                 if has_tool_call:
-                    discard_logs.append(
-                        {
-                            "seed_id": record.metadata.get("seed_id", "unknown"),
-                            "reason": "invalid_nocall",
-                        }
-                    )
+                    discard_logs.append({
+                        "seed_id": record.metadata.get("seed_id", "unknown"),
+                        "reason": "invalid_nocall",
+                    })
 
         # Should have at least one invalid_nocall
         reasons = [log["reason"] for log in discard_logs]
@@ -563,12 +548,10 @@ class TestDedupAndValidateWorkflow:
             record_hash = hashlib.sha256(content.encode()).hexdigest()
 
             if record_hash in seen_hashes:
-                discard_logs.append(
-                    {
-                        "seed_id": record.metadata.get("seed_id", "unknown"),
-                        "reason": "duplicate",
-                    }
-                )
+                discard_logs.append({
+                    "seed_id": record.metadata.get("seed_id", "unknown"),
+                    "reason": "duplicate",
+                })
                 continue
 
             seen_hashes.add(record_hash)
@@ -576,15 +559,14 @@ class TestDedupAndValidateWorkflow:
             # Step 2: Validate no-call records
             if record.metadata.get("type") == "no-call":
                 has_tool_call = any(
-                    "<tool_call>" in m.content.lower() for m in record.messages
+                    "<tool_call>" in m.content.lower()
+                    for m in record.messages
                 )
                 if has_tool_call:
-                    discard_logs.append(
-                        {
-                            "seed_id": record.metadata.get("seed_id", "unknown"),
-                            "reason": "invalid_nocall",
-                        }
-                    )
+                    discard_logs.append({
+                        "seed_id": record.metadata.get("seed_id", "unknown"),
+                        "reason": "invalid_nocall",
+                    })
                     continue
 
             kept_records.append(record)
@@ -598,9 +580,7 @@ class TestDedupAndValidateWorkflow:
         assert len(discard_logs) > 0
 
     def test_dedup_preserves_record_order(
-        self,
-        specialized_records: list[DatasetRecord],
-        anchor_records: list[DatasetRecord],
+        self, specialized_records: list[DatasetRecord], anchor_records: list[DatasetRecord]
     ) -> None:
         """Test that deduplication preserves the order of non-discarded records."""
         all_records = specialized_records + anchor_records
@@ -719,11 +699,8 @@ class TestDedupValidateInterface:
         """Test validate_record returns True for valid record."""
         dedup = DedupAndValidate()
         record = DatasetRecord(
-            messages=[
-                Message(role="user", content="Hello"),
-                Message(role="assistant", content="Hi"),
-            ],
-            metadata={},
+            messages=[Message(role="user", content="Hello"), Message(role="assistant", content="Hi")],
+            metadata={}
         )
         result = dedup.validate_record(record)
         assert result is True
@@ -748,10 +725,7 @@ class TestDetectToolFormat:
         """Test that XML tool call format is detected correctly."""
         messages = [
             {"role": "user", "content": "What's the weather?"},
-            {
-                "role": "assistant",
-                "content": "<tool_call><tool_name>get_weather</tool_name></tool_call>",
-            },
+            {"role": "assistant", "content": "<tool_call><tool_name>get_weather</tool_name></tool_call>"},
         ]
         result = detect_tool_format(messages)
         assert result == "xml"
@@ -760,10 +734,7 @@ class TestDetectToolFormat:
         """Test that JSON tool call format is detected correctly."""
         messages = [
             {"role": "user", "content": "Call the function"},
-            {
-                "role": "assistant",
-                "content": '{"name": "get_weather", "arguments": {"location": "NYC"}}',
-            },
+            {"role": "assistant", "content": '{"name": "get_weather", "arguments": {"location": "NYC"}}'},
         ]
         result = detect_tool_format(messages)
         assert result == "json"
@@ -787,10 +758,7 @@ class TestDetectToolFormat:
         """Test that XML format takes precedence over JSON when both present."""
         messages = [
             {"role": "user", "content": "Call a function"},
-            {
-                "role": "assistant",
-                "content": "<tool_call><tool_name>test</tool_name></tool_call>",
-            },
+            {"role": "assistant", "content": "<tool_call><tool_name>test</tool_name></tool_call>"},
             {"role": "assistant", "content": '{"name": "json_func", "arguments": {}}'},
         ]
         result = detect_tool_format(messages)
@@ -802,10 +770,7 @@ class TestDetectToolFormat:
             {"role": "user", "content": "Hello"},
             {"role": "assistant", "content": "Hi there"},
             {"role": "user", "content": "Use the tool"},
-            {
-                "role": "assistant",
-                "content": "<tool_call><tool_name>search</tool_name></tool_call>",
-            },
+            {"role": "assistant", "content": "<tool_call><tool_name>search</tool_name></tool_call>"},
         ]
         result = detect_tool_format(messages)
         assert result == "xml"
@@ -813,10 +778,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_tool_call_tag(self) -> None:
         """Test detection of <tool_call> tag."""
         messages = [
-            {
-                "role": "assistant",
-                "content": "<tool_call>get_weather location='NYC'</tool_call>",
-            },
+            {"role": "assistant", "content": "<tool_call>get_weather location='NYC'</tool_call>"},
         ]
         result = detect_tool_format(messages)
         assert result == "xml"
@@ -824,10 +786,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_tool_args_tag(self) -> None:
         """Test detection of <tool_args> tag."""
         messages = [
-            {
-                "role": "assistant",
-                "content": '<tool_args>{"location": "NYC"}</tool_args>',
-            },
+            {"role": "assistant", "content": "<tool_args>{\"location\": \"NYC\"}</tool_args>"},
         ]
         result = detect_tool_format(messages)
         assert result == "xml"
@@ -835,10 +794,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_json_tool_calls_key(self) -> None:
         """Test detection of 'tool_calls' key in JSON."""
         messages = [
-            {
-                "role": "assistant",
-                "content": '{"tool_calls": [{"name": "func", "arguments": {}}]}',
-            },
+            {"role": "assistant", "content": '{"tool_calls": [{"name": "func", "arguments": {}}]}'},
         ]
         result = detect_tool_format(messages)
         assert result == "json"
@@ -846,10 +802,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_json_name_and_arguments(self) -> None:
         """Test detection of 'name' and 'arguments' pattern."""
         messages = [
-            {
-                "role": "assistant",
-                "content": '"name": "my_function", "arguments": {"arg1": "value1"}',
-            },
+            {"role": "assistant", "content": '"name": "my_function", "arguments": {"arg1": "value1"}'},
         ]
         result = detect_tool_format(messages)
         assert result == "json"
@@ -857,10 +810,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_case_insensitive(self) -> None:
         """Test that detection is case insensitive for XML tags."""
         messages = [
-            {
-                "role": "assistant",
-                "content": "<TOOL_CALL><TOOL_NAME>test</TOOL_NAME></TOOL_CALL>",
-            },
+            {"role": "assistant", "content": "<TOOL_CALL><TOOL_NAME>test</TOOL_NAME></TOOL_CALL>"},
         ]
         result = detect_tool_format(messages)
         assert result == "xml"
@@ -877,10 +827,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_multiple_xml_in_content(self) -> None:
         """Test detection when multiple XML tool calls are in same content."""
         messages = [
-            {
-                "role": "assistant",
-                "content": "<tool_call><tool_name>func1</tool_name></tool_call> and <tool_call><tool_name>func2</tool_name></tool_call>",
-            },
+            {"role": "assistant", "content": "<tool_call><tool_name>func1</tool_name></tool_call> and <tool_call><tool_name>func2</tool_name></tool_call>"},
         ]
         result = detect_tool_format(messages)
         assert result == "xml"
@@ -888,10 +835,7 @@ class TestDetectToolFormat:
     def test_detect_tool_format_multiple_json_in_content(self) -> None:
         """Test detection when multiple JSON tool calls are in same content."""
         messages = [
-            {
-                "role": "assistant",
-                "content": '{"tool_calls": [{"name": "func1"}]}, {"tool_calls": [{"name": "func2"}]}',
-            },
+            {"role": "assistant", "content": '{"tool_calls": [{"name": "func1"}]}, {"tool_calls": [{"name": "func2"}]}'},
         ]
         result = detect_tool_format(messages)
         assert result == "json"
@@ -943,10 +887,7 @@ class TestValidateRecord:
         dedup = DedupAndValidate()
         record = DatasetRecord(
             messages=[
-                Message(
-                    role="assistant",
-                    content="<tool_call>get_weather location='NYC'</tool_call>",
-                ),
+                Message(role="assistant", content="<tool_call>get_weather location='NYC'</tool_call>"),
             ],
             metadata={"seed_id": "tool_call_tag"},
         )
@@ -958,10 +899,7 @@ class TestValidateRecord:
         dedup = DedupAndValidate()
         record = DatasetRecord(
             messages=[
-                Message(
-                    role="assistant",
-                    content="<tool_calls><tool_call><tool_name>func</tool_name></tool_call></tool_calls>",
-                ),
+                Message(role="assistant", content="<tool_calls><tool_call><tool_name>func</tool_name></tool_call></tool_calls>"),
             ],
             metadata={"seed_id": "tool_calls_tag"},
         )
@@ -988,10 +926,7 @@ class TestValidateRecord:
         dedup = DedupAndValidate()
         record = DatasetRecord(
             messages=[
-                Message(
-                    role="assistant",
-                    content='"name": "my_function", "arguments": {"arg": "value"}',
-                ),
+                Message(role="assistant", content='"name": "my_function", "arguments": {"arg": "value"}'),
             ],
             metadata={"seed_id": "json_name_args"},
         )
@@ -1003,10 +938,7 @@ class TestValidateRecord:
         dedup = DedupAndValidate()
         record = DatasetRecord(
             messages=[
-                Message(
-                    role="assistant",
-                    content="<TOOL_CALL><TOOL_NAME>test</TOOL_NAME></TOOL_CALL>",
-                ),
+                Message(role="assistant", content="<TOOL_CALL><TOOL_NAME>test</TOOL_NAME></TOOL_CALL>"),
             ],
             metadata={"seed_id": "uppercase_tool_call"},
         )
@@ -1043,9 +975,7 @@ class TestValidateRecord:
         dedup = DedupAndValidate()
         record = DatasetRecord(
             messages=[
-                Message(
-                    role="user", content="Use the tool <tool_call>get_data</tool_call>"
-                ),
+                Message(role="user", content="Use the tool <tool_call>get_data</tool_call>"),
                 Message(role="assistant", content="Here is the data"),
             ],
             metadata={"seed_id": "user_message_tool_call"},
@@ -1060,7 +990,7 @@ class TestValidateRecord:
             messages=[
                 Message(
                     role="assistant",
-                    content='<tool_call><tool_name>func1</tool_name></tool_call> and {"tool_calls": [{"name": "func2"}]}',
+                    content="<tool_call><tool_name>func1</tool_name></tool_call> and {\"tool_calls\": [{\"name\": \"func2\"}]}",
                 ),
             ],
             metadata={"seed_id": "multiple_tool_calls"},
@@ -1083,9 +1013,7 @@ class TestValidateRecord:
 
         # Second invalid record
         record2 = DatasetRecord(
-            messages=[
-                Message(role="assistant", content="<tool_call>test2</tool_call>")
-            ],
+            messages=[Message(role="assistant", content="<tool_call>test2</tool_call>")],
             metadata={"seed_id": "invalid_2"},
         )
         result2 = dedup.validate_record(record2)
@@ -1377,9 +1305,7 @@ class TestDeduplicateRecord:
         # Since normal content shouldn't fail, this is a sanity check
         assert result is True
 
-    def test_deduplicate_record_exception_handler(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_deduplicate_record_exception_handler(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that deduplicate_record handles exceptions from _compute_message_hash."""
         dedup = DedupAndValidate()
 
@@ -1395,9 +1321,7 @@ class TestDeduplicateRecord:
         def raise_error(*args, **kwargs):
             raise DeduplicationError("Simulated hash error")
 
-        monkeypatch.setattr(
-            "src.curation.dedup_and_validate._compute_message_hash", raise_error
-        )
+        monkeypatch.setattr("src.curation.dedup_and_validate._compute_message_hash", raise_error)
 
         # Should return True (keep the record) when hash computation fails
         result = dedup.deduplicate_record(record)

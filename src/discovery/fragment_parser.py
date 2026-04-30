@@ -92,9 +92,6 @@ def classify_role(f: Path) -> str:
         return "governance"
     if name in ANCHOR_FILENAMES or f.suffix in (".json", ".yaml", ".yml"):
         return "anchor"
-    # __init__.py is a package anchor (Python modules)
-    if name == "__init__.py":
-        return "anchor"
     if "test" in name:
         return "test"
     if name in ("setup.py", "setup.cfg", "pyproject.toml"):
