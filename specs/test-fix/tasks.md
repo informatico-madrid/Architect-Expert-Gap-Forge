@@ -1,5 +1,21 @@
 # Tasks: Fix All Test Failures and Collection Errors
 
+## MANDATORY: quality-gate Skill Required
+
+**Every task MUST invoke the quality-gate skill before committing.** This is non-negotiable.
+
+Before marking any task as complete:
+1. Run: `Skill(tool="quality-gate")`
+2. The skill runs 3-layer validation:
+   - Layer 1: pytest execution (test runs with -x, must exit 0)
+   - Layer 2: weak test detection (A1-A8 rules — no assert True, no weak assertions)
+   - Layer 3: code quality + SOLID + antipatterns + principles
+3. If the skill reports FAIL → fix the issues, re-run the skill
+4. If the skill does NOT validate → the task is NOT complete, repeat all work
+5. The quality-gate checkpoint JSON is consumed by smart-ralph VERIFY steps
+
+**If the quality-gate skill is not invoked for any task, the task fails quality assurance.**
+
 ## Phase 1: Delete Broken Files + Add Missing Fixtures
 
 Focus: Remove collection errors and add missing fixtures. This proves we can reduce error count dramatically.
@@ -43,15 +59,15 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - **Commit**: `test(scope): add fixtures_dir fixture to conftest.py`
   - _Requirements: FR-2, AC-6.1_
   - _Design: Category B_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
-- [ ] 1.5 [VERIFY] Quality checkpoint: verify collection
+- [x] 1.5 [VERIFY] Quality checkpoint: verify collection
   - **Do**: Run collection only to verify zero collection errors remain
   - **Verify**: `pytest --collect-only --ignore=tests/test_agentic_gen.py 2>&1 | grep -q "errors" && echo FAIL || echo COLLECT_PASS`
   - **Done when**: No collection errors shown
   - **Commit**: `chore(scope): pass collection checkpoint` (if fixes needed)
 
-- [ ] 1.6 Fix VLLM API key missing in test_providers.py
+- [x] 1.6 Fix VLLM API key missing in test_providers.py
   - **Do**: Add a session-scoped autouse fixture that sets VLLM_API_KEY for all VLLMProvider tests:
   1. After the existing `import pytest` line, add after the imports:
   ```python
@@ -67,9 +83,9 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - **Commit**: `test(scope): fix VLLM API key in test_providers.py`
   - _Requirements: FR-3, AC-3.1_
   - _Design: Category C_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
-- [ ] 1.7 Fix VLLM API key missing in test_edge_cases.py
+- [x] 1.7 Fix VLLM API key missing in test_edge_cases.py
   - **Do**: Add a session-scoped autouse fixture that sets VLLM_API_KEY for all VLLMProvider tests:
   1. After the existing `import pytest` line, add after the imports:
   ```python
@@ -84,7 +100,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - **Commit**: `test(scope): fix VLLM API key in test_edge_cases.py`
   - _Requirements: FR-3, AC-3.1_
   - _Design: Category C_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 - [ ] 1.8 Fix GeminiProvider APIError mock type in test_providers.py
   - **Do**: Fix `test_api_error_captured` to not directly instantiate `real_genai.errors.APIError` with a dict. The `google.genai.errors.APIError` constructor expects a response object, not a raw dict. Change the mock to use a proper response-like structure:
@@ -103,7 +119,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
   - **Commit**: `test(scope): fix GeminiProvider APIError mock in test_providers.py`
   - _Requirements: FR-4, AC-3.2_
   - _Design: Category C — Wrong mocks_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 ## Phase 2: Fix Remaining Test Assertions
 
@@ -124,7 +140,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - **Commit**: `test(scope): remove non-existent ext_mapping tests from test_factory_yaml_jinja.py`
   - _Requirements: FR-5, AC-5.1_
   - _Design: Category D1_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 - [ ] 2.2 Remove test_example_configs_have_file_header
   - **Do**: Delete `test_example_configs_have_file_header` from `tests/unit/test_example_configs.py`. The test asserts all YAML configs have AEGF header, but one config (home-assistant.yaml) does not. Config files are not in scope.
@@ -134,7 +150,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - **Commit**: `test(scope): remove file_header test from test_example_configs.py`
   - _Requirements: FR-5, AC-5.2_
   - _Design: Category D2_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 - [ ] 2.3 Remove test_forbidden_terms_comment_exists
   - **Do**: Delete `test_forbidden_terms_comment_exists` from `tests/factory/test_forbidden_terms.py`. The source file does not contain "literal" and "match" words together.
@@ -144,7 +160,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - **Commit**: `test(scope): remove comment test from test_forbidden_terms.py`
   - _Requirements: FR-5, AC-5.3_
   - _Design: Category D3_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 - [ ] 2.4 Remove test_transform_to_abstract_uses_dspy
   - **Do**: Delete `test_transform_to_abstract_uses_dspy` from `tests/factory/test_hard_query_builder_cot.py`. The source uses pure string substitution with no DSPy integration (`get_chain_of_thought` and `_HARD_QUERY_SIG` do not exist).
@@ -154,7 +170,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - **Commit**: `test(scope): remove dspy test from test_hard_query_builder_cot.py`
   - _Requirements: FR-5, AC-5.4_
   - _Design: Category D4_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 - [ ] 2.5 Fix patch target in test_judge_dspy_integration.py
   - **Do**: Change `patch("src.audit.judge.get_predict")` to `patch("src.factory.dspy_utils.get_predict")` in both `test_llm_judge_score_with_stubbed_dspy_predictor` and `test_llm_judge_score_with_dict_outputs_not_json_strings`. The function is defined in `dspy_utils.py` and imported into judge.py — patch where it's defined, not where it's looked up via import.
@@ -164,7 +180,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - **Commit**: `test(scope): fix dspy patch target in test_judge_dspy_integration.py`
   - _Requirements: FR-5, AC-5.5_
   - _Design: Category E1_
-  - **Quality Gate**: `pytest -x --ignore=tests/test_agentic_gen.py`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
 ## Phase 3: Verify Full Test Suite
 
@@ -175,14 +191,14 @@ Focus: Run full test suite, fix any remaining issues.
   - **Verify**: `pytest -x --ignore=tests/test_agentic_gen.py` — must exit 0
   - **Done when**: All tests pass with zero failures
   - **Commit**: `chore(scope): fix remaining test failure` (if fixes needed)
-  - **Quality Gate**: N/A
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. Must report PASS on all 3 layers.
 
 - [ ] 3.2 [VERIFY] Count failures: pytest --continue-on-collection-errors --ignore=tests/test_agentic_gen.py
   - **Do**: Run full suite without -x to see all results. Verify only pre-existing failures remain (test_discovery_processor_cli.py, test_audit_scorecard_submodule.py, test_model_evaluator_golden.py).
   - **Verify**: `pytest --continue-on-collection-errors --ignore=tests/test_agentic_gen.py 2>&1 | grep -E "passed|failed|error"` — should show many passed, and the 5 pre-existing failures only
   - **Done when**: Zero new failures, only pre-existing failures present
   - **Commit**: `chore(scope): verify no new failures`
-  - **Quality Gate**: N/A
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. Must report PASS on all 3 layers.
 
 - [ ] 3.3 [VERIFY] Scan for weak assertions
   - **Do**: Scan all modified test files for weak assertions:
@@ -220,6 +236,7 @@ Focus: Final verification, ensure zero new failures, commit and PR.
   - **Verify**: `pytest --ignore=tests/test_agentic_gen.py 2>&1 | tail -5` — should show all non-pre-existing tests passing
   - **Done when**: Full suite runs cleanly
   - **Commit**: `chore(scope): final quality gate pass`
+  - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. Must report PASS on all 3 layers.
 
 - [ ] 4.2 Create PR and verify CI
   - **Do**:
