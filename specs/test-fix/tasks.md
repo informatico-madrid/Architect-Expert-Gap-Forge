@@ -125,7 +125,7 @@ Focus: Remove collection errors and add missing fixtures. This proves we can red
 
 Focus: Fix wrong assertions and remove tests for non-existent source features.
 
-- [ ] 2.1 Remove 6 failing tests from test_factory_yaml_jinja.py
+- [x] 2.1 Remove 6 failing tests from test_factory_yaml_jinja.py
   - **Do**: Delete these 6 tests that assert non-existent ext_mapping entries:
   1. `test_get_adapter_yaml_returns_yaml_adapter` (lines 24-26)
   2. `test_get_adapter_yml_returns_yaml_adapter` (lines 29-31)
