@@ -162,7 +162,7 @@ Focus: Fix wrong assertions and remove tests for non-existent source features.
   - _Design: Category D3_
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. The skill runs 3-layer validation (Layer 1: pytest execution, Layer 2: weak test detection, Layer 3: code quality + SOLID + antipatterns). If the skill reports FAIL, you MUST fix the issues and re-run the skill. If the skill does not validate, the task is NOT complete — repeat all work.
 
-- [ ] 2.4 Remove test_transform_to_abstract_uses_dspy
+- [x] 2.4 Remove test_transform_to_abstract_uses_dspy
   - **Do**: Delete `test_transform_to_abstract_uses_dspy` from `tests/factory/test_hard_query_builder_cot.py`. The source uses pure string substitution with no DSPy integration (`get_chain_of_thought` and `_HARD_QUERY_SIG` do not exist).
   - **Files**: tests/factory/test_hard_query_builder_cot.py
   - **Done when**: Test is removed and 2 remaining tests pass
