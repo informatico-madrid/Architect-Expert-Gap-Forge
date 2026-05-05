@@ -114,10 +114,10 @@ def cleanup_isolated_env(path: str, kind: str) -> None:
     logger.info("Cleaning up test environment: %s", path)
     try:
         if kind == "worktree":
-            # Double --force: first --force allows removing checked-out branches,
-            # second overrides locked worktrees (reason: "initializing" etc.)
+            # --force removes checked-out branches, -f overrides locked worktrees
+            # (reason: "initializing" etc.)
             result = subprocess.run(
-                ["git", "worktree", "remove", "--force", "--force", path],
+                ["git", "worktree", "remove", "--force", "-f", path],
                 capture_output=True,
                 timeout=30,
             )
@@ -227,11 +227,12 @@ def _impl(argv: argparse.Namespace) -> int:
     output: Path = Path(argv.output)
     dry_run: bool = argv.dry_run
 
-    global _isolated_path, _isolated_kind
+    global _isolated_path, _isolated_kind, _isolated_parent
 
     if argv.no_overwrite and output.exists() and output.stat().st_size > 0:
         print(
-            f"Output file already exists: {output}. Use --no-overwrite to skip.",
+            f"Output file already exists: {output}. "
+            f"Remove the file or drop --no-overwrite to overwrite.",
             file=sys.stderr,
         )
         return 1
@@ -376,6 +377,9 @@ def _impl(argv: argparse.Namespace) -> int:
             cleanup_isolated_env(_isolated_path, _isolated_kind)
             _isolated_path = None
             _isolated_kind = None
+        if _isolated_parent is not None:
+            shutil.rmtree(_isolated_parent, ignore_errors=True)
+            _isolated_parent = None
 
 
 def main(argv: list[str] | None = None) -> int:

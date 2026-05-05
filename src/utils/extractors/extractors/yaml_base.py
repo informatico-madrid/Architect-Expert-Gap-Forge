@@ -414,11 +414,11 @@ class JinjaStatementToken:
 
 # Jinja variable patterns
 JINJA_VAR_PATTERN = re.compile(
-    r"\{\{([^{}]+?)\}\}",  # Single braces
+    r"\{\{([^{}]+?)\}\}",  # Double braces (unsafe in HTML context)
     re.MULTILINE,
 )
 JINJA_SAFE_VAR_PATTERN = re.compile(
-    r"\{\{([^{}]+?)\}\}",  # Double braces (safe)
+    r"\{\{([^{}]+?)\}\}",  # Double braces (alias for JINJA_VAR_PATTERN)
     re.MULTILINE,
 )
 

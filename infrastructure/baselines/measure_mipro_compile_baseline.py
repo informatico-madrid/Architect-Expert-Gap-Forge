@@ -199,15 +199,15 @@ def _impl(args: argparse.Namespace) -> int:
     # Validate output parent is NOT a symlink BEFORE resolution (security)
     if output_parent.is_symlink():
         target = output_parent.resolve()
-        # Verify symlink target is within allowed directories
         allowed = [Path("/tmp"), Path("/var/tmp")]
         if not any(str(target).startswith(str(a)) for a in allowed):
             raise BaselineError(
                 f"Symlink target outside allowed directories: {target}. "
                 "Refusing to write to untrusted symlinked paths for security."
             )
-
-    output_parent = output_parent.resolve()
+        output_parent = target
+    else:
+        output_parent = output_parent.resolve()
 
     # no-overwrite check
     if args.no_overwrite and output_path.exists() and output_path.stat().st_size > 0:
