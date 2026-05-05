@@ -533,7 +533,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix ID regex and logging level (#73,#74)`
   - _Requirements: AC-9_
 
-- [ ] V6 [VERIFY] Quality checkpoint: spec contradiction fixes
+- [x] V6 [VERIFY] Quality checkpoint: spec contradiction fixes
   - **Do**: Run: `echo "All spec contradictions reviewed" && python -c "print('OK')"`
   - **Verify**: All spec files readable as valid markdown
   - **Done when**: No contradictions remain in checked specs
