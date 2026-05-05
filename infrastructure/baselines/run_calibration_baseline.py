@@ -316,7 +316,7 @@ def _impl(args: argparse.Namespace) -> int:
             composite_scores.append(float(val) if val is not None else None)
 
     valid_composites = [s for s in composite_scores if s is not None]
-    mean_composite = (
+    _mean_composite = (
         sum(valid_composites) / len(valid_composites) if valid_composites else None
     )
 

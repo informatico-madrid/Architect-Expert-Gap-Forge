@@ -29,7 +29,6 @@ from typing import Any, List, Optional
 
 from src.utils.extractors.base import (
     Dependency,
-    ExtractorAdapter,
     ParseError,
     ParseResult,
 )

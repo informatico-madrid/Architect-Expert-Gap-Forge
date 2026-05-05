@@ -42,11 +42,9 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from infrastructure.baselines._shared import (
-    BaselineError,
     _sanitize_output_dict,
     check_output_lock,
     release_lock,
-    validate_input_file,
     write_output_atomic,
 )
 
