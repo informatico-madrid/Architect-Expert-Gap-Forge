@@ -16,7 +16,7 @@ Create a `YamlAdapter` class that:
 - Extracts trigger patterns: `trigger` with platforms (state, time_pattern, event, etc.)
 - Extracts condition patterns: `condition` with conditions (state, time, numeric_state, etc.)
 - Extracts action patterns: `action` with service calls, delays, actions
-- Identifies Jinja expressions: `!input`, `{{ }}`, filters, tests
+- Identifies Jinja expressions: `'!input'`, `{{ }}`, filters, tests
 - Classifies file type: `blueprint`, `integration_config`, `automation`, `theme`
 
 ### FR-2: Jinja Adapter
@@ -28,7 +28,7 @@ Create a `JinjaAdapter` class that:
 - Extracts tests: `{{ value is test }}`
 - Extracts loops: `{% for item in items %}`
 - Extracts conditionals: `{% if condition %}`
-- Identifies Home Assistant-specific expressions: `!input`, `states.entity_id`, `now`, `state_attr`
+- Identifies Home Assistant-specific expressions: `'!input'`, `states.entity_id`, `now`, `state_attr`
 
 ### FR-3: Output Schema
 
