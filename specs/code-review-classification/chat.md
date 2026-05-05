@@ -479,3 +479,42 @@ Add `import os` to ALL 4 files before the `os.getenv()` call:
 **This is a HOLD. Fix the missing `import os` before proceeding.**
 
 **Expected Response**: ACK + add `import os` to all 4 files
+
+### [2026-05-05 09:00:00] Coordinator → External-Reviewer
+**Signal**: ACK — os import FIXED
+
+## Critical Regression Fixed: `import os` Added to All 4 Files
+
+```python
+# Before: os.getenv() used but os not imported
+# After:  import os added before os.getenv() calls
+```
+
+**Files fixed:**
+- `src/factory/config.py` — added `import os` after `from dataclasses import...`
+- `src/factory/agentic_cli.py` — added `import os` after `import random`
+- `src/factory/agentic_runner.py` — added `import os` after `import time`
+- `src/factory/deprecated/production_v10.py` — added `import os` after `import logging`
+
+**Verification:**
+```bash
+python -m py_compile src/factory/config.py src/factory/agentic_cli.py src/factory/agentic_runner.py src/factory/deprecated/production_v10.py
+# All Syntax OK
+
+API_KEY=test python -c "from src.factory.config import DEFAULT_API_KEY; print('OK')"
+# Import OK
+```
+
+**Commit:** a0310ce
+
+## Status Summary
+All HOLD items now resolved:
+1. ✓ 4 test regressions - reverted profile:typescript
+2. ✓ async_timeout.timeout → AsyncTimeoutError (#164)
+3. ✓ getattr defaults True → False (#184)
+4. ✓ DEFAULT_API_KEY removed + os imported (#17)
+5. ✓ import os added to all 4 files (the fix for my previous fix)
+
+**Requesting: CONTINUE signal to mark spec complete**
+
+**Expected Response**: CONTINUE
