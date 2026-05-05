@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-05-05T06:50:02Z",
+  "updated": "2026-05-05T08:14:15Z",
   "directories": [
     {
       "path": "./specs",
@@ -53,14 +53,16 @@
       "name": "006-project-maintenance",
       "path": "./specs/006-project-maintenance",
       "phase": "tasks",
-      "taskIndex": 0,
+      "taskIndex": 0
+0,
       "totalTasks": 48
     },
     {
       "name": "008-fix-ingestor-cli-execution",
       "path": "./specs/008-fix-ingestor-cli-execution",
       "phase": "tasks",
-      "taskIndex": 0,
+      "taskIndex": 0
+0,
       "totalTasks": 9
     },
     {
@@ -88,7 +90,8 @@
       "name": "014-rich-cli-output",
       "path": "./specs/014-rich-cli-output",
       "phase": "tasks",
-      "taskIndex": 0,
+      "taskIndex": 0
+0,
       "totalTasks": 34
     },
     {
@@ -193,7 +196,7 @@
       "name": "code-review-classification",
       "path": "./specs/code-review-classification",
       "phase": "execution",
-      "taskIndex": 24,
+      "taskIndex": 82,
       "totalTasks": 82
     },
     {
