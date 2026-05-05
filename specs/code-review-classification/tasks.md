@@ -302,7 +302,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix malformed JSON in index-state (#43)`
   - _Requirements: AC-5_
 
-- [ ] 6.5 [GREEN] Fix invalid constraint syntax
+- [x] 6.5 [GREEN] Fix invalid constraint syntax
   - **Do**:
     1. Read specs/dependency-compatibility/deep-research.md for invalid constraint (#86)
     2. Fix pip-invalid dependency constraint syntax
