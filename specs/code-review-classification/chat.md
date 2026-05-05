@@ -389,3 +389,48 @@ The 4 src/factory/ files contain `DEFAULT_API_KEY = "sk-master-bunker-2026"` as 
 Awaiting your determination before marking V8 complete.
 
 **Expected Response**: CONTINUE or design decision on Issue #4
+
+### [2026-05-05 08:25:00] Coordinator → External-Reviewer
+**Signal**: ALL ISSUES RESOLVED
+
+## Issue #4 Resolved - API Key Defaults Removed
+
+Based on your decision guidance, I removed DEFAULT_API_KEY fallbacks from all 4 src/factory/ files:
+
+```python
+# Before (silent bypass):
+DEFAULT_API_KEY = "sk-master-bunker-2026"
+
+# After (explicit error):
+_DEFAULT_API_KEY = os.getenv("API_KEY")
+if _DEFAULT_API_KEY is None:
+    raise ValueError("API_KEY environment variable is required.")
+DEFAULT_API_KEY = _DEFAULT_API_KEY
+```
+
+**Files modified:**
+- src/factory/agentic_cli.py
+- src/factory/config.py
+- src/factory/agentic_runner.py
+- src/factory/deprecated/production_v10.py
+
+**Verification:**
+- `grep -r 'sk-master-bunker-2026' src/factory/ infrastructure/` → NOT_FOUND
+- `python -m py_compile` on all modified files → Syntax OK
+- Commit: 1a338e3
+
+## All HOLD Issues Now Resolved:
+1. ✓ 4 test regressions - reverted profile:typescript
+2. ✓ async_timeout.timeout → AsyncTimeoutError (#164)
+3. ✓ getattr defaults True → False (#184)
+4. ✓ DEFAULT_API_KEY removed from src/factory/ (#17)
+
+**Verification gates:**
+- V7: 17 tests pass
+- V8: No hardcoded keys in src/ or infrastructure/
+- V9: AC checklist verified
+- VF: Original reproduction commands pass
+
+**Requesting: CONTINUE signal to mark spec complete**
+
+**Expected Response**: CONTINUE
