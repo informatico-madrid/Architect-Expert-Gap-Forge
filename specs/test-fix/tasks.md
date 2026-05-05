@@ -238,7 +238,7 @@ Focus: Final verification, ensure zero new failures, commit and PR.
   - **Commit**: `chore(scope): final quality gate pass`
   - **Quality Gate (MANDATORY)**: Invoke the quality-gate skill BEFORE committing. Run: `Skill(tool="quality-gate")`. Must report PASS on all 3 layers.
 
-- [ ] 4.2 Create PR and verify CI
+- [x] 4.2 Create PR and verify CI
   - **Do**:
     1. Verify current branch: `git branch --show-current` (should be rfactory-factory-frameworks)
     2. Push: `git push -u origin rfactory-factory-frameworks`

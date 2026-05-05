@@ -26,6 +26,7 @@ exec 9>"$LOCK_FILE"
 
 **Slugs de ejemplo:**
 - `specs/001-stage1-discovery` → `001-stage1-discovery`
+- `specs/010-agentic-dataset-redesign` → `010-agentic-dataset-redesign`
 
 ### 2. Estado JSON por Spec
 
@@ -41,6 +42,7 @@ STATE_FILE="$PROJECT_DIR/.ralph/state-${SLUG}.json"
 
 **Archivos de estado:**
 - `.ralph/state-001-stage1-discovery.json`
+- `.ralph/state-010-agentic-dataset-redesign.json`
 
 ## Cambios Requeridos
 

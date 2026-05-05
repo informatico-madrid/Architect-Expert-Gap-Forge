@@ -1,0 +1,65 @@
+# Gito Configuration for data_factory
+# Start simple: only exclude_files. Add more later if needed.
+
+# ============================================
+# EXCLUDE FILES - Prevent analyzing third-party/generated code
+# ============================================
+
+exclude_files = [
+    # Lock files
+    "*.lock",
+    "poetry.lock",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "bun.lockb",
+
+    # Third-party and generated directories
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    ".venv/**",
+    "venv/**",
+    "env/**",
+
+    # Python artifacts
+    "__pycache__/**",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
+    ".pytest_cache/**",
+    ".mypy_cache/**",
+    ".ruff_cache/**",
+
+    # Coverage and test artifacts
+    "htmlcov/**",
+    ".coverage",
+    "*.egg-info/**",
+
+    # Hidden directories (all dot-prefixed folders)
+    ".*/**",
+
+    # Specific project directories
+    "_bmad/**",
+    "_bmad-output/**",
+    "specs/**",
+
+    # Minified files
+    "*.min.js",
+    "*.min.css",
+    "*.bundle.js",
+
+    # IDE and OS files
+    "*.swp",
+    "*.swo",
+    "*~",
+    ".DS_Store",
+    "Thumbs.db",
+]
+
+# ============================================
+# BEHAVIOR - Minimal changes
+# ============================================
+
+retries = 1
+collapse_previous_code_review_comments = true
