@@ -16,7 +16,7 @@ category: homeassistant
 mode: static
 
 # Profile: TypeScript adapter for .ts/.tsx files
-profile: typescript
+# profile: typescript  # auto-detection overrides this setting
 
 # File extensions to process (mapped to profile_extensions by processor)
 extensions:

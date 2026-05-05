@@ -580,7 +580,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     summary_table.add_row("Input records", f"{input_records:,}")
     summary_table.add_row("Output records", f"{output_records:,}")
     summary_table.add_row("Records removed", f"{removed:,}")
-    summary_table.add_row("Filter rate", f"{(1 - output_records / input_records * 100):.1f}%" if input_records > 0 else "N/A")
+    summary_table.add_row("Filter rate", f"{(1 - output_records / input_records) * 100:.1f}%" if input_records > 0 else "N/A")
     if stats.nemo_filtered > 0:
         summary_table.add_row("NeMo filtered", f"{stats.nemo_filtered:,}")
 
