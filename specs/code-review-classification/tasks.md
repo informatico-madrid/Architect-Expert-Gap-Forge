@@ -847,7 +847,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `chore(spec): AC checklist verified`
   - _Requirements: AC-1 through AC-11_
 
-- [ ] VF [VERIFY] Goal verification: original failures now fixed
+- [x] VF [VERIFY] Goal verification: original failures now fixed
   - **Do**:
     1. Re-run: `python -m py_compile infrastructure/anchor_dataset/failed_sample_logger.py` (was SyntaxError, now passes)
     2. Re-run: `python -m pytest tests/ -x --tb=short --ignore=tests/test_agentic_gen.py` (pre-existing failures should not increase)
