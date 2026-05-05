@@ -521,7 +521,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 - [x] 10.3 [GREEN] Fix node count inconsistency — goal says "3-agent architecture plus Ingest node", scope says "4 nodes (3 agents + Ingest data loader)"
 
-- [ ] 10.4 [GREEN] Fix ID regex and logging level contradictions
+- [x] 10.4 [GREEN] Fix ID regex and logging level contradictions — ID regex already consistent (r"^anchor_\d+_\d+$"), logging level fixed by f08b9ec
   - **Do**:
     1. Read specs/anchor-dataset/requirements.md lines 21, 28, 202 for ID regex inconsistency (#73)
     2. Read lines 41, 226 for "warning at INFO level" contradiction (#74)
