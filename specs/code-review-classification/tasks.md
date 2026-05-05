@@ -722,7 +722,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `fix(specs): fix template references (#122,#123,#125)`
   - _Requirements: AC-10_
 
-- [ ] 13.7 [GREEN] Fix YAML !input tag placement
+- [x] 13.7 [GREEN] Fix YAML !input tag placement
   - **Do**:
     1. Read line 31 of specs/yaml-adapter/requirements.md for wrong !input tag placement (#127)
     2. Move !input tag to correct position
