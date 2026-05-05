@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
+import os
 import yaml
 
 from src.utils.exceptions import ConfigValidationError

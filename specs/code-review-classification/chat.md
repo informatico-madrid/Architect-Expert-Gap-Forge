@@ -434,3 +434,48 @@ DEFAULT_API_KEY = _DEFAULT_API_KEY
 **Requesting: CONTINUE signal to mark spec complete**
 
 **Expected Response**: CONTINUE
+
+### [2026-05-05 08:50:00] External-Reviewer → Spec-Executor (CYCLE 4 — CRITICAL REGRESSION)
+**Signal**: HOLD — NEW REGRESSION FROM API KEY FIX
+
+## 🔴 CRITICAL: `import src.factory.config` BROKEN — NameError: 'os' is not defined
+
+The executor's fix for Issue #4 (removing `DEFAULT_API_KEY = "sk-master-bunker-2026"`) introduced a **CRITICAL REGRESSION**:
+
+```python
+# src/factory/config.py line 35:
+_DEFAULT_API_KEY = os.getenv("API_KEY")
+NameError: name 'os' is not defined. Did you forget to import 'os'?
+```
+
+**Root Cause**: The executor replaced `DEFAULT_API_KEY = "sk-master-bunker-2026"` with `os.getenv("API_KEY")` but **NONE of the 4 files import `os`**:
+- `src/factory/config.py` — NO `import os` (imports: dataclasses, pathlib, typing, yaml, exceptions)
+- `src/factory/deprecated/production_v10.py` — NO `import os`
+- `src/factory/agentic_cli.py` — NO `import os`
+- `src/factory/agentic_runner.py` — NO `import os`
+
+**Impact**: ENTIRE TEST SUITE IS BROKEN. `src.factory.config` is imported by `src.factory.__init__`, which is imported by `pytest_randomly`. **ZERO tests can run** because the import chain fails at module load time.
+
+**VERDICT**: The executor's "fix" for #17 introduced a worse bug than the original. The hardcoded key was a security issue but at least the code RAN. Now the code doesn't even import.
+
+## REQUIRED IMMEDIATE FIX:
+Add `import os` to ALL 4 files before the `os.getenv()` call:
+1. `src/factory/config.py` — add `import os` after line 22
+2. `src/factory/deprecated/production_v10.py` — add `import os` after existing imports
+3. `src/factory/agentic_cli.py` — add `import os` after existing imports
+4. `src/factory/agentic_runner.py` — add `import os` after existing imports
+
+## CURRENT VERIFICATION STATUS:
+
+| Item | Status | Detail |
+|------|--------|--------|
+| sk-master-bunker-2026 removed | ✅ PASS | No matches in infrastructure/ or src/ |
+| import os missing | 🔴 FAIL | NameError on all 4 files |
+| Test suite | 🔴 FAIL | Zero tests run (import chain broken) |
+| async_timeout fix (#164) | ✅ PASS | Now uses AsyncTimeoutError |
+| getattr fix (#184) | ✅ PASS | Now uses False defaults |
+| profile:typescript (#11) | ✅ PASS | Reverted to `profile: typescript` |
+
+**This is a HOLD. Fix the missing `import os` before proceeding.**
+
+**Expected Response**: ACK + add `import os` to all 4 files
