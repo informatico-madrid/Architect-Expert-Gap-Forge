@@ -38,7 +38,7 @@ As the dataset builder, I want to load and normalize seed data from existing fix
 - [ ] AC-2.1: Seeds loaded from `tests/fixtures/seed_examples.yaml` (currently 8 HA seeds + 5 PHP legacy seeds)
 - [ ] AC-2.2: Seed normalization extracts: `seed_id`, `category`, `context`, `question`, `complexity`, `expected_patterns` into a uniform representation
 - [ ] AC-2.3: Seeds tagged by domain: `home_assistant` for HA seeds, `php_legacy` for PHP seeds
-- [ ] AC-2.4: When seed file is missing: log INFO-level warning message "Seed file not found, continuing with empty seed list", return empty normalized seed list, continue generation without error (exit code 0)
+- [ ] AC-2.4: When seed file is missing: log a warning message "Seed file not found, continuing with empty seed list", return empty normalized seed list, continue generation without error (exit code 0)
 - [ ] AC-2.5: Seed loading is idempotent (re-reading produces identical normalized output)
 
 ### US-3: Domain distribution controller
@@ -223,7 +223,7 @@ As an ML Engineer, I want a documented verification workflow with a structured l
 ### FR-003: Seed data loader
 - [FR-003.1] Seeds MUST be loaded from `tests/fixtures/seed_examples.yaml`
 - [FR-003.2] Each seed normalized to: `id` (str), `domain` (str: "home_assistant" or "php_legacy"), `category` (str), `context` (str), `question` (str), `complexity` (str), `expected_patterns` (list[str])
-- [FR-003.3] If seed file missing: log warning at INFO level, return empty list, continue generation (do not fail)
+- [FR-003.3] If seed file missing: log a warning, return empty list, continue generation (do not fail)
 - [FR-003.4] Seed loading MUST be idempotent (multiple loads produce identical normalized output)
 
 ### FR-004: Sample configuration generator
