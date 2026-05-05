@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated": "2026-05-05T08:39:53Z",
+  "updated": "2026-05-05T09:43:45Z",
   "directories": [
     {
       "path": "./specs",
@@ -192,7 +192,7 @@
     {
       "name": "code-review-classification",
       "path": "./specs/code-review-classification",
-      "phase": "execution",
+      "phase": "completed",
       "taskIndex": 82,
       "totalTasks": 82
     },

@@ -3,7 +3,7 @@
 Auto-generated summary of all specs across configured directories.
 See [index-state.json](./index-state.json) for machine-readable data.
 
-**Last updated:** 2026-05-05T08:39:53Z
+**Last updated:** 2026-05-05T09:43:45Z
 
 ## Directories (1)
 
@@ -52,7 +52,7 @@ See [index-state.json](./index-state.json) for machine-readable data.
 | baseline-measurement | ./specs | tasks | 0
 0/0
 0 tasks |
-| code-review-classification | ./specs | execution | 82/82 tasks |
+| code-review-classification | ./specs | completed | done |
 | dependency-compatibility | ./specs | research | awaiting approval |
 | module-discovery-auto | ./specs | execution | 50/50 tasks |
 | yaml-adapter | ./specs | tasks | 0
