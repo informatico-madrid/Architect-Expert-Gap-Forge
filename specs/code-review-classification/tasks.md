@@ -809,7 +809,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
 
 ## Phase 15: Final Verification
 
-- [ ] V7 [VERIFY] Full local CI: syntax, lint, tests, imports
+- [x] V7 [VERIFY] Full local CI: syntax, lint, tests, imports
   - **Do**:
     1. Syntax check: `find infrastructure/ src/ -name '*.py' -exec python -m py_compile {} \;`
     2. Lint: `ruff check .`
@@ -820,7 +820,7 @@ Bug TDD workflow: all 102 Group 1 issues fixed via red-green cycles. Phase 0 ver
   - **Commit**: `chore(spec): pass full local CI` (if fixes needed)
   - _Requirements: AC-11_
 
-- [ ] V8 [VERIFY] Security final check
+- [x] V8 [VERIFY] Security final check
   - **Do**:
     1. No hardcoded keys: `! grep -r 'sk-master-bunker' infrastructure/ src/ ; test $? -ne 0`
     2. No symlink vulnerabilities: read measure_mipro_compile_baseline.py to confirm check before resolve()
