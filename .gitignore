@@ -7335,3 +7335,4 @@ baseline_results/test_atomic.json
 plans/gito-excess-issues-analysis.md
 .gito/.config.toml.swp
 .gito/context.md
+.coverage.*
