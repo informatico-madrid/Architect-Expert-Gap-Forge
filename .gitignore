@@ -7333,3 +7333,4 @@ baseline_results/test_atomic.json
 .claude/commands/mutation-gate.md
 .roo
 plans/gito-excess-issues-analysis.md
+.gito/.config.toml.swp

@@ -120,7 +120,7 @@ class SampleConfigGenerator:
             for difficulty, dcount_val in diff_counts.items():
                 turn_count = _DIFFICULTY_TURNS[difficulty]
                 for _ in range(dcount_val):
-                    sid = f"anchor_001_{sample_idx:02d}"
+                    sid = f"anchor_001_{sample_idx:03d}"
 
                     # Seed reference: cycle through matching domain seeds
                     pool = self._domain_pools.get(domain, [])
@@ -151,7 +151,7 @@ class PromptBuilder:
     SYSTEM_TEMPLATE = """\
 DOMAIN: {domain}
 CATEGORY: {category}
-COMPLEXITY: {complexity}
+DIFFICULTY: {difficulty}
 
 FEW-SHOT EXAMPLES:
 {few_shot}
@@ -191,7 +191,7 @@ Generate an anchor sample for the following configuration:
         system = self.SYSTEM_TEMPLATE.format(
             domain=config.domain,
             category=matching[0].category if matching else "general",
-            complexity=matching[0].complexity if matching else "nominal",
+            difficulty=config.difficulty,
             few_shot=few_shot,
             turn_count=config.turn_count,
         )

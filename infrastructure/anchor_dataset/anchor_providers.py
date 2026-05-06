@@ -67,7 +67,7 @@ class VLLMProvider(AnchorProvider):
     ) -> AnchorRecord | None:
         api_key = os.environ.get("VLLM_API_KEY")
         if api_key is None:
-            raise ValueError("VLLM_API_KEY environment variable is required")
+            return None
 
         payload = {
             "model": self.model,
