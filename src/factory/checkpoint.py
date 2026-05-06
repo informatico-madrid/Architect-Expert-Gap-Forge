@@ -327,6 +327,10 @@ class GenerationCheckpoint:
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+            if not isinstance(data, dict):
+                raise CheckpointError(
+                    f"Invalid checkpoint file format at {path}: expected JSON object, got {type(data).__name__}"
+                )
             done_seeds = set(data.get("done_seeds", []))
             return cls(done_seeds)
         except json.JSONDecodeError as e:

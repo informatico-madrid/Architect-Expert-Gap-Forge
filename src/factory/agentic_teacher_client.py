@@ -101,8 +101,11 @@ class OpenAIProvider(TeacherProvider):
         """Generate using OpenAI-compatible API."""
         payload = self._build_request_payload(prompt)
         base_url = model_config.base_url or "https://api.openai.com/v1"
+        api_key = os.getenv(model_config.api_key_env)
+        if not api_key:
+            raise ValueError(f"API key environment variable {model_config.api_key_env} is not set")
         headers = {
-            "Authorization": f"Bearer {os.getenv(model_config.api_key_env, 'dummy-key')}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
 
@@ -141,8 +144,11 @@ class AnthropicProvider(TeacherProvider):
     async def generate(self, prompt: str, model_config: TeacherModelConfig) -> str:
         """Generate using Anthropic Claude API."""
         payload = self._build_request_payload(prompt)
+        api_key = os.getenv(model_config.api_key_env)
+        if not api_key:
+            raise ValueError(f"API key environment variable {model_config.api_key_env} is not set")
         headers = {
-            "x-api-key": os.getenv(model_config.api_key_env, "dummy-key"),
+            "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         }
@@ -182,12 +188,15 @@ class GeminiProvider(TeacherProvider):
     async def generate(self, prompt: str, model_config: TeacherModelConfig) -> str:
         """Generate using Google Gemini API."""
         payload = self._build_request_payload(prompt)
-        api_key = os.getenv(model_config.api_key_env, "dummy-key")
+        api_key = os.getenv(model_config.api_key_env)
+        if not api_key:
+            raise ValueError(f"API key environment variable {model_config.api_key_env} is not set")
 
         async with httpx.AsyncClient(timeout=model_config.request_timeout_seconds) as client:
             response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model_config.model_name}:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model_config.model_name}:generateContent",
                 json=payload,
+                headers={"x-goog-api-key": api_key},
             )
             response.raise_for_status()
             data = response.json()

@@ -43,6 +43,17 @@ exclude_files = [
     "_bmad/**",
     "_bmad-output/**",
     "specs/**",
+    # Agent skills and commands (documentation in SKILL.md files)
+    ".agents/**",
+    ".claude/**",
+    ".roo/**",
+    ".goose/**",
+    ".qwen/**",
+    ".gemini/**",
+    ".cursor/**",
+    ".cline/**",
+    ".ralph/**",
+    ".gito/**",
 
     # Minified files
     "*.min.js",
@@ -63,3 +74,9 @@ exclude_files = [
 
 retries = 1
 collapse_previous_code_review_comments = true
+
+# ============================================
+# AUX FILES - Additional context for review
+# ============================================
+
+aux_files = [".gito/context.md"]

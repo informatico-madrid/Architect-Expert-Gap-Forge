@@ -73,6 +73,34 @@
         "title": "Docstring example contradicts implementation",
         "severity": 3,
         "description": "Comment example está invertido"
+      },
+      {
+        "file": ".roo/commands/external-reviewer.md",
+        "issue_id": 6,
+        "title": "Command Injection Vulnerability in Shell Heredoc",
+        "severity": 1,
+        "description": "Unquoted EOF allows variable expansion of user-controlled content"
+      },
+      {
+        "file": "src/factory/agentic_teacher_client.py",
+        "issue_id": 68,
+        "title": "Insecure API Key Fallback Masks Configuration Errors",
+        "severity": 1,
+        "description": "OpenAI and Anthropic providers use os.getenv with dummy-key fallback"
+      },
+      {
+        "file": "src/factory/agentic_teacher_client.py",
+        "issue_id": 69,
+        "title": "API Key Exposed via URL Query Parameter",
+        "severity": 1,
+        "description": "GeminiProvider exposes API key in URL query string instead of header"
+      },
+      {
+        "file": "src/factory/checkpoint.py",
+        "issue_id": 72,
+        "title": "Unhandled AttributeError on non-dict JSON root in resume_from",
+        "severity": 2,
+        "description": "data.get() assumes json.load() returns dict without type validation"
       }
     ],
     "false_positive_categories": {
@@ -80,7 +108,8 @@
       "frozen_dataclass_pattern": "object.__setattr__(...) sin self es intencional para frozen dataclasses",
       "test_fixtures": "tests/fixtures/ excluded de lint por spec",
       "documentation_files": ".md files son documentación, no código",
-      "pre_existing_in_main": "Archivos existentes en main antes de esta rama"
+      "pre_existing_in_main": "Archivos existentes en main antes de esta rama",
+      "hidden_agent_folders": ".agents/, .claude/, .roo/, .gito/, etc. excluded in .gito/config.toml"
     },
     "yaml_base_false_positive_explanation": {
       "file": "src/utils/extractors/extractors/yaml_base.py",
@@ -94,7 +123,7 @@
       "phase": "VF (Final Verification)",
       "status": "15 phases, 102 Group 1 issues addressed via red-green cycles"
     },
-    "recommendation": "MERGE OK - Los 8 REAL bugs identificados son menores (documentation language issues, os.chdir side-effects, terminology). Los 46 FALSE_POSITIVEs incluyen los 11 severity-1 issues en yaml_base.py que son patrones intencionales para frozen dataclasses.",
+    "recommendation": "MERGE OK - Los 9 REAL bugs identificados son menores (documentation language issues, os.chdir side-effects, terminology). Los 46 FALSE_POSITIVEs incluyen los 11 severity-1 issues en yaml_base.py que son patrones intencionales para frozen dataclasses.",
     "fixes_applied": [
       {
         "file": "infrastructure/anchor_dataset/anchor_providers.py",
@@ -135,12 +164,61 @@
         "severity": 3,
         "fix": "Fixed SYSTEM_TEMPLATE to use DIFFICULTY and match implementation (config.difficulty used in build())",
         "status": "FIXED"
+      },
+      {
+        "file": ".roo/commands/external-reviewer.md",
+        "issue_id": 6,
+        "title": "Command Injection Vulnerability in Shell Heredoc",
+        "severity": 1,
+        "fix": "Changed 'cat > \"$tmpfile\" << EOF' to 'cat > \"$tmpfile\" << 'EOF'' to prevent variable expansion of user-controlled content",
+        "status": "FIXED"
+      },
+      {
+        "file": "src/factory/agentic_teacher_client.py",
+        "issue_id": 68,
+        "title": "Insecure API Key Fallback Masks Configuration Errors",
+        "severity": 1,
+        "fix": "OpenAIProvider and AnthropicProvider now validate API key explicitly with ValueError instead of using dummy-key fallback pattern",
+        "status": "FIXED"
+      },
+      {
+        "file": "src/factory/agentic_teacher_client.py",
+        "issue_id": 69,
+        "title": "API Key Exposed via URL Query Parameter",
+        "severity": 1,
+        "fix": "GeminiProvider now passes API key via x-goog-api-key header instead of URL query parameter",
+        "status": "FIXED"
+      },
+      {
+        "file": "src/factory/checkpoint.py",
+        "issue_id": 72,
+        "title": "Unhandled AttributeError on non-dict JSON root in resume_from",
+        "severity": 2,
+        "fix": "Added isinstance(data, dict) check before calling data.get() to handle non-dict JSON root (e.g., arrays)",
+        "status": "FIXED"
       }
+    ],
+    "gito_config_exclusions_added": [
+      "_bmad/**",
+      "_bmad-output/**",
+      "specs/**",
+      ".agents/**",
+      ".claude/**",
+      ".roo/**",
+      ".goose/**",
+      ".qwen/**",
+      ".gemini/**",
+      ".cursor/**",
+      ".cline/**",
+      ".ralph/**",
+      ".gito/**"
     ],
     "import_checks": {
       "anchor_providers": "OK",
       "sample_generator": "OK",
-      "rollback_check": "OK"
+      "rollback_check": "OK",
+      "agentic_teacher_client": "OK",
+      "checkpoint": "OK"
     }
   }
 }

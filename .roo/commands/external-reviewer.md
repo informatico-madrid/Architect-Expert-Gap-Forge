@@ -653,7 +653,7 @@ chat_write_signal() {
   local tmpfile="/tmp/chat.tmp.${writer}.$(date +%s%N)"
   local task_id="reviewer"
   local timestamp=$(date +%H:%M:%S)
-  cat > "$tmpfile" << EOF
+  cat > "$tmpfile" << 'EOF'
 ### [$writer → $addressee] $timestamp | $task_id | $signal
 $body
 EOF

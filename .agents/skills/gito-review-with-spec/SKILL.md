@@ -1,11 +1,11 @@
 ---
 name: gito-review-with-spec
-description: Run Gito code review WITH SPEC CONTEXT. The agent decides what context is relevant based on the comparison being made. Sends relevant spec context to Gito to reduce false positives. Uses bmad-consensus-party + bmad-review-adversarial-general to classify each Gito issue as REAL or FALSE_POSITIVE. Invokable via: gito review, review code, /gito, /gito-review, quality gate.
+description: Run Gito code review WITH SPEC CONTEXT. Adds context files to .gito/config.toml to reduce false positives. Uses bmad-review-adversarial-general to classify each Gito issue as REAL or FALSE_POSITIVE. Invokable via: gito review, review code, /gito, /gito-review, quality gate.
 ---
 
 # Gito Review With Spec Context
 
-**The agent decides what context to provide** based on what it knows about the comparison.
+**IMPORTANT: The context mechanism differs between `gito review` and `gito ask`**
 
 ## When to Use
 
@@ -19,20 +19,93 @@ description: Run Gito code review WITH SPEC CONTEXT. The agent decides what cont
 
 - Quick syntax checks (use ruff/pyright directly)
 - Just reading code (not reviewing)
-- Already have perfect context
+- Already have perfect context (context.md is already set up in .gito/)
 
-## How the Agent Decides Context
+---
 
-When you invoke this skill, **you already know**:
+## How Gito Accepts Context
 
-1. **What comparison**: `HEAD..main`, `commit_a..commit_b`, staged files, etc.
-2. **What branch**: `feature-m403-*`, `hotfix/*`, `main`, etc.
-3. **What changed**: The agent can see which files are different
-4. **What spec applies**: You know what feature you're working on
+### For `gito review` (code review):
+**Context is added via `.gito/config.toml`**:
 
-### Decision Framework
+```toml
+# In .gito/config.toml
+aux_files = [".gito/context.md"]
+```
 
-Use this logic to decide context:
+### For `gito ask` (question answering):
+**Context can be added via CLI flag OR config.toml**:
+
+```bash
+# Via CLI (ask command only)
+gito ask "Why is this function async?" --aux-files .gito/context.md
+
+# Or via config.toml (same as review)
+```
+
+### Key Discovery:
+- **`gito review` does NOT have `--aux-context` or `--aux-files`** - These options do NOT exist for the review command
+- **`gito ask` DOES have `--aux-files`** - This is for question-answering
+- **The only way to add context to `gito review` is via `config.toml`**
+
+---
+
+## Workflow (For the Agent)
+
+### Step 1: Ensure Context File Exists
+
+Create or update `.gito/context.md` with relevant spec information:
+
+```markdown
+## SPEC CONTEXT — {feature_name}
+
+**Branch**: {branch}
+**Base**: {base_branch}
+**Spec**: specs/{spec_dir}/spec.md
+
+### Intentional Patterns (NOT bugs):
+- {explanation of intentional code patterns}
+
+### Relevant Implementation Details:
+- {implementation notes relevant to the review}
+```
+
+### Step 2: Configure aux_files in config.toml
+
+Make sure `.gito/config.toml` includes:
+
+```toml
+aux_files = [".gito/context.md"]
+```
+
+### Step 3: Run Gito Review
+
+```bash
+# Run gito review (context comes from config.toml)
+.venv/bin/gito review HEAD..main --output gito-report
+
+# Read the report
+cat gito-report/code-review-report.json | jq '.issues'
+```
+
+### Step 4: Classify Issues
+
+For each Gito issue, use your knowledge:
+
+```bash
+# For each issue, ask yourself:
+# - Does the spec/task mention this pattern as intentional?
+# - Is this a genuine bug or a spec-required pattern?
+
+# Use bmad-review-adversarial-general for ambiguous cases:
+# (This skill exists and can be invoked via the skill tool)
+```
+
+---
+
+## Context Decision Framework
+
+When deciding what context to include, use this logic:
 
 ```
 IF comparing feature branch to main:
@@ -53,82 +126,9 @@ ELIF no spec applies:
     → Gito uses general Python/HA knowledge
 ```
 
-## Workflow (For the Agent)
+### Decision Examples
 
-### Step 1: Analyze the Comparison
-
-Based on what you know:
-
-```bash
-# What are we comparing?
-COMPARISON="${1:-HEAD..main}"
-
-# Get changed files
-git diff --name-only $COMPARISON
-
-# What's the base branch?
-git merge-base HEAD main  # or the specified base
-
-# What's our current branch?
-git branch --show-current
-```
-
-### Step 2: Determine Context Level
-
-| Situation | Context Level | What to Load |
-|-----------|---------------|--------------|
-| Feature branch review | FULL | Load full tasks.md + spec.md |
-| Hotfix (main changes) | MINIMAL | Only general patterns |
-| Cross-spec files | PARTIAL | Load only relevant sections |
-| Unknown/no spec | NONE | No spec context |
-
-### Step 3: Build Context Block
-
-Based on what you found:
-
-```markdown
-## SPEC CONTEXT
-
-Feature: {spec_name}
-Phase: {phase from .ralph-state.json or "unknown"}
-Status: {task count and completion}
-
-### Intentional Patterns (NOT bugs):
-- {patterns from tasks.md that explain intentional code}
-
-### Relevant Implementation Details:
-- {sections from tasks.md that relate to changed files}
-```
-
-### Step 4: Run Gito with Context
-
-```bash
-# Run gito with the comparison
-.venv/bin/gito review $COMPARISON --output gito-report
-
-# Read the report
-cat gito-report/code-review-report.json | jq '.issues'
-```
-
-### Step 5: Classify Issues
-
-For each Gito issue, use your knowledge:
-
-```bash
-# For each issue, ask yourself:
-# - Does the spec/task mention this pattern as intentional?
-# - Is this a genuine bug or a spec-required pattern?
-
-# Use bmad-consensus-party for ambiguous cases:
-bmad-consensus-party "Is this a REAL bug or FALSE_POSITIVE?"
-    --context "Issue: $issue
-              File: $file:$line
-              What I know: $spec_context"
-```
-
-## Context Decision Examples
-
-### Example 1: Feature Branch Review
+#### Example 1: Feature Branch Review
 ```
 User: /gito-review HEAD..main
 Agent knows: We're in feature-m403-dynamic-soc-capping branch
@@ -138,7 +138,7 @@ Decision: LOAD FULL SPEC CONTEXT
 → Gito won't report this as a bug
 ```
 
-### Example 2: Hotfix Review
+#### Example 2: Hotfix Review
 ```
 User: /gito-review HEAD..main (on main branch)
 Agent knows: We're reviewing a hotfix on main
@@ -148,7 +148,7 @@ Decision: MINIMAL CONTEXT
 → Focus on: runtime errors, security, breaking changes
 ```
 
-### Example 3: Cross-Spec Review
+#### Example 3: Cross-Spec Review
 ```
 User: /gito-review commit_a..commit_b
 Agent knows: Files changed are calculations.py AND sensor.py
@@ -159,14 +159,7 @@ Decision: PARTIAL CONTEXT
 → Only the sections mentioning these files
 ```
 
-### Example 4: Unknown Files
-```
-User: /gito-review some_old_commit..another_old_commit
-Agent knows: Files changed don't relate to any known spec
-Decision: NO SPEC CONTEXT
-→ Let Gito use general Python/HA knowledge
-→ No spec context would help anyway
-```
+---
 
 ## What to Include in Context
 
@@ -182,6 +175,8 @@ Based on what you know about the comparison:
 1. **Unrelated spec sections** - don't dump the entire tasks.md
 2. **Outdated context** - if the spec has moved on, only use current phase
 3. **Generic documentation** - specs/ directory has too much noise
+
+---
 
 ## Output
 
@@ -213,41 +208,25 @@ checkpoint.json with your classification:
 }
 ```
 
-## BMAD Party Mode for Classification
+---
 
-For ambiguous issues, invoke bmad-consensus-party:
+## Integration with .gito/config.toml
 
-**Question**: "Is this a REAL bug or FALSE_POSITIVE given the spec context?"
-
-**Context to provide**:
-- The Gito issue description
-- The file and line number
-- Your spec context (what you loaded in Step 2)
-- What you know about the implementation
-
-**Agents to use**:
-- Winston (Architect) - technical analysis
-- Amelia (Developer) - implementation context  
-- Mary (Business Analyst) - if requirements related
-
-## Integration with Gito
-
-For automatic context, configure `.gito/config.toml`:
+The correct way to add context to `gito review`:
 
 ```toml
-# The agent provides context, not gito
-# But gito can be configured to not analyze specs
+# .gito/config.toml
+aux_files = [".gito/context.md"]
 
+# Keep exclude_files as needed
 exclude_files = [
-    "specs/**",  # Don't analyze specs as code
+    "*.lock",
+    "node_modules/**",
+    "specs/**",
+    # etc.
 ]
 ```
 
-Or use gito's built-in context feature:
+### Important: `bmad-consensus-party` does NOT exist
 
-```bash
-# Agent creates context file
-echo "## SPEC CONTEXT\n$CONTEXT" > /tmp/gito-context.md
-
-# Run gito with context
-gito review $COMPARISON --aux-context /tmp/gito-context.md
+Use `bmad-review-adversarial-general` instead for classifying issues as REAL or FALSE_POSITIVE.
