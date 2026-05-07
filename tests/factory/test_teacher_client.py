@@ -41,8 +41,9 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def teacher_config_openai() -> TeacherModelConfig:
+def teacher_config_openai(monkeypatch: pytest.MonkeyPatch) -> TeacherModelConfig:
     """Create a TeacherModelConfig for OpenAI provider."""
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     return TeacherModelConfig(
         provider="openai",
         model_name="gpt-4o",
@@ -57,8 +58,9 @@ def teacher_config_openai() -> TeacherModelConfig:
 
 
 @pytest.fixture
-def teacher_config_anthropic() -> TeacherModelConfig:
+def teacher_config_anthropic(monkeypatch: pytest.MonkeyPatch) -> TeacherModelConfig:
     """Create a TeacherModelConfig for Anthropic provider."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-api-key")
     return TeacherModelConfig(
         provider="anthropic",
         model_name="claude-3-5-sonnet-20241022",
@@ -73,8 +75,9 @@ def teacher_config_anthropic() -> TeacherModelConfig:
 
 
 @pytest.fixture
-def teacher_config_gemini() -> TeacherModelConfig:
+def teacher_config_gemini(monkeypatch: pytest.MonkeyPatch) -> TeacherModelConfig:
     """Create a TeacherModelConfig for Gemini provider."""
+    monkeypatch.setenv("GOOGLE_API_KEY", "test-api-key")
     return TeacherModelConfig(
         provider="gemini",
         model_name="gemini-2.0-flash",
