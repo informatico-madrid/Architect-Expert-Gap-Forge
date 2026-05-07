@@ -110,8 +110,8 @@ class TestLoadSeedsIdempotent:
 class TestLoadSeedsMalformedYaml:
     """Test malformed YAML handling."""
 
-    def test_invalid_yaml_returns_empty(self, tmp_path):
-        """Malformed YAML file returns empty list (yaml.safe_load raises)."""
+    def test_invalid_yaml_raises_exception(self, tmp_path):
+        """Malformed YAML file raises an exception."""
         bad_yaml = tmp_path / "bad.yaml"
         bad_yaml.write_text("{{{{invalid yaml::::")
         with pytest.raises(Exception):

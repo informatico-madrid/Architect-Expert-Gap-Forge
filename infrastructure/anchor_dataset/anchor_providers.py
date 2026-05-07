@@ -144,9 +144,9 @@ class OpenAIProvider(AnchorProvider):
             "temperature": 0.4,
         }
 
-        for attempt in range(3):
-            try:
-                with httpx.Client(timeout=timeout) as client:
+        with httpx.Client(timeout=timeout) as client:
+            for attempt in range(3):
+                try:
                     resp = client.post(
                         self.API_URL,
                         headers={"Authorization": f"Bearer {api_key}"},
@@ -156,11 +156,11 @@ class OpenAIProvider(AnchorProvider):
                     data = resp.json()
                     content = data["choices"][0]["message"]["content"]
                     return AnchorRecord.model_validate(json.loads(content))
-            except (httpx.HTTPError, json.JSONDecodeError, KeyError, ValueError):
-                if attempt < 2:
-                    time.sleep(2**attempt)
-                else:
-                    return None
+                except (httpx.HTTPError, json.JSONDecodeError, KeyError, ValueError):
+                    if attempt < 2:
+                        time.sleep(2**attempt)
+                    else:
+                        return None
         return None
 
 

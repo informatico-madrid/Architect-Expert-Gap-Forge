@@ -306,7 +306,7 @@ def _impl(args: argparse.Namespace) -> int:
         if stage == "stage6":
             js = entry.get("judge_scores", {})
             score = sum(
-                float(js.get(dim, 0.0)) * weight
+                float(js.get(dim) or 0.0) * weight
                 for dim, weight in CALIBRATION_SCORING_WEIGHTS.items()
             )
             composite_scores.append(score)

@@ -32,9 +32,9 @@ class ImportResult:
 
     Attributes:
         package: Nombre del paquete en requirements.txt (e.g. "dspy").
-        module: Nombre del m&#243;dulo para import-check (e.g. "dspy" or "langchain_core").
-        found: True si el m&#243;dulo est&#225; disponible.
-        spec: El ModuleSpec retornado por find_spec, o None si no se encontr&#243;.
+        module: Nombre del módulo para import-check (e.g. "dspy" or "langchain_core").
+        found: True si el módulo está disponible.
+        spec: El ModuleSpec retornado por find_spec, o None si no se encontró.
     """
 
     package: str

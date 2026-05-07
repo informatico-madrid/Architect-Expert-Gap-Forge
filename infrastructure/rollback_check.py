@@ -93,6 +93,8 @@ def create_isolated_env() -> tuple[str, str]:
     # Update state for clone fallback
     _isolated_path = worktree_path
     _isolated_kind = "clone"
+    # Clean up any partial worktree state before cloning
+    shutil.rmtree(worktree_path, ignore_errors=True)
     os.makedirs(worktree_path, exist_ok=True)
     subprocess.run(
         ["git", "clone", project_root, worktree_path],

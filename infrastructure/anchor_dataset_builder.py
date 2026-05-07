@@ -374,6 +374,8 @@ def main(argv: list[str] | None = None) -> int:
                 continue
 
             completed_ids.add(cfg_id)
+            records.append(record)
+            successful += 1
             sample_counter += 1
             domain_remaining[cfg.domain] = domain_remaining.get(cfg.domain, 0) - 1
 

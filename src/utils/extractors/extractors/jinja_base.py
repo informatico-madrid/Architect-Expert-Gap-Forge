@@ -200,11 +200,6 @@ JINJA_VAR_PATTERN = re.compile(
     r"\{\{([^{}]+?)\}\}",  # Single braces
     re.MULTILINE,
 )
-JINJA_SAFE_VAR_PATTERN = re.compile(
-    r"\{\{([^{}]+?)\}\}",  # Double braces (safe)
-    re.MULTILINE,
-)
-
 # Jinja filter patterns
 JINJA_FILTER_PATTERN = re.compile(r"\{\{([^{}]+?)\s*\|([^{}]+?)\}\}", re.MULTILINE)
 

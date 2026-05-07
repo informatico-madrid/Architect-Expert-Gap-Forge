@@ -392,7 +392,7 @@ def calculate_rate_of_change(current: float, previous: float, dt: float) -> floa
 
         (tests_dir / "test_climate.py").write_text("""
 import sys
-sys.path.insert(0, '../../../custom_components/smart_thermostat')
+sys.path.insert(0, '../../custom_components/smart_thermostat')
 import climate
 
 def test_smart_thermostat_defaults():
@@ -416,7 +416,7 @@ def test_turn_on_off():
 
         (tests_dir / "test_config.py").write_text("""
 import sys
-sys.path.insert(0, '../../../custom_components/smart_thermostat')
+sys.path.insert(0, '../../custom_components/smart_thermostat')
 import config
 
 def test_validate_config_normal():

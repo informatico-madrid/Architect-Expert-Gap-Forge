@@ -332,6 +332,9 @@ class TeacherModelClient:
                     raise TeacherAPIError(f"Request timeout after {attempt} attempts") from e
 
             except Exception as e:
+                # Non-transient errors (config/programming) should not be retried
+                if isinstance(e, (ValueError, KeyError, TypeError)):
+                    raise TeacherAPIError(f"Non-retryable error: {e}") from e
                 last_exception = e
                 if attempt <= self.config.max_retries:
                     delay = (self.config.request_delay_ms / 1000.0) * (

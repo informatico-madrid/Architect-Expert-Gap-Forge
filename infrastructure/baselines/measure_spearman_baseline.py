@@ -179,6 +179,13 @@ def _impl(args: argparse.Namespace) -> int:
     if not isinstance(adapter_raw, list):
         _die(f"'adapter_composites' must be a list, got {type(adapter_raw).__name__}")
 
+    # Validate raw array lengths match before zip silently truncates
+    if len(baseline_raw) != len(adapter_raw):
+        _die(
+            f"Array length mismatch: baseline has {len(baseline_raw)} entries, "
+            f"adapter has {len(adapter_raw)} entries"
+        )
+
     # Derive composites: handle pre-computed composites or judge_scores
     # None/null entries are accepted (treated as NaN, filtered later)
     baseline_composites: list[float | None] = []

@@ -189,7 +189,7 @@ class TestDryRunReturnsWarnings:
         assert len(sv.warnings) > 0
 
     def test_seed_warning_when_file_missing(
-        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """If seed file is missing, _validate_seeds adds a warning."""
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
