@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import random
 from pathlib import Path
 
@@ -122,7 +123,10 @@ def display_error_panel(error_message: str) -> None:
 # CONFIGURATION
 # ══════════════════════════════════════════════════════════════════════
 DEFAULT_BASE_URL = "http://localhost:8000/v1"
-DEFAULT_API_KEY = "sk-master-bunker-2026"
+_DEFAULT_API_KEY = os.getenv("API_KEY")
+if _DEFAULT_API_KEY is None:
+    raise ValueError("API_KEY environment variable is required. Please set it before running.")
+DEFAULT_API_KEY = _DEFAULT_API_KEY
 DEFAULT_MODEL = "qwen3-5-35b-a3b-nvfp4"
 DEFAULT_WORKERS = 8
 

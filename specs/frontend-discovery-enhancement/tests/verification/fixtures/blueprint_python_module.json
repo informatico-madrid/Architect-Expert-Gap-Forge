@@ -1,0 +1,64 @@
+{
+  "module_map": {
+    "homeassistant/components/cover/__init__.py": {
+      "anchor_file": "manifest.json",
+      "logic_files": [
+        "homeassistant/components/cover/__init__.py"
+      ],
+      "test_files": [
+        "tests/components/cover/test_init.py"
+      ],
+      "dependencies": {
+        "homeassistant.core": "HomeAssistant",
+        "homeassistant.helpers.entity_component": "EntityComponent"
+      }
+    },
+    "homeassistant/components/light/__init__.py": {
+      "anchor_file": "manifest.json",
+      "logic_files": [
+        "homeassistant/components/light/__init__.py"
+      ],
+      "test_files": [],
+      "dependencies": {
+        "homeassistant.core": "HomeAssistant"
+      }
+    }
+  },
+  "dependencies": {
+    "homeassistant.core": "HomeAssistant",
+    "homeassistant.helpers.entity_component": "EntityComponent",
+    "homeassistant.config_entries": "ConfigEntries"
+  },
+  "schema": {
+    "services": [
+      {
+        "domain": "cover",
+        "service": "open_cover",
+        "fields": {
+          "entity_id": "str"
+        }
+      },
+      {
+        "domain": "cover",
+        "service": "close_cover",
+        "fields": {
+          "entity_id": "str"
+        }
+      }
+    ]
+  },
+  "vocabulary": {
+    "i18n_keys": [
+      "cover.opening",
+      "cover.closing",
+      "cover.opened",
+      "cover.closed"
+    ],
+    "lit_components": [],
+    "service_calls": []
+  },
+  "readme": {
+    "homeassistant/components/cover/__init__.py": "Handles cover devices such as garage doors and curtains.",
+    "homeassistant/components/light/__init__.py": "Manages lighting devices and their state transitions."
+  }
+}

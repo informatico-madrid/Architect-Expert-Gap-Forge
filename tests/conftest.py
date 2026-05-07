@@ -543,3 +543,9 @@ def php_legacy_zencart_fixture() -> str:
         return load_php_fixture("zencart_customers.php")
     except FileNotFoundError:
         return PHP_LEGACY_FALLBACK_CONTENT
+
+
+@pytest.fixture
+def fixtures_dir() -> Path:
+    """Return the path to the tests/fixtures directory."""
+    return Path(__file__).parent / "fixtures"

@@ -1,0 +1,27 @@
+# Home Assistant automation configurations
+automation:
+  - alias: "Turn off lights"
+    trigger:
+      platform: time
+      at: "23:00:00"
+    action:
+      service: light.turn_off
+      target:
+        area_id: living_room
+
+  - alias: "Climate control"
+    trigger:
+      platform: state
+      entity_id: sensor.temperature
+      for:
+        minutes: 5
+    condition:
+      condition: numeric_state
+      entity_id: sensor.temperature
+      above: 22
+    action:
+      service: climate.set_hvac_mode
+      target:
+        entity_id: climate.living_room
+      data:
+        hvac_mode: "cool"

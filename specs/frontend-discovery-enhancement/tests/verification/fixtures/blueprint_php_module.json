@@ -1,0 +1,42 @@
+{
+  "module_map": {
+    "custom-cards/lit-card/src/lit-card.php": {
+      "anchor_file": "composer.json",
+      "logic_files": [
+        "custom-cards/lit-card/src/lit-card.php",
+        "custom-cards/lit-card/src/exceptions/InvalidConfigException.php"
+      ],
+      "test_files": [
+        "custom-cards/lit-card/tests/LitCardTest.php"
+      ],
+      "dependencies": {
+        "psr/log": "LoggerInterface",
+        "monolog/monolog": "Monolog"
+      }
+    }
+  },
+  "dependencies": {
+    "psr/log": "PSR-3 Logger Interface",
+    "monolog/monolog": "PHP Logging Library",
+    "symfony/console": "Console Component"
+  },
+  "schema": {
+    "custom_elements": [
+      {
+        "tag": "custom-lit-card",
+        "extends": "Card"
+      }
+    ]
+  },
+  "vocabulary": {
+    "i18n_keys": [
+      "lit_card.config.title",
+      "lit_card.config.subtitle"
+    ],
+    "lit_components": [],
+    "service_calls": []
+  },
+  "readme": {
+    "custom-cards/lit-card/src/lit-card.php": "PHP-based card implementation for HomeAssistant frontend."
+  }
+}

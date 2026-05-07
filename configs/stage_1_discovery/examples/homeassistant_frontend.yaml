@@ -15,17 +15,17 @@ category: homeassistant
 # Discovery mode: static (predefined repos) or dynamic (GitHub search)
 mode: static
 
-# Profile name for filtering and configuration
-profile: homeassistant_frontend
+# Profile: TypeScript adapter for .ts/.tsx files
+profile: typescript
 
-# File extensions to process during discovery
-profile_extensions:
+# File extensions to process (mapped to profile_extensions by processor)
+extensions:
   - ".ts"
   - ".tsx"
   - ".json"
 
-# Paths to ignore during discovery (directories/files to skip)
-profile_ignored_paths:
+# Paths to ignore during discovery (mapped to profile_ignored_paths by processor)
+ignore_patterns:
   - ".git"
   - "__pycache__"
   - "node_modules"
@@ -41,23 +41,8 @@ profile_ignored_paths:
 static_repos:
   - "home-assistant/frontend"
 
-# Processors configuration for TypeScript files
-processors:
-  lit_components:
-    enabled: true
-    extensions: [".ts", ".tsx"]
-  i18n_keys:
-    enabled: true
-    extensions: [".ts", ".tsx", ".json"]
-  service_calls:
-    enabled: true
-    extensions: [".ts", ".tsx"]
-
-# Minimum stars required for repositories (0 = no minimum)
+# Minimum stars required for repositories
 min_stars: 0
-
-# Maximum number of repositories to process
-limit: 50
 
 # Results per page for GitHub API requests
 per_page: 100

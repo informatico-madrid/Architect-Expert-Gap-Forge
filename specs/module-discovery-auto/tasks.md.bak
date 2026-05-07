@@ -1,0 +1,1427 @@
+# Module Discovery Auto-Detection - Implementation Tasks
+
+**Spec Name:** module-discovery-auto  
+**Goal:** Implement intelligent auto-detection of repository types based on file patterns  
+**Status:** Ready for Implementation  
+**Author:** Joao Maria Arranz Aparicio  
+**Date:** 2026-04-01  
+
+---
+
+## Phase 1: Proof of Concept (Tasks 1-10)
+
+### Task 1: Add _detect_strategy() Function Stub
+
+**Do:** Create the `_detect_strategy()` function in `src/discovery/file_scanner.py` after `_discover_by_yaml()`.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Line 650 (insert after `_discover_by_yaml()` return)
+
+**Done:**
+- Function signature matches specification
+- Basic docstring with detection priority order
+- Function returns "directory" as fallback
+- Compiles without errors
+
+**Verify:**
+1. Run: `python -c "from src.discovery.file_scanner import _detect_strategy; print('Import successful')"`
+2. Function exists and is importable
+3. Basic return value works
+
+**Commit:**
+```
+feat: add _detect_strategy() function stub for auto-detection
+
+Add initial _detect_strategy() function that serves as foundation for
+intelligent repository type detection. Returns "directory" as fallback
+strategy.
+```
+
+---
+
+### Task 2: Implement YAML Detection
+
+**Do:** Add YAML file detection to `_detect_strategy()` function.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 652-678 (YAML detection block)
+
+**Done:**
+- Scans for .yaml, .yml, .jinja, .jinja2 files
+- Excludes node_modules, tests, test, __pycache__ directories
+- Counts YAML files found
+- Returns "yaml" if any found
+
+**Verify:**
+1. Create test repository with YAML files
+2. Call `_detect_strategy()` and verify returns "yaml"
+3. Test exclusion directories work correctly
+
+**Commit:**
+```
+feat: implement YAML detection in _detect_strategy()
+
+Add detection for YAML-based repositories (themes, templates, blueprints).
+Scans for .yaml, .yml, .jinja, .jinja2 files while excluding common
+non-source directories.
+```
+
+---
+
+### Task 3: Implement TypeScript Detection
+
+**Do:** Add TypeScript file detection to `_detect_strategy()` function.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 680-695 (TypeScript detection block)
+
+**Done:**
+- Scans for .ts and .tsx files
+- Excludes node_modules, tests, test directories
+- Counts TypeScript files found
+- Returns "typescript" if any found
+
+**Verify:**
+1. Create test repository with TypeScript files
+2. Call `_detect_strategy()` and verify returns "typescript"
+3. Verify TypeScript detection runs after YAML detection
+
+**Commit:**
+```
+feat: implement TypeScript detection in _detect_strategy()
+
+Add detection for TypeScript-based repositories (frontend components).
+Scans for .ts and .tsx files while excluding node_modules and test
+directories.
+```
+
+---
+
+### Task 4: Implement PHP Detection
+
+**Do:** Add PHP file detection to `_detect_strategy()` function.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 697-713 (PHP detection block)
+
+**Done:**
+- Scans for .php files
+- Excludes vendor, node_modules, tests, cache directories
+- Counts PHP files found
+- Returns "filesystem" if any found
+
+**Verify:**
+1. Create test repository with PHP files
+2. Verify vendor files are excluded
+3. Call `_detect_strategy()` and verify returns "filesystem"
+
+**Commit:**
+```
+feat: implement PHP detection in _detect_strategy()
+
+Add detection for filesystem-based PHP repositories. Scans for .php files
+while excluding vendor, cache, and test directories.
+```
+
+---
+
+### Task 5: Implement manifest.json Detection
+
+**Do:** Add manifest.json detection to `_detect_strategy()` function.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 764-771 (manifest detection block)
+
+**Done:**
+- Scans for manifest.json files
+- Returns "manifest" if found
+
+**Verify:**
+1. Create test repository with manifest.json
+2. Call `_detect_strategy()` and verify returns "manifest"
+
+**Commit:**
+```
+feat: implement manifest detection in _detect_strategy()
+
+Add detection for Python integrations with manifest.json (HA core style).
+Manifest detection has lower priority than TypeScript and PHP (checks after them).
+```
+
+---
+
+### Task 6: Implement __init__.py Detection
+
+**Do:** Add __init__.py detection to `_detect_strategy()` function.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 725-733 (init detection block)
+
+**Done:**
+- Scans for __init__.py files
+- Returns "init" if found
+
+**Verify:**
+1. Create test repository with __init__.py
+2. Call `_detect_strategy()` and verify returns "init"
+
+**Commit:**
+```
+feat: implement __init__.py detection in _detect_strategy()
+
+Add detection for Python packages without manifest.json. Scans for
+__init__.py files in repository directories.
+```
+
+---
+
+### Task 7: Implement Directory Fallback
+
+**Do:** Ensure directory fallback is the final return in `_detect_strategy()`.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Line 735 (final return statement)
+
+**Done:**
+- Always returns "directory" if no other patterns match
+- No exceptions are raised
+
+**Verify:**
+1. Call `_detect_strategy()` on empty directory
+2. Verify it returns "directory" without errors
+
+**Commit:**
+```
+feat: add directory fallback to _detect_strategy()
+
+Ensure _detect_strategy() always returns a valid strategy. If no patterns
+are detected, return "directory" as the fallback strategy.
+```
+
+---
+
+### Task 8: Add "auto" Case to discover_modules() Routing
+
+**Do:** Add the "auto" strategy case to the `discover_modules()` function.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 155-170 (add elif block after "filesystem")
+
+**Done:**
+- Detects strategy using `_detect_strategy()`
+- Logs detected strategy at INFO level
+- Recursively calls `discover_modules()` with detected strategy
+- Single-level recursion (no infinite loops)
+
+**Verify:**
+1. Test routing works with "auto" strategy
+2. Verify recursive call uses detected strategy
+3. Verify no infinite recursion
+
+**Commit:**
+```
+feat: add auto strategy routing to discover_modules()
+
+Add routing case for "auto" strategy that detects appropriate strategy
+and recursively calls discover_modules() with the detected strategy.
+```
+
+---
+
+### Task 9: Basic Unit Test for YAML Detection
+
+**Do:** Create a basic test file for `_detect_strategy()` function.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` (new file)
+
+**Done:**
+- Test YAML detection works
+- Test TypeScript detection works
+- Test fallback to directory works
+- Use tempfile for test repositories
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py -v`
+2. All tests pass
+3. No import errors
+
+**Commit:**
+```
+test: add basic unit tests for _detect_strategy()
+
+Add initial unit tests for auto-detection including YAML detection,
+TypeScript detection, and directory fallback scenarios.
+```
+
+---
+
+### Task 10: Verify Basic POC Works End-to-End
+
+**Do:** Verify the complete POC flow works.
+
+**Files:**
+- None (verification only)
+
+**Done:**
+1. Create test repository with YAML files
+2. Configure module_discovery_strategy: "auto"
+3. Verify modules are discovered correctly
+
+**Verify:**
+1. Test with real repository
+2. Verify auto-detection routes to correct strategy
+3. Verify discovered modules match manual strategy selection
+
+**Commit:**
+```
+verify: verify POC auto-detection works end-to-end
+
+Verify complete auto-detection flow from _detect_strategy() through
+discover_modules() routing to module discovery results.
+```
+
+---
+
+## Phase 2: Refactoring (Tasks 11-25)
+
+### Task 11: Add Permission Error Handling to YAML Detection
+
+**Do:** Wrap YAML detection in try-except for PermissionError.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 655-678 (wrap in try-except)
+
+**Done:**
+- Catch PermissionError during YAML scan
+- Log warning with permission denied message
+- Continue scanning other directories
+- Don't break detection flow
+
+**Verify:**
+1. Create repository with restricted directories
+2. Verify warning is logged but detection continues
+3. Verify detection still succeeds
+
+**Commit:**
+```
+fix: add permission error handling to YAML detection
+
+Wrap YAML file scanning in try-except to handle PermissionError gracefully.
+Log warnings for permission denied but continue detection flow.
+```
+
+---
+
+### Task 12: Add Permission Error Handling to TypeScript Detection
+
+**Do:** Wrap TypeScript detection in try-except for PermissionError.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 680-695 (wrap in try-except)
+
+**Done:**
+- Catch PermissionError during TypeScript scan
+- Log warning with permission denied message
+- Continue scanning other directories
+
+**Verify:**
+1. Test permission error handling works
+2. Verify detection continues after permission error
+
+**Commit:**
+```
+fix: add permission error handling to TypeScript detection
+
+Wrap TypeScript file scanning in try-except to handle PermissionError
+gracefully, logging warnings but continuing detection flow.
+```
+
+---
+
+### Task 13: Add Permission Error Handling to PHP Detection
+
+**Do:** Wrap PHP detection in try-except for PermissionError.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 697-713 (wrap in try-except)
+
+**Done:**
+- Catch PermissionError during PHP scan
+- Log warning with permission denied message
+- Continue scanning other directories
+
+**Verify:**
+1. Test permission error handling works
+2. Verify detection continues after permission error
+
+**Commit:**
+```
+fix: add permission error handling to PHP detection
+
+Wrap PHP file scanning in try-except to handle PermissionError gracefully,
+logging warnings but continuing detection flow.
+```
+
+---
+
+### Task 14: Add Exception Handling for manifest.json Scan
+
+**Do:** Wrap manifest.json scanning in try-except for OSError (broken symlinks).
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 715-723 (wrap in try-except)
+
+**Done:**
+- Catch OSError during manifest scan (handles broken symlinks)
+- Log warning for broken symlinks
+- Continue detection flow
+
+**Verify:**
+1. Create repository with broken symlinks
+2. Verify no crashes on broken symlinks
+3. Verify detection still succeeds
+
+**Commit:**
+```
+fix: add exception handling for manifest.json scanning
+
+Wrap manifest.json scanning in try-except to handle OSError from broken
+symlinks, logging warnings but continuing detection flow.
+```
+
+---
+
+### Task 15: Add Exception Handling for __init__.py Scan
+
+**Do:** Wrap __init__.py scanning in try-except for OSError (broken symlinks).
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 725-733 (wrap in try-except)
+
+**Done:**
+- Catch OSError during __init__.py scan
+- Log warning for broken symlinks
+- Continue detection flow
+
+**Verify:**
+1. Test broken symlink handling
+2. Verify detection continues after error
+
+**Commit:**
+```
+fix: add exception handling for __init__.py scanning
+
+Wrap __init__.py scanning in try-except to handle OSError from broken
+symlinks, logging warnings but continuing detection flow.
+```
+
+---
+
+### Task 16: Add Outer Exception Wrapper to _detect_strategy()
+
+**Do:** Add final try-except wrapper to catch any unexpected exceptions.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Wrap entire function in try-except
+
+**Done:**
+- Catch all unexpected exceptions
+- Log warning with exception details
+- Return "directory" as ultimate fallback
+- Never raise exceptions from _detect_strategy()
+
+**Verify:**
+1. Test that no exceptions are raised under any condition
+2. Verify "directory" is returned on error
+3. Verify warning is logged
+
+**Commit:**
+```
+fix: add outer exception wrapper to _detect_strategy()
+
+Add comprehensive exception handling as final safety net. Catch any
+unexpected exceptions, log warnings, and return "directory" as ultimate
+fallback to guarantee no exceptions are raised.
+```
+
+---
+
+### Task 17: Add Debug-Level Logging for Detection Counts
+
+**Do:** Add DEBUG-level logging that logs detection counts for each pattern type.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Add debug log at end of function
+
+**Done:**
+- Log YAML, TypeScript, PHP, manifest, and init counts at DEBUG level
+- Include detected strategy in log message
+- Only log when DEBUG level is enabled
+
+**Verify:**
+1. Run with --log-level=DEBUG
+2. Verify debug output shows detection counts
+3. Verify counts match expected values
+
+**Commit:**
+```
+feat: add debug-level logging for detection counts
+
+Add DEBUG-level logging that shows detection counts for each pattern type
+(YAML, TS, PHP, manifest, init) along with the detected strategy.
+```
+
+---
+
+### Task 18: Optimize YAML Detection for Performance
+
+**Do:** Optimize YAML detection to early exit on first match.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 655-678 (optimize to return immediately)
+
+**Done:**
+- Remove count-based detection
+- Return "yaml" immediately on first match
+- Reduces scan time for large repositories
+- No functional change to detection logic
+
+**Verify:**
+1. Test detection still works correctly
+2. Measure performance improvement
+3. Verify single-match early exit
+
+**Commit:**
+```
+perf: optimize YAML detection for early exit
+
+Optimize YAML detection to return immediately on first match rather than
+counting all YAML files. This reduces scan time for large repositories.
+```
+
+---
+
+### Task 19: Optimize TypeScript Detection for Performance
+
+**Do:** Optimize TypeScript detection to early exit on first match.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 680-695 (optimize to return immediately)
+
+**Done:**
+- Remove count-based detection
+- Return "typescript" immediately on first match
+- No functional change to detection logic
+
+**Verify:**
+1. Test detection still works correctly
+2. Verify early exit on first match
+
+**Commit:**
+```
+perf: optimize TypeScript detection for early exit
+
+Optimize TypeScript detection to return immediately on first match rather
+than counting all TypeScript files.
+```
+
+---
+
+### Task 20: Optimize PHP Detection for Performance
+
+**Do:** Optimize PHP detection to early exit on first match.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 697-713 (optimize to return immediately)
+
+**Done:**
+- Remove count-based detection
+- Return "filesystem" immediately on first match
+- No functional change to detection logic
+
+**Verify:**
+1. Test detection still works correctly
+2. Verify early exit on first match
+
+**Commit:**
+```
+perf: optimize PHP detection for early exit
+
+Optimize PHP detection to return immediately on first match rather than
+counting all PHP files.
+```
+
+---
+
+### Task 21: Add Type Hints to _detect_strategy()
+
+**Do:** Add proper type hints to `_detect_strategy()` function signature and docstring.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 650-660 (add type hints)
+
+**Done:**
+- Add Path type hint for root parameter
+- Add str return type hint
+- Update docstring with type information
+- Follow existing code style
+
+**Verify:**
+1. Run mypy or type checker
+2. Verify no type errors
+3. Verify docstring is complete
+
+**Commit:**
+```
+refactor: add type hints to _detect_strategy()
+
+Add proper type hints (Path for root, str for return) to _detect_strategy()
+function signature and docstring.
+```
+
+---
+
+### Task 22: Update discover_modules() Docstring
+
+**Do:** Update the `discover_modules()` function docstring to document the "auto" strategy.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 97-113 (update docstring)
+
+**Done:**
+- Add "auto" to list of strategies
+- Document auto-detection behavior
+- Document recursive routing for "auto"
+
+**Verify:**
+1. Verify docstring includes "auto" strategy
+2. Verify documentation is accurate
+3. Verify docstring follows existing format
+
+**Commit:**
+```
+docs: update discover_modules() docstring for auto strategy
+
+Update the discover_modules() function docstring to document the "auto"
+strategy and its auto-detection behavior.
+```
+
+---
+
+### Task 23: Update ProcessingConfig module_discovery_strategy Description
+
+**Do:** Update the field description to include all strategies.
+
+**Files:**
+- `src/discovery/metadata_enricher.py` - Line 127-130 (update description)
+
+**Done:**
+- Add all strategy names: manifest, init, directory, filesystem, typescript, yaml, manual_mapping, auto
+- Format as comma-separated list
+- Document that auto automatically detects repository type
+
+**Verify:**
+1. Verify all strategies are listed
+2. Verify description is accurate and complete
+3. Verify pydantic model validates correctly
+
+**Commit:**
+```
+docs: update ProcessingConfig description with all strategies
+
+Update the module_discovery_strategy field description to list all
+available strategies including the new "auto" auto-detection option.
+```
+
+---
+
+### Task 24: Add Auto Handling to RepoProcessor._discover_modules()
+
+**Do:** Add auto strategy handling directly in RepoProcessor class.
+
+**Files:**
+- `src/discovery/metadata_enricher.py` - Lines 274-290 (add auto case)
+
+**Done:**
+- Add if block for "auto" strategy
+- Call _detect_strategy() to get detected strategy
+- Log detected strategy at INFO level
+- Update config with detected strategy
+- Call discover_modules() with detected strategy
+
+**Verify:**
+1. Test auto handling in RepoProcessor
+2. Verify logging works correctly
+3. Verify detected strategy is applied
+
+**Commit:**
+```
+feat: add auto handling to RepoProcessor._discover_modules()
+
+Add auto strategy handling in RepoProcessor class that calls _detect_strategy()
+to detect the appropriate strategy and applies it to module discovery.
+```
+
+---
+
+### Task 25: Add Comprehensive Docstring to _detect_strategy()
+
+**Do:** Update `_detect_strategy()` docstring with comprehensive documentation.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Lines 650-680 (comprehensive docstring)
+
+**Done:**
+- Document all detection priority levels
+- Document excluded directories for each pattern type
+- Document performance characteristics
+- Document error handling behavior
+- Add examples
+
+**Verify:**
+1. Verify docstring is comprehensive
+2. Verify examples are accurate
+3. Verify performance documentation is accurate
+
+**Commit:**
+```
+docs: add comprehensive docstring to _detect_strategy()
+
+Add comprehensive documentation for _detect_strategy() including all
+detection priority levels, excluded directories, performance characteristics,
+and usage examples.
+```
+
+---
+
+## Phase 3: Testing (Tasks 26-38)
+
+### Task 26: Add TypeScript Detection Unit Tests
+
+**Do:** Create unit tests for TypeScript detection.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add TypeScript tests
+
+**Done:**
+- Test .ts file detection
+- Test .tsx file detection
+- Test exclusion of node_modules
+- Test exclusion of test directories
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_detect_strategy_typescript -v`
+2. All tests pass
+3. Coverage is adequate
+
+**Commit:**
+```
+test: add TypeScript detection unit tests
+
+Add unit tests for TypeScript file detection including .ts and .tsx files,
+and verify node_modules and test directory exclusions work correctly.
+```
+
+---
+
+### Task 27: Add PHP Detection Unit Tests
+
+**Do:** Create unit tests for PHP detection.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add PHP tests
+
+**Done:**
+- Test PHP file detection
+- Test exclusion of vendor directory
+- Test exclusion of cache directory
+- Test exclusion of node_modules
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_detect_strategy_php -v`
+2. All tests pass
+3. Coverage is adequate
+
+**Commit:**
+```
+test: add PHP detection unit tests
+
+Add unit tests for PHP file detection including vendor, cache, and
+node_modules directory exclusions.
+```
+
+---
+
+### Task 28: Add Manifest Detection Unit Tests
+
+**Do:** Create unit tests for manifest.json detection.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add manifest tests
+
+**Done:**
+- Test manifest.json detection
+- Verify TypeScript has higher priority than manifest
+- Verify manifest has higher priority than init
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_detect_strategy_manifest -v`
+2. All tests pass
+3. Verify priority order is correct
+
+**Commit:**
+```
+test: add manifest.json detection unit tests
+
+Add unit tests for manifest.json detection and verify priority order:
+TypeScript > PHP > manifest > init.
+```
+
+---
+
+### Task 29: Add Init Detection Unit Tests
+
+**Do:** Create unit tests for __init__.py detection.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add init tests
+
+**Done:**
+- Test __init__.py file detection
+- Test priority over directory fallback
+- Test exclusion of __pycache__
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_detect_strategy_init -v`
+2. All tests pass
+3. Coverage is adequate
+
+**Commit:**
+```
+test: add __init__.py detection unit tests
+
+Add unit tests for __init__.py file detection and verify priority over
+directory fallback and __pycache__ exclusions.
+```
+
+---
+
+### Task 30: Add Priority Order Verification Tests
+
+**Do:** Create tests that verify detection priority order.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add priority tests
+
+**Done:**
+- Test YAML > TypeScript priority
+- Test TypeScript > PHP priority
+- Test PHP > manifest priority
+- Test manifest > init priority
+- Test init > directory priority
+
+**Verify:**
+1. Create repository with multiple pattern types
+2. Verify highest priority pattern wins
+3. Run all priority tests
+
+**Commit:**
+```
+test: add priority order verification tests
+
+Add unit tests that verify detection priority order: YAML > TypeScript >
+PHP > manifest > init > directory.
+```
+
+---
+
+### Task 31: Add Fallback Detection Unit Tests
+
+**Do:** Create unit tests for directory fallback.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add fallback tests
+
+**Done:**
+- Test empty directory returns "directory"
+- Test .git-only directory returns "directory"
+- Test directory with only non-source files returns "directory"
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_detect_strategy_fallback -v`
+2. All tests pass
+3. Verify no exceptions on empty directories
+
+**Commit:**
+```
+test: add directory fallback unit tests
+
+Add unit tests for directory fallback behavior with empty repositories,
+.git-only directories, and non-source file directories.
+```
+
+---
+
+### Task 32: Add Integration Test for YAML Discovery with Auto
+
+**Do:** Create integration test for full YAML discovery with auto strategy.
+
+**Files:**
+- `tests/discovery/test_auto_integration.py` (new file)
+
+**Done:**
+- Configure module_discovery_strategy: "auto"
+- Create test repository with YAML files
+- Verify modules are discovered correctly
+- Verify anchor_type is "yaml"
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_integration.py -v`
+2. All tests pass
+3. Verify modules have correct anchor_type
+
+**Commit:**
+```
+test: add YAML integration test with auto strategy
+
+Add integration test that verifies full YAML module discovery with auto
+strategy produces correct results.
+```
+
+---
+
+### Task 33: Add Integration Test for TypeScript Discovery with Auto
+
+**Do:** Create integration test for full TypeScript discovery with auto strategy.
+
+**Files:**
+- `tests/discovery/test_auto_integration.py` - Add TypeScript test
+
+**Done:**
+- Configure module_discovery_strategy: "auto"
+- Create test repository with TypeScript files
+- Verify modules are discovered correctly
+- Verify anchor_type is "typescript"
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_integration.py::test_auto_discovery_typescript -v`
+2. All tests pass
+
+**Commit:**
+```
+test: add TypeScript integration test with auto strategy
+
+Add integration test that verifies full TypeScript module discovery with
+auto strategy produces correct results.
+```
+
+---
+
+### Task 34: Add Integration Test for Mixed Repository
+
+**Do:** Create integration test for mixed Python/TypeScript repository.
+
+**Files:**
+- `tests/discovery/test_auto_integration.py` - Add mixed test
+
+**Done:**
+- Create repository with both Python and TypeScript files
+- Verify Python (manifest) takes priority
+- Verify TypeScript modules are ignored
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_integration.py::test_auto_discovery_mixed -v`
+2. Python modules are discovered
+3. TypeScript modules are NOT discovered
+
+**Commit:**
+```
+test: add mixed repository integration test
+
+Add integration test that verifies mixed Python/TypeScript repositories
+correctly prioritize Python over TypeScript with auto strategy.
+```
+
+---
+
+### Task 35: Add Performance Test for Detection Time
+
+**Do:** Create performance test for detection time.
+
+**Files:**
+- `tests/discovery/test_auto_performance.py` (new file)
+
+**Done:**
+- Create repository with 10,000 files
+- Measure detection time
+- Assert detection < 1 second
+- Document performance baseline
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_performance.py -v`
+2. Detection time is < 1 second
+3. Performance meets requirements
+
+**Commit:**
+```
+test: add performance test for detection time
+
+Add performance test that creates 10,000 file repository and verifies
+detection completes in < 1 second.
+```
+
+---
+
+### Task 36: Add Performance Test for Large Repository Processing
+
+**Do:** Create performance test for full auto discovery processing.
+
+**Files:**
+- `tests/discovery/test_auto_performance.py` - Add full processing test
+
+**Done:**
+- Create large repository with TypeScript files
+- Configure module_discovery_strategy: "auto"
+- Measure full processing time
+- Assert processing < 2 seconds
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_performance.py::test_auto_processing_performance -v`
+2. Processing time is within acceptable bounds
+3. Document performance baseline
+
+**Commit:**
+```
+test: add full processing performance test
+
+Add performance test that measures full auto discovery processing time
+for large repositories and verifies it completes within acceptable bounds.
+```
+
+---
+
+### Task 37: Add Permission Error Test
+
+**Do:** Create unit test for permission error handling.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add permission error test
+
+**Done:**
+- Create repository with restricted directories
+- Verify permission errors are caught
+- Verify detection continues and succeeds
+- Verify warning is logged
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_permission_error_handling -v`
+2. Permission errors don't crash detection
+3. Detection completes successfully
+
+**Commit:**
+```
+test: add permission error handling test
+
+Add unit test that verifies permission errors are handled gracefully and
+detection continues successfully.
+```
+
+---
+
+### Task 38: Add Broken Symlink Test
+
+**Do:** Create unit test for broken symlink handling.
+
+**Files:**
+- `tests/discovery/test_auto_detection.py` - Add symlink test
+
+**Done:**
+- Create repository with broken symlinks
+- Verify no crashes on broken symlinks
+- Verify detection continues successfully
+
+**Verify:**
+1. Run: `pytest tests/discovery/test_auto_detection.py::test_broken_symlink_handling -v`
+2. Broken symlinks are handled gracefully
+3. Detection completes successfully
+
+**Commit:**
+```
+test: add broken symlink handling test
+
+Add unit test that verifies broken symlinks are handled gracefully without
+crashes during detection.
+```
+
+---
+
+## Phase 4: Quality & Documentation (Tasks 39-50)
+
+### Task 39: Create README for Auto-Detection Feature
+
+**Do:** Create documentation for the auto-detection feature.
+
+**Files:**
+- `docs/auto-detection.md` (new file)
+
+**Done:**
+- Document detection priority order
+- Document when to use auto vs manual
+- Provide examples
+- Document performance characteristics
+
+**Verify:**
+1. Verify documentation is complete
+2. Verify examples work
+3. Verify performance documentation is accurate
+
+**Commit:**
+```
+docs: create auto-detection feature documentation
+
+Create comprehensive documentation for the auto-detection feature including
+detection priority order, usage examples, and performance characteristics.
+```
+
+---
+
+### Task 40: Update Configuration Examples
+
+**Do:** Update configuration examples to include auto strategy.
+
+**Files:**
+- Find and update config example files
+
+**Done:**
+- Add auto strategy to configuration examples
+- Document when to use auto vs explicit strategies
+- Provide complete example configuration
+
+**Verify:**
+1. Verify examples are complete
+2. Verify configuration validates
+3. Verify documentation matches implementation
+
+**Commit:**
+```
+docs: update configuration examples with auto strategy
+
+Update configuration examples to include the auto strategy and document
+when to use auto vs manual strategy selection.
+```
+
+---
+
+### Task 41: Update API Documentation
+
+**Do:** Update API documentation for discover_modules() function.
+
+**Files:**
+- `docs/api.md` or existing API documentation
+
+**Done:**
+- Document the "auto" strategy
+- Document auto-detection behavior
+- Document recursive routing
+
+**Verify:**
+1. Verify API documentation is complete
+2. Verify examples work
+3. Verify documentation follows existing format
+
+**Commit:**
+```
+docs: update API documentation for auto strategy
+
+Update API documentation to include the "auto" strategy and document
+auto-detection behavior and recursive routing.
+```
+
+---
+
+### Task 42: Add Usage Guide
+
+**Do:** Create usage guide for auto-detection feature.
+
+**Files:**
+- `docs/usage/auto-detection.md` (new file or in docs directory)
+
+**Done:**
+- Explain when to use auto vs manual
+- Provide decision tree for strategy selection
+- Document performance trade-offs
+- Document best practices
+
+**Verify:**
+1. Verify usage guide is complete
+2. Verify decision tree is accurate
+3. Verify best practices are sound
+
+**Commit:**
+```
+docs: create usage guide for auto-detection feature
+
+Create usage guide that explains when to use auto vs manual strategy,
+including decision tree and best practices.
+```
+
+---
+
+### Task 43: Update CHANGELOG
+
+**Do:** Update CHANGELOG with auto-detection feature entry.
+
+**Files:**
+- `CHANGELOG.md` (or equivalent)
+
+**Done:**
+- Add entry for auto-detection feature
+- Document breaking changes if any
+- Document new features
+- Document performance improvements
+
+**Verify:**
+1. Verify CHANGELOG format matches existing
+2. Verify entry is accurate
+3. Verify all changes are documented
+
+**Commit:**
+```
+docs: update CHANGELOG with auto-detection feature
+
+Update CHANGELOG with entry for the auto-detection feature including
+new features, improvements, and any breaking changes.
+```
+
+---
+
+### Task 44: Run All Existing Tests
+
+**Do:** Verify all existing tests still pass.
+
+**Files:**
+- Run test suite
+
+**Done:**
+1. Run: `pytest tests/ -v`
+2. All tests pass
+3. No regressions
+
+**Verify:**
+1. All tests pass
+2. No new failures
+3. Test coverage maintained
+
+**Commit:**
+```
+verify: run all existing tests to ensure no regressions
+
+Run complete test suite to verify all existing tests pass and no
+regressions were introduced by auto-detection changes.
+```
+
+---
+
+### Task 45: Run Code Quality Checks
+
+**Do:** Run linting and code quality tools.
+
+**Files:**
+- Run code quality tools
+
+**Done:**
+1. Run: `flake8 src/`
+2. Run: `mypy src/` (if available)
+3. Run: `black --check src/` (if available)
+4. Fix any issues
+
+**Verify:**
+1. No linting errors
+2. Type checks pass (if enabled)
+3. Code formatting is correct
+
+**Commit:**
+```
+quality: fix code quality issues
+
+Fix any linting, type, or formatting issues to maintain code quality
+standards.
+```
+
+---
+
+### Task 46: Add Inline Comments for Complex Logic
+
+**Do:** Add inline comments for complex detection logic.
+
+**Files:**
+- `src/discovery/file_scanner.py` - Add comments
+
+**Done:**
+- Add comments explaining exclusion directory logic
+- Add comments explaining priority order
+- Add comments for performance optimizations
+
+**Verify:**
+1. Comments are clear and accurate
+2. Comments explain "why" not "what"
+3. Code readability is improved
+
+**Commit:**
+```
+docs: add inline comments for complex detection logic
+
+Add inline comments explaining exclusion directory logic, priority order,
+and performance optimizations in _detect_strategy().
+```
+
+---
+
+### Task 47: Verify All Line Numbers Match Design Document
+
+**Do:** Verify all implementations match the design document line numbers.
+
+**Files:**
+- Compare implementation with design.md
+
+**Done:**
+1. Verify _detect_strategy() is at line ~649
+2. Verify discover_modules() routing is at lines ~138-168
+3. Verify ProcessingConfig update is at lines ~127-130
+4. Verify RepoProcessor._discover_modules() is at lines ~274-286
+
+**Verify:**
+1. All line numbers are close to design document
+2. Adjust if significant deviations
+3. Document any design changes
+
+**Commit:**
+```
+verify: confirm implementation matches design document
+
+Verify all implementations are at the locations specified in the design
+document and adjust if significant deviations exist.
+```
+
+---
+
+### Task 48: Create PR Verification Checklist
+
+**Do:** Create verification checklist for PR review.
+
+**Files:**
+- `.github/PULL_REQUEST_TEMPLATE.md` or similar
+
+**Done:**
+- Add verification checklist
+- List all acceptance criteria
+- List verification steps
+- Add performance verification requirements
+
+**Verify:**
+1. Checklist is comprehensive
+2. Acceptance criteria are clear
+3. Verification steps are actionable
+
+**Commit:**
+```
+docs: create PR verification checklist
+
+Create verification checklist for PR review that includes acceptance
+criteria and verification steps.
+```
+
+---
+
+### Task 49: Final Code Review
+
+**Do:** Perform comprehensive code review of all changes.
+
+**Files:**
+- Review all modified files
+
+**Done:**
+1. Review code style consistency
+2. Review error handling completeness
+3. Review logging appropriateness
+4. Review documentation completeness
+5. Review test coverage
+
+**Verify:**
+1. Code quality is consistent
+2. Error handling is complete
+3. Documentation is thorough
+4. Tests are comprehensive
+
+**Commit:**
+```
+review: final code review and adjustments
+
+Perform comprehensive code review and make any final adjustments for
+consistency, quality, and completeness.
+```
+
+---
+
+### Task 50: Final Verification and Sign-off
+
+**Do:** Complete final verification and sign-off.
+
+**Files:**
+- None (verification only)
+
+**Done:**
+1. Verify all acceptance criteria are met
+2. Verify performance requirements are met
+3. Verify all tests pass
+4. Verify documentation is complete
+5. Verify no regressions
+6. Create summary of changes
+
+**Verify:**
+1. AC1-AC10 all pass
+2. Performance < 1 second for 10K files
+3. All tests pass
+4. Documentation complete
+5. Ready for merge
+
+**Commit:**
+```
+finalize: final verification and sign-off
+
+Complete final verification of all acceptance criteria, performance
+requirements, tests, and documentation. Sign-off for merge readiness.
+```
+
+---
+
+## Acceptance Criteria Checklist
+
+| ID | Criterion | Task | Status |
+|----|-----------|------|--------|
+| AC1 | YAML-only repos detected as `yaml` | Tasks 2, 26, 32 | Pending |
+| AC2 | TypeScript-only repos detected as `typescript` | Tasks 3, 26, 33 | Pending |
+| AC3 | PHP repos detected as `filesystem` | Tasks 4, 27 | Pending |
+| AC4 | manifest.json takes priority over TypeScript | Tasks 5, 28, 30 | Pending |
+| AC5 | __init__.py detected as `init` | Tasks 6, 29 | Pending |
+| AC6 | Empty repos return `directory` fallback | Tasks 7, 31 | Pending |
+| AC7 | Mixed Python/TS prioritizes Python | Tasks 30, 34 | Pending |
+| AC8 | Configuration accepts `auto` strategy | Tasks 8, 23, 24 | Pending |
+| AC9 | Performance < 1 second for 10K files | Tasks 35, 36 | Pending |
+| AC10 | All error cases handled gracefully | Tasks 11-16, 37, 38 | Pending |
+
+---
+
+## Total Task Count: 50
+
+**Phase 1 (POC):** 10 tasks  
+**Phase 2 (Refactor):** 15 tasks  
+**Phase 3 (Testing):** 13 tasks  
+**Phase 4 (Quality):** 12 tasks  
+
+**Estimated Completion Time:** 2-3 days for experienced developer
+
+---
+
+*Last updated: 2026-04-01*

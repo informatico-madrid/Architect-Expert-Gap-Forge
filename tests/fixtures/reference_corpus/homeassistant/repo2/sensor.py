@@ -141,7 +141,7 @@ class MyDataUpdateCoordinator(DataUpdateCoordinator):
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers) as response:
                         return await response.json()
-        except (aiohttp.ClientError, async_timeout.timeout) as err:
+        except (aiohttp.ClientError, async_timeout.AsyncTimeoutError) as err:
             raise UpdateError(f"Failed to fetch data: {err}") from err
 
 

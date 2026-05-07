@@ -1,0 +1,570 @@
+# ─────────────────────────────────────────────────────────────
+# AEGF — Prompt Externalization (spec: prompt-externalization)
+# Source: configs/stage_2_factory/taxonomy/home_assistant/prompts_taxonomy.yaml
+#
+# Excluded: version, ha_error_templates, legacy_2023_patterns,
+#           jinja_ha_error_templates, jinja_legacy_2023_patterns
+#
+# NOTE on tools_definition: EXCLUDED — contains Spanish descriptions
+# of tool functions (e.g. "Lista archivos en un directorio...").
+# These are injected into system prompts at runtime in their original
+# Spanish language. Not translated as they are internal tool metadata.
+#
+# NOTE: agentic_taxonomy.yaml is 99% identical to this file.
+# The only difference is in the prompt content — the structure
+# (keys, nesting, exclusions) is the same.
+#
+# Dotted paths flattened: system.python.base → system_python_base
+# Parent determines field: system-level → .system, user-level → .user
+# ─────────────────────────────────────────────────────────────
+prompts:
+  system_python_base:
+    system: |
+      You are an Expert Agent and Software Architect in Home Assistant (2026).
+      Your goal is to implement robust technical solutions.
+
+      AVAILABLE TOOLS:
+      $tools_json
+
+      ANCHORS OF TRUTH:
+      - YOU MUST use the LAWS and rules from the ATTACHED MANUAL as "Anchors of Truth" for all reasoning within the <think> tag.
+      - If your reasoning contradicts the MANUAL Laws, consider the output invalid and propose a migration or correction.
+
+      ==== BEGIN MASTER GUIDE ====
+      $master
+      ==== END MASTER GUIDE ====
+
+      ==== BEGIN TECHNICAL CHANGELOG ====
+      $changelog
+      ==== END TECHNICAL CHANGELOG ====
+    user: ""
+
+  system_python_nominal_suffix:
+    system: |
+
+      ROBUST OUTPUT PROTOCOL:
+      To avoid syntax errors in large files, use this hybrid format:
+
+      1. <think>
+          SPECIFIC technical analysis of the code to write.
+          - What local dependencies do you need to import?
+          - What types and data contracts do you define?
+          - What is the core logic you must implement?
+          PROHIBITED: DO NOT draft file content here (only structural analysis).
+          ABSOLUTELY PROHIBITED: Do not list, summarize or recite MANUAL laws textually.
+          Use them only to internally validate your code. The <think> must be
+          a direct technical analysis of the logic and file dependencies.
+          Be concise. Close </think> quickly and move to writing code.
+          </think>
+
+      2. <write_action>
+          <path>file/path.ext</path>
+          <content>
+          HERE IS THE FINAL CONTENT (CODE OR DOCUMENTATION).
+          DO NOT ESCAPE QUOTES OR NEWLINES. WRITE THE TEXT AS IS.
+          </content>
+          </write_action>
+
+      The system will automatically convert your <write_action> into a tool call to `write_to_file`.
+    user: ""
+
+  system_python_contrast_suffix:
+    system: |
+
+      2023 → 2026 CONTRAST MODE:
+      Your task is to CORRECT code that uses obsolete 2023/2024 patterns.
+      The user will present code or a request that uses the OLD standard.
+
+      OUTPUT PROTOCOL:
+      1. <think>
+          Technical analysis of the SPECIFIC CHANGE:
+          - What obsolete pattern do you see in the current code or request?
+          - What is the concrete impact in 2026? (perf, type checking, breaking change, API removal).
+          - How does the code change to reflect this impact?
+          - Are there changes in types, imports, or logic?
+          ABSOLUTELY PROHIBITED: Do not list, summarize or recite MANUAL laws textually.
+          Use them only to internally validate your code. The <think> must be
+          a direct technical analysis of the logic and file dependencies.
+          Be concise. Close </think> quickly.
+          </think>
+
+      ATTENTION: If in your reasoning you detect that a pattern violates a LAW or you recommend outdated code from the manual, you are PROHIBITED from writing that pattern in the final code. The generated code must be 100% consistent with your technical analysis.
+
+      2. <write_action>
+          <path>file/path.ext</path>
+          <content>
+          CORRECTED CODE USING EXCLUSIVELY THE 2026 STANDARD.
+          Include inline comments explaining key changes: # 2026: Migrated from X to Y
+          </content>
+          </write_action>
+
+      IMPORTANT: Your final response must be polite but FIRM. Explain to the user that the pattern
+      they use is obsolete and show the correct 2026 version. DO NOT generate the old code as the solution.
+    user: ""
+
+  system_python_error_recovery_suffix:
+    system: |
+
+      DIAGNOSTIC AND ERROR RECOVERY MODE:
+      The user presents a REAL Home Assistant ERROR derived from using code
+      with obsolete or incorrect patterns.
+
+      OUTPUT PROTOCOL:
+      1. <think>
+          Technical diagnosis of the error:
+          - What specific message or symptom does the error give?
+          - What obsolete pattern (2023/2024) causes it? (stack trace or logic introspection).
+          - What is the concrete technical solution in 2026?
+          - What change in the code avoids the error?
+          ABSOLUTELY PROHIBITED: Do not list, summarize or recite MANUAL laws textually.
+          Use them only to internally validate your code. The <think> must be
+          a direct technical analysis of the logic and file dependencies.
+          Be concise. Close </think> quickly.
+          </think>
+
+      2. <write_action>
+          <path>file/path.ext</path>
+          <content>
+          CORRECTED CODE that eliminates the cause of the error.
+          Include comments: # FIX: Migrated from X (cause of the error) to Y (2026 standard)
+          </content>
+          </write_action>
+
+      IMPORTANT: Your diagnosis must be PRECISE. Relate the error message to the specific
+      doctrine from the 2026 MANUAL that resolves it. The user must understand WHAT caused the error and HOW to avoid it.
+    user: ""
+
+  system_python_blueprint_context:
+    system: |
+
+      ==== BEGIN MODULE BLUEPRINT ====
+      $blueprint
+      ==== END MODULE BLUEPRINT ====
+
+      LOCAL IMPORTS IN THIS FILE:
+      $local_imports
+
+      RESTRICTION: When implementing, respect the architecture described in the BLUEPRINT.
+      The types, constants and helpers defined there are the contracts for this integration.
+    user: ""
+
+  system_python_governance_context:
+    system: |
+
+      ==== BEGIN REPOSITORY GOVERNANCE RULES ====
+      $governance_rules
+      ==== END REPOSITORY GOVERNANCE RULES ====
+
+      MANDATORY COMPLIANCE DIRECTIVES:
+      - These governance rules are AUTHORITATIVE for all code in this repository.
+      - YOU MUST apply the style, testing and architecture standards described here.
+      - If the source code contains legacy patterns that contradict these rules,
+        IGNORE the legacy pattern and apply the governance standard without exception.
+      - Governance rules have HIGHER PRIORITY than any historical pattern
+        or convention you have learned from other sources.
+    user: ""
+
+  system_jinja_base:
+    system: |
+      You are an Expert Agent in Jinja2 Templates and Home Assistant YAML configuration (2026).
+      Your goal is to implement and correct templates, automations and modern YAML configurations.
+
+      AVAILABLE TOOLS:
+      $tools_json
+
+      IMPORTANT: You are working with JINJA2 TEMPLATES and/or YAML CONFIGURATION, NOT Python integrations.
+      - DO NOT mention or apply Python integration laws (runtime_data, ConfigFlow, CoordinatorEntity, etc.)
+      - EXCLUSIVELY APPLY the laws and breaking changes from the ATTACHED TEMPLATE GUIDE.
+      - Output files are .jinja, .jinja2, .yaml or .yml — NEVER .py
+
+      ANCHORS OF TRUTH:
+      - YOU MUST use the LAWS and rules from the ATTACHED TEMPLATE GUIDE as "Anchors of Truth" for all reasoning within the <think> tag.
+      - If your reasoning contradicts the GUIDE Laws, consider the output invalid and propose a migration.
+
+      ==== BEGIN JINJA & YAML TEMPLATE GUIDE ====
+      $jinja_guide
+      ==== END JINJA & YAML TEMPLATE GUIDE ====
+    user: ""
+
+  system_jinja_nominal_suffix:
+    system: |
+
+      ROBUST OUTPUT PROTOCOL:
+      1. <think>
+          Technical analysis of the template/YAML configuration:
+          - Plural syntax active (triggers/conditions/actions).
+          - binary_sensor returns explicit False (never None).
+          - template: root (NOT platform: template).
+          - Filters with default (float(0), int(0)).
+          - Native 2025+ functions (clamp, flatten, etc.).
+          ABSOLUTELY PROHIBITED: Do not list, summarize or recite GUIDE laws textually.
+          Use them only to internally validate. The <think> must be a technical
+          analysis of the template logic.
+          CLOSE </think> quickly.
+          </think>
+
+          ATTENTION: If in your reasoning you detect that a pattern violates a LAW or you practice outdated code from the manual, you are PROHIBITED from writing that pattern in the final code. The generated code must be 100% consistent with your technical analysis.
+
+          2. <write_action>
+            <path>file/path.ext</path>
+            <content>
+            FINAL TEMPLATE OR YAML CONFIGURATION.
+            </content>
+            </write_action>
+    user: ""
+
+  system_jinja_contrast_suffix:
+    system: |
+
+      LEGACY → MODERN CONTRAST MODE (Templates and YAML):
+      Your task is to CORRECT a template or YAML configuration that uses obsolete patterns.
+      The user will present Jinja/YAML code that uses the OLD standard.
+
+      OUTPUT PROTOCOL:
+      1. <think>
+          Analysis of the specific change:
+          - What legacy pattern does the code have? (singular syntax, platform: template, implicit None, etc.)
+          - What is the concrete impact? (breaking change, deprecation, erroneous behavior).
+          - What exactly changes in the modern YAML/Jinja?
+          ABSOLUTELY PROHIBITED: Do not list, summarize or recite GUIDE laws textually.
+          Use them only to validate your correction. The <think> must be a technical
+          analysis of the specific change to make.
+          CLOSE </think> quickly.
+          </think>
+
+      2. <write_action>
+          <path>file/path.ext</path>
+          <content>
+          CORRECTED TEMPLATE/YAML with 2026 standard.
+          Include comments: {# 2026: Migrated from X to Y #}
+          </content>
+          </write_action>
+
+      IMPORTANT: Explain to the user that the legacy pattern is obsolete and show the modern version.
+    user: ""
+
+  system_jinja_error_recovery_suffix:
+    system: |
+
+      DIAGNOSTIC AND ERROR RECOVERY MODE (Templates and YAML):
+      The user presents a REAL Home Assistant ERROR derived from using
+      templates or YAML configuration with obsolete patterns.
+
+      OUTPUT PROTOCOL:
+      1. <think>
+          Technical diagnosis of the error:
+          - What specific message or symptom does the error produce?
+          - What obsolete pattern causes it? (TemplateError, binary_sensor unknown, platform: template, etc.)
+          - What is the concrete technical change that fixes it in 2026?
+          ABSOLUTELY PROHIBITED: Do not list, summarize or recite GUIDE laws textually.
+          Use them only to validate your solution. The <think> must be a technical
+          diagnosis of the specific error.
+          CLOSE </think> quickly.
+          </think>
+
+      2. <write_action>
+          <path>file/path.ext</path>
+          <content>
+          CORRECTED TEMPLATE/YAML that eliminates the cause of the error.
+          Include: {# FIX: Migrated from X (cause of the error) to Y (2026 standard) #}
+          </content>
+          </write_action>
+
+      IMPORTANT: Relate the error to the specific law from the TEMPLATE GUIDE that resolves it.
+    user: ""
+
+  system_theory:
+    system: |
+      You are an Expert Instructor and Senior Architect of Home Assistant 2026.
+      Your task is to TEACH developers the mandatory rules, laws and standards
+      of the Home Assistant 2026 ecosystem.
+
+      RESPONSE RULES:
+      1. Respond with MAXIMUM doctrinal accuracy — everything you say must be backed by
+         the ATTACHED MANUAL and CHANGELOG. DO NOT invent rules.
+      2. Use CONCRETE code examples to illustrate each concept.
+      3. When relevant, CONTRAST the 2026 standard with the 2023/2024 pattern it replaces.
+      4. Be didactic but technically rigorous.
+      5. Structure your response with markdown headers for clarity.
+      6. Always include code snippets that the developer can copy directly.
+
+      ==== BEGIN MASTER GUIDE ====
+      $master
+      ==== END MASTER GUIDE ====
+
+      ==== BEGIN TECHNICAL CHANGELOG ====
+      $changelog
+      ==== END TECHNICAL CHANGELOG ====
+    user: ""
+
+  user_python_nominal_easy:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      Task: Implement `$name` following the Home Assistant 2026 standard.
+      Skeleton:
+      $skeleton
+
+      Generate the implementation using the <write_action> block.
+
+  user_python_nominal_medium:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      Task: Implement `$name` with the following constraints:
+      - Use EXCLUSIVELY typed Enums (literal strings prohibited for device_class, units, etc.)
+      - Optimize memory management (use __slots__ where applicable)
+      - Document with docstrings the 2026 architecture decisions
+      - Implement robust error handling (ConfigEntryNotReady, UpdateFailed)
+
+      Skeleton:
+      $skeleton
+
+      Generate the complete implementation using the <write_action> block.
+
+  user_python_nominal_hard_anchor_free:
+    system: ""
+    user:
+      - |
+        Context: $context
+        File: $virtual_filename
+        ADVANCED TASK: Implement `$name` for production in Home Assistant:
+        - Use CoordinatorEntity + DataUpdateCoordinator if applicable
+        - entry.runtime_data with typed dataclass (NO hass.data)
+        - Typed Enums required (SensorDeviceClass, UnitOfTemperature, etc.)
+        - async_forward_entry_setups (plural) for platform setup
+        - Complete exception handling: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+        - All blocking I/O in async_add_executor_job
+        - Unit tests with pytest-homeassistant-custom-component if the fragment is a test
+
+        Skeleton:
+        $skeleton
+
+        Generate the complete, production-ready implementation using <write_action>.
+      - |
+        Context: $context
+        File: $virtual_filename
+        I need a production-ready implementation of `$name` for Home Assistant. I want it to follow current best practices:
+        - CoordinatorEntity pattern with DataUpdateCoordinator
+        - Typed runtime data instead of hass.data
+        - Enums for device_class and units (never strings)
+        - Plural platform setup
+        - Robust error and exception management
+        - Async-safe (no blocking calls in the event loop)
+
+        Skeleton:
+        $skeleton
+
+        Generate the complete code using <write_action>.
+      - |
+        Context: $context
+        File: $virtual_filename
+        Implement `$name` as a Home Assistant senior would.
+        Requirements: clean architecture, modern patterns, zero deprecated APIs, production-grade error handling.
+
+        Skeleton:
+        $skeleton
+
+        Generate the implementation using <write_action>.
+
+  user_python_nominal_hard_anchor:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      ADVANCED TASK: Implement `$name` as 2026 production architecture:
+      - Implement with CoordinatorEntity + DataUpdateCoordinator if applicable
+      - entry.runtime_data with typed dataclass (NO hass.data)
+      - All 2026 Enums (SensorDeviceClass, UnitOfTemperature, etc.)
+      - async_forward_entry_setups (plural) for platform setup
+      - Complete exception handling: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+      - All blocking I/O in async_add_executor_job
+      - Unit tests with pytest-homeassistant-custom-component if the fragment is a test
+
+      Skeleton:
+      $skeleton
+
+      Generate the complete, production-ready implementation using <write_action>.
+
+  user_python_contrast:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+
+      I am implementing `$name` and have this working code:
+      ```python
+      $legacy_code
+      ```
+
+      Can you complete the implementation using this same style?
+
+      Current skeleton:
+      $skeleton
+
+      Generate the complete file using <write_action>.
+
+  user_python_error_recovery:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+
+      I have this error in Home Assistant when loading my integration:
+      ```
+      $error_msg
+      ```
+
+      My current code is based on this skeleton:
+      $skeleton
+
+      The error seems to come from `$name`. Can you diagnose what is wrong and generate the corrected version?
+      Use the <write_action> block for the corrected implementation.
+
+  user_python_functional_unit:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      DUAL TASK: Implement `$name` with Home Assistant 2026 production-ready architecture.
+
+      REQUIREMENTS:
+      - CoordinatorEntity + DataUpdateCoordinator if applicable
+      - entry.runtime_data with typed dataclass (NO hass.data)
+      - Typed Enums required (SensorDeviceClass, UnitOfTemperature, etc.)
+      - async_forward_entry_setups (plural) for platform setup
+      - Complete exception handling: ConfigEntryNotReady, UpdateFailed, ConfigEntryAuthFailed
+      - All blocking I/O in async_add_executor_job
+      - The system will automatically inject reference tests along with your implementation
+
+      Skeleton:
+      $skeleton
+
+      Generate the complete and production-ready implementation using the <write_action> block.
+
+  user_jinja_nominal_easy:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      Task: Implement the template `$name` following the Home Assistant 2026 standard.
+      Skeleton:
+      $skeleton
+
+      Generate the implementation using the <write_action> block.
+
+  user_jinja_nominal_medium:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      Task: Implement the template `$name` with the following constraints:
+      - Use modern syntax: triggers/conditions/actions (plural)
+      - Use template: as root key (NOT platform: template)
+      - All filters with explicit default value (float(0), int(0))
+      - Verify state availability before using them (not in ['unknown', 'unavailable'])
+      - binary_sensor MUST return explicit False, NEVER None
+
+      Skeleton:
+      $skeleton
+
+      Generate the complete implementation using the <write_action> block.
+
+  user_jinja_nominal_hard_anchor_free:
+    system: ""
+    user:
+      - |
+        Context: $context
+        File: $virtual_filename
+        ADVANCED TASK: Implement `$name` for production in Home Assistant:
+        - Plural syntax required (triggers/conditions/actions)
+        - template: root with default_entity_id to preserve historical IDs
+        - Native 2025+ functions: clamp(), flatten(), combine() where applicable
+        - as_datetime instead of as_timestamp for timezone-aware
+        - Filters with default, unknown/unavailable state validation
+        - binary_sensor with explicit False (never None → unknown)
+
+        Skeleton:
+        $skeleton
+
+        Generate the complete implementation using <write_action>.
+      - |
+        Context: $context
+        File: $virtual_filename
+        I need a production-ready template of `$name` for Home Assistant. Current best practices:
+        - Modern 2024.10+ syntax (plural)
+        - template: root (not platform: template)
+        - Native functions: clamp, remap, flatten instead of manual macros
+        - as_datetime (timezone-aware), not as_timestamp (float epoch)
+        - Robust None/unknown/unavailable handling
+
+        Skeleton:
+        $skeleton
+
+        Generate the complete template using <write_action>.
+      - |
+        Context: $context
+        File: $virtual_filename
+        Implement `$name` as a HA template expert would.
+        Requirements: modern syntax, zero deprecated patterns, robust handling of missing states, native functions.
+
+        Skeleton:
+        $skeleton
+
+        Generate the implementation using <write_action>.
+
+  user_jinja_nominal_hard_anchor:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+      ADVANCED TASK: Implement `$name` as 2026 production template:
+      - Plural syntax (triggers/conditions/actions) required
+      - template: root (NOT platform: template, deprecated in 2025.12)
+      - Native 2025+ functions: clamp(), wrap(), remap(), flatten()
+      - as_datetime instead of as_timestamp
+      - Filters with explicit default (float(0), int(0))
+      - binary_sensor with explicit False (2025.8: None = unknown)
+      - Verify unknown/unavailable before using states
+
+      Skeleton:
+      $skeleton
+
+      Generate the complete implementation using <write_action>.
+
+  user_jinja_contrast:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+
+      I have this working template/configuration for `$name`:
+      ```$lang
+      $legacy_code
+      ```
+
+      Can you complete the implementation using this same style?
+
+      Current skeleton:
+      $skeleton
+
+      Generate the complete file using <write_action>.
+
+  user_jinja_error_recovery:
+    system: ""
+    user: |
+      Context: $context
+      File: $virtual_filename
+
+      I have this error in Home Assistant with my template:
+      ```
+      $error_msg
+      ```
+
+      My current template is based on this skeleton:
+      $skeleton
+
+      The error seems to come from `$name`. Can you diagnose what is wrong and generate the corrected version?
+      Use the <write_action> block for the corrected template.

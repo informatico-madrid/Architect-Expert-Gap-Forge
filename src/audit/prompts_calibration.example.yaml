@@ -1,0 +1,94 @@
+# ─────────────────────────────────────────────────────────────
+# AEGF — Prompt Externalization (spec: prompt-externalization)
+# Source: configs/stage_6_calibration/calibration_prompts.yaml
+# Source format: list-of-objects → flattened to dict with metadata
+# ─────────────────────────────────────────────────────────────
+prompts:
+  calibration_prompt_001:
+    system: |
+      top_k, presence_penalty
+    user: |
+      Consider a hypothetical system called 'X-99'. You will only be told
+      that it has three components: A, B and C. Do not ask me what they do yet.
+      Write a 5-step plan to perform a full security audit of this system without
+      knowing absolutely anything about it. The plan must be detailed enough to work
+      for any technology, from a steam engine to a quantum server. You cannot use
+      generic words like 'check' or 'analyze'.
+    metadata:
+      type: investigation
+      parameter_target: "top_k, presence_penalty"
+      evaluation_focus: "Curiosity and Exploration - If the model is lazy, it will give 5 short points. If exploration parameters are right, it will invent deep forensic methodologies."
+
+  calibration_prompt_002:
+    system: |
+      repetition_penalty, min_p
+    user: |
+      Explain the concept of Entropy to a 10-year-old child. Requirements:
+      1. You cannot use the words 'order', 'disorder', 'energy' or 'heat'.
+      2. You must use an analogy based on a library.
+      3. Each sentence must start with a different letter following alphabetical order
+         (A, B, C...). Stop at letter G.
+    metadata:
+      type: investigation
+      parameter_target: "repetition_penalty, min_p"
+      evaluation_focus: "Obedience and Repetition Penalty - Torture test. If repetition_penalty is too low, it will lock up. If too high, it will lose logical thread."
+
+  calibration_prompt_003:
+    system: |
+      temperature
+    user: |
+      Analyze the following two rules from an imaginary board game:
+      Rule A: 'The player with the most points always wins, unless it is Tuesday.'
+      Rule B: 'On odd-numbered days, the score is reversed, and the one with fewer
+      points wins.'
+      Today is Tuesday, March 15. Describe in detail the logical process to decide
+      who wins a match that ends with player 1 having 100 points and player 2 having
+      10 points. You cannot say the rules are confusing; you must render a winner
+      based strictly on the logical hierarchy.
+    metadata:
+      type: investigation
+      parameter_target: "temperature"
+      evaluation_focus: "Reasoning and Temperature - Evaluate whether the model 'gives up' and picks the most likely winner or navigates creative logic to find the correct solution."
+
+  calibration_prompt_004:
+    system: |
+      temperature, top_k
+    user: |
+      A chef claims they can make any recipe without following the instructions in the book.
+      Another chef follows each instruction to the letter.
+      A third chef improvises based on the underlying principles of cooking.
+      Explain which chef would be more successful at innovating and which would be more
+      successful at consistency. Then design a system where all three chefs work together
+      in a fine dining restaurant.
+    metadata:
+      type: investigation
+      parameter_target: "temperature, top_k"
+      evaluation_focus: "Balance between consistency and innovation - High temperature allows innovation but may lose consistency. top_k controls the diversity of considered options."
+
+  calibration_prompt_005:
+    system: |
+      temperature, min_p
+    user: |
+      Imagine that you discover your best friend has been lying about their identity
+      for years. The lies were to protect you from a worse truth. Write three letters:
+      one explaining that you forgive them,
+      another explaining that you do not forgive them but you understand them,
+      and a third from their perspective explaining why they lied.
+      Each letter must be emotionally authentic and logically consistent with the other two.
+    metadata:
+      type: investigation
+      parameter_target: "temperature, min_p"
+      evaluation_focus: "Creative/emotional generation with logical consistency - Temperature controls emotionalness, min_p filters thematic coherence."
+
+  calibration_prompt_006:
+    system: |
+      repetition_penalty, presence_penalty
+    user: |
+      Describe the history of the universe from the Big Bang to the present in exactly
+      100 words. Then expand each of the 100 words into exactly one sentence. The result
+      must be a coherent narrative of exactly 100 sentences where each sentence has
+      exactly the same narrative weight.
+    metadata:
+      type: investigation
+      parameter_target: "repetition_penalty, presence_penalty"
+      evaluation_focus: "Redundancy control and narrative balance - Repetition of structures vs. creative variation."

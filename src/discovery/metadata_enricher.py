@@ -21,9 +21,9 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from src.utils.extractors import get_adapter
 from src.utils.extractors.base import ParseError
@@ -90,11 +90,21 @@ class ProcessingConfig(BaseModel):
     output_category: Optional[str] = None
     segment_path: Optional[str] = None
     context_prefix: Optional[str] = None
-    extensions: set[str] = Field(default={".py", ".md"})
-    ignore_patterns: set[str] = Field(
-        default={".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
+    # Accept both 'extensions' and 'profile_extensions' for flexibility
+    extensions: Set[str] = Field(default_factory=lambda: {".py", ".md"})
+    ignore_patterns: Set[str] = Field(
+        default_factory=lambda: {".git", "__pycache__", "venv", "node_modules", ".tox", "eggs"}
     )
-    backend_repos: set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
+    # Support profile_extensions alias for DiscoveryConfig compatibility
+    profile_extensions: Optional[Set[str]] = Field(
+        default=None,
+        description="File extensions for profile-based filtering (aliased from extensions)",
+    )
+    profile_ignored_paths: Optional[Set[str]] = Field(
+        default=None,
+        description="Paths to ignore for profile-based filtering (aliased from ignore_patterns)",
+    )
+    backend_repos: Set[str] = Field(default_factory=lambda: set(BACKEND_REPOS))
     profile: str = Field(
         default="homeassistant", description="Profile name for extractor adapter"
     )
@@ -102,6 +112,16 @@ class ProcessingConfig(BaseModel):
         default="abort",
         description="Policy for parse errors: abort, skip, mark_and_continue, or fallback",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_profile_extensions(cls, values: dict) -> dict:
+        """Map profile_extensions to extensions if extensions not set."""
+        if "extensions" not in values and values.get("profile_extensions"):
+            values["extensions"] = values.pop("profile_extensions")
+        if "ignore_patterns" not in values and values.get("profile_ignored_paths"):
+            values["ignore_patterns"] = values.pop("profile_ignored_paths")
+        return values
 
     # Module discovery configuration
     module_discovery_strategy: str = Field(

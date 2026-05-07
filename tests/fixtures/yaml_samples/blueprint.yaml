@@ -1,0 +1,33 @@
+blueprint:
+  name: "Update Climate"
+  description: "Update climate based on sensors and time"
+  domain: automation
+  input:
+    climate_entity:
+      name: "Climate"
+      selector:
+        entity:
+          domain: climate
+    sensor_presence:
+      name: "Presence Sensor"
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: presence
+mode: single
+trigger:
+  - platform: time_pattern
+    minutes: '0'
+  - platform: state
+    entity_id: !input 'sensor_presence'
+    for:
+      seconds: !input 'grace_period'
+condition:
+  - condition: state
+    entity_id: !input 'sensor_presence'
+    state: 'on'
+action:
+  - service: climate.set_hvac_mode
+    data:
+      entity_id: !input 'climate_entity'
+      hvac_mode: heat

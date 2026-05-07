@@ -275,12 +275,11 @@ class TestExactDedup:
 
 
 class TestRunNemoFilterPipeline:
-    def test_raises_runtime_error_when_not_installed(self, tmp_path: Path) -> None:
+    def test_raises_runtime_error_when_not_installed(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """When nemo-curator is not installed, raises RuntimeError immediately."""
-        if _NEMO_AVAILABLE:
-            pytest.skip(
-                "nemo-curator is installed; this test covers the missing-dep path"
-            )
+        # Mock the availability flag to simulate nemo-curator not being installed
+        from src.curation import curator_pipeline as ncs
+        monkeypatch.setattr(ncs, "_NEMO_AVAILABLE", False)
         # Create input file so FileNotFoundError doesn't raise before RuntimeError
         input_file = tmp_path / "in.jsonl"
         input_file.touch()

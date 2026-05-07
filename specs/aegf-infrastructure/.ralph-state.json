@@ -1,0 +1,10 @@
+{
+  "source": "spec", "name": "aegf-infrastructure", "basePath": "specs/aegf-infrastructure",
+  "phase": "research", "taskIndex": 0, "totalTasks": 0,
+  "taskIteration": 1, "maxTaskIterations": 5,
+  "globalIteration": 1, "maxGlobalIterations": 100,
+  "commitSpec": true, "quickMode": false,
+  "discoveredSkills": [],
+  "epicName": "0",
+  "bmadSource": "_bmad-output/planning-artifacts/epics.md"
+}

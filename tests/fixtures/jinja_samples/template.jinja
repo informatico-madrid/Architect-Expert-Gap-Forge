@@ -1,0 +1,24 @@
+{% set climate_temp = state_attr('climate.living_room', 'current_temperature') %}
+{% if is_state('switch.lights', 'on') %}
+  Lights are on, temperature is {{ climate_temp | float | round(1) }}
+{% elif is_state('switch.lights', 'off') %}
+  Lights are off
+{% endif %}
+
+{% for sensor in sensors %}
+  {{ sensor.state }} - {{ sensor.attributes.unit_of_measurement }}
+{% endfor %}
+
+Temperature: {{ states('sensor.temperature') | float | round(1) }}
+Humidity: {{ states('sensor.humidity') | float | round(0) }}
+
+{% if is_state('binary_sensor.motion', 'on') %}
+  Motion detected!
+{% endif %}
+
+{% set current_hour = now().hour %}
+{% if current_hour >= 6 and current_hour < 22 %}
+  Good day!
+{% else %}
+  Good night!
+{% endif %}

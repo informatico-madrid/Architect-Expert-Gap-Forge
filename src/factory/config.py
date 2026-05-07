@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TypedDict
 
+import os
 import yaml
 
 from src.utils.exceptions import ConfigValidationError
@@ -32,7 +33,10 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION CONSTANTS
 # ======================================================================
 DEFAULT_BASE_URL = "http://localhost:8000/v1"
-DEFAULT_API_KEY = "sk-master-bunker-2026"
+_DEFAULT_API_KEY = os.getenv("API_KEY")
+if _DEFAULT_API_KEY is None:
+    raise ValueError("API_KEY environment variable is required. Please set it before running.")
+DEFAULT_API_KEY = _DEFAULT_API_KEY
 DEFAULT_MODEL = "qwen3-5-35b-a3b-nvfp4"
 DEFAULT_WORKERS = 8
 MAX_RETRIES = 3

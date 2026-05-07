@@ -1,0 +1,101 @@
+{
+  "module_map": {
+    "homeassistant/components/cover/strings.json": {
+      "anchor_file": "strings.json",
+      "logic_files": [
+        "homeassistant/components/cover/strings.json"
+      ],
+      "test_files": [],
+      "raw_content": {
+        "ui": {
+          "cover": {
+            "opening": "Opening",
+            "opening_done": "Opening done",
+            "closing": "Closing",
+            "closing_done": "Closing done"
+          }
+        }
+      }
+    },
+    "homeassistant/components/light/services.yaml": {
+      "anchor_file": "services.yaml",
+      "logic_files": [
+        "homeassistant/components/light/services.yaml"
+      ],
+      "test_files": [],
+      "schema": {
+        "services": [
+          {
+            "service": "turn_on",
+            "fields": {
+              "entity_id": "entity_id",
+              "brightness": "brightness"
+            }
+          }
+        ]
+      }
+    },
+    "homeassistant/components/climate/services.yaml": {
+      "anchor_file": "services.yaml",
+      "logic_files": [
+        "homeassistant/components/climate/services.yaml"
+      ],
+      "test_files": [],
+      "schema": {
+        "services": [
+          {
+            "service": "set_temperature",
+            "fields": {
+              "entity_id": "entity_id",
+              "temperature": "temperature"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "dependencies": {
+    "homeassistant.core": "HomeAssistant",
+    "homeassistant.helpers.service": "call_service"
+  },
+  "schema": {
+    "services": [
+      {
+        "domain": "cover",
+        "service": "open_cover",
+        "fields": {
+          "entity_id": "str"
+        }
+      },
+      {
+        "domain": "light",
+        "service": "turn_on",
+        "fields": {
+          "entity_id": "str",
+          "brightness": "int"
+        }
+      },
+      {
+        "domain": "climate",
+        "service": "set_temperature",
+        "fields": {
+          "entity_id": "str",
+          "temperature": "float"
+        }
+      }
+    ]
+  },
+  "vocabulary": {
+    "i18n_keys": [
+      "cover.opening",
+      "cover.closing"
+    ],
+    "lit_components": [],
+    "service_calls": []
+  },
+  "readme": {
+    "homeassistant/components/cover/strings.json": "Cover device i18n strings for UI labels.",
+    "homeassistant/components/light/services.yaml": "Light service definitions for HomeAssistant.",
+    "homeassistant/components/climate/services.yaml": "Climate service definitions for HomeAssistant."
+  }
+}

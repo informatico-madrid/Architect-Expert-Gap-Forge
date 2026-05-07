@@ -214,10 +214,13 @@ class TestAuditConfigFunctions:
         # Should return same instance (singleton)
         assert router1 is router2
 
-    def test_validate_gemini_api_key_when_gemini_available(self) -> None:
+    def test_validate_gemini_api_key_when_gemini_available(self, monkeypatch) -> None:
         """validate_gemini_api_key must work when _GEMINI_AVAILABLE is True (the common case in prod)."""
         import src.audit.config
         from src.audit import inference
+
+        # Ensure _GEMINI_AVAILABLE is True even if a prior test set it to False
+        monkeypatch.setattr(inference, "_GEMINI_AVAILABLE", True)
 
         # In test environment, _GEMINI_AVAILABLE is True (google.genai is installed)
         # Lines 184-191 should execute
